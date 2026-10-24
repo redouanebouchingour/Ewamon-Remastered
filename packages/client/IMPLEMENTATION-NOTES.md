@@ -2751,3 +2751,57 @@ the second isolated client (the component over the landing page: the foe and own
 - Tests: `test/journal.test.ts` (prompt, tidy, checks, template, one call, the store with its calls injected) and
   `test/journal-screen.test.tsx` (the page written on open, chips, earlier pages, Copy, Rewrite today, an empty day,
   off, the More menu).
+
+## Voice talk, opt-in (2026-10-24, LLM feature 10, not in the SPEC)
+
+- Client only, no server change, nothing downloaded. Every part is off by default (Settings › Audio, a "Voices"
+  section under the sliders): `audio.npcVoices` "NPC voices", `audio.battleVoices` "Voice the battle",
+  `audio.voices` "Voice volume" (0.8), `audio.speechInput` "Speak to NPCs (sends your voice to Google for
+  recognition)". NPC voices stay off by default although they are local: a game that was silent suddenly reading
+  every reply aloud in a system voice would surprise the player.
+- NPC voices (`voice/`): the browser's `speechSynthesis` behind `SpeechEngine` (`speech.ts`; a fake in
+  `test/voiceFakes.ts`). `bindVoices.ts` (`startVoices`, PlayShell) follows the stores: an NPC's reply is spoken
+  sentence by sentence while it streams (`speakable.ts`: a sentence is complete when a space follows its end;
+  abbreviations, initials and decimals do not end one; a run over 180 characters is cut at a comma), the buddy's
+  lines and the lead's bubble, the rival's walk-up taunt and parting line (the dialogue on `RIVAL_ACTOR_ID`), and with
+  "Voice the battle" the commentator's caption and the trainer's lines (queued behind each other, a newer one
+  replacing one still waiting). Scripted lines and signs are not read.
+- The text is tidied for the ear: `noDashes`, then bracketed notes (`[...]`, `(...)`, `{...}`, `<...>`, `*...*`),
+  emoji, markdown marks and links go; an aside still open while streaming is held back.
+- Voices (`voices.ts`): local voices only (`localService`). Chrome's "Google ..." voices synthesize on Google's
+  servers, so they are never used, and with no local voice nothing is said rather than fall back to the browser's
+  default voice (which may be one of them); the setting then says so and is disabled. English first, else any local
+  voice. A speaker's voice is a pure function of its key (`npc:<id>`, `creature:<id>`, `person:<name>`, `caster`) and
+  the voices on offer, in any listing order. Pitch / rate are seeded per key; a creature's pitch follows its species'
+  `sizeScale` (0.5 squeaks at ~1.6, 2.2 rumbles at ~0.6).
+- Interruptions: a new reply, the player's line to the buddy, the dialogue closing or changing target, going back to
+  the scripted lines, the buddy talk closing, a battle opening (world speech) or closing (battle speech), pressing
+  push-to-talk, a setting turned off, master or voice volume at 0, the tab hidden with "Mute when the tab is hidden".
+  The speaker keeps its own queue and gives the engine one sentence at a time (Chrome cannot drop one waiting line and
+  stalls on long utterances), and waits 60 ms after a cancel (Chrome drops a `speak()` right after `cancel()`).
+- Volume: perceptual(master) × perceptual(voice volume), the utterance's `volume`. Speech synthesis does not pass
+  through the AudioDirector's WebAudio graph: the compressor and the dialogue duck do not apply to it.
+- Push-to-talk (`voice/listen.ts`, `world/MicButton.tsx`): Web Speech `SpeechRecognition` (en-US, continuous,
+  interim results). With "Speak to NPCs" on and a browser that has it, a mic button sits in the DialogueBox (people
+  only, not signs) and in the buddy talk; hold it, or the new `pushToTalk` binding (backquote: free in the world and
+  types nothing a player needs; caught before the talk field while the button is up, types normally otherwise), to
+  speak: the field opens and fills with the live words, release sends them as the typed line (a reply still on its
+  way leaves them in the field for Enter). A tap under 250 ms sends nothing; a hold is released after 20 s; a
+  recognizer that ends by itself while held leaves the words unsent. Errors: blocked mic, no mic, no service (Brave,
+  offline) show a note under the button; pressing again retries; nothing starts the mic but a press. No recognition
+  (Firefox): no button, the setting disabled with a line saying so. Typed chat is unchanged.
+- The earlier speech input (MediaRecorder → whisper.cpp, removed 2026-10-22 as too slow) is not revived: the browser's
+  recognizer streams and answers within the hold, at the cost of sending the audio to its maker's service, which the
+  setting says plainly.
+- Live check (alt2 pair, headless Chrome 155 on Windows, the docker model): the real voice list held only Google
+  network voices plus one local voice, "Microsoft Frank" (nl-NL), so with NPC voices on the reply was spoken in that
+  Dutch voice (no English local voice: any local one), never a Google one. With a stand-in local voice spied on, a
+  four-sentence reply was spoken sentence by sentence while it streamed (first sentence 1.7 s before the reply was
+  in), the buddy's greeting in three sentences at a higher pitch, and closing the dialogue after the first sentence
+  cancelled it and spoke nothing more. The mic button pressed in headless Chrome (no microphone, no permission)
+  turned to "Mic blocked" with its note; the field stayed usable. Not verified: real audio output, a real microphone,
+  Google's recognition returning words (no mic in headless Chrome), Safari / Firefox.
+- Tests: `test/voice-speech.test.ts` (tidying, sentence chunks, voice picking, the speaker's queue and interruptions,
+  gating, the binding to the stores), `test/voice-listen.test.ts` (the push-to-talk machine with a fake recognizer),
+  `test/voice-mic.test.tsx` (the mic button's states in the DialogueBox and the buddy talk, the key, the settings
+  section).

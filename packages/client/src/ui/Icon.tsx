@@ -55,6 +55,8 @@ const PATHS = {
   play: 'M7 4.5v15L19.5 12 7 4.5z',
   pause: 'M7.5 5v14M16.5 5v14',
   link: 'M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1',
+  // LLM feature 10: push-to-talk
+  mic: 'M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zM5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6',
 } as const;
 
 export type IconName = keyof typeof PATHS;

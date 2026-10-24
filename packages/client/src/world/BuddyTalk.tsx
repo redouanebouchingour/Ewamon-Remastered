@@ -4,6 +4,9 @@
  * creature's real sprite and its type icons beside its name, its level and a shiny / alpha mark. Opened by the
  * `buddyTalk` key (Y) near the follower or the party card's Talk; the creature greets the player first. Enter sends a
  * typed line, Escape (or Close) ends the talk. Words only: nothing said here changes the save.
+ *
+ * Voice talk (2026-10-24, LLM feature 10): with "Speak to NPCs" on, the mic button (`MicButton`) beside Close; held, the
+ * live words fill the field and go on release. The creature's spoken lines are voice/bindVoices.ts's.
  */
 import { useEffect, useRef, useState } from 'react';
 import type { TypeName, VariantKey } from '@ewa/core';
@@ -14,6 +17,7 @@ import { noDashes } from '../talk/llm';
 import { CreatureSprite } from '../ui/CreatureSprite';
 import { Icon } from '../ui/Icon';
 import { TypeBadge } from '../ui/TypeBadge';
+import { MicButton } from './MicButton';
 import d from './DialogueBox.module.css';
 import s from './BuddyTalk.module.css';
 
@@ -114,6 +118,15 @@ export function BuddyTalk() {
             <kbd className={d.key}>Enter</kbd>
           </form>
           <div className={d.actions}>
+            <MicButton
+              to={profile.name}
+              target={{
+                onLive: (t) => setDraft(t),
+                onSend: (t) => {
+                  if (sayToBuddy(t)) setDraft('');
+                },
+              }}
+            />
             <button type="button" className={d.more} onClick={closeBuddyTalk} aria-label="Close, Escape">
               <span>Close</span>
               <kbd className={d.key}>Esc</kbd>

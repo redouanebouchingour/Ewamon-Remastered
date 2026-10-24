@@ -25,6 +25,10 @@ import s from './SettingsScreen.module.css';
 import { useClosePanel } from './shared';
 import { EmailNudge } from './EmailNudge';
 import { WeatherSection } from './WeatherSection';
+import { browserSpeech } from '../voice/speech';
+import { usableVoices } from '../voice/voices';
+import { speechInputSupported } from '../voice/listen';
+import { keyGlyph } from '../world/TutorialCard';
 
 type Tab = 'graphics' | 'audio' | 'accessibility' | 'controls' | 'social' | 'world';
 const TABS: readonly { readonly key: Tab; readonly label: string }[] = [
@@ -74,6 +78,7 @@ export const ACTION_LABEL: Readonly<Record<InputAction, string>> = {
   pvp: 'Open PvP (arena)',
   professor: 'Ask Prof. Wynn',
   buddyTalk: 'Talk to your lead Ewamon',
+  pushToTalk: 'Push to talk (hold, with "Speak to NPCs" on)',
   pause: 'Pause / settings',
   toggleHud: 'Toggle HUD',
 };
@@ -193,10 +198,76 @@ function AudioTab() {
       <Slider label="Sound effects" value={a.sfx} min={0} max={1} step={0.05} format={pct} onChange={(v) => set('audio', { sfx: v })} />
       <Slider label="Interface" value={a.ui} min={0} max={1} step={0.05} format={pct} onChange={(v) => set('audio', { ui: v })} />
       <Toggle label="Mute when the tab is hidden" checked={a.muteWhenHidden} onChange={(v) => set('audio', { muteWhenHidden: v })} />
+      <hr className={l.divider} />
+      <VoiceSection />
       <p className={l.caption}>
         Music and sound effects credits: <a href="/audio/CREDITS.txt" target="_blank" rel="noreferrer">audio credits</a> (CC0 sources).
       </p>
     </div>
+  );
+}
+
+/**
+ * How many local voices the browser offers (null: no speech synthesis at all). Chrome lists them late, so the count
+ * follows `voiceschanged`.
+ */
+function useLocalVoices(): number | null {
+  const [n, setN] = useState<number | null>(() => {
+    const e = browserSpeech();
+    return e === null ? null : usableVoices(e.voices()).length;
+  });
+  useEffect(() => {
+    const e = browserSpeech();
+    if (e === null) return;
+    const read = (): void => setN(usableVoices(e.voices()).length);
+    read();
+    return e.onVoices(read);
+  }, []);
+  return n;
+}
+
+/** LLM feature 10: voice talk, every part of it opt-in (see voice/bindVoices.ts and voice/listen.ts). */
+function VoiceSection() {
+  const a = useSettingsStore((st) => st.audio);
+  const ptt = useSettingsStore((st) => st.keybinds.pushToTalk[0]);
+  const set = useSettingsStore((st) => st.set);
+  const voices = useLocalVoices();
+  const pct = (v: number): string => `${Math.round(v * 100)} %`;
+  const noVoices = voices === null ? 'This browser has no speech synthesis.' : voices === 0 ? 'No voice on this computer can speak offline, so nothing would be said.' : null;
+  const listens = speechInputSupported();
+  return (
+    <>
+      <p className={s.controlLabel}>Voices</p>
+      <Toggle
+        label="NPC voices"
+        description={
+          noVoices ??
+          "Villagers' replies, your Ewamon's lines and your rival's words are read aloud as they appear, each speaker with a voice of its own. Uses your computer's own voices: nothing you hear is sent anywhere."
+        }
+        checked={a.npcVoices}
+        disabled={noVoices !== null}
+        onChange={(v) => set('audio', { npcVoices: v })}
+      />
+      <Toggle
+        label="Voice the battle"
+        description="The commentator and the trainer you fight are read aloud too (with their captions on in Accessibility)."
+        checked={a.battleVoices}
+        disabled={noVoices !== null}
+        onChange={(v) => set('audio', { battleVoices: v })}
+      />
+      <Slider label="Voice volume" value={a.voices} min={0} max={1} step={0.05} format={pct} onChange={(v) => set('audio', { voices: v })} />
+      <Toggle
+        label="Speak to NPCs (sends your voice to Google for recognition)"
+        description={
+          listens
+            ? `Hold ${ptt === undefined ? 'the push-to-talk key' : keyGlyph(ptt)} or the mic button in a conversation to talk instead of typing. While you hold it, your browser's speech recognition sends the microphone audio to Google's servers (in Chrome; other browsers use their maker's service) and writes your words in the field. The mic is never on unless you hold the key or the button. Typing always works.`
+            : 'This browser has no speech recognition (Firefox, for one). Typing is how you talk to NPCs here.'
+        }
+        checked={listens && a.speechInput}
+        disabled={!listens}
+        onChange={(v) => set('audio', { speechInput: v })}
+      />
+    </>
   );
 }
 

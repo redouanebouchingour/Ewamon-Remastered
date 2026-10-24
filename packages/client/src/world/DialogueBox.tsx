@@ -21,6 +21,10 @@
  *
  * Shop haggling (2026-10-24): the shop screen's Haggle opens the keeper's dialogue in haggle mode (`haggle`): the box
  * sits bottom-left beside the shop panel, the text field is open at once, and the persona knows the stock.
+ *
+ * Voice talk (2026-10-24, LLM feature 10): with Settings › Audio "Speak to NPCs" on, a mic button (`MicButton`) sits
+ * beside Chat; holding it or the push-to-talk key opens the field, fills it with the live words and sends them on
+ * release, the way Enter sends a typed line. The NPC's spoken reply is voice/bindVoices.ts's, outside this component.
  */
 import { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -34,6 +38,7 @@ import { acceptQuest, declineQuest, endTalk, handInQuest, hitNpc, leaveTalk, ope
 import { watchNpcQuests } from '../state/npcQuests';
 import type { NpcPersona } from '../talk/npcChat';
 import { NpcQuestCard } from './NpcQuestCard';
+import { MicButton } from './MicButton';
 import { haggleShop } from '../state/haggle';
 import s from './DialogueBox.module.css';
 
@@ -229,6 +234,19 @@ export function DialogueBox() {
         onHandIn={() => handInQuest(d.targetId, personaOf(d))}
       />
     ) : null;
+  const mic = canTalk ? (
+    <MicButton
+      to={personaOf(d).name}
+      target={{
+        onStart: () => setTyping(true),
+        onLive: (t) => setDraft(t),
+        // a reply still on its way: the words stay in the field for Enter
+        onSend: (t) => {
+          if (typedSend(t)) setDraft('');
+        },
+      }}
+    />
+  ) : null;
   const chat =
     canTalk && !typing ? (
       <button type="button" className={s.act} onClick={() => setTyping(true)} aria-label="Type to chat — C">
@@ -266,6 +284,7 @@ export function DialogueBox() {
           {field}
           <div className={s.actions}>
             {fists}
+            {mic}
             {chat}
             <button type="button" className={s.more} onClick={leaveTalk} aria-label="Back to the lines — Enter">
               <span>Back</span>
@@ -292,6 +311,7 @@ export function DialogueBox() {
         {field}
         <div className={s.actions}>
           {fists}
+          {mic}
           {chat}
           <button type="button" className={s.more} onClick={advance} aria-label={left > 0 ? `${left} more — Enter` : 'Close — Enter'}>
             <span>{left > 0 ? `${left} more` : 'Close'}</span>

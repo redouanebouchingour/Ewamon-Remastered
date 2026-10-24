@@ -34,6 +34,7 @@ const NAMED_KEYS: Readonly<Record<string, string>> = {
   Space: 'Space',
   Escape: 'Esc',
   Enter: 'Enter',
+  Backquote: '`',
   ArrowUp: '↑',
   ArrowDown: '↓',
   ArrowLeft: '←',

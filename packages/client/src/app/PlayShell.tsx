@@ -15,6 +15,7 @@ import { NpcStrikeFx } from '../world/NpcStrikeFx';
 import { BuddyBubble } from '../world/BuddyBubble';
 import { BuddyTalk } from '../world/BuddyTalk';
 import { openBuddyTalk, useBuddyTalkStore } from '../state/buddy';
+import { startVoices } from '../voice/bindVoices';
 import { EvolutionBanner } from '../world/EvolutionBanner';
 import { HatchReveal } from '../world/HatchReveal';
 import { FishingPrompt } from '../world/FishingPrompt';
@@ -192,6 +193,8 @@ export function PlayShell() {
   const inArena = useArenaStore((st) => st.inArena);
   useWorldConnection(zoneId as ZoneId);
   useShellHotkeys();
+  // LLM feature 10: NPC, buddy, rival and battle lines read aloud (only with Settings › Audio's voice toggles on)
+  useEffect(() => startVoices(), []);
   const pendingPanel = usePendingPanel();
   const hasPanel = location.pathname !== '/play' && location.pathname !== '/play/';
   return (

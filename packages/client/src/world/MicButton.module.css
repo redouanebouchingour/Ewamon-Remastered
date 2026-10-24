@@ -1,0 +1,42 @@
+/*
+ * Push-to-talk (LLM feature 10): the mic button rides the DialogueBox's action row (`.act`, the paper key chip). While
+ * the player holds it, it is the one hot orange (the press state); a trouble note sits under it in the text face.
+ */
+.wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s-1);
+  max-inline-size: 100%;
+}
+
+.mic {
+  touch-action: none;
+  user-select: none;
+}
+
+.mic[data-state='listening'],
+.mic[data-state='listening']:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.mic[data-state='stopping'] {
+  color: var(--text-hi);
+}
+
+.mic[data-state='denied'],
+.mic[data-state='nomic'],
+.mic[data-state='unavailable'],
+.mic[data-state='unsupported'] {
+  color: var(--warn);
+}
+
+.note {
+  max-inline-size: 320px;
+  color: var(--text-2);
+  font-family: var(--face-text);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  text-align: end;
+}

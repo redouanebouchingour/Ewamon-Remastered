@@ -9,7 +9,7 @@ export type Colorblind = 'none' | 'deuteranopia' | 'protanopia' | 'tritanopia';
 export type InputAction =
   | 'forward' | 'back' | 'left' | 'right' | 'run' | 'interact' | 'jump' | 'bike' | 'fieldPower' | 'chat'
   | 'emote1' | 'emote2' | 'emote3' | 'emote4' | 'emote5' | 'emote6'
-  | 'challenge' | 'rotateLeft' | 'rotateRight' | 'party' | 'bag' | 'journal' | 'map' | 'pvp' | 'professor' | 'buddyTalk' | 'pause' | 'toggleHud';
+  | 'challenge' | 'rotateLeft' | 'rotateRight' | 'party' | 'bag' | 'journal' | 'map' | 'pvp' | 'professor' | 'buddyTalk' | 'pushToTalk' | 'pause' | 'toggleHud';
 
 /** Quality preset (render `quality.ts`); 'auto' = low on integrated Intel GPUs, else high. */
 export type GraphicsQualitySetting = 'auto' | 'low' | 'medium' | 'high';
@@ -58,6 +58,16 @@ export interface AudioSettings {
   readonly sfx: number;
   readonly ui: number;
   readonly muteWhenHidden: boolean;
+  /**
+   * LLM feature 10, voice talk (all opt-in, off by default). `npcVoices`: NPC replies, the buddy's lines and the rival's
+   * words read aloud by the browser's local speech synthesis; `battleVoices`: the commentator and the trainer's lines
+   * too; `voices`: their volume (0..1, under master). `speechInput`: push-to-talk through the browser's speech
+   * recognition, which in Chrome sends the microphone audio to Google.
+   */
+  readonly npcVoices: boolean;
+  readonly battleVoices: boolean;
+  readonly voices: number;
+  readonly speechInput: boolean;
 }
 export interface SocialSettings {
   readonly showChat: boolean;
@@ -114,6 +124,9 @@ export const DEFAULT_KEYBINDS: Keybinds = {
   professor: ['KeyL'],
   // LLM feature 6: talk to the lead walking behind you (Y was free; persisted blobs without it merge this default in)
   buddyTalk: ['KeyY'],
+  // LLM feature 10: hold to speak to an NPC or your Ewamon (only with Settings › Audio "Speak to NPCs"; the backquote
+  // key was free and types nothing a player needs in the talk field; persisted blobs without it merge this default in)
+  pushToTalk: ['Backquote'],
   pause: ['Escape'],
   toggleHud: ['F1'],
 };
@@ -123,7 +136,7 @@ export const INPUT_ACTIONS = Object.keys(DEFAULT_KEYBINDS) as InputAction[];
 export const DEFAULT_SETTINGS: SettingsData = {
   graphics: { reducedEffects: false, renderScale: 1, quality: 'auto', frameCap: 60, showFps: false, dof: true, bloom: true, grain: true, chroma: true, shake: true, hitstop: true, slowmo: true },
   accessibility: { reducedMotion: 'system', colorblind: 'none', uiScale: 1, battleTextSpeed: 'normal', screenFlash: true, speedrunTimer: false, battleCommentary: true, trainerBanter: true, followerChatter: true },
-  audio: { master: 0.8, music: 0.7, sfx: 0.8, ui: 0.6, muteWhenHidden: true },
+  audio: { master: 0.8, music: 0.7, sfx: 0.8, ui: 0.6, muteWhenHidden: true, npcVoices: false, battleVoices: false, voices: 0.8, speechInput: false },
   keybinds: DEFAULT_KEYBINDS,
   social: { showChat: true, allowChallenges: true, allowTrades: true, allowDmsFrom: 'everyone' },
 };
