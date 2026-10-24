@@ -1,7 +1,7 @@
 {
-  "total": 310,
+  "total": 326,
   "actionable": 0,
-  "informational": 154,
+  "informational": 166,
   "excluded": [
     {
       "file": "back/yaschamp(back)(fighterstyle).png",
@@ -29,7 +29,7 @@
     "coverage": 1,
     "multiframe": 20,
     "nonsquare": 50,
-    "sidemismatch": 54
+    "sidemismatch": 66
   },
   "flagged": [
     {
@@ -348,6 +348,24 @@
         "sidemismatch"
       ],
       "source": "front/dreambud(front).png",
+      "actionable": []
+    },
+    {
+      "species": "elemutt",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/elemutt(back).png",
+      "actionable": []
+    },
+    {
+      "species": "elemutt",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/elemutt(front).png",
       "actionable": []
     },
     {
@@ -1000,6 +1018,96 @@
       "actionable": []
     },
     {
+      "species": "ravatar",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/ravatar(back).png",
+      "actionable": []
+    },
+    {
+      "species": "ravatar",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/ravatar(front).png",
+      "actionable": []
+    },
+    {
+      "species": "ravatar_air",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/ravatar_air(back).png",
+      "actionable": []
+    },
+    {
+      "species": "ravatar_air",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/ravatar_air(front).png",
+      "actionable": []
+    },
+    {
+      "species": "ravatar_earth",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/ravatar_earth(back).png",
+      "actionable": []
+    },
+    {
+      "species": "ravatar_earth",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/ravatar_earth(front).png",
+      "actionable": []
+    },
+    {
+      "species": "ravatar_fire",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/ravatar_fire(back).png",
+      "actionable": []
+    },
+    {
+      "species": "ravatar_fire",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/ravatar_fire(front).png",
+      "actionable": []
+    },
+    {
+      "species": "ravatar_water",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/ravatar_water(back).png",
+      "actionable": []
+    },
+    {
+      "species": "ravatar_water",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/ravatar_water(front).png",
+      "actionable": []
+    },
+    {
       "species": "resilian",
       "side": "back",
       "flags": [
@@ -1598,24 +1706,24 @@
       {
         "albedo": 88,
         "normal": 92,
-        "totalBytes": 42646746
+        "totalBytes": 45503822
       }
     ],
     "thumbs": {
-      "count": 155,
-      "bytes": 840034,
+      "count": 163,
+      "bytes": 886482,
       "rungs": {
         "q32/aq100/a8": 2,
         "q40/aq100/a8": 2,
-        "q48/aq100/a8": 4,
+        "q48/aq100/a8": 5,
         "q56/aq100/a8": 3,
         "q64/aq100/a8": 4,
-        "q72/aq100/a8": 23,
-        "q80/aq100/a16": 78,
+        "q72/aq100/a8": 26,
+        "q80/aq100/a16": 81,
         "q80/aq100/a8": 8,
-        "q80/aq90": 31
+        "q80/aq90": 32
       }
     }
   },
-  "totalBytes": 42646746
+  "totalBytes": 45503822
 }

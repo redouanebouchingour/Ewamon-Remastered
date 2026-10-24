@@ -19,7 +19,8 @@ import type { MoveAnimDef } from './moveAnims';
 
 /** The bespoke effect layer each cinematic draws (sigfx/index.ts). */
 export type SignatureFx =
-  | 'crescent' | 'volley' | 'pyre' | 'grace' | 'sunbreaker' | 'foxfire' | 'kamehameha' | 'miracle' | 'devour' | 'bankai' | 'rift' | 'aurora' | 'lotus';
+  | 'crescent' | 'volley' | 'pyre' | 'grace' | 'sunbreaker' | 'foxfire' | 'kamehameha' | 'miracle' | 'devour' | 'bankai' | 'rift' | 'aurora' | 'lotus'
+  | 'convergence';
 
 export interface SignatureCinematic {
   readonly fx: SignatureFx;
@@ -160,6 +161,14 @@ export const SIGNATURE_CINEMATICS: Readonly<Record<string, SignatureCinematic>> 
     fx: 'lotus', species: 'hyoryu', portrait: 'hyoryu', glint: [35, 29], lines: ['Crimson Lotus', 'Prison'], kicker: LEGENDARY,
     palette: { accent: '#9aeaff', deep: '#061a2e', hot: '#ff4a62' },
     leadMs: 1100, windupMs: 460, travelMs: 340, totalMs: 3000, sfx: ['wind_gust', 'cry_dragon'], aimSfx: 'sig_crimson_lotus_prison',
+    anim: { recoverMs: 380, attackerPose: 'windup' },
+  },
+  // ravatar (the Elemutt line's final stage): water, earth, fire and air wheel in and fuse into one sphere that bursts
+  // on the foe in the four elements' rings. One cinematic for every relic form; the move's type follows the relic.
+  'Cosmic Convergence': {
+    fx: 'convergence', species: 'ravatar', portrait: 'ravatar', glint: [39, 28], lines: ['Cosmic', 'Convergence'], kicker: MYTHICAL,
+    palette: { accent: '#bfe8ff', deep: '#0a1430', hot: '#ffffff' },
+    leadMs: 1100, windupMs: 500, travelMs: 300, totalMs: 3000, sfx: ['wind_gust'], aimSfx: 'sig_cosmic_convergence',
     anim: { recoverMs: 380, attackerPose: 'windup' },
   },
 };

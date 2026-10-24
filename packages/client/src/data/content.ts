@@ -18,7 +18,7 @@ import {
   tmMoveOf,
 } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
-import { calcMaxHp, calcStat, itemEvolutionTarget, tradeEvolutionTarget } from '@ewa/core';
+import { calcMaxHp, calcStat, formsOf, itemEvolutionTarget, tradeEvolutionTarget } from '@ewa/core';
 import type { AbilityDef, ContentIndex, CreatureInstance, MoveDef, SpeciesDef, TypeName } from '@ewa/core';
 
 let index: ContentIndex | null = null;
@@ -34,10 +34,10 @@ const abilityMap = new Map<string, AbilityDef>(ABILITIES.map((a) => [a.id, a]));
 export const SPECIES_BY_DEX: readonly SpeciesDef[] = [...SPECIES].sort((a, b) => a.dexNumber - b.dexNumber);
 export const DEX_TOTAL = SPECIES_BY_DEX.length;
 
-/** The creature manifest entries a species can show in battle: its own, plus `<species>_<form>` when it has a battle form. */
+/** The creature manifest entries a species can show in battle: its own, plus `<species>_<form>` for each battle form. */
 export function battleSpriteIds(speciesId: string): string[] {
-  const f = species(speciesId)?.battleForm;
-  return f === undefined ? [speciesId] : [speciesId, `${speciesId}_${f.id}`];
+  const sp = species(speciesId);
+  return sp === undefined ? [speciesId] : [speciesId, ...formsOf(sp).map((f) => `${speciesId}_${f.id}`)];
 }
 
 export function species(id: string): SpeciesDef | undefined {

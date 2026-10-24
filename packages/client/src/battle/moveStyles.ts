@@ -32,6 +32,8 @@ export const MOVE_STYLE: Readonly<Record<string, MoveStyle>> = {
   'Citrus Toss': 'orb',
   'Close Combat': 'punch',
   Confusion: 'spin',
+  // ravatar: the energy of every past life drawn into one sphere (in the colours of its relic form's type)
+  'Cosmic Convergence': 'orb',
   'Cosmic Miracle': 'rain',
   'Cosmic Pyre': 'erupt',
   Counter: 'punch',

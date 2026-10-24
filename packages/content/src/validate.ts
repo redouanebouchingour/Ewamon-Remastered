@@ -46,7 +46,10 @@ import { EVOLUTION_STONES, KEY_ITEMS, TM_MOVES, tmItemId, tmMoveOf } from './dat
 import { TYPE_CHART } from './data/typechart';
 import { ZONES } from './data/zones';
 import { ENCOUNTER_BANDS, ENCOUNTER_TABLES } from './data/encounters';
-import { LEGENDARY_IDS, LEGENDARY_STATICS, MYTHICAL_IDS } from './data/statics';
+import { RELICS } from './data/relics';
+import { SHRINES, shrineGuardianId } from './data/shrines';
+import { interiorTrainerFlag } from './data/interiors';
+import { BATTLE_PASS_MYTHICALS, LEGENDARY_IDS, LEGENDARY_STATICS, MYTHICAL_IDS } from './data/statics';
 import { BADGES, LEAGUE, LEAGUE_REMATCH, LEAGUE_REMATCH_LEVELS, LEAGUE_REMATCH_REWARD_MULTIPLIER, LEAGUE_STORY_GATES } from './data/league';
 import { TOWER, towerSetReward } from './data/tower';
 import { QUESTS } from './data/quests';
@@ -142,6 +145,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   errors.push(...schemaErrors('ORBS', OrbDefSchema, orbs, idOf));
   errors.push(...schemaErrors('CONSUMABLES', ConsumableDefSchema, consumables, idOf));
   errors.push(...schemaErrors('KEY_ITEMS', ItemDefSchema, keyItems, idOf));
+  errors.push(...schemaErrors('RELICS', ItemDefSchema, RELICS, idOf));
   errors.push(...schemaErrors('EVOLUTION_STONES', ConsumableDefSchema, stones, idOf));
   errors.push(...schemaErrors('ZONES', ZoneDefSchema, zones, idOf));
   errors.push(...schemaErrors('ENCOUNTER_TABLES', EncounterTableSchema, ENCOUNTER_TABLES, idOf));
@@ -163,7 +167,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   const speciesById = new Map(species.map((s) => [s.id, s]));
   const moveIds = new Set(moves.map((m) => m.id));
   const abilityIds = new Set(ABILITIES.map((a) => a.id));
-  const itemIds = new Set([...items, ...keyItems].map((i) => i.id));
+  const itemIds = new Set([...items, ...keyItems, ...RELICS].map((i) => i.id));
   const orbIds = new Set(orbs.map((o) => o.id));
   const consumableIds = new Set([...consumables, ...stones].map((c) => c.id));
   const stoneIds = new Set(stones.filter((c) => c.effect.kind === 'evolutionStone').map((c) => c.id));
@@ -183,6 +187,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   for (const q of QUESTS) if (q.rewards.flag !== null) setFlags.add(q.rewards.flag);
   for (const l of LEAGUE) for (const f of l.setsFlags) setFlags.add(f);
   for (const s of LEGENDARY_STATICS) setFlags.add(s.flag);
+  // the relic shrines' guardians: the server writes their beaten flags on a win (quest q14 counts them)
+  for (const s of SHRINES) setFlags.add(interiorTrainerFlag(shrineGuardianId(s)));
   const flagResolvable = (f: string): boolean => f.startsWith('badge:') || VISITED_FLAGS.has(f) || setFlags.has(f);
   const checkFlag = (where: string, f: string): void => {
     if (!isKnownFlag(f)) err(`${where}: flag '${f}' is not in the §11 registry`);
@@ -193,6 +199,19 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   for (const s of species) {
     for (const m of s.moves) if (!moveIds.has(m)) err(`species ${s.id}: default move '${m}' not in MOVES`);
     for (const e of s.learnableMoves) if (!moveIds.has(e.move)) err(`species ${s.id}: learnable move '${e.move}' not in MOVES`);
+    // relic forms (ravatar): never beside a battleForm, unique ids, each opened by a known held item and never a band
+    if (s.battleForms !== undefined) {
+      if (s.battleForm !== undefined) err(`species ${s.id}: battleForm and battleForms are exclusive`);
+      if (new Set(s.battleForms.map((f) => f.id)).size !== s.battleForms.length) err(`species ${s.id}: duplicate battle form ids`);
+      for (const f of s.battleForms) {
+        const held = f.heldItem === undefined ? undefined : [...items, ...RELICS].find((i) => i.id === f.heldItem);
+        if (held === undefined || held.slot !== 'held') err(`species ${s.id}: form ${f.id} needs a known held item (has '${f.heldItem}')`);
+        if (f.kind !== undefined) err(`species ${s.id}: relic form ${f.id} cannot answer a band`);
+      }
+    }
+    for (const f of s.battleForm === undefined ? [] : [s.battleForm]) {
+      if (f.hpBelowPct === undefined && f.heldItem === undefined) err(`species ${s.id}: form ${f.id} needs an hp line or a held item`);
+    }
     // a battle form's signature move exists, stands in for a move the species learns, and is learned by no species
     const sig = s.battleForm?.signatureMove;
     if (sig !== undefined) {
@@ -386,8 +405,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   for (const f of FLAG_REGISTRY) if (!f.id.includes(':') && !/^[a-z0-9_]+$/.test(f.id)) err(`flag registry: '${f.id}' is not snake_case`);
 
   // ── 3. counts ──
-  if (species.length !== 141) err(`SPECIES.length ${species.length} !== 141`);
-  if (moves.length !== 197) err(`MOVES.length ${moves.length} !== 197`); // 193 legacy + Hollow Crescent, Vendetta Volley, Aurora Requiem, Crimson Lotus Prison (.design/additions/moves.js)
+  if (species.length !== 144) err(`SPECIES.length ${species.length} !== 144`);
+  if (moves.length !== 198) err(`MOVES.length ${moves.length} !== 198`); // 193 legacy + Hollow Crescent, Vendetta Volley, Aurora Requiem, Crimson Lotus Prison, Cosmic Convergence (.design/additions/moves.js)
   // Phase D6: every curated spread move exists, and only damaging or foe-targeted moves spread
   for (const [id, sp] of Object.entries(SPREAD_MOVES).sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
     const m = moves.find((x) => x.id === id);
@@ -395,7 +414,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     else if (m.spread !== sp || m.target !== 'foe') err(`SPREAD_MOVES: '${id}' must be a foe-targeted move carrying spread '${sp}'`);
   }
   if (TYPE_NAMES.length !== 19) err(`TYPE_NAMES.length ${TYPE_NAMES.length} !== 19`);
-  if (ABILITIES.length !== 25) err(`ABILITIES.length ${ABILITIES.length} !== 25`);
+  // 25 legacy + Inner Chi, Stance Change, Avatar Cycle (.design/additions/abilities.js)
+  if (ABILITIES.length !== 28) err(`ABILITIES.length ${ABILITIES.length} !== 28`);
   if (items.length !== 17) err(`ITEMS.length ${items.length} !== 17`);
   if (orbs.length !== 10) err(`ORBS.length ${orbs.length} !== 10`);
   if (zones.length !== 21) err(`ZONES.length ${zones.length} !== 21`);
@@ -406,7 +426,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   });
   {
     const dex = [...species.map((s) => s.dexNumber)].sort((a, b) => a - b);
-    for (let i = 0; i < dex.length; i++) if (dex[i] !== i + 1) { err(`dex numbers are not dense 1..141 (got ${dex[i]} at ${i})`); break; }
+    for (let i = 0; i < dex.length; i++) if (dex[i] !== i + 1) { err(`dex numbers are not dense 1..144 (got ${dex[i]} at ${i})`); break; }
     const ids = new Set(species.map((s) => s.id));
     if (ids.size !== species.length) err('duplicate species ids');
     if (moveIds.size !== moves.length) err('duplicate move ids');
@@ -470,7 +490,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     }
     // roster-coverage: 73 roots (57 non-legendary legacy families + hollowmane + dustcub + veilpup + castlemaw + cryptorb + the 11 legendary/mythical singles, hyoryu the post-legacy one), each a tree root
     const families = species.filter((s) => s.evolvesFrom === null).length;
-    if (families !== 73) err(`evolution families (roots) ${families} !== 73`);
+    if (families !== 74) err(`evolution families (roots) ${families} !== 74`);
   }
 
   // ── 7 + 8. roster coverage and RC rules ──
@@ -694,7 +714,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   {
     const bp50 = BATTLE_PASS.find((b) => b.level === 50);
     if (bp50 === undefined || bp50.mythicalChoice === null) err('battle pass: level 50 must carry mythicalChoice');
-    else if ([...bp50.mythicalChoice].sort().join(',') !== [...MYTHICAL_IDS].sort().join(',')) err(`battle pass 50: mythicalChoice ${bp50.mythicalChoice.join(',')}`);
+    else if ([...bp50.mythicalChoice].sort().join(',') !== [...BATTLE_PASS_MYTHICALS].sort().join(',')) err(`battle pass 50: mythicalChoice ${bp50.mythicalChoice.join(',')}`);
     for (const b of BATTLE_PASS) if (b.level !== 50 && b.mythicalChoice !== null) err(`battle pass ${b.level}: only level 50 carries mythicalChoice`);
   }
 
@@ -847,7 +867,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
           }
           if (!LOOKS.includes(t.look)) err(`zone ${z.id}: interior trainer ${t.id} look '${t.look}' unknown`);
         }
-        for (const it of p.def.items) if (!items.some((x) => x.id === it.item) && !consumables.some((x) => x.id === it.item)) err(`zone ${z.id}: interior item ${it.id} '${it.item}' unknown`);
+        for (const it of p.def.items) if (!items.some((x) => x.id === it.item) && !consumables.some((x) => x.id === it.item) && !RELICS.some((x) => x.id === it.item)) err(`zone ${z.id}: interior item ${it.id} '${it.item}' unknown`);
       }
       const t = ENCOUNTER_TABLES.find((x) => x.zoneId === z.id);
       if (t !== undefined && t.slots.some((s) => s.medium === 'water')) {

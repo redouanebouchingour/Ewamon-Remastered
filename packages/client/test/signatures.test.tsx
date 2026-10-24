@@ -54,7 +54,8 @@ describe('signature cinematics: data', () => {
     expect(forms.length).toBeGreaterThan(0);
     for (const f of forms) expect(signatureOf(f.move), `${f.species}: ${f.move}`).toMatchObject({ species: f.species, portrait: `${f.species}_${f.form}` });
     const owners = new Set(Object.values(SIGNATURE_CINEMATICS).map((c) => c.species));
-    for (const sp of SPECIES.filter((s) => s.legendary)) expect(owners.has(sp.id), `${sp.id} has no signature move`).toBe(true);
+    // a mythical family (the Elemutt line) carries its signature on its final stage (ravatar)
+    for (const sp of SPECIES.filter((s) => s.legendary && s.evolution === null)) expect(owners.has(sp.id), `${sp.id} has no signature move`).toBe(true);
   });
 
   it('a signature move is its owner’s alone: no other species learns it', () => {

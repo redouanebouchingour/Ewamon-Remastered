@@ -68,7 +68,7 @@ export function computeRosterReport(input: RosterInputs): RosterReport {
   const nocturnal = (s: SpeciesDef): boolean => s.types.includes('Ghost') || s.types.includes('Dark');
 
   // roots / families
-  // 73 roots: 62 non-legendary families (57 legacy + hollowmane + dustcub + veilpup + castlemaw + cryptorb) + the 11 legendary/mythical singles (hyoryu post-legacy)
+  // 74 roots: 62 non-legendary families (57 legacy + hollowmane + dustcub + veilpup + castlemaw + cryptorb) + the 11 legendary/mythical singles (hyoryu post-legacy) + the mythical Elemutt line
   const roots = input.species.filter((s) => s.evolvesFrom === null);
   const familyCount = roots.length;
 
@@ -209,8 +209,20 @@ export function computeRosterReport(input: RosterInputs): RosterReport {
     }
   }
   for (const l of input.statics) R.add(l.species);
+  // a mythical family (the Elemutt line) is given once at its root: its later stages count through that root
+  const rootOf = (id: string): string => {
+    let cur = id;
+    for (let guard = 0; guard < 8; guard++) {
+      const from = byId.get(cur)?.evolvesFrom ?? null;
+      if (from === null) break;
+      cur = from;
+    }
+    return cur;
+  };
   for (const m of input.mythicalIds) {
-    if (questFor.has(m) || input.battlePass.some((b) => b.mythicalChoice?.includes(m))) R.add(m);
+    const root = rootOf(m);
+    if (!mythical.has(root)) fail.push(`mythical ${m} evolves from ${root}, which is not a mythical`);
+    else if (questFor.has(root) || input.battlePass.some((b) => b.mythicalChoice?.includes(root))) R.add(m);
     else fail.push(`mythical ${m} is neither a quest rewards.creature nor the battle-pass 50 choice`);
   }
   const unobtainable = input.species.map((s) => s.id).filter((id) => !R.has(id));

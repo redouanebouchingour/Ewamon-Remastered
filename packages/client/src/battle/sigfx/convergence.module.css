@@ -1,0 +1,133 @@
+/*
+ * Cosmic Convergence (ravatar; signatures.ts): clock 3000 ms, keyframe % = ms / 30; impact 1900.
+ * 1100–1600 the halo swells and the four element orbs wheel round the attacker, spiralling in · 1380–1630 they fuse
+ * into the core · 1600–1900 the sphere crosses the line on its trail · 1900 the burst: a flash, four element rings
+ * (70 ms apart), sparks · 2100–2700 everything fades.
+ */
+
+/* ---- the gathering ------------------------------------------------------------------------------------------------- */
+
+.halo {
+  opacity: 0;
+  animation: conv-halo 3000ms ease-in-out calc(0ms - var(--skip)) both;
+}
+
+svg .orbit {
+  opacity: 0;
+  animation: conv-orbit 3000ms cubic-bezier(0.5, 0, 0.75, 0.4) calc(0ms - var(--skip)) both;
+}
+
+.orb {
+  animation: conv-orb 3000ms ease-in-out calc(0ms - var(--skip)) both;
+}
+
+.core {
+  opacity: 0;
+  animation: conv-core 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+/* ---- the release --------------------------------------------------------------------------------------------------- */
+
+.stretch {
+  transform: scaleX(calc(var(--dist) / 1000));
+}
+
+.trail {
+  opacity: 0;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+  animation: conv-trail 3000ms linear calc(0ms - var(--skip)) both;
+}
+
+svg .bolt {
+  opacity: 0;
+  animation: conv-bolt 3000ms cubic-bezier(0.55, 0, 0.9, 0.5) calc(0ms - var(--skip)) both;
+}
+
+/* ---- the burst ----------------------------------------------------------------------------------------------------- */
+
+.flash {
+  opacity: 0;
+  animation: conv-flash 3000ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.ring {
+  opacity: 0;
+  animation: conv-ring 3000ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(var(--kd) - var(--skip)) both;
+}
+
+.spark {
+  opacity: 0;
+  animation: conv-spark 3000ms cubic-bezier(0.1, 0.7, 0.3, 1) calc(var(--kd) - var(--skip)) both;
+}
+
+/* ---- keyframes ----------------------------------------------------------------------------------------------------- */
+
+@keyframes conv-halo {
+  0%, 36% { opacity: 0; transform: scale(0.6); }
+  50% { opacity: 0.85; transform: scale(1); }
+  54% { opacity: 1; transform: scale(1.1); }
+  60% { opacity: 0; transform: scale(0.7); }
+  100% { opacity: 0; }
+}
+
+@keyframes conv-orbit {
+  0%, 36% { opacity: 0; transform: rotate(0deg) scale(1.1); }
+  39% { opacity: 1; transform: rotate(60deg) scale(1); }
+  52% { opacity: 1; transform: rotate(480deg) scale(0.3); }
+  55% { opacity: 0; transform: rotate(560deg) scale(0.08); }
+  100% { opacity: 0; transform: rotate(560deg) scale(0.08); }
+}
+
+@keyframes conv-orb {
+  0%, 36% { transform: scale(0.4); }
+  41% { transform: scale(1.1); }
+  48% { transform: scale(0.95); }
+  54% { transform: scale(1.4); }
+  100% { transform: scale(1.4); }
+}
+
+@keyframes conv-core {
+  0%, 46% { opacity: 0; transform: scale(0); }
+  52% { opacity: 1; transform: scale(0.7); }
+  54% { opacity: 1; transform: scale(1.1); }
+  56% { opacity: 0; transform: scale(0.6); }
+  100% { opacity: 0; transform: scale(0.6); }
+}
+
+@keyframes conv-trail {
+  0%, 53% { opacity: 0; stroke-dashoffset: 1; }
+  54% { opacity: 1; stroke-dashoffset: 1; }
+  63.3% { opacity: 1; stroke-dashoffset: 0; }
+  72% { opacity: 0; stroke-dashoffset: 0; }
+  100% { opacity: 0; stroke-dashoffset: 0; }
+}
+
+@keyframes conv-bolt {
+  0%, 53% { opacity: 0; transform: translateX(0) scale(0.7); }
+  54% { opacity: 1; transform: translateX(0) scale(1); }
+  63.3% { opacity: 1; transform: translateX(calc(var(--dist) * 1px)) scale(1.25); }
+  64.5% { opacity: 0; transform: translateX(calc(var(--dist) * 1px)) scale(1.6); }
+  100% { opacity: 0; transform: translateX(calc(var(--dist) * 1px)) scale(1.6); }
+}
+
+@keyframes conv-flash {
+  0%, 63% { opacity: 0; transform: scale(0.4); }
+  64.5% { opacity: 1; transform: scale(1.2); }
+  76% { opacity: 0; transform: scale(1.6); }
+  100% { opacity: 0; }
+}
+
+@keyframes conv-ring {
+  0%, 63.3% { opacity: 0; transform: scale(0.2); }
+  65% { opacity: 1; transform: scale(0.5); }
+  82% { opacity: 0; transform: scale(2.4); }
+  100% { opacity: 0; transform: scale(2.4); }
+}
+
+@keyframes conv-spark {
+  0%, 63.3% { opacity: 0; transform: translate(0, 0) scale(1); }
+  65% { opacity: 1; transform: translate(calc(var(--tx) * 0.2), calc(var(--ty) * 0.2)) scale(1); }
+  86% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.4); }
+  100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.4); }
+}

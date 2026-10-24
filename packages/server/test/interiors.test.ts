@@ -9,7 +9,9 @@
  *   - puzzle switches: `requires` refuses, `sets` is written once, `warpTo` teleports (also once the flag is held);
  *   - Solenne's league hall: the Wardens in order from inside the hall (Aurelia refused before Veil);
  *   - the spawn director never rolls a spawn inside a pocket footprint;
- *   - a full Mirevale gym walk with real inputs: t1 → gate → both root-stones → t2 → gate → leader gate → Mira → badge.
+ *   - a full Mirevale gym walk with real inputs: t1 → gate → both root-stones → t2 → gate → leader gate → Mira → badge;
+ *   - a relic shrine (data/shrines.ts): the guardian and the relic refuse until their flags (`requires`), the guardian
+ *     fights at the shrine's door approach, and the relic is taken once the guardian is beaten.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { matchMaker } from '@colyseus/core';
@@ -23,6 +25,7 @@ import {
   interiorAt,
   interiorFootprintAt,
   interiorGates,
+  interiorItems,
   interiorLeaders,
   interiorSwitches,
   interiorTrainers,
@@ -31,6 +34,10 @@ import {
   isWalkable,
   localToWorld,
   nearestWalkable,
+  POSTGAME_FLAG,
+  SHRINES,
+  shrineGuardianId,
+  shrineRelicFlag,
   switchFlag,
 } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
@@ -521,4 +528,51 @@ describe('a full Mirevale gym walk with real inputs', () => {
     expect(interiorAt('mirevale', me(j, acc).x, me(j, acc).z)).toBeNull();
     await j.room.leave(true);
   }, 300_000);
+});
+
+describe('relic shrines', () => {
+  const shrine = SHRINES.find((x) => x.zoneId === 'saltmourn')!;
+  const P = interiorsFor('saltmourn').find((p) => p.def.id === shrine.building)!;
+  const guardian = interiorTrainers('saltmourn').find((t) => t.id === shrineGuardianId(shrine))!;
+  const relic = interiorItems('saltmourn').find((i) => i.item === shrine.relic)!;
+  const at = (lx: number, lz: number): [number, number] => localToWorld(P, lx, lz);
+
+  it('the guardian and the relic refuse until their flags; the guardian fights at the door; the relic is taken after it', async () => {
+    const acc = await register(s);
+    await boost(acc, 90);
+    await grantAllBadges(acc);
+    // before the Champion: the guardian waits (toast + trainerLocked, no battle)
+    let [x, z] = at(0, 1.7);
+    let j = await inZone(acc, 'saltmourn', x, z);
+    let out = await interact(j, 'npc', guardian.id);
+    expect(ofType(out, 'toast').length).toBe(1);
+    expect(ofType(out, 'error')).toEqual([{ type: 'error', code: 'notAllowed', detail: 'trainerLocked' }]);
+    expect(ofType(out, 'battleStart')).toEqual([]);
+
+    // after the Champion, between the gates: the relic is still held by the rune (itemLocked, nothing written)
+    await grantFlags(acc, [POSTGAME_FLAG]);
+    [x, z] = at(0, -1.3);
+    j = await rejoin(j, acc, 'saltmourn', x, z);
+    out = await interact(j, 'item', relic.id);
+    expect(ofType(out, 'error')).toEqual([{ type: 'error', code: 'notAllowed', detail: 'itemLocked' }]);
+    expect(await flagsOf(acc)).not.toContain(shrineRelicFlag(shrine));
+
+    // the guardian fights, and the battle forms at the shrine's door approach (the hall is too small for an arena)
+    const n = ofType(j.msgs, 'battleStart').length;
+    await interact(j, 'npc', guardian.id, () => ofType(j.msgs, 'battleStart').length > n);
+    const start = ofType(j.msgs, 'battleStart')[n]!;
+    expect(start).toBeDefined();
+    expect(start.x).toBeCloseTo(P.door.x, 6);
+    expect(start.z).toBeCloseTo(P.door.z, 6);
+    await j.room.leave(true); // forfeit
+
+    // once the guardian is beaten the relic comes away (flag + inventory)
+    await grantFlags(acc, [`trainer:${guardian.id}:beaten`]);
+    j = await inZone(acc, 'saltmourn', x, z);
+    out = await interact(j, 'item', relic.id);
+    expect(ofType(out, 'error')).toEqual([]);
+    expect(ofType(out, 'inventoryDelta').map((m) => m.items)).toEqual([{ [shrine.relic]: 1 }]);
+    expect(await flagsOf(acc)).toContain(shrineRelicFlag(shrine));
+    await j.room.leave(true);
+  }, 180_000);
 });

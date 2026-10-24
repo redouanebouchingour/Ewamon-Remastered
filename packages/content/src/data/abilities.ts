@@ -5,6 +5,12 @@ import type { AbilityDef } from '@ewa/core';
 
 export const ABILITIES: readonly AbilityDef[] = [
   {
+    id: 'Avatar Cycle',
+    name: 'Avatar Cycle',
+    description: 'Holding an Original Master Relic, it takes that element\'s form, type and signature-move type as it enters battle. The Vial of Spirit Water wakes the Avatar State below 30% HP.',
+    hooks: [],
+  },
+  {
     id: 'Chlorophyll',
     name: 'Chlorophyll',
     description: 'Boosts Speed in sunny weather',
@@ -51,6 +57,12 @@ export const ABILITIES: readonly AbilityDef[] = [
     name: 'Immunity',
     description: 'Cannot be poisoned',
     hooks: [{ kind: 'statusImmunity', statuses: ['poison'] }],
+  },
+  {
+    id: 'Inner Chi',
+    name: 'Inner Chi',
+    description: 'Non-contact moves deal 30% more damage while its HP is full.',
+    hooks: [{ kind: 'modifyDamage', side: 'attacker', when: 'fullHp', contact: false, mul: 1.3 }],
   },
   {
     id: 'Intimidate',
@@ -129,6 +141,19 @@ export const ABILITIES: readonly AbilityDef[] = [
     name: 'Speed Boost',
     description: 'Speed increases every turn',
     hooks: [{ kind: 'endOfTurn', raise: { stat: 'spd', stages: 1 } }],
+  },
+  {
+    id: 'Stance Change',
+    name: 'Stance Change',
+    description: 'After hitting with a contact move, raises Defense by one stage; after a non-contact move, Speed. At most two stages each until it switches out.',
+    hooks: [
+      {
+        kind: 'afterMoveUsed',
+        contact: { stat: 'def', stages: 1 },
+        nonContact: { stat: 'spd', stages: 1 },
+        cap: 2,
+      },
+    ],
   },
   {
     id: 'Swift Swim',

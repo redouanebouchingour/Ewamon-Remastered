@@ -592,6 +592,27 @@ sfx('sig_aurora_requiem_1', [
     (R5 + 'sfx100v2_glass_05.ogg', 1.24, -4, 1.0, ''),
 ], 2.2, fout=0.5)
 
+# Cosmic Convergence (four element orbs wheel in over the charge 0.00-0.50 and fuse at 0.45, the sphere crosses
+# 0.50-0.80, bursts on the impact at 0.80 in four rings): a rising shimmer, one sound per element as its orb enters
+# (water, stone, fire, wind), the fusing hum, the release whoosh, a low boom with a glass strike and a bell, chimes
+# rising out of the burst
+sfx('sig_cosmic_convergence_1', [
+    (MS + 'magical_4.ogg', 0.0, -8, 0.7, 'afade=t=in:d=0.2'),
+    (R5 + 'sfx100v2_loop_water_01.ogg', 0.04, -14, 1.1, 'afade=t=out:st=0.2:d=0.1'),
+    (R3 + 'stones_02.ogg', 0.14, -12, 0.9, 'lowpass=f=2500'),
+    (R3 + 'spell_fire_06.ogg', 0.24, -12, 1.0, ''),
+    (R5 + 'sfx100v2_air_01.ogg', 0.32, -12, 1.1, 'afade=t=out:st=0.2:d=0.1'),
+    (KS + 'forceField_002.ogg', 0.42, -8, 0.8, ''),
+    (R5 + 'sfx100v2_air_02.ogg', 0.50, -6, 1.2, 'afade=t=out:st=0.25:d=0.05'),
+    (MS + 'magical_5.ogg', 0.52, -10, 1.0, 'highpass=f=800'),
+    (KS + 'lowFrequency_explosion_001.ogg', 0.80, -4, 1.0, ''),
+    (KX + 'impactGlass_heavy_000.ogg', 0.80, -2, 1.0, ''),
+    (KX + 'impactBell_heavy_004.ogg', 0.81, -8, 1.2, 'aecho=0.8:0.6:160:0.3'),
+    *[(KI + f'glass_00{i}.ogg', 0.86 + 0.07 * k, -12, 1.2 + 0.1 * k, '') for k, i in enumerate((1, 2, 3, 4))],
+    (KS + 'spaceEngineLow_002.ogg', 0.90, -16, 0.6, 'lowpass=f=500,afade=t=in:d=0.1,afade=t=out:st=0.3:d=0.2'),
+], 2.0, fout=0.5)
+
+
 # Crimson Lotus Prison (sky petals open 0.00-0.33, the dragon 0.46-0.80, the lotus closes 0.80, its heart burns 0.90-1.06,
 # strains 1.10, shatters 1.22): a cold shimmer, a glass chime per petal, a rushing roar, the snap shut with a low thump,
 # a crimson swell, a crack, the shatter

@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 import type { SignatureFx } from '../signatures';
 import { AuroraFx } from './Aurora';
 import { BankaiFx } from './Bankai';
+import { ConvergenceFx } from './Convergence';
 import { CrescentFx } from './Crescent';
 import { DevourFx } from './Devour';
 import { FoxfireFx } from './Foxfire';
@@ -30,4 +31,5 @@ export const SIG_FX: Readonly<Record<SignatureFx, (p: FxProps) => ReactElement>>
   rift: RiftFx,
   aurora: AuroraFx,
   lotus: LotusFx,
+  convergence: ConvergenceFx,
 };

@@ -18,14 +18,15 @@ import { LEGACY_DIR, REAL_OUT_DIR, REAL_QA_DIR } from './helpers.js';
 
 const MANIFEST_PATH = path.join(REAL_OUT_DIR, MANIFEST_FILE);
 const REPORT_PATH = path.join(REAL_QA_DIR, 'qa-report.json');
-// sprite entries: the 130 species of ewamon.js + the post-legacy additions (.design/additions/species.js, 11 today: hollowmane, dustcub, badlander, veilpup, hollowolf, castlemaw, lawlander, hyoryu,
-// cryptorb, ultraze, vysion)
-// + their battle forms under `<species>_<form>` (hollowmane_rage, castlemaw_rage, badlander_majin, lawlander_tenjin, hyoryu_majin)
+// sprite entries: the 130 species of ewamon.js + the post-legacy additions (.design/additions/species.js, 14 today: hollowmane, dustcub, badlander, veilpup, hollowolf, castlemaw, lawlander, hyoryu,
+// cryptorb, ultraze, vysion, elemutt, katamute, ravatar)
+// + their battle forms under `<species>_<form>` (hollowmane_rage, castlemaw_rage, badlander_majin, lawlander_tenjin, hyoryu_majin;
+// ravatar_water, ravatar_earth, ravatar_fire, ravatar_air, ravatar_avatar)
 // + the legacy species' battle forms from .design/additions/patches.js (9: infernomorel, toxshade, necrogeist, zenryu _majin;
 // thornback, abysspark, gemknight, glimmereen, solpyre _tenjin)
-const SPECIES_COUNT = 155;
-/** Atlas cap: 78 with cryptorb, ultraze and vysion (2026-10-24); 76 with hyoryu and its Majin form (2026-10-13); 75 with the Majin / Tenjin forms (2026-10-11); 70 before. */
-const MAX_ATLASES = 78;
+const SPECIES_COUNT = 163;
+/** Atlas cap: 82 with the Elemutt line and ravatar's relic forms (2026-10-25); 78 with cryptorb, ultraze and vysion (2026-10-24); 76 with hyoryu and its Majin form (2026-10-13); 75 with the Majin / Tenjin forms (2026-10-11); 70 before. */
+const MAX_ATLASES = 82;
 
 function listFiles(dir: string, rel = ''): string[] {
   const out: string[] = [];

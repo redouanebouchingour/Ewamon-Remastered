@@ -2805,3 +2805,17 @@ the second isolated client (the component over the landing page: the foe and own
   gating, the binding to the stores), `test/voice-listen.test.ts` (the push-to-talk machine with a fake recognizer),
   `test/voice-mic.test.tsx` (the mic button's states in the DialogueBox and the buddy talk, the key, the settings
   section).
+
+## The Elemutt line in the client (2026-10-25)
+
+- `battleSpriteIds` preloads every battle form (`formsOf`), and `descriptor` takes a form sprite's types from the
+  matching form, so ravatar's five relic forms show their own sprite and types. `FORM_AURA.avatar` is `tenjin`: the
+  Avatar State shines; the four elemental forms carry their element in the art itself and get no aura (Majin's
+  crimson flames would fight the water, stone and wind).
+- The battle menu resolves a slot through core `formMove`, so Cosmic Convergence reads (and is scored against the
+  foe as) Water in Water Form, Ground in Earth Form, Psychic in the Avatar State.
+- The dex shows a "Relic forms" section: each form, the relic it needs (and the Avatar State's hp line) and its types.
+- Cosmic Convergence: a `convergence` sigfx layer (four element orbs wheel in and fuse, the sphere crosses on its trail,
+  a flash and four element rings), portrait `ravatar`, premix `sig_cosmic_convergence`, move style `orb`. The
+  signature test now asks a signature of every fully evolved legendary / mythical (the Elemutt line's is ravatar's).
+  `spriteCatalog.test` lists the line with hyoryu as stills.

@@ -27,13 +27,14 @@ import type {
   ZoneDef,
 } from './types';
 import { ZONE_MARGIN } from './types';
-import { LEAGUE } from './data/league';
+import { LEAGUE, POSTGAME_FLAG } from './data/league';
 import { LEGENDARY_STATICS } from './data/statics';
 import { RAID_HOTSPOTS } from './data/liveops';
 import { ZONE_ORDER } from './types';
 import { gymHall, healerHall, houseHall, leagueHall, shopHall } from './data/interiors';
 import { withDaycare } from './data/daycare';
 import { withBountyBoard } from './data/bounties';
+import { withShrine } from './data/shrines';
 import { withTownCrier } from './data/rumours';
 
 // ─── constants ───────────────────────────────────────────────────────────────
@@ -133,7 +134,8 @@ export function interiorDefFor(
     case 'house':
       // breeding: Mirevale's house 1 is the Daycare (its resident keeps it; the hall and its footprint are unchanged)
       // the bounty board: Skyrend (no Healer, no Mart) keeps it in its first house, the Marshal's Office
-      return withTownCrier(withBountyBoard(withDaycare(houseHall(zone.id, b.id, 'the house', b.w * b.d < 50 ? 's' : 'm', townIndex))));
+      // the relic shrines (postgame): one house in each elemental town (data/shrines.ts; the hall and footprint unchanged)
+      return withShrine(withTownCrier(withBountyBoard(withDaycare(houseHall(zone.id, b.id, 'the house', b.w * b.d < 50 ? 's' : 'm', townIndex)))));
     default:
       return null;
   }
@@ -523,6 +525,7 @@ export function trainersOf(p: PlacedInterior): readonly TrainerDef[] {
       lines: t.lines,
       reward: t.reward,
       rematchDays: null,
+      ...(t.requires !== undefined ? { requires: t.requires } : {}),
     };
   });
 }
@@ -644,10 +647,11 @@ export function itemsOf(p: PlacedInterior): readonly {
   readonly z: number;
   readonly item: string;
   readonly qty: number;
+  readonly requires?: readonly string[];
 }[] {
   return p.def.items.map((it) => {
     const [x, z] = localToWorld(p, it.lx, it.lz);
-    return { id: it.id, x, z, item: it.item, qty: it.qty };
+    return { id: it.id, x, z, item: it.item, qty: it.qty, ...(it.requires !== undefined ? { requires: it.requires } : {}) };
   });
 }
 
@@ -673,7 +677,8 @@ export function arenaAt(
         (r) =>
           Math.abs(lx - r.bounds.lx) <= r.bounds.hw && Math.abs(lz - r.bounds.lz) <= r.bounds.hd,
       ) ?? p.def.rooms[0];
-    if (room === undefined) return null;
+    // a shrine (too small for an arena) sends its fight out to the door approach
+    if (room === undefined) return p.def.fightsAtDoor === true ? { x: p.door.x, z: p.door.z, yaw: p.at.yaw, interior: p.def.id } : null;
     const [ax, az] = w2(p, room.arena);
     return { x: ax, z: az, yaw: p.at.yaw, interior: p.def.id };
   }
@@ -809,6 +814,8 @@ export function walkInterior(
     if (opts.beatTrainers !== false) {
       for (const t of trainers) {
         const f = `trainer:${t.id}:beaten`;
+        // a shrine guardian (requires) fights only once its flags are held
+        if (t.requires !== undefined && !t.requires.every((x) => flags.has(x))) continue;
         if (!flags.has(f) && reachNear(h, reach, t.x, t.z, INTERACT_M)) {
           flags.add(f);
           order.push(t.id);
@@ -854,7 +861,8 @@ export function checkInterior(h: Heightfield, p: PlacedInterior): string[] {
   const entryIdx =
     Math.round((ez - h.originZ) / h.step) * h.res + Math.round((ex - h.originX) / h.step);
   if (h.walkable[entryIdx] !== 1) errs.push(`${id}: entry is not walkable`);
-  const full = walkInterior(h, p, new Set(), { beatLeaders: true });
+  // the full walk is the postgame player's: a relic shrine opens on the Champion's flag (data/shrines.ts)
+  const full = walkInterior(h, p, new Set([POSTGAME_FLAG]), { beatLeaders: true });
   const [xx, xz] = w2(p, p.def.exit);
   if (!reachNear(h, full.reach, xx, xz, INTERACT_M))
     errs.push(`${id}: exit not reachable from the entry`);

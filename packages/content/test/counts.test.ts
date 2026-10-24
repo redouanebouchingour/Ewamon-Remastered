@@ -24,15 +24,15 @@ import {
 } from '../src/index';
 
 describe('counts', () => {
-  it('141 species with dense dex numbers', () => {
-    expect(SPECIES.length).toBe(141);
+  it('144 species with dense dex numbers', () => {
+    expect(SPECIES.length).toBe(144);
     const dex = SPECIES.map((s) => s.dexNumber).sort((a, b) => a - b);
-    expect(dex).toEqual(Array.from({ length: 141 }, (_, i) => i + 1));
-    expect(SPECIES.filter((s) => s.legendary).length).toBe(11);
+    expect(dex).toEqual(Array.from({ length: 144 }, (_, i) => i + 1));
+    expect(SPECIES.filter((s) => s.legendary).length).toBe(14);
   });
   it('197 moves (193 legacy + Hollow Crescent, Vendetta Volley, Aurora Requiem, Crimson Lotus Prison), 25 abilities, 17 items, 10 orbs, 23 consumables', () => {
-    expect(MOVES.length).toBe(197);
-    expect(ABILITIES.length).toBe(25);
+    expect(MOVES.length).toBe(198);
+    expect(ABILITIES.length).toBe(28);
     expect(ITEMS.length).toBe(17);
     expect(ORBS.length).toBe(10);
     expect(CONSUMABLES.length).toBe(23);
@@ -49,7 +49,7 @@ describe('counts', () => {
     expect(ENCOUNTER_TABLES.length).toBe(15);
     expect(LEGENDARY_STATICS.length).toBe(9);
     expect(LEAGUE.length).toBe(12);
-    expect(QUESTS.filter((q) => q.kind !== 'achievement').length).toBe(12);
+    expect(QUESTS.filter((q) => q.kind !== 'achievement').length).toBe(14);
     expect(QUESTS.filter((q) => q.kind === 'achievement').length).toBe(30);
     expect(STORY.length).toBeGreaterThanOrEqual(24);
     expect(STORY.length).toBe(33);

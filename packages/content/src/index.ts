@@ -11,6 +11,7 @@ import { ITEMS } from './data/items';
 import { ORBS } from './data/orbs';
 import { CONSUMABLES } from './data/consumables';
 import { EVOLUTION_STONES, KEY_ITEMS } from './data/progressionItems';
+import { RELICS } from './data/relics';
 import { TYPE_CHART } from './data/typechart';
 import { ZONES } from './data/zones';
 import { ENCOUNTER_TABLES } from './data/encounters';
@@ -128,7 +129,10 @@ export {
   TOWN_SPAWN_TUNING,
   VARIANT_CHANCE,
 } from './data/encounters';
-export { LEGENDARY_IDS, LEGENDARY_STATICS, MYTHICAL_IDS } from './data/statics';
+export { BATTLE_PASS_MYTHICALS, LEGENDARY_IDS, LEGENDARY_STATICS, MYTHICAL_IDS } from './data/statics';
+export { BADGERMOLE_GEM, RELICS, SKY_BISON_WHISTLE, SPIRIT_KOI_SCALE, SPIRIT_WATER_VIAL, SUN_DRAGON_EMBER } from './data/relics';
+export { SHRINES, shrineGuardianId, shrineRelicFlag } from './data/shrines';
+export type { ShrineDef } from './data/shrines';
 export {
   BADGES,
   LEAGUE,
@@ -383,6 +387,8 @@ const itemById: ReadonlyMap<string, ItemDef | ConsumableDef> = new Map<string, I
   // Phase D1–D3: old_rod + TMs (key) and the six evolution stones (consumables)
   ...KEY_ITEMS.map((i): [string, ItemDef | ConsumableDef] => [i.id, i]),
   ...EVOLUTION_STONES.map((c): [string, ItemDef | ConsumableDef] => [c.id, c]),
+  // the Original Master Relics (held items that open ravatar's relic forms)
+  ...RELICS.map((i): [string, ItemDef | ConsumableDef] => [i.id, i]),
 ]);
 const orbById: ReadonlyMap<string, OrbDef> = new Map(ORBS.map((o) => [o.id, o]));
 const speciesByDex: readonly SpeciesDef[] = [...SPECIES].sort((a, b) => a.dexNumber - b.dexNumber);

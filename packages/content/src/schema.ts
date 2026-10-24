@@ -154,7 +154,10 @@ const BattleFormDefSchema = z.object({
   id: SnakeId,
   name: z.string().min(1),
   kind: BandKindSchema.optional(),
-  hpBelowPct: Int.min(1).max(99),
+  // absent only on a relic form (`heldItem`), which opens as the battler lands
+  hpBelowPct: Int.min(1).max(99).optional(),
+  heldItem: Id.optional(),
+  moveType: TypeNameSchema.optional(),
   baseAtk: PosInt,
   baseDef: PosInt,
   baseSpd: PosInt,
@@ -172,7 +175,7 @@ const BattleFormDefSchema = z.object({
 export const SpeciesDefSchema: z.ZodType<SpeciesDef> = z.object({
   id: SnakeId,
   name: z.string().min(1),
-  dexNumber: Int.min(1).max(141),
+  dexNumber: Int.min(1).max(144),
   flavor: z.string(),
   types: z.union([z.tuple([TypeNameSchema]), z.tuple([TypeNameSchema, TypeNameSchema])]),
   baseHp: PosInt,
@@ -192,6 +195,7 @@ export const SpeciesDefSchema: z.ZodType<SpeciesDef> = z.object({
   sprite: z.object({ front: z.string().min(1), back: z.string().min(1) }),
   legendary: z.boolean(),
   battleForm: BattleFormDefSchema.optional(),
+  battleForms: z.array(BattleFormDefSchema).min(1).optional(),
 });
 
 // ─── §2.4 MoveDef ────────────────────────────────────────────────────────────
@@ -238,6 +242,8 @@ export const MoveDefSchema: z.ZodType<MoveDef> = z.object({
   target: MoveTargetSchema,
   description: z.string(),
   spread: z.enum(['foes', 'all']).optional(),
+  typeFromForm: z.literal(true).optional(),
+  effectOnlyBaseForm: z.literal(true).optional(),
 });
 
 // ─── §2.5 AbilityDef ─────────────────────────────────────────────────────────
@@ -279,7 +285,8 @@ export const AbilityHookSchema: z.ZodType<AbilityHook> = z.discriminatedUnion('k
     kind: z.literal('modifyDamage'),
     side: z.enum(['attacker', 'defender']),
     moveTypes: z.array(TypeNameSchema).optional(),
-    when: z.enum(['superEffective', 'flashFired']).optional(),
+    when: z.enum(['superEffective', 'flashFired', 'fullHp']).optional(),
+    contact: z.boolean().optional(),
     mul: z.number().positive(),
   }),
   z.object({
@@ -315,6 +322,12 @@ export const AbilityHookSchema: z.ZodType<AbilityHook> = z.discriminatedUnion('k
   z.object({ kind: z.literal('onStatLowered'), raise: StageRaise }),
   z.object({ kind: z.literal('endOfTurn'), raise: StageRaise }),
   z.object({ kind: z.literal('wonderGuard') }),
+  z.object({
+    kind: z.literal('afterMoveUsed'),
+    contact: z.union([StageRaise, z.null()]),
+    nonContact: z.union([StageRaise, z.null()]),
+    cap: Int.min(1).max(6),
+  }),
 ]);
 
 export const AbilityDefSchema: z.ZodType<AbilityDef> = z.object({

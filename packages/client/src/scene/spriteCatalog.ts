@@ -9,6 +9,7 @@
  * `animAtlasesOf(species)`). `sideAtlases(species, side)` names the static atlas and the flipbook ONE side is drawn
  * from: `creatureTextures.ts` binds the side a view shows, never both (client IMPLEMENTATION-NOTES "Creature textures").
  */
+import { formsOf } from '@ewa/core';
 import type { SpeciesDef, TypeName as CoreTypeName, VariantKey } from '@ewa/core';
 import type { AnimAtlasSet, AtlasSet, AuraKind, SpriteAnim, SpriteDescriptor, SpriteFrame, SpritePool, TypeName } from '@ewa/render';
 
@@ -18,7 +19,13 @@ export const CREATURE_BASE = '/creatures/';
  * The live aura a battle form shows on the stage (`.design/majin-tenjin.md`): the shipped Rage Forms are Majin forms.
  * A form id not listed here shows no aura.
  */
-export const FORM_AURA: Readonly<Record<string, AuraKind>> = Object.freeze({ rage: 'majin', majin: 'majin', tenjin: 'tenjin' });
+export const FORM_AURA: Readonly<Record<string, AuraKind>> = Object.freeze({
+  rage: 'majin',
+  majin: 'majin',
+  tenjin: 'tenjin',
+  // ravatar's Avatar State shines; its four elemental relic forms carry their element in the art itself (no aura)
+  avatar: 'tenjin',
+});
 
 /** Species whose Majin form wears a different aura: zenryu's Majin form is its Super Saiyan (golden flames). */
 export const SPECIES_MAJIN_AURA: Readonly<Record<string, AuraKind>> = Object.freeze({ zenryu: 'majin_gold' });
@@ -155,8 +162,8 @@ export function createSpriteCatalog(m: CreatureManifest, species: (id: string) =
       const sp = m.sprites[spriteId ?? speciesId];
       if (sp === undefined) return null;
       const def = species(speciesId);
-      const form = def?.battleForm;
-      const formTypes = form !== undefined && spriteId === `${speciesId}_${form.id}` ? form.types : undefined;
+      const form = def === undefined ? undefined : formsOf(def).find((f) => spriteId === `${speciesId}_${f.id}`);
+      const formTypes = form?.types;
       const t = (formTypes ?? def?.types ?? ['Normal']) as readonly CoreTypeName[];
       const types = (t.length > 1 ? [t[0]!, t[1]!] : [t[0]!]) as unknown as readonly [TypeName] | readonly [TypeName, TypeName];
       // a flipbook whose atlas the manifest does not list stays static (never a dangling bind)

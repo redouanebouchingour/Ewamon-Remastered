@@ -1466,3 +1466,12 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
 - Tests: `test/journal.test.ts` (the digest's facts and order, determinism, the cap, a species caught in two places,
   the Champion; day numbers and keys; the cleaning; the routes from real rows: the starter on day 1, write and rewrite
   today, the unwritten day before, written once, the window, an empty day, 404 / 400, `NPC_TOOLS=off`).
+
+## Relic shrines: flag-gated hall trainers and items (2026-10-25)
+
+- A hall trainer or item with `requires` (content `InteriorTrainer.requires` / `InteriorItem.requires`, the relic
+  shrines) is refused until the player holds every flag: a toast plus `notAllowed` `trainerLocked` / `itemLocked`, and
+  nothing written. Sight (`sightEligible`) skips such a trainer too. The interact range (3 m) reaches past a closed
+  gate, so the gates alone could not hold them.
+- A shrine's fight forms at the shrine's door approach (content `fightsAtDoor` through `interiorArenaFor`).
+- Tests: `test/interiors.test.ts` "relic shrines" (refusals, the battle at the door, the relic after the guardian).

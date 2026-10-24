@@ -32,4 +32,7 @@ export const LEGENDARY_IDS: readonly string[] = [
   'voidraxis',
   'hyoryu',
 ];
-export const MYTHICAL_IDS: readonly string[] = ['lumyth', 'noxmyth'];
+// the Elemutt line (the Harmonic Cycle): a mythical family; elemutt comes from quest q13 and evolves into the other two
+export const MYTHICAL_IDS: readonly string[] = ['lumyth', 'noxmyth', 'elemutt', 'katamute', 'ravatar'];
+/** The battle pass level 50 choice: the two single mythicals (the Elemutt line is a quest family). */
+export const BATTLE_PASS_MYTHICALS: readonly string[] = ['lumyth', 'noxmyth'];

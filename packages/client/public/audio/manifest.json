@@ -111,7 +111,7 @@
       "urlFallback": "/audio/ambience/vesper.m4a?v=38fd9649"
     }
   },
-  "builtAt": "2026-10-13T14:19:42.303Z",
+  "builtAt": "2026-10-24T23:39:44.188Z",
   "sfx": {
     "anvil_strike": {
       "bus": "sfx",
@@ -2033,6 +2033,20 @@
           "hash": "4b88bae1119b604690062d75cdabdcf6aa71d1e157a9f8a3b04be5ee64e1f18f",
           "url": "/audio/sfx/sig_bankai_sever_1.webm?v=4b88bae1",
           "urlFallback": "/audio/sfx/sig_bankai_sever_1.m4a?v=4b88bae1"
+        }
+      ],
+      "gainDb": 6,
+      "maxConcurrent": 1
+    },
+    "sig_cosmic_convergence": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 17442,
+          "durationSec": 1.992,
+          "hash": "0a1bba62c7817ffe125159cea2997e839198e48798369d68093a3a139e7725bb",
+          "url": "/audio/sfx/sig_cosmic_convergence_1.webm?v=0a1bba62",
+          "urlFallback": "/audio/sfx/sig_cosmic_convergence_1.m4a?v=0a1bba62"
         }
       ],
       "gainDb": 6,

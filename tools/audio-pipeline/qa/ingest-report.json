@@ -188,6 +188,7 @@
     "sfx/sig_bankai_sever_1",
     "sfx/sig_cosmic_miracle_1",
     "sfx/sig_cosmic_pyre_1",
+    "sfx/sig_crimson_lotus_prison_1",
     "sfx/sig_foxfire_voltage_1",
     "sfx/sig_hollow_crescent_1",
     "sfx/sig_kamehameha_1",
@@ -392,8 +393,8 @@
       },
       "sfx": {
         "derived": 17,
-        "direct": 236,
-        "total": 253,
+        "direct": 237,
+        "total": 254,
         "unmapped": 0
       },
       "stem": {
@@ -409,14 +410,14 @@
         "unmapped": 0
       }
     },
-    "covered": 381,
+    "covered": 382,
     "fraction": 1,
-    "total": 381
+    "total": 382
   },
-  "entries": 313,
+  "entries": 314,
   "failed": [],
   "ingested": [
-    "sfx/sig_crimson_lotus_prison_1"
+    "sfx/sig_cosmic_convergence_1"
   ],
   "missing": [],
   "ok": true,

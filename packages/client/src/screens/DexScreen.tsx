@@ -7,6 +7,7 @@
  */
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
+import { RELICS } from '@ewa/content';
 import { TYPE_NAMES } from '@ewa/core';
 import type { SpeciesDef, TypeName, VariantKey } from '@ewa/core';
 import { VARIANT_KEYS } from '@ewa/protocol';
@@ -32,6 +33,11 @@ type DexState = 'caught' | 'seen' | 'unknown';
 /** the State filter: a dex state, everything, or the species with a shiny catch (Phase D4) */
 type StateFilter = DexState | 'all' | 'shiny';
 /** Majin / Tenjin: the form's rule in one line (the Dex entry of a species with a form) */
+/** A relic form's item, by name (ravatar's Original Master Relics). */
+function relicName(id: string | undefined): string {
+  return RELICS.find((r) => r.id === id)?.name ?? 'right relic';
+}
+
 const FORM_RULE: Readonly<Record<'majin' | 'tenjin', string>> = {
   majin: `With the ${FORM_KIND_NAME.majin} Band, it breaks open below half HP. Once a battle.`,
   tenjin: `With the ${FORM_KIND_NAME.tenjin} Band, it ascends at or above half HP. Once a battle.`,
@@ -102,6 +108,22 @@ function DexDetail({ sp, state, variants, alpha, shiny, recordedIn }: {
               ))}
             </p>
           )}
+        </section>
+      )}
+      {sp.battleForms !== undefined && (
+        <section className={l.section} data-testid="dex-relic-forms">
+          <h4 className={l.sectionTitle}>Relic forms</h4>
+          {sp.battleForms.map((f) => (
+            <p key={f.id} className={cx(l.body, s.formTypes)}>
+              <span>
+                <b className={s.formName}>{f.name}</b> · holding the {relicName(f.heldItem)}
+                {f.hpBelowPct !== undefined ? `, below ${f.hpBelowPct}% HP` : ''}
+              </span>
+              {(f.types ?? sp.types).map((t) => (
+                <TypeBadge key={t} type={t} size="sm" />
+              ))}
+            </p>
+          ))}
         </section>
       )}
       {chain.length > 1 && (

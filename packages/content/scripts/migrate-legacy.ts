@@ -50,6 +50,7 @@ const LEGACY_DIR = resolve(HERE, '../../../.design/legacy');
 const ADDITIONS_FILE = resolve(HERE, '../../../.design/additions/species.js');
 const MOVE_ADDITIONS_FILE = resolve(HERE, '../../../.design/additions/moves.js');
 const PATCHES_FILE = resolve(HERE, '../../../.design/additions/patches.js');
+const ABILITY_ADDITIONS_FILE = resolve(HERE, '../../../.design/additions/abilities.js');
 const OUT_DIR = resolve(HERE, '../src/data');
 
 // ─── legacy shapes ──────────────────────────────────────────────────────────
@@ -79,18 +80,24 @@ interface LegacySpecies {
   /** `condition: 'ability'` with an ability name, or (.design/additions) `condition: 'honor'` with the ledger minimum */
   splitEvolvesInto?: { condition?: string; value?: string | number; into: string }[];
   /** .design/additions (species.js, or patches.js for a legacy row): a mid-battle form (sprite files under the form's own sprite key, see the sprite pipeline) */
-  battleForm?: {
-    id: string;
-    name: string;
-    kind?: 'majin' | 'tenjin';
-    hpBelowPct: number;
-    baseAtk: number;
-    baseDef: number;
-    baseSpd: number;
-    types?: string[];
-    onEnter: { clearNegativeStages: boolean; lowerFoes: { stat: string; stages: number } | null; cureStatus?: boolean; healFraction?: number };
-    signatureMove?: { replaces: string; move: string };
-  };
+  battleForm?: LegacyBattleForm;
+  /** .design/additions/species.js: several forms, each opened by its own held item (ravatar's relic forms) */
+  battleForms?: LegacyBattleForm[];
+}
+interface LegacyBattleForm {
+  id: string;
+  name: string;
+  kind?: 'majin' | 'tenjin';
+  /** absent only on a form with a `heldItem` (it then opens as the battler lands) */
+  hpBelowPct?: number;
+  heldItem?: string;
+  moveType?: string;
+  baseAtk: number;
+  baseDef: number;
+  baseSpd: number;
+  types?: string[];
+  onEnter: { clearNegativeStages: boolean; lowerFoes: { stat: string; stages: number } | null; cureStatus?: boolean; healFraction?: number };
+  signatureMove?: { replaces: string; move: string };
 }
 interface LegacyMove {
   power: number;
@@ -98,6 +105,18 @@ interface LegacyMove {
   pp: number;
   effect: string | null;
   accuracy: number;
+  /** .design/additions/moves.js only: overrides of the derived fields, and the form-typed move flags (core MoveDef) */
+  effectChance?: number;
+  contact?: boolean;
+  typeFromForm?: true;
+  effectOnlyBaseForm?: true;
+  description?: string;
+}
+/** .design/additions/abilities.js: a post-legacy ability with its §2.5 hooks */
+interface LegacyAbilityAddition {
+  name: string;
+  desc: string;
+  hooks: AbilityHook[];
 }
 interface LegacyOrb {
   id: string;
@@ -150,8 +169,21 @@ function loadLegacy(): LegacyModule {
     for (const k of Object.keys(patch)) if (k !== 'moves' && k !== 'learnableMoves' && k !== 'learnLevels' && k !== 'battleForm') throw new Error(`patches: ${id}.${k} cannot be patched`);
     species[id] = { ...row, ...patch };
   }
-  return { ...legacy, EWAMON_SPECIES: { ...species, ...additions }, MOVES: { ...legacy.MOVES, ...moveAdditions } };
+  // post-legacy abilities (with their hooks): merged into the legacy rows; abilities.ts is emitted sorted by id
+  const addAbilities: { exports: { EWAMON_ABILITY_ADDITIONS?: Record<string, LegacyAbilityAddition> } } = { exports: {} };
+  (new Function('module', 'exports', readFileSync(ABILITY_ADDITIONS_FILE, 'utf8')) as (m: typeof addAbilities, e: unknown) => void)(addAbilities, addAbilities.exports);
+  const abilityAdditions = addAbilities.exports.EWAMON_ABILITY_ADDITIONS ?? {};
+  const abilities: Record<string, { name: string; desc: string }> = { ...legacy.ABILITIES };
+  for (const [id, a] of Object.entries(abilityAdditions)) {
+    if (id in legacy.ABILITIES) throw new Error(`additions: ability '${id}' already exists in ewamon.js`);
+    abilities[id] = { name: a.name, desc: a.desc };
+    ADDED_ABILITY_HOOKS.set(id, a.hooks);
+  }
+  return { ...legacy, EWAMON_SPECIES: { ...species, ...additions }, MOVES: { ...legacy.MOVES, ...moveAdditions }, ABILITIES: abilities };
 }
+
+/** Hooks of the .design/additions/abilities.js rows, filled by loadLegacy. */
+const ADDED_ABILITY_HOOKS = new Map<string, readonly AbilityHook[]>();
 
 const notes: string[] = [];
 
@@ -246,7 +278,7 @@ function effectSentence(effect: MoveEffect | null, power: number, type: string, 
 function migrateMove(id: string, m: LegacyMove): MoveDef {
   const effect = migrateEffect(id, m.effect);
   const type = m.type as TypeName;
-  const chance = defaultEffectChance(effect, m.power);
+  const chance = m.effectChance ?? defaultEffectChance(effect, m.power);
   const head = m.power > 0 ? `${type}-type attack, ${m.power} power` : `${type}-type status move`;
   const acc = m.accuracy === null || m.accuracy === undefined ? 'never misses' : `${m.accuracy}% accuracy`;
   return {
@@ -256,11 +288,13 @@ function migrateMove(id: string, m: LegacyMove): MoveDef {
     pp: m.pp,
     accuracy: m.accuracy ?? null,
     priority: effect === 'first' ? 1 : 0,
-    contact: m.power > 0 && !NON_CONTACT.includes(type),
+    contact: m.contact ?? (m.power > 0 && !NON_CONTACT.includes(type)),
     effect,
     effectChance: chance,
     target: targetFor(effect, m.power),
-    description: `${head}; ${acc}; ${m.pp} PP.${effectSentence(effect, m.power, type, chance)}`,
+    description: m.description ?? `${head}; ${acc}; ${m.pp} PP.${effectSentence(effect, m.power, type, chance)}`,
+    ...(m.typeFromForm === true ? { typeFromForm: true } : {}),
+    ...(m.effectOnlyBaseForm === true ? { effectOnlyBaseForm: true } : {}),
   };
 }
 
@@ -418,6 +452,7 @@ function migrateSpecies(s: LegacySpecies, dexNumber: number, moveIds: ReadonlySe
     sprite: { front: `${s.id}_front`, back: `${s.id}_back` },
     legendary: s.rarity === 'legendary' || s.rarity === 'mythical',
     ...(s.battleForm !== undefined ? { battleForm: migrateBattleForm(s.id, s.battleForm) } : {}),
+    ...(s.battleForms !== undefined ? { battleForms: s.battleForms.map((f) => migrateBattleForm(s.id, f)) } : {}),
   };
 }
 
@@ -430,12 +465,16 @@ function migrateFormTypes(speciesId: string, t: readonly string[]): readonly [Ty
 }
 
 /** sprite ids `<species>_<form>_front|back`: the sprite pipeline ships the form under the key `<species>_<form>`. */
-function migrateBattleForm(speciesId: string, f: NonNullable<LegacySpecies['battleForm']>): BattleFormDef {
+function migrateBattleForm(speciesId: string, f: LegacyBattleForm): BattleFormDef {
+  if (f.hpBelowPct === undefined && f.heldItem === undefined) throw new Error(`species '${speciesId}': form '${f.id}' needs an hp line or a held item`);
+  if (f.moveType !== undefined && !(TYPE_NAMES as readonly string[]).includes(f.moveType)) throw new Error(`species '${speciesId}': form '${f.id}' moveType '${f.moveType}' is not a type`);
   return {
     id: f.id,
     name: f.name,
     ...(f.kind !== undefined ? { kind: f.kind } : {}),
-    hpBelowPct: f.hpBelowPct,
+    ...(f.hpBelowPct !== undefined ? { hpBelowPct: f.hpBelowPct } : {}),
+    ...(f.heldItem !== undefined ? { heldItem: f.heldItem } : {}),
+    ...(f.moveType !== undefined ? { moveType: f.moveType as TypeName } : {}),
     baseAtk: f.baseAtk,
     baseDef: f.baseDef,
     baseSpd: f.baseSpd,
@@ -699,7 +738,7 @@ function main(): void {
   // abilities
   const abilityIds = Object.keys(legacy.ABILITIES).sort();
   const abilities: AbilityDef[] = abilityIds.map((id) => {
-    const hooks = ABILITY_HOOKS[id];
+    const hooks = ABILITY_HOOKS[id] ?? ADDED_ABILITY_HOOKS.get(id);
     if (hooks === undefined) throw new Error(`no §2.5 hook row for legacy ability ${id}`);
     return { id, name: legacy.ABILITIES[id]!.name, description: ABILITY_DESC[id] ?? legacy.ABILITIES[id]!.desc, hooks };
   });

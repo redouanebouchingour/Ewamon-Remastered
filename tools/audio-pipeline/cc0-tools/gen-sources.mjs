@@ -230,6 +230,7 @@ const SFX = {
   sig_bankai_sever: [MIX('sig_bankai_sever_1')],
   sig_cosmic_miracle: [MIX('sig_cosmic_miracle_1')],
   sig_cosmic_pyre: [MIX('sig_cosmic_pyre_1')],
+  sig_cosmic_convergence: [MIX('sig_cosmic_convergence_1')],
   sig_crimson_lotus_prison: [MIX('sig_crimson_lotus_prison_1')],
   sig_foxfire_voltage: [MIX('sig_foxfire_voltage_1')],
   sig_hollow_crescent: [MIX('sig_hollow_crescent_1')],

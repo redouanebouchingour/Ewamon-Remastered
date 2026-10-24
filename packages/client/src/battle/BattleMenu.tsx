@@ -27,7 +27,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { formMoveId, formTypes, isSpread, requiredPositions, typeMultiplier } from '@ewa/core';
+import { formMove, formMoveId, formTypes, isSpread, requiredPositions, typeMultiplier } from '@ewa/core';
 import type { Action, BandKind, BattleState, Battler, FieldRef, MoveDef } from '@ewa/core';
 import { CONSUMABLES, ORBS } from '@ewa/content';
 import { content, displayName, move as moveDef, species } from '../data/content';
@@ -164,8 +164,10 @@ function Moves({ st, seat, pos, onPick }: { readonly st: BattleState; readonly s
       {me.creature.moves.map((m, i) => {
         // a battle form's signature move shows (and is what the slot executes) in place of the move it replaces
         const sp = species(me.creature.speciesId);
-        const def = moveDef(sp === undefined ? m.id : formMoveId(sp, me, m.id));
-        if (def === undefined) return null;
+        const known = moveDef(sp === undefined ? m.id : formMoveId(sp, me, m.id));
+        if (known === undefined) return null;
+        // a relic form also retypes a typeFromForm move (Cosmic Convergence shows Water in Water Form)
+        const def = sp === undefined ? known : formMove(content(), sp, me, m.id);
         const a: Action = { kind: 'move', move: m.id };
         const why = reason(a);
         const eff: Effectiveness | null = foeSeen && def.power > 0 ? (typeMultiplier(content().typeChart, def.type, foeTypes) as Effectiveness) : null;

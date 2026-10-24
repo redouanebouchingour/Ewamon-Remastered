@@ -1,4 +1,5 @@
-// Moves added after the legacy migration, in the legacy `MOVES` row shape (power, type, pp, effect, accuracy).
+// Moves added after the legacy migration, in the legacy `MOVES` row shape (power, type, pp, effect, accuracy). An addition
+// may also set `effectChance`, `contact`, `typeFromForm`, `effectOnlyBaseForm` and `description` (core MoveDef).
 //
 // `.design/legacy/ewamon.js` stays a verbatim copy of the old game (core's fuzz reads only it). The content generator
 // (`packages/content/scripts/migrate-legacy.ts`) merges these rows into the legacy moves; `moves.ts` is sorted by id,
@@ -18,6 +19,14 @@ const EWAMON_MOVE_ADDITIONS = {
   // hyoryu's signature move (pinned as its newest learnable move): ice petals open across the sky around the foe and
   // close into a crimson lotus of ice. Dragon, so it keeps its STAB in the Dragon/Dark Majin form. Learned by hyoryu only.
   "Crimson Lotus Prison": { power: 120, type: "Dragon", pp: 5, effect: "freeze", accuracy: 90 },
+  // ravatar's signature move (pinned as its newest learnable move): the energy of every past life, drawn in at once.
+  // Its type follows the relic form it holds (`typeFromForm`); in its base form (no relic) it has a 20% chance to raise
+  // Attack, Defense and Speed (`effectOnlyBaseForm`). Non-contact, so it counts as a "special" move. Learned by ravatar only.
+  "Cosmic Convergence": {
+    power: 100, type: "Normal", pp: 5, effect: "raise_all", accuracy: 100,
+    effectChance: 20, contact: false, typeFromForm: true, effectOnlyBaseForm: true,
+    description: "Takes the type of Ravatar's relic form, Normal in its base form; 100 power; 100% accuracy; 5 PP. In its base form, 20% chance to raise the user's Attack, Defense and Speed by one stage each.",
+  },
 };
 
 module.exports = { EWAMON_MOVE_ADDITIONS };

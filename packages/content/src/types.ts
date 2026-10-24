@@ -99,6 +99,8 @@ export interface TrainerDef {
   readonly doubles?: true;
   /** Majin / Tenjin: the bands this trainer fights with (its side transforms one creature, core `chooseNpcAction`). Absent = none. */
   readonly bands?: readonly BandKind[];
+  /** a hall trainer that fights only once the player holds every flag (InteriorTrainer.requires); absent = none */
+  readonly requires?: readonly string[];
 }
 
 export interface GroundItemDef {
@@ -107,6 +109,8 @@ export interface GroundItemDef {
   readonly z: number;
   readonly item: string;
   readonly qty: number;
+  /** a hall item taken only once the player holds every flag (InteriorItem.requires); absent = none */
+  readonly requires?: readonly string[];
 }
 
 export interface LoreTabletDef {
@@ -232,6 +236,8 @@ export interface InteriorTrainer {
   readonly team: readonly { readonly species: string; readonly level: number }[];
   readonly lines: readonly string[];
   readonly reward: number;
+  /** fights only once the player holds every flag (a relic shrine's guardian: the Champion); absent = none */
+  readonly requires?: readonly string[];
 }
 
 /**
@@ -257,6 +263,8 @@ export interface InteriorItem {
   readonly lz: number;
   readonly item: string;
   readonly qty: number;
+  /** taken only once the player holds every flag (a shrine's relic: its guardian beaten); absent = none */
+  readonly requires?: readonly string[];
 }
 
 /** Furniture and dressing; `solid` props are also listed in `walls` (style 'wall' or 'counter'). */
@@ -292,6 +300,11 @@ export interface InteriorDef {
   readonly npcs: readonly InteriorNpc[];
   readonly items: readonly InteriorItem[];
   readonly props: readonly InteriorProp[];
+  /**
+   * A hall too small for an arena (a relic shrine, a 9 × 8 m house): its fights form outside, at the building's door
+   * approach, where the town has the floor a battle needs. Absent: a hall without rooms fights where the player stands.
+   */
+  readonly fightsAtDoor?: true;
 }
 
 /** Where a pocket stands in its zone: the local origin's world position, its yaw, and the flattened floor height. */

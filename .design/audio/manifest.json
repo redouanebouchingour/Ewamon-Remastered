@@ -1551,6 +1551,20 @@
     {
       "bus": "sfx",
       "gainDb": 6,
+      "id": "sig_cosmic_convergence",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 731402655,
+        "text": "A rising magical shimmer, water, stone, fire and wind entering one after another, a humming fusion, a whoosh, then a deep boom with a glass strike and a bell and chimes rising out of it."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": 6,
       "id": "sig_cosmic_miracle",
       "maxConcurrent": 1,
       "prompt": {

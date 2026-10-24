@@ -27,7 +27,7 @@ interface ZoneInteriors {
   readonly switches: readonly WorldSwitch[];
   readonly gates: readonly WorldGate[];
   readonly leaders: readonly WorldLeader[];
-  readonly items: readonly { readonly id: string; readonly x: number; readonly z: number; readonly item: string; readonly qty: number; readonly interior: string }[];
+  readonly items: readonly { readonly id: string; readonly x: number; readonly z: number; readonly item: string; readonly qty: number; readonly requires?: readonly string[]; readonly interior: string }[];
 }
 
 const memo = new Map<ZoneId, ZoneInteriors>();

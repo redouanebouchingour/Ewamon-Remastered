@@ -1493,6 +1493,11 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
         // §30.4.8 rule 6: a story trainer with no eligible beat naming it is a plain NPC — nothing over the wire
         // (otherwise its reward and `trainer:<id>:beaten` could be collected before the beat, then paid again)
         if (isStoryTrainer(t.id)) return;
+        // a shrine guardian fights only once the player holds its flags (the interact range reaches past its gate)
+        if (t.requires !== undefined && !t.requires.every((f) => ud.flags.has(f))) {
+          this.sendMsg(client, { type: 'toast', level: 'warn', text: `${t.name} waits. Something else must come first.` });
+          return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'trainerLocked' });
+        }
         const flag = trainerBeatenFlag(t.id);
         let rematch = false;
         if (ud.flags.has(flag)) {
@@ -1530,6 +1535,12 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       case 'item': {
         const flag = itemFlag(this.zone, target.item);
         if (ud.flags.has(flag)) return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'alreadyTaken' });
+        // a shrine relic (InteriorItem.requires) is taken only once its guardian is beaten
+        const needs = target.item.requires;
+        if (needs !== undefined && !needs.every((f) => ud.flags.has(f))) {
+          this.sendMsg(client, { type: 'toast', level: 'warn', text: 'A rune holds it in place. Something else must come first.' });
+          return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'itemLocked' });
+        }
         const qty = await deps.repos.db.transaction(async (t) => {
           const already = await deps.repos.progress.flagSetAt(t, ud.playerId, flag);
           if (already !== null) return null;
@@ -1820,6 +1831,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   /** Unbeaten (a rematch stays a conversation), and a story trainer only while its beat is the zone's next (rule 6). */
   private sightEligible(ud: ZoneUserData, t: TrainerDef): boolean {
     if (ud.flags.has(trainerBeatenFlag(t.id))) return false;
+    // a shrine guardian (InteriorTrainer.requires) waits until the player holds its flags
+    if (t.requires !== undefined && !t.requires.every((f) => ud.flags.has(f))) return false;
     return !isStoryTrainer(t.id) || storyTrainerBeat(this.zone.id, ud.flags, t.id) !== null;
   }
 

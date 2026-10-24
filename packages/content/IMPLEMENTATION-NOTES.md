@@ -810,3 +810,36 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   local news). No new prop: the board is the crier and the screen (the bounty test counts one banner in the hall).
 - Tests: `test/rumours.test.ts` (one crier per town in the right hall and nowhere else, clear of walls, props, people,
   items and the door, the hall otherwise unchanged, no em-dash, the board's zones). The content gate validates.
+
+## The Harmonic Cycle: the Elemutt line, the relics and the relic shrines (2026-10-25)
+
+- Species 142 to 144 (`.design/additions/species.js`): `elemutt` (Normal, Inner Chi) evolves at 16 into `katamute`
+  (Normal, Stance Change), at 36 into `ravatar` (Normal, Avatar Cycle). All three `rarity: 'mythical'` (no breeding, no
+  wild spawn) and in `MYTHICAL_IDS`. Ravatar's own moves are pinned from 38 (it arrives at 36), Cosmic Convergence at 40.
+  74 families, 144/144 obtainable, 85 directly placed (elemutt via q13).
+- `battleForms` on ravatar: water, earth (Ground/Rock), fire, air (Flying), each opened by a held relic as it lands; the
+  Avatar State (Normal/Psychic, Convergence as Psychic) by the Vial below 30% HP. `migrate-legacy.ts` passes
+  `battleForms`, `heldItem`, `moveType` and an optional `hpBelowPct` through; validate requires a known held item, no
+  band, unique ids, and never both `battleForm` and `battleForms`.
+- Generator additions: `.design/additions/abilities.js` (name, desc, hooks; merged into ABILITIES, now 28), and a move
+  addition may set `effectChance`, `contact`, `typeFromForm`, `effectOnlyBaseForm` and `description` (MOVES 198).
+- `data/relics.ts`: the five Original Master Relics, held items with no hooks, never sold, in the content index beside
+  the key items (`ITEMS` stays the 17 generated rows).
+- Mythical rule: a mythical family is given once at its root, so `roster.ts` accepts a mythical whose root is a quest
+  reward or the battle-pass choice. The battle pass 50 choice compares to `BATTLE_PASS_MYTHICALS` (lumyth, noxmyth).
+- Quests: `q13_unaligned_pup` (Act I, the Mirevale berry-gardener, after q01: win 3, witness 5; Elemutt Lv 5) and
+  `q14_harmonic_cycle` (auto-offered: the Champion plus the four shrine guardians' beaten flags, which the battle end
+  reports to the quest engine; the Vial). The four guardian flags are registered (`setBy: 'server'`).
+- Shrines (`data/shrines.ts`, `withShrine` after the town crier in `interiorDefFor`): saltmourn.house4,
+  marrowdig.house4, cinderhold.house3 and skyrend.house4 (9 × 8 halls without an item) take the zone's dressing and
+  hold a keeper, a rune gate on the Champion, the guardian (Lv 68 to 72, three themed species), a rune gate on the
+  guardian, and the relic on its altar. Hall and footprint unchanged, so no zone reshuffles; the four towns'
+  heightfields change inside their pockets only.
+- `InteriorTrainer.requires` / `InteriorItem.requires` (and `TrainerDef.requires` / `GroundItemDef.requires` on the
+  world forms): the 3 m interact range reaches past a closed gate, so the guardian and the relic carry the gates'
+  flags and the server refuses without them. `walkInterior` honours a trainer's `requires`; `checkInterior`'s full
+  walk starts with the Champion's flag (the postgame player), which no earlier hall gates on.
+- `InteriorDef.fightsAtDoor`: a 9 × 8 hall cannot give an arena its 6.5 m, so a shrine's fight forms at the building's
+  door approach in the town (`arenaAt`).
+- Tests: `test/harmonic.test.ts` (8); the count tests follow (144 species, 74 families, 14 legendary flags, 198 moves,
+  28 abilities, 14 quests, the full-dex achievement at 144).

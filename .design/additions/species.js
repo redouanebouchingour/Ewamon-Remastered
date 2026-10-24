@@ -8,6 +8,8 @@
 //
 // A row may carry `battleForm` (a mid-battle form, core `BattleFormDef`): the generator emits it with sprite ids
 // `<id>_<form>_front|back`, and the sprite pipeline ships its `frontSprite` / `backSprite` under the key `<id>_<form>`.
+// `battleForms` (ravatar) is a list of such forms, each opened by its own held item (`heldItem`; `hpBelowPct` is then
+// optional), with the same sprite keys per form.
 //
 // A row may split by honor (`splitEvolvesInto: [{ condition: "honor", value: <min ledger>, into }, { into }]`, dustcub):
 // the creature keeps an honor ledger in battle and the ledger picks the branch at `evolvesAt` (core honor.ts).
@@ -281,6 +283,112 @@ const EWAMON_SPECIES_ADDITIONS = {
     backSprite: "vysion(back).png",
     habitat: [],
     evolvesFrom: "cryptorb",
+  },
+
+  // The Harmonic Cycle (a mythical line): the spirits of water, earth, fire and air poured their power into one canine
+  // that is born again as an Elemutt each time the last master passes on. Given early (quest q13); its final stage,
+  // Ravatar, takes a form, a type and the type of its signature move from the elemental relic it holds.
+  elemutt: {
+    id: "elemutt", name: "Elemutt",
+    flavor: "A playful pup that tackles first and thinks later. It carries all four elements without knowing it: a bark can spark an ember, a sneeze can splash water. The blue arrow on its brow is dull and dormant, waiting.",
+    type: ["Normal"],
+    baseHp: 60, baseAtk: 62, baseDef: 55, baseSpd: 66,
+    rarity: "mythical", catchRate: 3,
+    sizeScale: 0.7,
+    expYield: 64,
+    moves: ["Tackle", "Growl", "Quick Attack", "Ember"],
+    learnableMoves: ["Bite", "Mud-Slap", "Wing Gust", "Water Pulse", "Howl", "Body Slam"],
+    abilities: ["Inner Chi"],
+    role: "Mixed Attacker",
+    frontSprite: "elemutt(front).png",
+    backSprite: "elemutt(back).png",
+    habitat: [], evolvesInto: "katamute", evolvesAt: 16,
+  },
+
+  // Elemutt's second stage: it understands the weight of its destiny and trains its body to carry it.
+  katamute: {
+    id: "katamute", name: "Katamute",
+    flavor: "Katamute has put its games away. It runs long, dance-like katas from dawn to dusk, hardening a body that will one day have to channel every element at once without breaking. It fights with its fists alone, and its tattoo still sleeps.",
+    type: ["Normal"],
+    baseHp: 85, baseAtk: 95, baseDef: 105, baseSpd: 70,
+    rarity: "mythical", catchRate: 3,
+    sizeScale: 1.05,
+    expYield: 150,
+    moves: ["Tackle", "Mach Punch", "Bulk Up", "Low Kick"],
+    learnableMoves: ["Power Jab", "Counter", "Slash", "Iron Fist", "Body Slam", "Resilient Strike", "Close Combat"],
+    abilities: ["Stance Change"],
+    role: "Physical Defender",
+    frontSprite: "katamute(front).png",
+    backSprite: "katamute(back).png",
+    habitat: [], evolvesInto: "ravatar", evolvesAt: 36, evolvesFrom: "elemutt",
+  },
+
+  // The fully realised master. Holding no relic it is the Beast, a huge Normal-type of raw strength. Each of the four
+  // Original Master Relics (the postgame shrines) lights its arrow and arms it in one element from the moment it lands;
+  // the Vial of Spirit Water wakes the Avatar State when its hp drops below 30%.
+  ravatar: {
+    id: "ravatar", name: "Ravatar",
+    flavor: "A towering, shaggy beast of muscle that keeps the balance of the world. At rest it needs no element at all, only its strength. Hand it a relic of the old masters and its arrow ignites, armour of that element forms over its body, and it fights as that element made flesh.",
+    type: ["Normal"],
+    baseHp: 115, baseAtk: 130, baseDef: 120, baseSpd: 95,
+    rarity: "mythical", catchRate: 3,
+    sizeScale: 1.35,
+    expYield: 300,
+    moves: ["Body Slam", "Iron Fist", "Bulk Up", "Resilient Strike"],
+    learnableMoves: ["Close Combat", "Double Edge", "Earthquake", "Flame Dash", "Hydro Crush", "Aerial Ace", "Hyper Beam", "Cosmic Convergence"],
+    // it arrives at 36, so its own moves come after: coverage for each relic form, then the signature at 40
+    learnLevels: { "Close Combat": 38, "Cosmic Convergence": 40, "Double Edge": 42, "Earthquake": 44, "Flame Dash": 46, "Hydro Crush": 48, "Aerial Ace": 50, "Hyper Beam": 55 },
+    abilities: ["Avatar Cycle"],
+    role: "Mixed Attacker",
+    frontSprite: "ravatar(front).png",
+    backSprite: "ravatar(back).png",
+    habitat: [], evolvesInto: null, evolvesAt: null, evolvesFrom: "katamute",
+    battleForms: [
+      {
+        id: "water", name: "Water Form", heldItem: "spirit_koi_scale",
+        types: ["Water"],
+        baseAtk: 120, baseDef: 125, baseSpd: 115,
+        // it bends the water inside its own cells: wounds close, ailments wash out
+        onEnter: { clearNegativeStages: false, lowerFoes: null, cureStatus: true, healFraction: 0.125 },
+        frontSprite: "ravatar_water(front).png",
+        backSprite: "ravatar_water(back).png",
+      },
+      {
+        id: "earth", name: "Earth Form", heldItem: "badgermole_gem",
+        types: ["Ground", "Rock"], moveType: "Ground",
+        baseAtk: 130, baseDef: 165, baseSpd: 65,
+        // rooted, it feels every foe through the ground: nothing it faces can hide
+        onEnter: { clearNegativeStages: false, lowerFoes: { stat: "eva", stages: 1 } },
+        frontSprite: "ravatar_earth(front).png",
+        backSprite: "ravatar_earth(back).png",
+      },
+      {
+        id: "fire", name: "Fire Form", heldItem: "sun_dragon_ember",
+        types: ["Fire"],
+        baseAtk: 155, baseDef: 95, baseSpd: 125,
+        onEnter: { clearNegativeStages: false, lowerFoes: { stat: "def", stages: 1 } },
+        frontSprite: "ravatar_fire(front).png",
+        backSprite: "ravatar_fire(back).png",
+      },
+      {
+        id: "air", name: "Air Form", heldItem: "sky_bison_whistle",
+        types: ["Flying"],
+        baseAtk: 120, baseDef: 90, baseSpd: 160,
+        // light as a feather on the wind: foes struggle to land a blow
+        onEnter: { clearNegativeStages: false, lowerFoes: { stat: "acc", stages: 1 } },
+        frontSprite: "ravatar_air(front).png",
+        backSprite: "ravatar_air(back).png",
+      },
+      {
+        id: "avatar", name: "Avatar State", heldItem: "spirit_water_vial", hpBelowPct: 30,
+        types: ["Normal", "Psychic"], moveType: "Psychic",
+        baseAtk: 160, baseDef: 140, baseSpd: 140,
+        // every past life at once: its wounds close, its drops and ailments are gone
+        onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.25 },
+        frontSprite: "ravatar_avatar(front).png",
+        backSprite: "ravatar_avatar(back).png",
+      },
+    ],
   },
 };
 

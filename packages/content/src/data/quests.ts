@@ -1,8 +1,11 @@
 /**
- * §3.4 QUESTS — the 12 rows of .design/roster-coverage.md §12.1, with the giver NpcDefs authored in zones.ts
+ * §3.4 QUESTS — the 14 rows of .design/roster-coverage.md §12.1, with the giver NpcDefs authored in zones.ts
  * and the `requires` chain in list order (q11/q12 chain on the mythical flags, not on q10).
  */
 import type { QuestDef } from '../types';
+import { SPIRIT_WATER_VIAL } from './relics';
+import { SHRINES, shrineGuardianId } from './shrines';
+import { interiorTrainerFlag } from './interiors';
 import { ACHIEVEMENTS } from './achievements';
 
 export const QUESTS: readonly QuestDef[] = [
@@ -182,6 +185,40 @@ export const QUESTS: readonly QuestDef[] = [
       { id: 'wins_20', label: 'Win 20 battles of any kind', objective: { kind: 'winBattles', format: 'any', count: 20 } },
     ],
     rewards: { money: 15000, items: {}, creature: { species: 'lumyth', level: 60 }, flag: 'mythical_morning' },
+  },
+  // The Harmonic Cycle: the mythical Elemutt line. Early, the berry-gardener trusts you with the pup that sneezes sparks
+  // in her hedge; after the Champion, the four relic shrines (data/shrines.ts) and the Vial that wakes the Avatar State.
+  {
+    id: 'q13_unaligned_pup',
+    title: 'The Unaligned Pup',
+    summary: 'A pup in the berry hedge barks embers and sneezes puddles. The gardener will trust it to someone who can win a fight or three.',
+    giver: 'mirevale.gardener',
+    zoneId: 'mirevale',
+    act: 1,
+    requires: ['q01_first_witness'],
+    objectives: [
+      { id: 'wins_3', label: 'Win 3 battles', objective: { kind: 'winBattles', format: 'any', count: 3 } },
+      { id: 'witness_5', label: 'Witness 5 species', objective: { kind: 'catchSpecies', count: 5 } },
+    ],
+    rewards: { money: 500, items: {}, creature: { species: 'elemutt', level: 5 }, flag: null },
+  },
+  {
+    id: 'q14_harmonic_cycle',
+    title: 'The Harmonic Cycle',
+    summary: 'Four shrines keep the relics of the old masters. Beat the Champion, then prove yourself to each guardian; the Vial of Spirit Water is for whoever holds all four.',
+    giver: null,
+    zoneId: 'saltmourn',
+    act: 3,
+    requires: [],
+    objectives: [
+      { id: 'champion', label: 'Beat Champion Zeon', objective: { kind: 'flag', flag: 'champion:zeon:beaten' } },
+      ...SHRINES.map((s) => ({
+        id: s.relic,
+        label: `Prove yourself in ${s.label}`,
+        objective: { kind: 'flag' as const, flag: interiorTrainerFlag(shrineGuardianId(s)) },
+      })),
+    ],
+    rewards: { money: 20000, items: { [SPIRIT_WATER_VIAL]: 1 }, creature: null, flag: null },
   },
   // Phase D5: the achievements (kind 'achievement', giver null) ride the same list, so they auto-progress and claim
   ...ACHIEVEMENTS,
