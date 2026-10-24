@@ -117,6 +117,38 @@ fail under machine load and pass alone).
   where a neighbour's entry line is cut off the edge is closed with `shoulder` (SPEC §3.11 "Handover landings");
   `npx vitest run packages/server/test/handover-landing.test.ts` checks every link both ways in seconds.
 
+## LLM features (branch `uniforcemusic/llm`, 2026-10-24)
+
+A local model (`gemma4-e2b` under llama.cpp, docker service `llm`, reached at `/npc/llm/v1`) drives ten features, one
+commit each after `2ac5de4`. The rules they share: the model only words things or picks from a fixed menu; every
+effect on the save goes through a capped, audited server route; facts come from content and the save, and model output
+is checked against them (`talk/professor.ts` checker); every feature has a template fallback when the model is down or
+slow; LLM calls stay in the client (`packages/client/src/talk/llm.ts`: `chatOnce`, `streamChat`, `noDashes`), so server
+tests never need a model. Each module's header comment records what was measured on the real model. Details per package
+in the `IMPLEMENTATION-NOTES.md` sections dated 2026-10-24 (not in the SPEC: the NPC talk stack lives in the notes).
+
+| # | Feature | Where | Gate / storage |
+|---|---|---|---|
+| 1 | NPCs remember you; town reputation and gossip | `talk/npcMemory.ts`, server `game/npcMemory.ts` | `NPC_TOOLS`; migration 0021 |
+| 2 | Villager favours (server-generated, capped rewards) | `talk/npcQuest.ts`, server `game/npcQuests.ts` | `NPC_TOOLS`; 0022 |
+| 3 | Battle commentator + trainer banter | `battle/commentator.ts`, `talk/commentary.ts` | settings toggles |
+| 4 | Haggling with shopkeepers | `talk/haggle.ts`, server `game/haggle.ts` | `NPC_TOOLS`; deals in memory |
+| 5 | Prof. Wynn (L) + "Why did I lose?" | `talk/professorFacts.ts`, `talk/professor.ts` | client only |
+| 6 | Talk to your own Ewamon (Y), follower chatter | `talk/buddy*.ts`, `world/BuddyTalk.tsx` | client only |
+| 7 | A recurring rival on the routes | server `game/rival.ts`, `talk/rival.ts` | `RIVAL=on|off|always` (off in testEnv); 0023 |
+| 8 | Town crier + rumour board | server `game/rumours.ts`, `talk/rumours.ts` | cached per UTC day |
+| 9 | Adventure journal | server `game/journal.ts`, `talk/journal.ts` | 0024 |
+| 10 | Voices (local speech synthesis) + push-to-talk (backquote) | `packages/client/src/voice/` | both off by default; push-to-talk sends audio to Google, the setting says so |
+
+- **Migrations:** main's `0020_camps` arrived with the merge `61f3049` after 0021 existed. A database that applied
+  0021+ before the merge skips 0020 (drizzle only applies migrations newer than the last one): `.data-alt2` is such a
+  database (no `camp_raids`); recreate it. The docker stack bakes `packages/persist/drizzle` into its image: rebuild it
+  (`docker compose up -d --build`) so its server applies 0020 to 0024.
+- **Known model weak spots:** villagers' faint lines sometimes read as if the player's creature fell (~5 in 24); the
+  buddy's temperament barely shows in model wording (templates carry it); the frustrated rival copies its example;
+  journal pages on quiet days read like the template. The commentator uses templates only for super-effective, KO and
+  status moments, because the model stated wrong type facts there.
+
 ## The finish plan
 
 **A** interiors + themed gym halls + correct arenas → **B** story-complete → **C** missing UI → **D** systems →
