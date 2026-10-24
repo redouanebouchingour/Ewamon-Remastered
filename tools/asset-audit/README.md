@@ -60,7 +60,7 @@ the baseline's worst shot fails as `regression.<metric> +N %` even under the cap
 
 | Line | Ceiling | Number held to it |
 |---|---|---|
-| `creatures/` | 41 943 040 B (40 MiB; 41 156 608 B from 2026-10-11, 36 700 160 B before) | max(`creatures.manifest.json totalBytes`, bytes on disk outside `anim/` minus the manifest's anim share) |
+| `creatures/` | 42 991 616 B (41 MiB since 2026-10-24; 41 943 040 B from 2026-10-13, 41 156 608 B from 2026-10-11, 36 700 160 B before) | max(`creatures.manifest.json totalBytes`, bytes on disk outside `anim/` minus the manifest's anim share) |
 | `creatures/anim/` | 24 MiB | max(`animTotalBytes`, `anim/` on disk + the bytes the manifest's anim fields add — measured by re-serialising it without them) |
 | `models/` | 12 MiB | max(`models.manifest.json totalBytes`, disk) |
 | `materials/` | 90 MiB | max(`materials.manifest.json totalBytes`, disk) |

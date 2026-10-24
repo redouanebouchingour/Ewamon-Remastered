@@ -160,7 +160,7 @@ export function assertRosterCoverage(): RosterReport;
 | Zone | Kind | Band | Table id | targetCount | Slots | daySum | nightSum | Rarest day slot → mean wait |
 |---|---|---|---|---|---|---|---|---|
 | mire_route | route | 2–6 | enc_mire_route | 80 | 11 | 45 | 44 | bloomsprite 2/45 → 56 s |
-| ash_route | route | 7–11 | enc_ash_route | 80 | 9 | 37 | 33 | cindercap 3/37 → 31 s |
+| ash_route | route | 7–11 | enc_ash_route | 80 | 10 | 37 | 35 | cindercap 3/37 → 31 s |
 | tide_route | route | 11–15 | enc_tide_route | 80 | 11 | 48 | 46 | kygra 2/48 → 60 s |
 | galvan_route | route | 15–20 | enc_galvan_route | 80 | 10 | 43 | 41 | wooltug 4/43 → 27 s |
 | deepcut_route | route | 20–25 | enc_deepcut_route | 80 | 13 | 56 | 61 | pyrecap 2/56 → 70 s |
@@ -211,6 +211,7 @@ Column order is fixed and machine-parsed: `zoneId | species | weight | levelMin 
 | ash_route | wickling | 5 | 7 | 10 | night | uncommon | land |
 | ash_route | cindercap | 3 | 8 | 11 | any | rare | land |
 | ash_route | moflame | 2 | 9 | 11 | night | rare | land |
+| ash_route | cryptorb | 2 | 9 | 11 | night | rare | land |
 | ash_route | flampling | 1 | 11 | 11 | day | alpha | land |
 
 ### 6.3 tide_route — salt, Water, L11–15 (surf zone)
@@ -414,7 +415,7 @@ The only town whose "static" species are the point of the town. `TOWN_SPAWN_TUNI
 
 Totals (Appendix A): **15 tables, 152 slots, 79 distinct species placed directly**; closure under evolution = 120; plus 8 statics and 2 mythical rewards = **130**.
 
-Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60; `dustcub` (#132, Ground) → `badlander` (#133, Ground/Dark) @30 — deepcut_route `uncommon 5` L20–24; `veilpup` (#134, Psychic) → `hollowolf` (#135, Psychic/Cosmic) @42 — skyrend `any rare 2` L38–41; `castlemaw` (#136, Dark/Steel single stage, with a Rage Form) — umbral_observatory `night rare 2` L44–48. Dustcub's evolution is an honor split at 30 (core honor.ts): `lawlander` (#137, Ground/Fighting, the High Honor branch, honor ≥ 0) or `badlander` (Low Honor); lawlander is obtainable by evolution only, so the directly placed count does not change. `hyoryu` (#138, Ice/Dragon legendary, a Majin Form that turns it Dragon/Dark) is the ninth static: eclipse_shrine L60 after the title (§7), in no table (on ascent_route the sprite planner duplicated 6 species in the_rift). With them the game has 156 slots, 83 species placed directly, **138** obtainable, 72 families.
+Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60; `dustcub` (#132, Ground) → `badlander` (#133, Ground/Dark) @30 — deepcut_route `uncommon 5` L20–24; `veilpup` (#134, Psychic) → `hollowolf` (#135, Psychic/Cosmic) @42 — skyrend `any rare 2` L38–41; `castlemaw` (#136, Dark/Steel single stage, with a Rage Form) — umbral_observatory `night rare 2` L44–48. Dustcub's evolution is an honor split at 30 (core honor.ts): `lawlander` (#137, Ground/Fighting, the High Honor branch, honor ≥ 0) or `badlander` (Low Honor); lawlander is obtainable by evolution only, so the directly placed count does not change. `hyoryu` (#138, Ice/Dragon legendary, a Majin Form that turns it Dragon/Dark) is the ninth static: eclipse_shrine L60 after the title (§7), in no table (on ascent_route the sprite planner duplicated 6 species in the_rift). `cryptorb` (#139, Electric/Ghost; ash_route `night rare 2` L9–11) splits by honor at 34 into `vysion` (#141, Steel/Psychic, High Honor) or `ultraze` (#140, Steel/Dark, Low Honor), both obtainable by evolution only. With them the game has 157 slots, 84 species placed directly, **141** obtainable, 73 families.
 
 ---
 

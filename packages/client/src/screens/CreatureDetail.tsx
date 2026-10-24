@@ -2,7 +2,7 @@
  * The selected creature's detail column (SPEC §20.9.3, reused by Box §20.9.4): stats "at level" (core calcStat —
  * display only), four MoveButtons with PP, ability + held item (`POST /creature/:id/setup`), nickname
  * (`/nickname`), favourite/lock (`/flags`), release (danger, confirm modal, refused when locked); the honor ledger of
- * a creature whose evolution it decides (dustcub, core honor.ts); its history (original trainer and events, `CreatureHistory`).
+ * a creature whose evolution it decides (dustcub, cryptorb, core honor.ts); its history (original trainer and events, `CreatureHistory`).
  */
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -139,6 +139,9 @@ export function ScarNote({ creature: c }: { readonly creature: CreatureInstance 
   );
 }
 
+/** The meter's low and high ends per honor line; dustcub's outlaw and lawman unless a line names its own. */
+const HONOR_ENDS: Readonly<Record<string, readonly [string, string]>> = { cryptorb: ['Purge', 'Protect'] };
+
 /** The honor ledger (core honor.ts): where the creature stands between outlaw and lawman, and what its evolution will be. */
 export function HonorLedger({ creature: c, sp }: { readonly creature: CreatureInstance; readonly sp: SpeciesDef }) {
   const evo = sp.evolution;
@@ -146,15 +149,16 @@ export function HonorLedger({ creature: c, sp }: { readonly creature: CreatureIn
   const honor = c.honor ?? 0;
   const into = species(evolutionTarget(evo, c.ability, honor) ?? '')?.name ?? null;
   const lawful = honor >= 0;
+  const [low, high] = HONOR_ENDS[sp.id] ?? ['Outlaw', 'Lawman'];
   return (
     <section className={l.section} aria-label="Honor">
       <h4 className={l.sectionTitle}>Honor</h4>
       <div className={s.honor}>
-        <span className={l.kvLabel}>Outlaw</span>
+        <span className={l.kvLabel}>{low}</span>
         <div className={s.honorTrack} role="meter" aria-valuemin={HONOR_MIN} aria-valuemax={HONOR_MAX} aria-valuenow={honor} aria-label={`Honor ${signed(honor)}`}>
           <div className={s.honorMark} data-lawful={lawful} style={cssVars({ '--p': (honor - HONOR_MIN) / (HONOR_MAX - HONOR_MIN) })} />
         </div>
-        <span className={l.kvLabel}>Lawman</span>
+        <span className={l.kvLabel}>{high}</span>
       </div>
       <p className={l.caption}>
         <strong className={l.kvValue}>{signed(honor)}</strong>{' '}

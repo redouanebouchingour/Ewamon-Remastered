@@ -223,6 +223,65 @@ const EWAMON_SPECIES_ADDITIONS = {
       backSprite: "hyoryu_majin(back).png",
     },
   },
+
+  // A line of unknown code inspired by Ultron and Vision (Marvel): an unstable orb whose honor ledger decides what kind of
+  // AI it becomes, the machine that purges or the synthetic that protects.
+  cryptorb: {
+    id: "cryptorb", name: "Cryptorb",
+    flavor: "A knot of code no one wrote, spinning around a single red eye. Its shell plates drift apart and snap back as it rewrites itself, and strings of numbers leak out of it like breath. Not even it knows what it is compiling into.",
+    type: ["Electric", "Ghost"],
+    baseHp: 58, baseAtk: 66, baseDef: 54, baseSpd: 80,
+    rarity: "rare", catchRate: 45,
+    sizeScale: 0.75,
+    expYield: 66,
+    moves: ["Spark", "Lick", "Confusion", "Charge Beam"],
+    learnableMoves: ["Ghost Mist", "Shadow Sneak", "Hex", "Discharge", "Shadow Ball", "Thunderbolt"],
+    abilities: ["Levitate", "Volt Absorb"],
+    role: "Special Attacker",
+    frontSprite: "cryptorb(front).png",
+    backSprite: "cryptorb(back).png",
+    habitat: ["Ash Route"],
+    // the honor ledger decides at 34: honor ≥ 0 → vysion (High Honor), below → ultraze (Low Honor)
+    splitEvolvesInto: [{ condition: "honor", value: 0, into: "vysion" }, { into: "ultraze" }], evolvesAt: 34,
+  },
+
+  // cryptorb's Low Honor branch: the code decided that the bug in the world was everyone in it.
+  ultraze: {
+    id: "ultraze", name: "Ultraze",
+    flavor: "A Cryptorb raised on cruelty compiles into an Ultraze, a war frame of scrap steel with a skull for a face. Its back vents smoke as it runs the same calculation over and over, and every time the answer is to tear it all down and build again.",
+    type: ["Steel", "Dark"],
+    baseHp: 98, baseAtk: 128, baseDef: 100, baseSpd: 78,
+    rarity: "rare", catchRate: 30,
+    sizeScale: 1.25,
+    expYield: 172,
+    moves: ["Flash Cannon", "Night Slash", "Thunder Fang", "Snarl"],
+    learnableMoves: ["Metal Burst", "Iron Defense", "Crunch", "Sucker Punch", "Steel Slash", "Dark Pulse", "Gyro Ball", "Hyper Beam"],
+    abilities: ["Intimidate", "Solid Rock"],
+    role: "Physical Attacker",
+    frontSprite: "ultraze(front).png",
+    backSprite: "ultraze(back).png",
+    habitat: [],
+    evolvesFrom: "cryptorb",
+  },
+
+  // cryptorb's High Honor branch: the same code, raised with care, chose to protect what it could have erased.
+  vysion: {
+    id: "vysion", name: "Vysion",
+    flavor: "A Cryptorb that was treated kindly compiles into a Vysion, a calm synthetic wrapped in a cape of golden light. The gem in its brow sees through walls and lies alike. It drifts through solid stone to reach anyone in danger, and it has never once been asked to.",
+    type: ["Steel", "Psychic"],
+    baseHp: 96, baseAtk: 112, baseDef: 106, baseSpd: 90,
+    rarity: "rare", catchRate: 30,
+    sizeScale: 1.15,
+    expYield: 172,
+    moves: ["Extrasensory", "Flash Cannon", "Calm Mind", "Light Screen"],
+    learnableMoves: ["Psych Wave", "Smart Strike", "Heal Pulse", "Mind Crush", "Steel Tide", "Brain Pulse", "Future Sight"],
+    abilities: ["Levitate", "Natural Cure"],
+    role: "Special Attacker",
+    frontSprite: "vysion(front).png",
+    backSprite: "vysion(back).png",
+    habitat: [],
+    evolvesFrom: "cryptorb",
+  },
 };
 
 module.exports = { EWAMON_SPECIES_ADDITIONS };

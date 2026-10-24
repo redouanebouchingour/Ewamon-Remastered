@@ -4,7 +4,7 @@
  * - water slots: every non-lava zone with a table and ponds fishes something (≥ 1 water slot); every table with water
  *   slots has open water to spawn on and a boardwalk to engage from without HM Surf (validate's rule, restated); the
  *   water species are Water-type (smellduck, solenne's pond duck, is the one legacy exception); the D8 additions keep
- *   the roster (83 directly placed, 138 obtainable, 72 families) and roster-coverage clean;
+ *   the roster (84 directly placed, 141 obtainable, 73 families) and roster-coverage clean;
  * - obstacles: stamped only on walkable samples and recorded per id; the stamp disconnects nothing (the spawn's
  *   component loses exactly the stamped samples it held); flags, refusals and HM / type rules;
  * - the bicycle: a priced key item sold in Saltmourn, never a story gate.
@@ -85,9 +85,9 @@ describe('Phase D8 water encounters', () => {
     expect(waterOf('skyrend')).toEqual(['tidalfang']);
     expect(waterOf('umbral_observatory')).toEqual(['wraithtide']);
     const r = validate({ skipHeightfields: true });
-    expect(r.stats.roster.directlyPlaced).toBe(83);
-    expect(r.stats.roster.obtainable).toBe(138);
-    expect(r.stats.roster.families).toBe(72);
+    expect(r.stats.roster.directlyPlaced).toBe(84);
+    expect(r.stats.roster.obtainable).toBe(141);
+    expect(r.stats.roster.families).toBe(73);
     expect(r.stats.roster.ruleFailures).toEqual([]);
   });
 });

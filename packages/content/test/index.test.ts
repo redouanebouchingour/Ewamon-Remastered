@@ -29,9 +29,9 @@ describe('createContentIndex()', () => {
     expect(idx.typeChart).toBe(TYPE_CHART);
   });
 
-  it('allSpecies() is sorted by dexNumber and has 138 rows', () => {
+  it('allSpecies() is sorted by dexNumber and has 141 rows', () => {
     const all = idx.allSpecies();
-    expect(all.length).toBe(138);
+    expect(all.length).toBe(141);
     for (let i = 1; i < all.length; i++) expect(all[i]!.dexNumber).toBeGreaterThan(all[i - 1]!.dexNumber);
     expect(all[0]!.id).toBe('smellduck');
   });
@@ -52,7 +52,7 @@ describe('createContentIndex()', () => {
     }
   });
 
-  it('the darkone split (by ability) and the dustcub one (by honor) are the two split evolutions, null branch last', () => {
+  it('the darkone split (by ability) and the dustcub and cryptorb ones (by honor) are the three split evolutions, null branch last', () => {
     const d = idx.species('darkone');
     expect(d.evolution?.kind).toBe('split');
     if (d.evolution?.kind === 'split') {
@@ -61,7 +61,7 @@ describe('createContentIndex()', () => {
       expect(d.evolution.branches[0]!.condition).toEqual({ kind: 'ability', ability: 'Lightning Rod' });
       expect(d.evolution.branches[1]!.condition).toBeNull();
     }
-    expect(SPECIES.filter((s) => s.evolution?.kind === 'split').map((s) => s.id)).toEqual(['darkone', 'dustcub']);
+    expect(SPECIES.filter((s) => s.evolution?.kind === 'split').map((s) => s.id)).toEqual(['darkone', 'dustcub', 'cryptorb']);
   });
 
   it('world accessors resolve and throw on unknown ids', () => {

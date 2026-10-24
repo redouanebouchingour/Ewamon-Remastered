@@ -4,7 +4,7 @@
  * - the evolve prompt names the branch the creature's ledger picks now (the ledger can move after the battle event
  *   that queued the prompt; the server resolves the same branch) and tells where its honor stands;
  * - a second prompt for a creature that already evolved is dropped, never sent;
- * - the creature detail's meter sits between Outlaw and Lawman and names the form it becomes.
+ * - the creature detail's meter sits between Outlaw and Lawman (cryptorb: Purge and Protect) and names the form it becomes.
  */
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -62,5 +62,13 @@ describe('the honor split on the client', () => {
     expect(meter.getAttribute('aria-valuemin')).toBe('-10');
     expect(meter.getAttribute('aria-valuemax')).toBe('10');
     expect(screen.getByLabelText('Honor').textContent).toContain('At level 30 it becomes Badlander.');
+    expect(screen.getByLabelText('Honor').textContent).toMatch(/^HonorOutlaw.*Lawman/);
+  });
+
+  it("cryptorb's meter sits between Purge and Protect and names the AI it compiles into", () => {
+    render(<HonorLedger creature={creature('cryptorb', { level: 30, ability: 'Levitate', honor: 2 })} sp={species('cryptorb')!} />);
+    const text = screen.getByLabelText('Honor').textContent;
+    expect(text).toMatch(/^HonorPurge.*Protect/);
+    expect(text).toContain('At level 34 it becomes Vysion.');
   });
 });

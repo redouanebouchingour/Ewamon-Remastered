@@ -724,3 +724,29 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
 - Badlander gives the right to post (not a discount): a discount plus the Lawlander bonus would let two friends mint
   money by passing a bounty back and forth. With the cut equal to the bonus, a Lawlander claim of a player's post pays
   exactly the escrow.
+
+## Post-legacy species: cryptorb #139 → ultraze #140 or vysion #141 (2026-10-24)
+
+- A line of unknown code inspired by Ultron and Vision (Marvel), from the user's six reference sprites: an unstable orb
+  whose honor ledger decides what kind of AI it compiles into. Same source and generator path as dustcub
+  (`.design/additions/species.js`, appended after hyoryu).
+- **cryptorb**: Electric/Ghost, rare, 58 / 66 / 54 / 80, catch rate 45, sizeScale 0.75, abilities Levitate / Volt Absorb,
+  role Special Attacker. Defaults Spark, Lick, Confusion, Charge Beam; learns Ghost Mist 6, Shadow Sneak 12, Hex 18,
+  Discharge 21, Shadow Ball 27, Thunderbolt 33. Splits by honor at 34 (`splitEvolvesInto`, like dustcub): honor ≥ 0 →
+  vysion (High Honor), below → ultraze (Low Honor).
+- **ultraze**: Steel/Dark, rare, 98 / 128 / 100 / 78, catch rate 30, sizeScale 1.25, abilities Intimidate / Solid Rock,
+  role Physical Attacker. Defaults Flash Cannon, Night Slash, Thunder Fang, Snarl; learns Metal Burst 6, Iron Defense 9,
+  Crunch 15, Sucker Punch 21, Steel Slash 24, Dark Pulse 30, Gyro Ball 36, Hyper Beam 39.
+- **vysion**: Steel/Psychic, rare, 96 / 112 / 106 / 90, catch rate 30, sizeScale 1.15, abilities Levitate / Natural Cure,
+  role Special Attacker. Defaults Extrasensory, Flash Cannon, Calm Mind, Light Screen; learns Psych Wave 6, Smart Strike
+  12, Heal Pulse 18, Mind Crush 24, Steel Tide 27, Brain Pulse 33, Future Sight 39.
+- Only existing moves and abilities: MOVES stays 197, ABILITIES 25. No signature move, no battle form.
+- **Obtainable**: `enc_ash_route` `night rare 2` L9–11 (an early mystery catch, raised a long way to the split at 34);
+  both branches by evolution only. Directly placed 83 → 84, obtainable 141, families 73 (62 non-legendary). Ash route's
+  table is 10 slots / day 37 / night 35. The zone had to pass three checks: galvan_route (the storm route, the first
+  choice) planned fine for the sprite budget but its re-pairing moved rimeidol's and wooltug's atlases out of the zones
+  their ecosystem migration routes lead into (`ecosystem-sprites.test`); hollow_route kept the routes but was already at
+  the 14-species table cap (§13); the other zones that keep the routes are above the evolution level or water-only
+  (saltmourn). ash_route: 78 atlases, none duplicated, every route drawable.
+- **Counts**: `validate.ts` rule 3 (141), families (73), `schema.ts` `dexNumber ≤ 141`; `ach_dex_130` targets 141.
+- **Layout**: encounter slots do not feed the zone layout RNG; heightfield digests and `r1-pre-move.json` unchanged.

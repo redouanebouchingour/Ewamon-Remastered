@@ -24,10 +24,10 @@ import {
 } from '../src/index';
 
 describe('counts', () => {
-  it('138 species with dense dex numbers', () => {
-    expect(SPECIES.length).toBe(138);
+  it('141 species with dense dex numbers', () => {
+    expect(SPECIES.length).toBe(141);
     const dex = SPECIES.map((s) => s.dexNumber).sort((a, b) => a - b);
-    expect(dex).toEqual(Array.from({ length: 138 }, (_, i) => i + 1));
+    expect(dex).toEqual(Array.from({ length: 141 }, (_, i) => i + 1));
     expect(SPECIES.filter((s) => s.legendary).length).toBe(11);
   });
   it('197 moves (193 legacy + Hollow Crescent, Vendetta Volley, Aurora Requiem, Crimson Lotus Prison), 25 abilities, 17 items, 10 orbs, 23 consumables', () => {

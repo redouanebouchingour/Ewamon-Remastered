@@ -4,7 +4,8 @@
  * added water slots where the heightfield has ponds a table did not fish yet (mire_route, skyrend, umbral_observatory)
  * — species already placed elsewhere, so the directly-placed set stayed 79. The post-legacy hollowmane (#131) adds a
  * night rare slot to the_rift, dustcub (#132) an uncommon slot to deepcut_route, veilpup (#134) a rare slot to
- * skyrend and castlemaw (#136) a night rare slot to umbral_observatory: 83 placed directly.
+ * skyrend, castlemaw (#136) a night rare slot to umbral_observatory and cryptorb (#139) a night rare slot to
+ * ash_route: 84 placed directly.
  */
 import type { EncounterSlot, EncounterTable, EncounterTier, Medium, SpawnTuning, TimeOfDay, ZoneId } from '../types';
 
@@ -103,6 +104,7 @@ export const ENCOUNTER_TABLES: readonly EncounterTable[] = [
     s('wickling', 5, 7, 10, 'night', 'uncommon'),
     s('cindercap', 3, 8, 11, 'any', 'rare'),
     s('moflame', 2, 9, 11, 'night', 'rare'),
+    s('cryptorb', 2, 9, 11, 'night', 'rare'),
     s('flampling', 1, 11, 11, 'day', 'alpha'),
   ]),
   // 6.3 tide_route — salt, Water, L11–15 (surf zone)

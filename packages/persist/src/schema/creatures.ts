@@ -32,7 +32,7 @@ export const creatureInstances = pgTable(
     isAlpha: boolean('is_alpha').notNull().default(false),
     /** Phase D4 (migration 0003): the 1/512 shiny tier */
     isShiny: boolean('is_shiny').notNull().default(false),
-    /** migration 0005: the honor ledger (core honor.ts), -10..10; 0 = none — only dustcub's line ever moves it */
+    /** migration 0005: the honor ledger (core honor.ts), -10..10; 0 = none — only dustcub's and cryptorb's lines ever move it */
     honor: smallint('honor').notNull().default(0),
     /** migration 0016: hatched from a Majin-form and a Tenjin-form parent (core `CreatureInstance.bandborn`) */
     bandborn: boolean('bandborn').notNull().default(false),

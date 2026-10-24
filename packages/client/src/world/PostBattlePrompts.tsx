@@ -32,7 +32,7 @@ function failure(e: unknown): string {
 }
 
 /**
- * The species this prompt evolves the creature into: its own `into`, except on an honor split (dustcub), where the
+ * The species this prompt evolves the creature into: its own `into`, except on an honor split (dustcub, cryptorb), where the
  * ledger can move after the battle event that queued the prompt — the branch the creature's ledger picks now (the
  * server resolves the same branch). Null when the creature can no longer evolve into it (an earlier prompt evolved it).
  */

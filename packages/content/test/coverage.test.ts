@@ -38,23 +38,23 @@ describe('roster coverage (independent)', () => {
   for (const l of LEGENDARY_STATICS) R.add(l.species);
   for (const m of ['lumyth', 'noxmyth']) R.add(m);
 
-  it('138/138 obtainable', () => {
+  it('141/141 obtainable', () => {
     const missing = SPECIES.map((s) => s.id).filter((id) => !R.has(id));
     expect(missing).toEqual([]);
-    expect(R.size).toBe(138);
+    expect(R.size).toBe(141);
   });
 
-  it('83 directly placed: roster-coverage Appendix A reports 79, plus the post-legacy hollowmane, dustcub, veilpup and castlemaw', () => {
-    expect(E.size).toBe(83);
+  it('84 directly placed: roster-coverage Appendix A reports 79, plus the post-legacy hollowmane, dustcub, veilpup, castlemaw and cryptorb', () => {
+    expect(E.size).toBe(84);
   });
 
-  it('72 roots; every non-legendary root spawns wild (RC-1); 61 families complete by level', () => {
+  it('73 roots; every non-legendary root spawns wild (RC-1); 62 families complete by level', () => {
     const roots = SPECIES.filter((s) => s.evolvesFrom === null);
-    expect(roots.length).toBe(72);
+    expect(roots.length).toBe(73);
     const legendary = new Set(SPECIES.filter((s) => s.legendary).map((s) => s.id));
     const wild = new Set(ENCOUNTER_TABLES.flatMap((t) => t.slots.map((s) => s.species)));
     const nonLeg = roots.filter((r) => !legendary.has(r.id));
-    expect(nonLeg.length).toBe(61);
+    expect(nonLeg.length).toBe(62);
     for (const r of nonLeg) expect(wild.has(r.id), `root ${r.id} never spawns`).toBe(true);
   });
 
@@ -90,8 +90,8 @@ describe('roster coverage (independent)', () => {
     const r = validate({ skipHeightfields: true });
     expect(r.stats.roster.obtainable).toBe(R.size);
     expect(r.stats.roster.directlyPlaced).toBe(E.size);
-    expect(r.stats.roster.families).toBe(72);
-    expect(Object.keys(r.stats.roster.paths).length).toBe(138);
+    expect(r.stats.roster.families).toBe(73);
+    expect(Object.keys(r.stats.roster.paths).length).toBe(141);
     expect(r.stats.roster.paths['bramblecub']?.kind).toBe('wild');
     expect(r.stats.roster.paths['thornback']?.kind).toBe('raid');
     expect(r.stats.roster.paths['galaxion']).toEqual({ kind: 'static', zoneId: 'umbral_observatory', when: 'flag:ledger_read' });

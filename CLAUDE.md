@@ -6,7 +6,7 @@ Start with `HANDOFF.md` (state, open items, dev tips), then `.design/SPEC.md` (b
 
 - `pnpm check` — typecheck + lint + lint-rule tests + all tests + build. Green before every commit to `main`.
 - `pnpm test:progression` — the headless story walk (Acts I–III + all 12 league fights, ~41 min); not part of `pnpm test`.
-- `pnpm --filter @ewa/content run validate` — the content gate (138/138 obtainable, 72 families, heightfields, interiors).
+- `pnpm --filter @ewa/content run validate` — the content gate (141/141 obtainable, 73 families, heightfields, interiors).
 - `npx vitest run packages/<pkg>` — one package. Timing tests (`perf/tick`, `aoi-fanout`, some UI tests) can fail under
   a loaded machine and pass alone; re-run them alone before calling them broken.
 

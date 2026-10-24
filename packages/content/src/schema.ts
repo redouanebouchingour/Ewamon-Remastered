@@ -172,7 +172,7 @@ const BattleFormDefSchema = z.object({
 export const SpeciesDefSchema: z.ZodType<SpeciesDef> = z.object({
   id: SnakeId,
   name: z.string().min(1),
-  dexNumber: Int.min(1).max(138),
+  dexNumber: Int.min(1).max(141),
   flavor: z.string(),
   types: z.union([z.tuple([TypeNameSchema]), z.tuple([TypeNameSchema, TypeNameSchema])]),
   baseHp: PosInt,

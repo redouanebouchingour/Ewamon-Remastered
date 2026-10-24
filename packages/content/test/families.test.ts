@@ -1,10 +1,10 @@
 /**
- * §50.4.2 `families.test.ts` — evolution trees (spine §2.3 / §3.10 rule 7): exactly 72 trees, each rooted at
+ * §50.4.2 `families.test.ts` — evolution trees (spine §2.3 / §3.10 rule 7): exactly 73 trees, each rooted at
  * `evolvesFrom === null`; parent and child agree (`evolution.into` ⇔ `evolvesFrom`), every species sits in exactly one
  * tree, and no tree has a cycle; every family is completable — its root is obtainable directly (wild, gift, static,
- * quest, battle pass, raid, swarm or a starter) and the closure under `into` reaches all 138; the two `split`s
- * (`darkone`: Lightning Rod → `aonred`, default `darkyon`; `dustcub`: honor ≥ 0 → `lawlander`, default `badlander`) carry
- * their `null` (default) branch last.
+ * quest, battle pass, raid, swarm or a starter) and the closure under `into` reaches all 141; the three `split`s
+ * (`darkone`: Lightning Rod → `aonred`, default `darkyon`; `dustcub`: honor ≥ 0 → `lawlander`, default `badlander`;
+ * `cryptorb`: honor ≥ 0 → `vysion`, default `ultraze`) carry their `null` (default) branch last.
  */
 import { describe, expect, it } from 'vitest';
 import type { SpeciesDef } from '@ewa/core';
@@ -52,9 +52,9 @@ function treeOf(root: SpeciesDef): string[] {
 }
 
 describe('evolution families (§2.3, rule 7)', () => {
-  it('exactly 72 trees, each rooted at evolvesFrom === null; every species in exactly one tree', () => {
-    expect(SPECIES).toHaveLength(138);
-    expect(roots).toHaveLength(72);
+  it('exactly 73 trees, each rooted at evolvesFrom === null; every species in exactly one tree', () => {
+    expect(SPECIES).toHaveLength(141);
+    expect(roots).toHaveLength(73);
     const owner = new Map<string, string>();
     for (const r of roots) {
       for (const id of treeOf(r)) {
@@ -62,7 +62,7 @@ describe('evolution families (§2.3, rule 7)', () => {
         owner.set(id, r.id);
       }
     }
-    expect(owner.size).toBe(138);
+    expect(owner.size).toBe(141);
   });
 
   it('parent and child agree: every `into` names an existing species whose evolvesFrom is the parent, and back', () => {
@@ -79,7 +79,7 @@ describe('evolution families (§2.3, rule 7)', () => {
     }
   });
 
-  it('every family is completable: its root is directly obtainable, and the closure under `into` reaches all 138', () => {
+  it('every family is completable: its root is directly obtainable, and the closure under `into` reaches all 141', () => {
     const direct = directlyObtainable();
     for (const r of roots) expect(direct.has(r.id), `${r.id}: the family root has no wild / gift source`).toBe(true);
     const caught = new Set(direct.keys());
@@ -98,9 +98,9 @@ describe('evolution families (§2.3, rule 7)', () => {
     expect(missing).toEqual([]);
   });
 
-  it("the two splits: darkone at 20 — Lightning Rod → aonred, the null (default) branch darkyon last; dustcub at 30 by honor", () => {
+  it("the three splits: darkone at 20 — Lightning Rod → aonred, the null (default) branch darkyon last; dustcub at 30 and cryptorb at 34 by honor", () => {
     const splits = SPECIES.filter((s) => s.evolution?.kind === 'split');
-    expect(splits.map((s) => s.id)).toEqual(['darkone', 'dustcub']);
+    expect(splits.map((s) => s.id)).toEqual(['darkone', 'dustcub', 'cryptorb']);
     const e = splits[0]!.evolution;
     if (e?.kind !== 'split') throw new Error('unreachable');
     expect(e.branches).toEqual([
@@ -117,6 +117,15 @@ describe('evolution families (§2.3, rule 7)', () => {
       branches: [
         { into: 'lawlander', condition: { kind: 'honor', atLeast: 0 } },
         { into: 'badlander', condition: null },
+      ],
+    });
+    // ≥ 0 at 34 → the High Honor vysion, below → the Low Honor ultraze
+    expect(splits[2]!.evolution).toEqual({
+      kind: 'split',
+      atLevel: 34,
+      branches: [
+        { into: 'vysion', condition: { kind: 'honor', atLeast: 0 } },
+        { into: 'ultraze', condition: null },
       ],
     });
   });

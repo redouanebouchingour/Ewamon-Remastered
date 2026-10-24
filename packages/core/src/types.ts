@@ -50,7 +50,7 @@ export type Evolution =
   | { readonly kind: 'level'; readonly into: string; readonly atLevel: number }
   | { readonly kind: 'split'; readonly atLevel: number;
       readonly branches: readonly { readonly into: string;
-        // 'honor': the creature's honor ledger (CreatureInstance.honor, absent = 0) is at least `atLeast` (dustcub's line)
+        // 'honor': the creature's honor ledger (CreatureInstance.honor, absent = 0) is at least `atLeast` (dustcub's and cryptorb's lines)
         readonly condition: { readonly kind: 'ability'; readonly ability: string } | { readonly kind: 'honor'; readonly atLeast: number } | null }[] }
   // Phase D3: stone and trade evolutions. Never level-triggered (`applyExp` reports no `evolveReady` for them);
   // the server evolves on an explicit request, resolved by `itemEvolutionTarget` / `tradeEvolutionTarget`.
@@ -282,7 +282,7 @@ export interface CreatureInstance {
   readonly caughtAt: { readonly zoneId: string; readonly at: number } | null; // at = unix ms; null = starter/gift
   /**
    * The honor ledger, HONOR_MIN..HONOR_MAX (honor.ts): kept only by a species whose split evolution is decided by honor
-   * (dustcub), changed in battle by the `honor` event. Absent = 0; every other creature never has the field.
+   * (dustcub, cryptorb), changed in battle by the `honor` event. Absent = 0; every other creature never has the field.
    */
   readonly honor?: number;
   /**
