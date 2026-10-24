@@ -147,8 +147,12 @@ const NUMBER_WORDS: Readonly<Record<string, number>> = { two: 2, three: 3, four:
 const lower = (s: string): string => s.toLowerCase();
 const wordsOf = (s: string): string[] => s.match(/[A-Za-z][A-Za-z'_]*|\d[\d,]*/g) ?? [];
 
-/** Capitalised words of `text`, not at the start of a sentence, that neither the fact nor the town holds. */
-export function strangeNames(text: string, fact: string, town: string): string[] {
+/**
+ * Capitalised words of `text` that neither the fact nor the town holds (a crier's common words aside). With
+ * `sentenceStarts: false` the first word of a sentence is not checked (a diary's "Later", "Tired", "Finally": the
+ * journal, feature 9, where a capital mid-sentence is the name that matters).
+ */
+export function strangeNames(text: string, fact: string, town: string, o: { readonly sentenceStarts?: boolean } = {}): string[] {
   const src = lower(`${fact} ${town}`);
   const out: string[] = [];
   for (const m of text.matchAll(/[A-Z][A-Za-z'_]*/g)) {
@@ -158,7 +162,7 @@ export function strangeNames(text: string, fact: string, town: string): string[]
     const before = text.slice(0, i).trimEnd();
     const sentenceStart = before === '' || /[.!?:]["”']?$/.test(before);
     const w = m[0];
-    if (sentenceStart && (CRIER_WORDS.has(lower(w)) || NUMBER_WORDS[lower(w)] !== undefined)) continue;
+    if (sentenceStart && (o.sentenceStarts === false || CRIER_WORDS.has(lower(w)) || NUMBER_WORDS[lower(w)] !== undefined)) continue;
     if (CRIER_WORDS.has(lower(w)) && !/^[A-Z]{2,}$/.test(w)) continue;
     if (!new RegExp(`(^|[^a-z])${lower(w).replace(/[^a-z0-9_']/g, '')}($|[^a-z])`).test(src)) out.push(w);
   }

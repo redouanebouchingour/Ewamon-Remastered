@@ -58,5 +58,8 @@ export * from './rival';
 // the rumour board (LLM feature 8): a town's facts of the day (GET /world/rumours/:zoneId)
 export * from './rumours';
 
+// the adventure journal (LLM feature 9): a diary entry per play day (GET /journal, GET + POST /journal/day/:day)
+export * from './journal';
+
 // structural copies of content types (see types.ts TODO)
 export * from './types';

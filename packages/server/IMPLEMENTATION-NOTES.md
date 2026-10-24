@@ -1441,3 +1441,28 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
 - Tests: `test/rumours.test.ts` (determinism, a different town or day, the sentences, local first, the swarm and the
   cup, the market swings, the gossip, the cache; the route: yesterday's badge by name, the raid next door, the caller's
   deed and standing, the same world facts for another player and all day, the next day's board, 404, 401, 409).
+
+## The adventure journal (2026-10-24, LLM feature 9, not in the SPEC)
+
+- A play day is the UTC day (the day key the server uses everywhere: dailies, the rumour board), not the player's local
+  day: the server keeps no time zone for a player, and one key per day keeps an entry's day the same on every device.
+  "Day N" counts from the UTC day the account was made (1).
+- `game/journal.ts`: `buildDigest(rows, dayStart)` is pure: short first-person facts in a fixed order (badge, the
+  Champion, legendary, shiny, catches grouped by species with the zone when they were all in one, eggs hatched,
+  evolutions, gifts, the rival and villagers by name with the result, league leaders, route trainers and wild battles
+  counted, the arena, raids, bounties, nemeses, favours, haggles, deeds done to villagers, the zones the day touched),
+  at most 16. A shiny is only its own fact (counted again with the plain catches, the model wrote "I caught another"),
+  the league win behind a badge or the Champion is not said twice, a discount won by haggling is not also a gift. The
+  game keeps no visit log, so "zones visited" are the zones where the day's battles, catches, deeds and favours
+  happened. `gatherDay` reads the rows (persist `journalRepo`); `cleanEntry` cleans a stored entry (control
+  characters, em-dashes, whitespace, cut at a sentence to 600); `dayNumberOf`, `dayStartOfKey`.
+- Routes (`rest/routes/journal.ts`, registered with the NPC routes behind `NPC_TOOLS`, 409 `npcToolsOff`):
+  `GET /journal` (today's digest and entry, the up to 3 days before today with facts and no entry, the entries),
+  `GET /journal/day/:day` (404 before the account's first day or after today, 400 for a malformed day) and
+  `POST /journal/day/:day` { text }: stored with the digest it was written from. Today's page may be rewritten; an
+  earlier day's once (409 `journalWritten`) and only within 3 days (409 `journalClosed`); a day with no facts has no
+  page (409 `journalEmpty`). Its own rate limit (`journal`, 12 a minute). Text only: no audit row (the brief's call),
+  and nothing reads it but the Journal screen.
+- Tests: `test/journal.test.ts` (the digest's facts and order, determinism, the cap, a species caught in two places,
+  the Champion; day numbers and keys; the cleaning; the routes from real rows: the starter on day 1, write and rewrite
+  today, the unwritten day before, written once, the window, an empty day, 404 / 400, `NPC_TOOLS=off`).

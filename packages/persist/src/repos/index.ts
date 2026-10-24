@@ -36,6 +36,8 @@ import { rivalRepo } from './rivals';
 import type { RivalRepo } from './rivals';
 import { worldNewsRepo } from './worldNews';
 import type { WorldNewsRepo } from './worldNews';
+import { journalRepo } from './journal';
+import type { JournalRepo } from './journal';
 import type { CampRepo } from './camps';
 import type { DailyRepo } from './daily';
 import type { CreatureRepo } from './creatures';
@@ -99,6 +101,8 @@ export interface Repos {
   readonly rivals: RivalRepo;
   /** the rumour board (LLM feature 8): read-only news across players, public names only */
   readonly worldNews: WorldNewsRepo;
+  /** the adventure journal (migration 0024): a diary entry per player per UTC day, and the reads behind a day */
+  readonly journal: JournalRepo;
 }
 
 /**
@@ -136,6 +140,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     camps: campRepo,
     rivals: rivalRepo,
     worldNews: worldNewsRepo,
+    journal: journalRepo,
   };
 }
 
@@ -172,3 +177,5 @@ export type { NewNpcQuest, NpcQuest, NpcQuestStatus } from './npcQuests';
 export type { Camp, CampRaid, NewCamp } from './camps';
 export type { Rival, RivalIdentityRow, RivalMeeting, RivalResult } from './rivals';
 export type { NewsBadge, NewsCampTakeover, NewsNemesis, NewsSale, NewsSplit } from './worldNews';
+export { JOURNAL_READ_MAX } from './journal';
+export type { JournalAudit, JournalBattle, JournalCreatureEvent, JournalEntry, JournalMemory } from './journal';

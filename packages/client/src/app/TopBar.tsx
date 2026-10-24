@@ -57,6 +57,8 @@ export const NAV: readonly NavItem[] = [
   { to: '/play/professor', label: 'Professor', icon: 'info', primary: false, action: 'professor' },
   // LLM feature 8: the rumour board of the town the player stands in (else the last one)
   { to: '/play/rumours', label: 'Rumours', icon: 'tag', primary: false },
+  // LLM feature 9: the adventure journal, a page for every day played
+  { to: '/play/journal', label: 'Journal', icon: 'leaf', primary: false },
   // Majin vs Tenjin seasons: take a side, the standings, the Chronicle
   { to: '/play/factions', label: 'Factions', icon: 'shield', primary: false },
   { to: '/play/box', label: 'Box', icon: 'box', primary: false },

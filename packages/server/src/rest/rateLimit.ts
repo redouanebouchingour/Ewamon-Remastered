@@ -31,6 +31,7 @@ export const LIMITS = {
   replay: { max: 60, windowMs: 60_000 }, // GET /replay/:token per IP (public, no account)
   weather: { max: 20, windowMs: 60_000 }, // GET /weather/cities per player (each one an Open-Meteo request)
   npcMemory: { max: 12, windowMs: 60_000 }, // POST /npc/memory per player (one per ended conversation)
+  journal: { max: 12, windowMs: 60_000 }, // POST /journal/day/:day per player (a day's entry, rewritten now and then)
   // room messages (per client), from the spine §4.3
   input: { max: 30, windowMs: 1_000 },
   emote: { max: 1, windowMs: 1_500 },

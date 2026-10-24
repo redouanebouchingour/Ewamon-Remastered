@@ -22,6 +22,7 @@ import {
 import { InventoryDeltaMsg, NEMESIS_SCAR_IDS, QuestProgressEntrySchema } from './messages/server';
 import { RivalRes, RivalWordsReq } from './rival';
 import { RumourParams, RumoursRes } from './rumours';
+import { JournalDayParams, JournalDaySchema, JournalEntryViewSchema, JournalRes, JournalWriteReq } from './journal';
 import { SeatReservationSchema } from './messages/common';
 import {
   ArenaInfoRes,
@@ -1364,7 +1365,7 @@ export interface RouteDef {
   /** `null` = 204 No Content */
   readonly response: z.ZodType | null;
   /** 30-server-netcode.md §30.6.4 key, when the route has a dedicated limit (else restRead/restWrite). */
-  readonly limit?: 'register' | 'login' | 'refresh' | 'listing' | 'bid' | 'message' | 'friendReq' | 'guildOp' | 'forgot' | 'emailToken' | 'resend' | 'replay' | 'weather' | 'npcMemory';
+  readonly limit?: 'register' | 'login' | 'refresh' | 'listing' | 'bid' | 'message' | 'friendReq' | 'guildOp' | 'forgot' | 'emailToken' | 'resend' | 'replay' | 'weather' | 'npcMemory' | 'journal';
 }
 
 const route = <const R extends RouteDef>(r: R): R => r;
@@ -1495,6 +1496,10 @@ export const ROUTES = {
   rivalWords: route({ method: 'POST', path: '/rival/words', auth: 'bearer', request: RivalWordsReq, response: RivalRes }),
   // the rumour board (LLM feature 8): a town's facts of the day, behind NPC_TOOLS
   worldRumours: route({ method: 'GET', path: '/world/rumours/:zoneId', auth: 'bearer', params: RumourParams, response: RumoursRes }),
+  // the adventure journal (LLM feature 9): a diary entry per UTC day, behind NPC_TOOLS
+  journal: route({ method: 'GET', path: '/journal', auth: 'bearer', response: JournalRes }),
+  journalDay: route({ method: 'GET', path: '/journal/day/:day', auth: 'bearer', params: JournalDayParams, response: JournalDaySchema }),
+  journalWrite: route({ method: 'POST', path: '/journal/day/:day', auth: 'bearer', params: JournalDayParams, request: JournalWriteReq, response: JournalEntryViewSchema, limit: 'journal' }),
   // breeding: the Daycare (leave / take back a creature, collect the egg) and moving an egg between the party and the box
   daycare: route({ method: 'GET', path: '/daycare', auth: 'bearer', response: DaycareRes }),
   daycareLeave: route({ method: 'POST', path: '/daycare/leave', auth: 'bearer', request: CreatureIdReq, response: DaycareActionRes }),

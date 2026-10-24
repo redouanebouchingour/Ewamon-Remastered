@@ -1,0 +1,148 @@
+/*
+ * LLM feature 9: the adventure journal. Broadcast: each page a carbon card on a hairline, the day number large in the
+ * italic display face beside the date in condensed caps, the page in Barlow at reading size, the day's facts as hard
+ * edged carbon chips with the creature's sprite, the type icon or a kind icon. A paper rule sets the earlier pages off
+ * from today's. Orange only on a primary action (Rewrite today when the page is behind) and focus. No glow.
+ */
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+.today {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-5);
+  background: var(--bg-1);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-3);
+}
+
+.day {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h2);
+  line-height: var(--lh-h2);
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.date {
+  flex: 1 1 auto;
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.copy {
+  flex: none;
+}
+
+.text {
+  margin: 0;
+  max-inline-size: 72ch;
+  color: var(--text-hi);
+  font-family: var(--face-text);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-block-size: var(--control-sm);
+  padding: var(--s-1) var(--s-3) var(--s-1) var(--s-1);
+  background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--text-1);
+}
+
+.chipText {
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s-3);
+}
+
+.stale {
+  color: var(--text-2);
+  font-family: var(--face-text);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}
+
+.earlier {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding-block-start: var(--s-5);
+  border-block-start: 2px solid var(--text-hi);
+}
+
+.earlierTitle {
+  margin: 0;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.note {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-3);
+  margin: 0;
+  color: var(--text-2);
+  font-family: var(--face-text);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}
+
+.note p {
+  margin: 0;
+}

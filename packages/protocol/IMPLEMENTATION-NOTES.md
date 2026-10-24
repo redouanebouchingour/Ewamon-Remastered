@@ -321,3 +321,13 @@ installed library that future readers should not have to re-derive. The spec its
   sentence, at most 240), zoneId, speciesId, type }, `RumoursRes` { zoneId, town, day (UTC `YYYY-MM-DD`), facts (at most
   `RUMOUR_WORLD_MAX` 8 of the world's and `RUMOUR_GOSSIP_MAX` 3 about the caller) } and `RumourParams`.
 - Route `worldRumours` `GET /world/rumours/:zoneId`. Route count 117 → 118.
+
+## The adventure journal (2026-10-24, not in the SPEC)
+
+- `src/journal.ts` (exported from the index): `JOURNAL_FACT_KINDS`, `JournalFactSchema` { kind, text (one first-person
+  sentence, at most 200), speciesId, zoneId, type, count }, `JournalEntryViewSchema` { day, dayNumber, text (at most
+  `JOURNAL_TEXT_MAX` 600), facts, writtenAt }, `JournalDaySchema` { day, dayNumber, facts, entry }, `JournalRes` { today,
+  unwritten (at most `JOURNAL_BACKFILL_DAYS` 3 day keys), entries (at most `JOURNAL_LIST_MAX` 60) },
+  `JournalDayParams`, `JournalWriteReq` { text, at most `JOURNAL_WRITE_MAX` 2000 before the server cleans and cuts it }.
+- Routes `journal` `GET /journal`, `journalDay` `GET /journal/day/:day`, `journalWrite` `POST /journal/day/:day`
+  (rate limit key `journal`). Route count 118 → 121.

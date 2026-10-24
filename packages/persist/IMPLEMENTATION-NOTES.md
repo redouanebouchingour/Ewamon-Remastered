@@ -353,3 +353,17 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
 - Names: only what is already public. The rankings and public profiles show usernames and badges (there is no opt-in
   there to follow), camps show their holder, the bounty board its claimers.
 - Tests: `test/world-news.test.ts`.
+
+## The adventure journal (2026-10-24)
+
+- Migration `0024_journal` (drizzle-kit generated, `--name journal`; the journal entry's `when` is the generation
+  time): one `journal_entries` table keyed by (player, UTC day `YYYY-MM-DD`), cascade with the player: `day_number`
+  (checked at least 1), `text` varchar 600 (checked 1 to 600 characters), `facts` jsonb (the digest the entry was
+  written from, `JournalFactJson`, typed loosely since persist does not import protocol) and `written_at`.
+- `journalRepo` (`repos/journal.ts`, `repos.journal`): `entry`, `entries` (newest day first, before a day when asked),
+  `write` (an upsert: the caller decides who may write a day twice), and the reads behind a day's digest, each inside
+  [from, to) and the player's own: `creatureEvents` (creature history joined to the creatures the player owns now, with
+  species, nickname, shiny and alpha), `battles` (with the zone from the replay start snapshot), `audit` (chosen
+  actions), `badges`, `splits` (run splits) and `memories` (every NPC's memory of the player; the deeds carry times).
+  Every read is capped (`JOURNAL_READ_MAX` 400) and fully ordered.
+- Tests: `test/journal.test.ts`; `migrations.test.ts` lists the table.

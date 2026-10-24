@@ -2727,3 +2727,27 @@ the second isolated client (the component over the landing page: the foe and own
   the Healer's PC won the E prompt in front of the crier (moved, see content).
 - Tests: `test/rumours.test.ts` (prompt, checks, tidy, template, the day cache, one call, the store) and
   `test/rumours-screen.test.tsx` (the panel, the words replacing templates, About you, the picker, off, the More menu).
+
+## The adventure journal (2026-10-24, LLM feature 9, not in the SPEC)
+
+- `/play/journal` (`screens/JournalScreen.tsx`, the More menu): today's page first (Day N, "Today" and the UTC date,
+  the page, the day's facts as chips, Copy, Rewrite today), then the earlier pages newest first under a paper rule.
+  Chips: the creature's real sprite, else the type icon, else a kind icon, a short label, the fact's words on hover and
+  for screen readers. When more happened since today's page was written, the screen says so and Rewrite today turns
+  orange. Copy puts the page on the clipboard (a toast either way). Broadcast, no inline styles.
+- `talk/journal.ts`: one call per page (neutral system prompt; the day's facts, "Day N:" and "as I" in the user turn),
+  checked against the facts: feature 5's `ungrounded` and `wrongTypeClaims`, feature 8's `strangeNames` (mid-sentence
+  capitals only: a diary starts sentences with any word) and `strangeNumbers`, `resultFlips` (no win turned into a loss
+  or back), at least two facts told, "Day N:" set right. The template is "Day N:" and the first five facts as they are.
+  Measurements in the module header (23 of 24 kept, median 2.7 s).
+- `state/journal.ts`: opening the screen reads `GET /journal`, then writes what is missing one page at a time (today's
+  when the day has facts, then each unwritten day before it): the model's words when they hold, else the template;
+  stored with `POST /journal/day/:day` and shown at once. Rewrite today reads today again first. Closing the screen
+  stops the writing. `VITE_NPC_TALK=0` writes the templates.
+- `talk/rumours.ts`: `strangeNames` takes `sentenceStarts: false` for the journal.
+- Live check (alt2 pair on a fresh database, the docker model): Day 1 written on open from four facts in 3.8 s (the
+  model gave the facts back almost word for word); a new deed made the page stale and Rewrite today wrote the new
+  page in 6.8 s; the chip for kind words first read "had" (fixed: "Kind words", "Gift").
+- Tests: `test/journal.test.ts` (prompt, tidy, checks, template, one call, the store with its calls injected) and
+  `test/journal-screen.test.tsx` (the page written on open, chips, earlier pages, Copy, Rewrite today, an empty day,
+  off, the More menu).
