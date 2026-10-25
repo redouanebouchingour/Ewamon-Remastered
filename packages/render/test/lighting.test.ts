@@ -3,7 +3,7 @@ import { DirectionalLight, Group, PerspectiveCamera, PointLight, Scene, SpotLigh
 import type { LightSource } from '../src/descriptors.js';
 import { LIGHT_BUDGET } from '../src/descriptors.js';
 import {
-  CASCADE_JUMP_M, CASCADE_SCHEDULE, CASCADE_SPLITS_M, CSM_OPTIONS, LIGHT_LAYOUT, LightRig, SPEC_LIGHT_UNIT, SPOT_PARAMS, SUN_SHADOW, assertLightBudget,
+  CASCADE_JUMP_M, CASCADE_SCHEDULE, CASCADE_SPLITS_M, CSM_OPTIONS, FAR_CASCADE_SCALE, LIGHT_LAYOUT, LightRig, SPEC_LIGHT_UNIT, SPOT_PARAMS, SUN_SHADOW, assertLightBudget,
   cascadeBreaks, flickerFactor, lightTypeFor,
 } from '../src/lighting/rig.js';
 import { heightFogFactor } from '../src/lighting/fog.js';
@@ -58,25 +58,29 @@ describe('§10.3.2 light budget', () => {
   });
 });
 
-describe('§10.3.1 sun + 4 cascades', () => {
-  it('splits at 14 / 34 / 72 / 160 m over a 160 m far', () => {
-    expect(CASCADE_SPLITS_M).toEqual([14, 34, 72, 160]);
-    expect(CSM_OPTIONS).toMatchObject({ cascades: 4, maxFar: 160, mode: 'custom', lightMargin: 60 });
-    expect(cascadeBreaks(160, [])).toEqual([14 / 160, 34 / 160, 72 / 160, 1]);
+describe('§10.3.1 sun cascades (2 since 2026-10-25, IMPLEMENTATION-NOTES "Cheaper shadows and reflections")', () => {
+  it('splits at 44 / 160 m over a 160 m far', () => {
+    expect(CASCADE_SPLITS_M).toEqual([44, 160]);
+    expect(CSM_OPTIONS).toMatchObject({ cascades: 2, maxFar: 160, mode: 'custom', lightMargin: 60 });
+    expect(cascadeBreaks(160, [])).toEqual([44 / 160, 1]);
     const b = [9, 9, 9, 9, 9];
     expect(cascadeBreaks(160, b)).toBe(b);
-    expect(b.length).toBe(4);
-    expect(SUN_SHADOW).toEqual({ mapSize: 2048, bias: -0.0004, normalBias: 0.02, radius: 2 });
+    expect(b.length).toBe(2);
+    expect(SUN_SHADOW).toEqual({ mapSize: 1536, bias: -0.0004, normalBias: 0.02, radius: 2 });
+    expect(FAR_CASCADE_SCALE).toBe(0.5);
     expect(SPOT_PARAMS).toEqual({ angle: 0.87, penumbra: 0.5 });
   });
 
-  it('builds a 4-cascade CSM on one directional light, and the far cascade texel ≤ 8 cm', () => {
+  it('builds a 2-cascade CSM on one directional light; the near cascade covers every diorama zoom stop', () => {
     const scene = new Scene();
     const rig = new LightRig(scene);
-    expect(rig.csm.cascades).toBe(4);
-    expect(rig.sun.shadow.mapSize.x).toBe(2048);
+    expect(rig.csm.cascades).toBe(2);
+    expect(rig.sun.shadow.mapSize.x).toBe(1536);
     expect((rig.sun.shadow as unknown as { shadowNode: unknown }).shadowNode).toBe(rig.csm);
-    expect((160 - 72) / 2048).toBeLessThanOrEqual(0.08);
+    // the farthest ground the diorama camera sees: zoom stop 2 (34 m), pitch −52°, the top screen edge 14° above the axis
+    const h = 34 * Math.sin(52 * Math.PI / 180);
+    const top = (h / Math.sin(38 * Math.PI / 180)) * Math.cos(14 * Math.PI / 180);
+    expect(top).toBeLessThan(CASCADE_SPLITS_M[0]!);
     rig.updateFrustums();                         // guarded before the first render (no camera yet)
     rig.dispose();
     rig.dispose();                                // idempotent
@@ -92,45 +96,46 @@ describe('§10.3.1 sun + 4 cascades', () => {
     rig.dispose();
   });
 
-  it('staggers the far cascades: 2 maps a frame while the camera only walks; all 4 on a turn, a jump or a refresh', () => {
+  it('staggers the cascades: at most 1 map a frame while the camera only walks; both on a turn, a jump or a refresh', () => {
     const rig = new LightRig(new Scene());
-    const cascades = Array.from({ length: 4 }, () => new DirectionalLight());
+    const cascades = Array.from({ length: 2 }, () => new DirectionalLight());
     (rig.csm as unknown as { lights: DirectionalLight[] }).lights.push(...cascades);   // the CSM creates them on its first build
     const camera = new PerspectiveCamera(30, 16 / 9, 0.5, 400);
     camera.position.set(0, 20, 20);
     camera.lookAt(0, 0, 0);
     const live = (): number[] => cascades.flatMap((l, i) => (l.shadow.autoUpdate ? [i] : []));
     rig.scheduleShadows(camera);
-    expect(live()).toEqual([0, 1, 2, 3]);                          // the first frame renders everything
+    expect(live()).toEqual([0, 1]);                                // the first frame renders everything
+    expect(rig.cascadeMapSizes()).toEqual([1536, 768]);            // the far cascade at half the near one's edge
     const seen: number[][] = [];
     for (let f = 1; f <= 8; f++) {
       camera.position.x += 0.08;                                    // walking: ~5 m/s at 60 fps
       rig.scheduleShadows(camera);
       seen.push(live());
     }
-    for (const s of seen) expect(s.length).toBe(2);
-    expect(seen.every((s) => s[0] === 0)).toBe(true);              // the near cascade every frame
-    expect(seen.flat().filter((i) => i === 1).length).toBe(4);     // 14–34 m every 2nd frame
-    expect(seen.flat().filter((i) => i === 3).length).toBe(2);     // 72–160 m every 4th
+    for (const s of seen) expect(s.length).toBeLessThanOrEqual(1);
+    expect(seen.flat().filter((i) => i === 0).length).toBe(4);     // 0–44 m every 2nd frame
+    expect(seen.flat().filter((i) => i === 1).length).toBe(2);     // 44–160 m every 4th
     expect(CASCADE_SCHEDULE).toHaveLength(4);
 
     camera.rotateY(0.01);                                           // a heading change
     rig.scheduleShadows(camera);
-    expect(live()).toEqual([0, 1, 2, 3]);
+    expect(live()).toEqual([0, 1]);
     camera.position.x += CASCADE_JUMP_M + 1;                       // a warp
     rig.scheduleShadows(camera);
-    expect(live()).toEqual([0, 1, 2, 3]);
+    expect(live()).toEqual([0, 1]);
     camera.fov = 40;                                                // a projection change
     rig.scheduleShadows(camera);
-    expect(live()).toEqual([0, 1, 2, 3]);
+    expect(live()).toEqual([0, 1]);
     rig.applyDirectional([0.3, 0.9, 0.3], [1, 1, 1], 1);           // the sun turned (a dawn / dusk swap)
     rig.scheduleShadows(camera);
-    expect(live()).toEqual([0, 1, 2, 3]);
+    expect(live()).toEqual([0, 1]);
     rig.scheduleShadows(camera);
-    expect(live()).toHaveLength(2);
+    expect(live().length).toBeLessThanOrEqual(1);
     rig.setSunShadowMap(1024);                                      // a resized map is empty
+    expect(rig.cascadeMapSizes()).toEqual([1024, 512]);
     rig.scheduleShadows(camera);
-    expect(live()).toEqual([0, 1, 2, 3]);
+    expect(live()).toEqual([0, 1]);
     rig.dispose();
   });
 });

@@ -2347,6 +2347,8 @@ pool; `Part3.worldFx`).
 - `quality.ts`: `GraphicsQuality` `'low' | 'medium' | 'high'` and `QUALITY_PROFILES`. `high` is the SPEC (pixel-ratio cap
   1.5, 4 × 2048² sun cascades, GTAO 16 spp, DOF, bloom). `medium`: cap 1.25, 4 × 1024², GTAO 8 spp. `low`: cap 1,
   4 × 1024², no GTAO, no DOF, no bloom (TRAA, the grade, grain and chroma stay; the user's toggles still apply on top).
+  Since 2026-10-25 every preset has 2 sun cascades (1536² + 768² at `high`, 1024² + 512² below) and GTAO at 8 spp and
+  quarter resolution: see "Cheaper shadows and reflections".
 - `RendererOptions.quality` (default `'high'`, so tests and harnesses see the SPEC graph) and `Renderer.setQuality(q)`
   (contract additions). `'auto'` resolves through `recommendedQuality(caps)`: `low` on an integrated Intel adapter
   (`isIntegratedIntel`: WebGPU `intel <arch>` or an ANGLE string; Arc / `xe-hpg` excluded), `medium` on the WebGL2
@@ -2406,6 +2408,8 @@ time by draining the queue, running one `tick()` and timing until `device.queue.
   dark lamps looped by every lit fragment).
 
 ### Shadow update staggering
+
+(Superseded in its numbers by "Cheaper shadows and reflections": 2 cascades, schedule `[0] [1] [0] []`.)
 
 - `LightRig.scheduleShadows(camera)`, called per frame in `frameSteps` step 2, sets each CSM cascade light's
   `shadow.autoUpdate` from `CASCADE_SCHEDULE` (`[0,1] [0,2] [0,1] [0,3]`): the near cascade every frame, 14–34 m every
@@ -2500,8 +2504,91 @@ time by draining the queue, running one `tick()` and timing until `device.queue.
 - Visual: before / after at `high` match by day and at night with the moon glints. Without the backdrop the water
   reads a little lighter and bluer (no darker bed mixed in).
 
+### Cheaper shadows and reflections (deviates from §10.3.1, §10.2.4 / §10.2.2 clearcoat, §10.8.3 GTAO)
+
+The user's call (2026-10-25): shadows and reflections may get blockier on `high` too, judged from the default diorama
+camera only, to run on an i7-10750H + GTX 1650 at 1080p. Geometry, textures, characters, sprites and UI are unchanged.
+
+- **2 sun cascades instead of 4** (`lighting/rig.ts`): `CASCADE_SPLITS_M` `[44, 160]`, `CSM_OPTIONS.cascades` 2. The
+  diorama camera (FOV 28°, pitch −52°, distance 20 / 26 / 34 m) sees view depths of ~17–25 / ~22–32 / ~29–42 m, so
+  the old splits put everything on screen into the 14–34 m and 34–72 m cascades and the 0–14 m cascade, rendered every
+  frame, held almost nothing visible (34 shadow draws a frame). The 0–44 m cascade now covers every zoom stop.
+  `CASCADE_SCHEDULE` `[0] [1] [0] []`: the near one every 2nd frame (the cadence the player's own cascade had before),
+  the far one every 4th, 0.75 map renders a frame and never 2. Jump / turn / sun-turn / projection refreshes unchanged.
+- **Map sizes**: `QualityProfile.sunShadowMap` is the near cascade's edge, the far one gets `FAR_CASCADE_SCALE` (½):
+  `high` 1536² + 768² (was 4 × 2048²), `medium` / `low` 1024² + 512² (was 4 × 1024²). The cascades are cloned from the
+  sun's shadow on the CSM's first build, so `LightRig` keeps the sizes and writes them onto the cascade lights in the
+  next `scheduleShadows` (`cascadeMapSizes()` reads them back). Live, no recompile. Shadow depth memory 64 MB → 11.8 MB at
+  `high` (depth only; three's per-cascade colour attachment shrinks with it).
+- **No clearcoat lobe** (`materials/graph.ts` deviation 7): `surfaceStructure` never returns `physical`; cobble, slate
+  roof, obsidian, wet rock, wet flagstone and insulator glass render on `MeshStandardNodeMaterial`. The coat folds into
+  the base roughness: `mix(rough, coat.roughness, sat(mix(coat.base, coat.wet, wetness) × COAT_GLOSS))`, `COAT_GLOSS` 3
+  (a wet cobble ~0.22, a soaked slate roof 0.18, obsidian 0.08). The wet darkening, the wet roughness × 0.45 and the
+  puddles are unchanged. The physical program evaluated a second BRDF for the sun, the environment and every looped
+  local light on every cobble / roof fragment. Programs: the `physical` and `physical+tri` structures are gone.
+- **Noise only when it shows** (`materials/weatherSurface.ts`, `materials/clouds.ts`): every lit library fragment ran
+  5 Perlin noises whatever the weather (puddles 1, frost 2, cloud shadows 2). Each field now sits in an `If` on its
+  uniform (wetness > 0.02, frost > 0, cloud strength > 0; uniform control flow, every fragment takes the same branch):
+  a dry day skips 3, a night or an overcast sky also skips the 2 cloud octaves. Below each gate the old graph
+  multiplied the noise by 0, so the image is identical; the puddle and coarse-frost fields are 2D noise now (3D at a
+  constant z before: another pattern of the same scale and cover).
+- **GTAO** (`QualityProfile.gtaoScale`, `post/pipeline.ts`): 8 spp at quarter resolution on every preset with GTAO (was
+  16 spp at half on `high`). TRAA's temporal filter keeps it smooth; no visible difference from the diorama camera.
+  `high` and `medium` now plan the same GTAO stage, so switching between them rebuilds no post graph.
+- Kept: PCF (5 Vogel taps + hardware compare) with radius 2, the CSM fade band, the PMREM at 128 and its re-bake rule,
+  per-object `castShadow` (see the table for each).
+
+Measured on an Apple M2 Max (not the GTX 1650), headless Chrome, client harness, mirevale, 1920 × 1080, DPR 1,
+`high`. Views: the plaza from `(0, 6)`, rig 0, zoom stop 1, at night (0.02) in rain (wetness 1) and at noon. "Frame" =
+drain the queue, one `tick()`, until `onSubmittedWorkDone` (median of 200–280 frames, interleaved rounds); "pipelined"
+= 20 ticks back to back / 20 (GPU-bound throughput); "main" = the `tick()` call's main-thread ms. Structural levers
+(cascade count, filter, fade, noise, clearcoat as a class) were A/B'd over alternating page loads; the others toggled
+in one page. This GPU sometimes ran a whole page session at roughly half clock (every number ~2×); those sessions are
+left out. Per lever, against the old `high`:
+
+| Lever | Frame ms | Main ms | Look from the diorama camera | Adopted |
+|---|---|---|---|---|
+| a. 4 cascades → 2 (44 / 160 m), schedule `[0] [1] [0] []`, same 2048² | −1.1 (both views) | −0.7 | Player / prop shadows 2× coarser texels; a tree canopy's dappled shadow thins a little | yes |
+| a. maps 2048² → 1024² (4 cascades) / 512² | 0.0 / −0.3…−0.5 | 0 / −0.2 | 1024: softer; 512: blobby up close | 1536² + 768² on `high`, 1024² + 512² below |
+| b. 1-tap hardware compare instead of 5-tap PCF | 0.0 | 0 | harder, stair-stepped edges | no |
+| b. radius 2 → 1 | +0.1 | 0 | sharper | no |
+| b. CSM fade off | 0.0 | 0 | a seam between cascades | no |
+| c. clearcoat off (night, rain; 3 materials) | −0.4…−1.1 | 0 | wet cobbles keep their gloss through the folded roughness | yes (folded into roughness) |
+| d. a PMREM bake (128) | +1.3 for the one frame it runs | +0.7 | — | no: one bake per ≥ 20 s or 2° of sun, ~0 a frame |
+| e. GTAO 16 → 8 spp (half res) | −0.1 | 0 | none | yes (with quarter res) |
+| e. GTAO half → quarter res (16 or 8 spp) | −0.3 (pipelined −0.25) | 0 | none | yes |
+| f. weather noise gated (dry) | −0.6…−0.7 | 0 | identical | yes |
+| f. cloud-shadow noise gated (night) | ~−0.5 | 0 | identical | yes |
+| f. all sun shadows off (bound, after the above) | −1.0…−1.2 | −1.0…−1.1 | — | no |
+
+GTAO's saving is under the 0.5 ms bar on this GPU; it was adopted because it is a full-screen pass whose share grows on
+a ~4× slower GPU and it is invisible from the diorama camera. Per-object `castShadow` on small scatter was not the
+cost: grass, flowers and pebbles already cast nothing; trees, rocks and bushes are a dozen instanced draws. The shadow
+draws are buildings (84 material groups in 11 meshes) and props (37 groups); a merged shadow-only proxy per building
+would cut them further and is left open.
+
+Whole change, old `high` → new `high`, same views (fast-clock sessions, 2 per side):
+
+| View | Frame ms | Pipelined ms | Main ms | Shadow draws (median frame) |
+|---|---|---|---|---|
+| night, rain | 10.9–11.2 → 7.9–8.8 | 6.9–7.1 → 4.7–4.8 | 3.4 → 2.6–3.2 | 124 → 80 (0 on 1 frame in 4) |
+| noon | 9.9–10.0 → 7.2–7.7 | 5.5–5.6 → 3.9–4.2 | 3.3 → 2.6–2.8 | 120 → 80 |
+
+The prior note measured ~3.5 ms of i7-10750H main thread per cascade render: 2 → 0.75 renders a frame projects to
+~4 ms a frame there. Programs after boot settle and in mirevale 125 → 121 (vertex 58 → 56, fragment 67 → 65); the
+boot compile 1.34 s → 1.23–1.32 s, the zone compile 0.55–0.58 s → 0.44–0.53 s (one fewer cascade branch in every lit
+shader; this machine's shader cache was warm).
+
+Visual (screenshots at the default camera, before / after): at night in rain the plaza reads the same, the lamp pools
+and the wet glints on the cobbles stay; at noon the stall's and the player's shadows are softer and the big tree's
+canopy shadow is a little lighter and less dappled (visible side by side, not alone); at zoom stop 0 the player's
+shadow is a softer blob. First-person sees the 0–44 m cascade at 1536² up close: blockier, accepted.
+
 ### Tried and rejected
 
+- Shadows (2026-10-25): a 1-tap hardware-compare filter, a smaller PCF radius, the CSM fade off and a smaller PMREM
+  bought nothing measurable (table above). Lowering the cards' alpha cut in the shadow pass did not bring the canopy's
+  shadow density back (the colour pass's `alphaTest` still discards there).
 - `COMPILE_CONCURRENCY` 12 instead of 4: no gain beyond run-to-run spread (the GPU process compiles largely serially).
 - Lower quality presets: barely changed GPU time at 1080p on the GTX 1650.
 - Deferring the 83 library warm-up quads: only ~8–27 distinct programs, which the first zone needs anyway.

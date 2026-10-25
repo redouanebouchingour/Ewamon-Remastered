@@ -68,12 +68,13 @@ describe('§10.8.1 order, realised as one graph', () => {
     expect(contains(gtao as unknown as Node, dof as unknown as Node)).toBe(false);
   });
 
-  it('carries the §10.8.3 numbers', () => {
+  it('carries the §10.8.3 numbers (GTAO at the preset\'s cost: 8 spp, quarter resolution, IMPLEMENTATION-NOTES "Cheaper shadows and reflections")', () => {
     const { outputNode, plan } = graphOf(ALL_EFFECTS);
     const all = collect(outputNode);
     const [gtao] = find(all, GTAONode);
-    expect(gtao!.resolutionScale).toBe(0.5);
-    expect(gtao!.samples.value).toBe(16);
+    expect(POST_PARAMS.gtao).toMatchObject({ resolutionScale: 0.5, samples: 16 });   // the SPEC numbers, still the fallback
+    expect(gtao!.resolutionScale).toBe(0.25);
+    expect(gtao!.samples.value).toBe(8);
     expect(gtao!.radius.value).toBe(0.9);
     expect(gtao!.thickness.value).toBe(0.6);
     expect(gtao!.useTemporalFiltering).toBe(true);

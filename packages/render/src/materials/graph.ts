@@ -25,8 +25,14 @@
  *    the triplanar path (§40.3.2 "repeat is world-constant in the shader").
  * 6. Cheap feature flags are uniforms too (wetness response, emissive / emissive-from-albedo, forced
  *    harvest level, clearcoat values, card wind amplitude, card back-face tint), so the program set is
- *    one per `surfaceStructure()` — {standard, physical, card, water} × triplanar × trunk wind — not one
+ *    one per `surfaceStructure()` — {standard, card, water} × triplanar × trunk wind — not one
  *    per feature combination. Measured in the sandbox: this halves the library's programs.
+ * 7. No clearcoat lobe (2026-10-25, performance; IMPLEMENTATION-NOTES "Cheaper shadows and reflections"): the
+ *    `physical` class and every `clearcoat` def render on the standard graph. The coat's gloss folds into the base
+ *    roughness instead, `rough → mix(rough, coat.roughness, sat(coat amount × COAT_GLOSS))` with the coat amount `mix(base, wet, wetness)`
+ *    (uniforms; zeros for every other surface). The physical program ran a second BRDF for the sun, the environment
+ *    and every looped local light on every cobble and roof fragment; its two structures (`physical`, `physical+tri`)
+ *    are gone. Water stays a `MeshPhysicalNodeMaterial`.
  */
 import { Color, DoubleSide, FrontSide, MeshPhysicalNodeMaterial, MeshStandardNodeMaterial, Vector3, Vector4 } from 'three/webgpu';
 import type { Node, TextureNode, UniformNode } from 'three/webgpu';
@@ -69,7 +75,7 @@ export interface SurfaceParams {
   readonly wetResponse: UniformNode<'float', number>;
   /** 1 → always render at harvest level 2 (`unmade_stone`), else 0. */
   readonly forceHarvest: UniformNode<'float', number>;
-  /** Clearcoat base / wet / roughness (physical graph only; zeros when the def has no clearcoat). */
+  /** Clearcoat base / wet / roughness, folded into the base roughness (deviation 7; zeros when the def has no clearcoat). */
   readonly clearcoat: { readonly base: UniformNode<'float', number>; readonly wet: UniformNode<'float', number>; readonly roughness: UniformNode<'float', number> };
   /** Cards always carry wind (amplitude 0 when the def has none); standard surfaces only when the def has trunk wind. */
   readonly wind: WindParams | null;
@@ -88,16 +94,15 @@ export interface SurfaceParams {
   readonly tone: UniformNode<'vec4', Vector4>;
 }
 
+/** `physical` is no longer produced (deviation 7); kept so an old structure key still reads. */
 export type GraphKind = 'standard' | 'physical' | 'card' | 'water';
 
 /** The only surface properties that change the generated program (everything else is a uniform). */
 export interface SurfaceStructure { readonly kind: GraphKind; readonly triplanar: boolean; readonly trunkWind: boolean }
 
 export function surfaceStructure(def: SurfaceDef): SurfaceStructure {
-  const kind: GraphKind = def.cls === 'water' ? 'water'
-    : def.cls === 'card' ? 'card'
-      : (def.clearcoat !== null || def.cls === 'physical') ? 'physical' : 'standard';
-  const solid = kind === 'standard' || kind === 'physical';
+  const kind: GraphKind = def.cls === 'water' ? 'water' : def.cls === 'card' ? 'card' : 'standard';   // no clearcoat lobe (deviation 7)
+  const solid = kind === 'standard';
   return {
     kind,
     triplanar: solid && def.triplanar,
@@ -193,12 +198,18 @@ export function applyBakedParams(p: SurfaceParams, def: SurfaceDef, metres: numb
   p.tileScale.value = 1 / (metres > 0 ? metres : defaultMetres(def));
 }
 
+/**
+ * Deviation 7: how strongly the coat amount pulls the base roughness to the coat's. Above 1 because the lost lobe was a
+ * second highlight on top of the base, not a blend: a wet cobble (coat 0.25) lands at ~0.22, a soaked roof at its 0.18.
+ */
+export const COAT_GLOSS = 3;
+
 /** §10.2.4, the one graph for classes standard / physical / card / emissive. */
 export function buildSurfaceGraph(def: SurfaceDef, _extras: SurfaceExtras, maps: SurfaceMaps, p: SurfaceParams, u: SharedUniforms): SurfaceMaterial {
   const st = surfaceStructure(def);
   if (st.kind === 'water') return buildWaterGraph(def, maps, p, u);
 
-  const m: SurfaceMaterial = st.kind === 'physical' ? new MeshPhysicalNodeMaterial() : new MeshStandardNodeMaterial();
+  const m: SurfaceMaterial = new MeshStandardNodeMaterial();
 
   const h: Node<'float'> = max(harvestBlend(u) as Node<'float'>, p.forceHarvest);
   const uvN = uv().mul(p.tileScale);
@@ -220,14 +231,13 @@ export function buildSurfaceGraph(def: SurfaceDef, _extras: SurfaceExtras, maps:
   m.normalNode = mix(mix(tangentNormal(nrm.rgb, float(1)), normalView, h), normalView, ws.puddle).normalize();   // level 2 / a puddle = geometry normal
   const rough = mix(orm.g.mul(p.roughScale).add(p.roughBias), float(0.95), h);                    // level 2 = flat rough
   const wetRough = rough.mul(mix(float(1), float(0.45), u.wetness.mul(p.wetResponse)));            // wet → × 0.45
-  m.roughnessNode = mix(mix(wetRough, float(WEATHER_SURFACE.puddleRough), ws.puddle), float(0.85), ws.frost);
+  // deviation 7: the coat's gloss as base roughness (a coat amount of 0 leaves `wetRough` as it is)
+  const coat = mix(p.clearcoat.base, p.clearcoat.wet, u.wetness).mul(oneMinus(h));
+  const coated = mix(wetRough, p.clearcoat.roughness, coat.mul(COAT_GLOSS).saturate());
+  m.roughnessNode = mix(mix(coated, float(WEATHER_SURFACE.puddleRough), ws.puddle), float(0.85), ws.frost);
   m.metalnessNode = mix(orm.b.mul(p.metalScale).add(p.metalBias), float(0), h);
   m.aoNode = mix(orm.r, float(1), h);
   m.emissiveNode = mix(p.emissive, alb.rgb.mul(p.emissive), p.emissiveFromAlbedo).mul(oneMinus(h)); // level 2: no light sources (Pillar 4 off)
-  if (m instanceof MeshPhysicalNodeMaterial) {
-    m.clearcoatNode = mix(p.clearcoat.base, p.clearcoat.wet, u.wetness).mul(oneMinus(h));
-    m.clearcoatRoughnessNode = p.clearcoat.roughness;
-  }
   if (p.wind !== null) m.positionNode = windDisplace(positionLocal, p.wind, u);                      // §10.2.5
   if (st.kind === 'card') {
     m.alphaTest = def.alphaTest ?? 0.5;
