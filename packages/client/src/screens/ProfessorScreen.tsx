@@ -6,12 +6,15 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { Link } from 'react-router';
+import { speciesName } from '../data/content';
 import { noDashes } from '../talk/llm';
 import { askProfessor, useProfessorStore } from '../state/professor';
 import type { ProfEntry } from '../state/professor';
 import { MAX_QUESTION } from '../state/professor';
 import { Button } from '../ui/Button';
 import { CreatureSprite } from '../ui/CreatureSprite';
+import { dexHref } from '../data/dexInfo';
 import { Panel } from '../ui/Panel';
 import { TypeBadge } from '../ui/TypeBadge';
 import { cx } from '../ui/cx';
@@ -48,7 +51,9 @@ function Answer({ entry }: { readonly entry: ProfEntry }) {
         {(sheet.species.length > 0 || sheet.types.length > 0) && (
           <div className={s.strip} aria-label="About">
             {sheet.species.map((id) => (
-              <CreatureSprite key={id} speciesId={id} size="sm" />
+              <Link key={id} to={dexHref(id)} className={s.dexLink} aria-label={`${speciesName(id)} in the Dex`} title="Open its Dex entry">
+                <CreatureSprite speciesId={id} size="sm" />
+              </Link>
             ))}
             {sheet.types.map((t) => (
               <TypeBadge key={t} type={t} size="sm" />

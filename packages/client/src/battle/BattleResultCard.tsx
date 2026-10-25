@@ -10,9 +10,11 @@
  */
 import { badgeDisplay } from '../data/badgeIcon';
 import { itemInfo } from '../data/content';
+import { dexHref } from '../data/dexInfo';
 import { levelLabel, useArenaStore } from '../state/arena';
 import { useUiStore } from '../state/ui';
 import { ARENA_KIND_LABELS } from '@ewa/protocol';
+import { navigateTo } from '../app/navigation';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { battleActions } from './controllerRef';
@@ -65,6 +67,9 @@ export function BattleResultCard() {
   // Phase D14: a won rematch concedes with its own line (the first fight's names the badge)
   const rematch = foe !== null && state !== null ? rematchOfBattle(state, seat) : null;
   const concession = foe === null ? null : rematch !== null ? (rematch.post[0] ?? null) : concessionLine(foe.league);
+  // a caught or beaten wild creature: its Dex entry is one press away (when no prompt waits after the card)
+  const wildFoe = state === null ? null : (state.sides[seat === 0 ? 1 : 0].party[state.sides[seat === 0 ? 1 : 0].active]?.creature.speciesId ?? null);
+  const dexId = !replay && watched === null && result.prompts === 0 && format === 'wild' && (o.winner === 'caught' || won) ? wildFoe : null;
   return (
     <Modal
       open
@@ -73,9 +78,22 @@ export function BattleResultCard() {
       onClose={done}
       description={watched !== null ? 'End of the match.' : replay ? 'End of the replay.' : o.winner === 'caught' ? 'It joins your party, or your box when the party is full.' : undefined}
       footer={
-        <Button variant="primary" onClick={done}>
-          {result.prompts > 0 || (arena !== null && !replay) ? 'Continue' : 'Back to the world'}
-        </Button>
+        <>
+          {dexId !== null && (
+            <Button
+              icon="dex"
+              onClick={() => {
+                done();
+                navigateTo(dexHref(dexId));
+              }}
+            >
+              Dex entry
+            </Button>
+          )}
+          <Button variant="primary" onClick={done}>
+            {result.prompts > 0 || (arena !== null && !replay) ? 'Continue' : 'Back to the world'}
+          </Button>
+        </>
       }
     >
       <div className={s.body} data-testid="battleresult">
