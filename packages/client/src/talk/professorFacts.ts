@@ -35,6 +35,7 @@ import {
 import type { BadgeId, EncounterSlot, LeagueTrainer, ZoneDef, ZoneId } from '@ewa/content';
 import { HONOR_DELTAS, TYPE_NAMES, typeMultiplier } from '@ewa/core';
 import type { CreatureInstance, MoveDef, SpeciesDef, TypeName } from '@ewa/core';
+import { immuneTo, resistedBy, strongAgainst, superEffectiveOn } from '../data/dexInfo';
 import { storyHint, storyFlagSet } from '../scene/dialogue';
 
 // ---- the save ------------------------------------------------------------------------------------------------------
@@ -175,25 +176,8 @@ export function movesAtLevel(sp: SpeciesDef, level: number): readonly string[] {
   return seen.length > 0 ? seen.slice(-4) : sp.moves.slice(0, 4);
 }
 
-/** Types whose moves hit these defending types for double damage or more. */
-export function superEffectiveOn(defending: readonly TypeName[]): TypeName[] {
-  return TYPE_NAMES.filter((t) => typeMultiplier(TYPE_CHART, t, defending) >= 2);
-}
-/** Types whose moves do half damage or less (but some) to these defending types. */
-export function resistedBy(defending: readonly TypeName[]): TypeName[] {
-  return TYPE_NAMES.filter((t) => {
-    const m = typeMultiplier(TYPE_CHART, t, defending);
-    return m > 0 && m < 1;
-  });
-}
-export function immuneTo(defending: readonly TypeName[]): TypeName[] {
-  return TYPE_NAMES.filter((t) => typeMultiplier(TYPE_CHART, t, defending) === 0);
-}
-/** Defending types this attacking type hits for double damage. */
-export function strongAgainst(attacking: TypeName): TypeName[] {
-  return TYPE_NAMES.filter((t) => typeMultiplier(TYPE_CHART, attacking, [t]) >= 2);
-}
-
+// the matchup lookups live in data/dexInfo.ts (the Dex shows them too); re-exported for the professor's callers
+export { immuneTo, resistedBy, strongAgainst, superEffectiveOn } from '../data/dexInfo';
 
 /** The best damaging move of `moves` against `defending`: power × type × same-type bonus. */
 export function bestMove(attackerTypes: readonly TypeName[], moves: readonly string[], defending: readonly TypeName[]): { readonly move: string; readonly type: TypeName; readonly mult: number; readonly score: number } | null {
