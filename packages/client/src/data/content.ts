@@ -10,6 +10,7 @@ import {
   KEY_ITEMS,
   MOVES,
   ORBS,
+  RELICS,
   SPECIES,
   TRADE_EVOLVE_RIBBON,
   allZones,
@@ -106,6 +107,10 @@ for (const i of ITEMS) {
 }
 // Phase D1–D3: old_rod + TMs are key items; the evolution stones are consumables
 for (const i of KEY_ITEMS) {
+  itemMap.set(i.id, { id: i.id, name: i.name, description: i.description, kind: i.slot, price: i.price, sellPrice: 0, usableInBattle: false });
+}
+// the Original Master Relics: held items (ravatar's relic forms), never sold
+for (const i of RELICS) {
   itemMap.set(i.id, { id: i.id, name: i.name, description: i.description, kind: i.slot, price: i.price, sellPrice: 0, usableInBattle: false });
 }
 for (const c of [...CONSUMABLES, ...EVOLUTION_STONES]) {
