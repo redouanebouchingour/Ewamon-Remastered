@@ -74,6 +74,20 @@
   font-size: var(--t-display);
 }
 
+.xxl {
+  inline-size: 176px;
+  block-size: 176px;
+  background: transparent;
+}
+
+.xxl .monogram {
+  font-size: var(--t-hero);
+}
+
+.xxl::after {
+  block-size: 8%;
+}
+
 .silhouette {
   background: var(--bg-0);
 }
@@ -108,4 +122,42 @@
 
 .ember .img {
   filter: hue-rotate(-50deg) saturate(1.3);
+}
+
+/* a shiny: its species' shiny palette (--shiny-pal-*, the triple the world's billboard wears, in place of the variant
+   tint above) and a glint that sweeps across (still under reduced motion) */
+.shiny .img {
+  filter: hue-rotate(var(--shiny-pal-hue, 0deg)) saturate(var(--shiny-pal-sat, 1.25)) brightness(var(--shiny-pal-lit, 1.08)) drop-shadow(0 0 6px var(--shiny-gold));
+}
+
+.shiny::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(circle at 22% 28%, var(--shiny-light) 0 2px, transparent 3px),
+    radial-gradient(circle at 76% 22%, var(--shiny-gold) 0 2px, transparent 3px),
+    radial-gradient(circle at 68% 74%, var(--shiny-light) 0 1.5px, transparent 2.5px),
+    linear-gradient(115deg, transparent 35%, color-mix(in srgb, var(--shiny-light) 45%, transparent) 50%, transparent 65%);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 250% 100%;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: glint 2.4s var(--ease-out) infinite;
+}
+
+@keyframes glint {
+  from {
+    background-position: 0 0, 0 0, 0 0, 120% 0;
+  }
+
+  to {
+    background-position: 0 0, 0 0, 0 0, -120% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shiny::before {
+    animation: none;
+  }
 }

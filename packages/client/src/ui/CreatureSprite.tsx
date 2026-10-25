@@ -11,8 +11,10 @@ export interface CreatureSpriteProps {
   /** a form the creature wears outside a battle (`wornForm`, ravatar's relic forms): its `<species>_<form>` thumb */
   readonly form?: string | null;
   readonly variantKey?: VariantKey;
-  /** 40 / 56 / 72 / 120 px */
-  readonly size?: 'sm' | 'md' | 'lg' | 'xl';
+  /** 40 / 56 / 72 / 120 / 176 px (xxl: the Dex entry's hero) */
+  readonly size?: 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
+  /** a shiny: a gold glint sweeps over the thumbnail (the world draws the real sparkle) */
+  readonly shiny?: boolean;
   /** unknown dex entry: dark silhouette, no name */
   readonly silhouette?: boolean;
   /** seen-but-not-caught dex entry */
@@ -24,7 +26,7 @@ export interface CreatureSpriteProps {
  * The pipeline thumbnail when it exists, otherwise a type-tinted monogram disc — never a broken image and
  * never the game atlases (§20.10.2 rule 6). `loading="lazy"`, `decoding="async"`.
  */
-export function CreatureSprite({ speciesId, form = null, variantKey = 'normal', size = 'md', silhouette = false, desaturate = false, className }: CreatureSpriteProps) {
+export function CreatureSprite({ speciesId, form = null, variantKey = 'normal', size = 'md', shiny = false, silhouette = false, desaturate = false, className }: CreatureSpriteProps) {
   const thumbs = useThumbSet();
   const [failedKey, setFailedKey] = useState<string | null>(null);
   const name = speciesName(speciesId);
@@ -38,7 +40,7 @@ export function CreatureSprite({ speciesId, form = null, variantKey = 'normal', 
     <span
       data-type={formType ?? primaryType(speciesId)}
       data-form={form ?? undefined}
-      className={cx(s.sprite, s[size], silhouette && s.silhouette, desaturate && s.desaturate, s[variantKey], className)}
+      className={cx(s.sprite, s[size], silhouette && s.silhouette, desaturate && s.desaturate, s[variantKey], shiny && !silhouette && s.shiny, className)}
       aria-hidden
     >
       {showImg ? (

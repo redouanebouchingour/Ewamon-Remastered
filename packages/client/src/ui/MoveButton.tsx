@@ -49,7 +49,7 @@ export function MoveButton({ move, pp, ppMax, effectiveness = null, disabled = f
   );
   const pow = (
     <span className={s.pow}>
-      <span className={s.statLabel}>POW</span> <b className={s.num}>{move.power > 0 ? move.power : '—'}</b>
+      <span className={s.statLabel}>POW</span> <b className={s.num}>{move.power > 0 ? move.power : '-'}</b>
     </span>
   );
   const acc = <span className={s.acc}>{move.accuracy !== null ? `${move.accuracy}% acc` : 'never misses'}</span>;
