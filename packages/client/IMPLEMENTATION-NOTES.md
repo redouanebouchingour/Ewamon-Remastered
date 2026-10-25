@@ -2343,7 +2343,8 @@ the second isolated client (the component over the landing page: the foe and own
 - On: the rig's `setFirstPerson` gets the look; `cameraYaw()` returns the look yaw, so WASD walks where you look
   (the same camera-relative `LocalPlayerController` path); the player's own body is hidden (re-applied each frame, a
   zone handover respawns the actor) and faces the look; the diorama's tilt-shift DOF is off (it blurred everything
-  past a few metres); wheel zoom and the Q / R heading turns do nothing.
+  past a few metres); wheel zoom and the Q / R heading turns do nothing. In a hall `syncView(null)` stands every wall
+  (render `setView(null)`); render turns the occluder fade off by itself (2026-10-25).
 - Looking: a left-button drag over the canvas (`InputCallbacks.look`, 0.0042 rad per px, pitch ±1.35 rad). In the
   diorama `look` declines and the drag turns the heading as before.
 

@@ -25,6 +25,11 @@
  * fades only what rises into the line of sight: no lower than `fgBelowM` under the camera → chest line at that point,
  * and within `fgSideM` of it sideways (horizontal), each eased over `fgRampM`. A crown or roof that stands over the
  * player or a creature beside them still fades.
+ *
+ * 2026-10-25 (player report: a dithered hole in the roofs and upper walls straight ahead in first person): the capsule and
+ * the foreground volume are a third-person tool (the eye at the player's head has nothing between it and the player),
+ * so the host passes strength 0 while the rig poses the eye in first person (`occlusionStrength`). Uniform only: the
+ * same programs, no recompile on the toggle.
  */
 import { Vector3 } from 'three/webgpu';
 import type { Camera, Node, UniformNode } from 'three/webgpu';
@@ -88,6 +93,14 @@ export function setOcclusion(u: OcclusionUniforms, camera: Vector3, feet: Vector
   const len = u.from.value.distanceTo(u.to.value);
   u.tCut.value = len > OCCLUSION.clearM ? 1 - OCCLUSION.clearM / len : 0;
   u.strength.value = Number.isFinite(strength) ? Math.min(1, Math.max(0, strength)) : 0;
+}
+
+/**
+ * The fade strength the host writes per frame: 1 in the diorama, eased out as a battle / inspector shot blends in
+ * (`shotBlend` 0 … 1), and 0 while the eye is in first person (nothing stands between it and the player).
+ */
+export function occlusionStrength(shotBlend: number, firstPerson: boolean): number {
+  return firstPerson ? 0 : 1 - shotBlend;
 }
 
 /** The mask node: true keeps the fragment. */

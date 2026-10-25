@@ -2332,6 +2332,12 @@ pool; `Part3.worldFx`).
   (last frame's body pose: the camera updates before the pool). A hidden body still poses while it dances.
 - `ActorPool.setHidden(id, hidden)` (contract addition): hides one actor's body (its feet, decal and nameplate anchor
   stay); `spawn` resets it. The client hides the player's own body in first person.
+- No see-through in first person (2026-10-25, player report: a dithered hole in the roofs straight ahead). The occluder
+  fade's capsule and foreground volume are for the diorama camera: `DioramaRig.firstPersonActive` (true when the last
+  `update` posed the eye) makes the renderer write strength 0 (`occlusionStrength(shotBlend, fp)`) in the same frame the
+  eye moves, so neither toggle shows a frame of dither. A uniform only: same programs, no recompile.
+  `InteriorsHandle.setView(null)` (contract widening) stands every wall of the active hall; the client passes null in
+  first person (it passed the look yaw, which dropped the wall behind the eye and left it easing back up on a turn).
 
 ## Breakdance (emote 7, 2026-10-22, not in the spine)
 

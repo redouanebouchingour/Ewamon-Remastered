@@ -26,7 +26,7 @@ import { DEFAULT_ZOOM_STOP, DISTANCE, PITCH } from './camera/rig.js';
 import { orbitPosition, type OrbitPose } from './camera/battle.js';
 import { hasRenderable, orderUnits, planZoneCompile, type ViewGuess } from './compilePlan.js';
 import { isDevBuild } from './env.js';
-import { setOcclusion } from './materials/occlusion.js';
+import { occlusionStrength, setOcclusion } from './materials/occlusion.js';
 import type { BufferGeometry, Camera, Object3D, RenderTarget } from 'three/webgpu';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import type {
@@ -1336,9 +1336,13 @@ class RendererHost implements Renderer, HostContext {
     // (1) camera
     this.camera.update(scaled);
     const focus = (this.camera.focus as Vector3) ?? _focusFallback;
-    // the diorama occluder fade (M2-spawn-noon-9): camera → the followed feet, faded out as a shot blends in
+    // the diorama occluder fade (M2-spawn-noon-9): camera → the followed feet, faded out as a shot blends in, off in
+    // first person (the rig posed the eye this same update, so the toggle never shows a frame of dither)
     const occ = this.materials.uniforms.occlusion;
-    if (occ !== undefined) setOcclusion(occ, this.camera3.position, focus, 1 - ((this.camera as CameraRig & { shotBlend?: number }).shotBlend ?? 0));
+    if (occ !== undefined) {
+      const rig = this.camera as CameraRig & { shotBlend?: number; firstPersonActive?: boolean };
+      setOcclusion(occ, this.camera3.position, focus, occlusionStrength(rig.shotBlend ?? 0, rig.firstPersonActive === true));
+    }
     // (2) day cycle: uniforms only (+ PMREM re-bake when due)
     this.materials.uniforms.windTime.value += scaled / 1000;
     this.renderClockS += scaled / 1000;

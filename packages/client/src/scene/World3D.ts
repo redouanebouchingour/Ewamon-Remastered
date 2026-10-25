@@ -2183,8 +2183,8 @@ class World implements World3D {
       this.nameplateLeft = NAMEPLATE_MS;
       this.updateNameplates();
     }
-    // the active pocket drops the walls facing the camera (only on a yaw change)
-    if (this.director.pocket !== null) this.director.syncView(this.cameraYaw());
+    // the active pocket drops the walls facing the camera (only on a yaw change); in first person every wall stands
+    if (this.director.pocket !== null) this.director.syncView(this.fpOn ? null : this.cameraYaw());
     this.backdrop?.update(frameDt);
     // (3)
     this.hudWriter.flush();
