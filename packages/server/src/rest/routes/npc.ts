@@ -12,7 +12,7 @@
  * - battle: the zone room holding the player opens a battle with the NPC (`NPC_BATTLE_TOPIC`, rooms/ZoneRoom.ts); the
  *   reply moves nothing, and a refusal there (no usable party) reaches the player as a room error.
  *
- * Wallets and gift cooldowns live in memory (a restart refills them). `NPC_TOOLS` (env) turns it off; unset, it is
+ * Wallets and gift cooldowns live in memory (a restart refills them, and so does an hour untouched). `NPC_TOOLS` (env) turns it off; unset, it is
  * off in production.
  *
  * Every action is also remembered by the NPC (`game/npcMemory.ts`): money or an Ewamon it gave is `giftReceived`, one
@@ -62,6 +62,8 @@ export function trimNote(text: string): string {
 export const NPC_GIFT_COOLDOWN_MS = 10 * 60_000;
 const WALLET_MIN = 300;
 const WALLET_MAX = 2000;
+/** a wallet nobody touched for this long goes back to its seed (as a restart would), so the map stays bounded */
+export const NPC_WALLET_IDLE_MS = 60 * 60_000;
 /** `{ playerId, npcId }`: the zone room holding the player opens the battle (rooms/ZoneRoom.ts) */
 export const NPC_BATTLE_TOPIC = 'ewa:npcBattle';
 
@@ -73,16 +75,19 @@ export function registerNpcRoutes(app: FastifyInstance, deps: RestDeps): void {
   registerHaggleRoutes(app, deps, on);
   registerRumourRoutes(app, deps, on);
   registerJournalRoutes(app, deps, on);
-  /** `${playerId}:${npcId}` → the NPC's wallet for that player */
-  const wallets = new Map<string, number>();
+  /** `${playerId}:${npcId}` → the NPC's wallet for that player, once it moved from its seed, and when it last moved */
+  const wallets = new Map<string, { readonly wallet: number; readonly at: number }>();
   /** `${playerId}:${npcId}` → when the NPC has a creature to give again */
   const giftAt = new Map<string, number>();
-  const walletOf = (key: string, npcId: string): number => {
-    const w = wallets.get(key);
-    if (w !== undefined) return w;
-    const seeded = WALLET_MIN + Math.floor((createRng(`${deps.worldSeed}:npc-wallet:${npcId}`).next() * (WALLET_MAX - WALLET_MIN)) / 10) * 10;
-    wallets.set(key, seeded);
-    return seeded;
+  const walletOf = (key: string, npcId: string): number =>
+    wallets.get(key)?.wallet ?? WALLET_MIN + Math.floor((createRng(`${deps.worldSeed}:npc-wallet:${npcId}`).next() * (WALLET_MAX - WALLET_MIN)) / 10) * 10;
+  let sweptAt = Number.NEGATIVE_INFINITY;
+  /** at most once per gift cooldown: drop lapsed cooldowns and idle wallets */
+  const sweep = (t: number): void => {
+    if (t - sweptAt < NPC_GIFT_COOLDOWN_MS) return;
+    sweptAt = t;
+    for (const [k, until] of giftAt) if (until <= t) giftAt.delete(k);
+    for (const [k, w] of wallets) if (t - w.at >= NPC_WALLET_IDLE_MS) wallets.delete(k);
   };
 
   /** the caller's zone, when the NPC stands in it (a ZoneDef npc or an interior resident) */
@@ -128,6 +133,7 @@ export function registerNpcRoutes(app: FastifyInstance, deps: RestDeps): void {
     const t = clock();
     const now = new Date(t);
     const asked = body.amount ?? NPC_MONEY_MAX;
+    sweep(t);
 
     if (body.action === 'battle') {
       const row = await repos.db.transaction((tx) => repos.players.byId(tx, id));
@@ -148,7 +154,7 @@ export function registerNpcRoutes(app: FastifyInstance, deps: RestDeps): void {
           const amount = Math.min(asked, wallet);
           const money = await repos.players.addMoney(tx, id, amount);
           await audit({ amount });
-          return { money, amount, wallet: wallet - amount, creaturesAdded: [], creaturesRemoved: [], commit: (): void => void wallets.set(key, wallet - amount) };
+          return { money, amount, wallet: wallet - amount, creaturesAdded: [], creaturesRemoved: [], commit: (): void => void wallets.set(key, { wallet: wallet - amount, at: t }) };
         }
         case 'takeMoney': {
           const amount = Math.min(asked, row.money);
@@ -156,7 +162,7 @@ export function registerNpcRoutes(app: FastifyInstance, deps: RestDeps): void {
           const money = await repos.players.addMoney(tx, id, -amount);
           const wallet = walletOf(key, body.npcId) + amount;
           await audit({ amount });
-          return { money, amount, wallet, creaturesAdded: [], creaturesRemoved: [], commit: (): void => void wallets.set(key, wallet) };
+          return { money, amount, wallet, creaturesAdded: [], creaturesRemoved: [], commit: (): void => void wallets.set(key, { wallet, at: t }) };
         }
         case 'giveCreature': {
           if ((giftAt.get(key) ?? 0) > t) throw new HttpError(409, 'npcNoCreature');

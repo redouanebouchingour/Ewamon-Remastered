@@ -51,6 +51,11 @@ export function liveDeal(h: ShopHaggle, now: number): Deal | null {
   return h.deal !== null && h.deal.expiresAt > now ? h.deal : null;
 }
 
+/** Nothing in force, nothing won in the window, no cooldown: the same as `EMPTY` from here on. */
+function settled(h: ShopHaggle, now: number): boolean {
+  return liveDeal(h, now) === null && wonRecently(h, now) === 0 && readyAt(h, now) === null;
+}
+
 export function wonRecently(h: ShopHaggle, now: number): number {
   return h.won.filter((t) => now - t < HAGGLE_WINDOW_MS).length;
 }
@@ -89,13 +94,18 @@ export function decideHaggle(h: ShopHaggle, kind: HaggleKind, asked: number, fee
 /** Every player's haggling, per shop; one per server process (`haggleBook`). */
 export class HaggleBook {
   private readonly shops = new Map<string, ShopHaggle>();
+  private sweptAt = Number.NEGATIVE_INFINITY;
 
   of(playerId: string, npcId: string): ShopHaggle {
     return this.shops.get(`${playerId}:${npcId}`) ?? EMPTY;
   }
 
-  set(playerId: string, npcId: string, h: ShopHaggle): void {
+  set(playerId: string, npcId: string, h: ShopHaggle, now: number): void {
     this.shops.set(`${playerId}:${npcId}`, h);
+    // at most once per window: forget the shops that read the same as no haggle at all, so the book stays bounded
+    if (now - this.sweptAt < HAGGLE_WINDOW_MS) return;
+    this.sweptAt = now;
+    for (const [k, s] of this.shops) if (settled(s, now)) this.shops.delete(k);
   }
 
   /** The deal in force with the zone's keeper, as the protocol shows it (null: none). */
