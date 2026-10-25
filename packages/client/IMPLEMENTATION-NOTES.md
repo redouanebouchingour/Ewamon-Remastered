@@ -2365,10 +2365,12 @@ the second isolated client (the component over the landing page: the foe and own
   frames until the next slot on a fixed 1000 / cap ms grid (1 ms slack), so 120 / 144 Hz displays do half the work and
   the simulation still steps by real elapsed time. The hidden-tab 250 ms loop is unchanged.
 - `FRAME_CAP_UNLIMITED` (−1, "Unlimited"): rAF never fires faster than the display, so `scheduleUnlimited` posts the
-  next frame through a `MessageChannel` once `device.queue.onSubmittedWorkDone()` resolved (one frame in flight; at once
-  on WebGL2). `loopGen` drops a frame posted before a stop or a visibility change. Frames beyond the refresh rate are never
-  shown: a benchmark mode. Live check (dev-alt, headless Chrome at 60 Hz): 60 / Display ≈ 60 fps, Unlimited ≈ 74 fps,
-  a 0 ms timeout still fires in ≈ 5 ms (p50) in all three.
+  next frame through a `MessageChannel` once the PREVIOUS frame's `device.queue.onSubmittedWorkDone()` resolved (two
+  frames in flight, as under rAF; at once on WebGL2). With one frame in flight (the first cut) the CPU waited for the GPU
+  to drain and the GPU for the CPU to encode, so on a GPU-bound scene Unlimited fell below the Display rate (2026-10-25).
+  `loopGen` drops a frame posted before a stop or a visibility change. Frames beyond the refresh rate are never shown: a
+  benchmark mode. Live check (dev-alt, headless Chrome at 60 Hz): 60 / Display ≈ 60 fps, Unlimited ≈ 74 fps, a 0 ms timeout
+  still fires in ≈ 5 ms (p50) in all three.
 - `GraphicsSettings.showFps` (default false): Settings › Graphics › Show FPS puts a mono readout ("58 fps", `FpsChip`)
   in the top bar beside the speedrun clock. World3D's once-a-second `onSecond` writes the drawn frames to
   `useUiStore.fps` when it is on (dev builds always did); with a frame cap the count is the capped rate.

@@ -235,6 +235,8 @@ class World implements World3D {
   private lastDrawn = -1;
   /** graphics.frameCap unlimited: frames are posted through a MessageChannel instead of rAF (see `scheduleUnlimited`) */
   private readonly unlimitedChannel = typeof MessageChannel !== 'undefined' ? new MessageChannel() : null;
+  /** graphics.frameCap unlimited: the previous frame's `onSubmittedWorkDone` (two frames in flight, see `scheduleUnlimited`) */
+  private prevWorkDone: Promise<void> | null = null;
   /** bumped whenever the loop is stopped or re-scheduled, so a frame posted before it is dropped */
   private loopGen = 0;
   private acc = 0;
@@ -2012,6 +2014,7 @@ class World implements World3D {
   stop(): void {
     this.running = false;
     this.loopGen++;
+    this.prevWorkDone = null;
     if (this.raf !== 0) cancelAnimationFrame(this.raf);
     this.raf = 0;
     if (this.hiddenTimer !== null) clearTimeout(this.hiddenTimer);
@@ -2036,9 +2039,10 @@ class World implements World3D {
   }
 
   /**
-   * Unlimited frame rate: rAF never fires faster than the display, so the next frame is a posted task once the GPU queue
-   * drained (WebGPU; one frame in flight, no runaway queue), else at once. Tasks interleave with input and the browser's
-   * own rendering steps.
+   * Unlimited frame rate: rAF never fires faster than the display, so the next frame is a posted task once the GPU finished
+   * the frame BEFORE the one just submitted (WebGPU; two frames in flight, as under rAF: the CPU encodes frame N+1 while the
+   * GPU draws frame N, and the queue cannot run away), else at once. With one frame in flight the CPU and GPU took turns and
+   * Unlimited fell below the display rate. Tasks interleave with input and the browser's own rendering steps.
    */
   private scheduleUnlimited(channel: MessageChannel): void {
     const gen = this.loopGen;
@@ -2048,7 +2052,9 @@ class World implements World3D {
     const post = (): void => channel.port2.postMessage(gen);
     const backend = (this.renderer as Renderer | undefined)?.renderer.backend as unknown as { device?: { queue: { onSubmittedWorkDone(): Promise<void> } } } | undefined;
     const queue = backend?.device?.queue;
-    if (queue) void queue.onSubmittedWorkDone().then(post, post);
+    const wait = this.prevWorkDone;
+    this.prevWorkDone = queue ? queue.onSubmittedWorkDone().catch(() => undefined) : null;
+    if (wait) void wait.then(post, post);
     else post();
   }
 
@@ -2076,6 +2082,7 @@ class World implements World3D {
   private onVisibility(): void {
     if (!this.running) return;
     this.loopGen++;
+    this.prevWorkDone = null;
     if (this.raf !== 0) cancelAnimationFrame(this.raf);
     this.raf = 0;
     if (this.hiddenTimer !== null) clearTimeout(this.hiddenTimer);
