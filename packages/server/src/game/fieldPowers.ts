@@ -4,9 +4,9 @@
  * powers work: Flying glides (movement.ts), Fire burns brambles, Ground digs at camps, Psychic senses ghost trainers,
  * Water dives. Pure over the content tables and the room's ghost list; the room does the writes.
  */
-import { FIELD_POWER_TEXT, FIELD_POWER_TYPE, HAUNT, fieldLead, fieldPowersOf, hauntPath, hauntPosition } from '@ewa/content';
+import { FIELD_POWER_TEXT, FIELD_POWER_TYPE, HAUNT, fieldLead, fieldPowersOf, hauntPath, hauntPosition, leadLook } from '@ewa/content';
 import type { FieldPower, PlanEllipse, ZoneId } from '@ewa/content';
-import type { CreatureInstance } from '@ewa/core';
+import type { CreatureInstance, SpeciesDef } from '@ewa/core';
 import { encodeLeadFlags } from '@ewa/protocol';
 import type { FieldPowerAction, FieldPowerRefusal, SensedGhost } from '@ewa/protocol';
 import type { Ghost } from '@ewa/persist';
@@ -19,13 +19,17 @@ export interface FieldLead {
   readonly flags: number;
 }
 
-/** The lead of a party (null: every creature fainted, or an unknown species). */
-export function fieldLeadOf(party: readonly CreatureInstance[], typesOf: (speciesId: string) => readonly string[] | null): FieldLead | null {
+/**
+ * The lead of a party (null: every creature fainted, or an unknown species). A held relic puts it in its form
+ * (`leadLook`): the form's types give the powers and the form rides in `leadFlags`.
+ */
+export function fieldLeadOf(party: readonly CreatureInstance[], speciesOf: (speciesId: string) => SpeciesDef | null): FieldLead | null {
   const c = fieldLead(party);
   if (c === null) return null;
-  const types = typesOf(c.speciesId);
-  if (types === null) return null;
-  return { speciesId: c.speciesId, types, flags: encodeLeadFlags(c) };
+  const sp = speciesOf(c.speciesId);
+  if (sp === null) return null;
+  const look = leadLook(sp, c.heldItem);
+  return { speciesId: c.speciesId, types: look.types, flags: encodeLeadFlags({ ...c, form: look.form }) };
 }
 
 /** The power an action uses. */

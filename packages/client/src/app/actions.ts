@@ -9,7 +9,7 @@ import type { ActionFunctionArgs } from 'react-router';
 import { RegisterReq } from '@ewa/protocol';
 import type { InventoryDeltaBody } from '@ewa/protocol';
 import type { CreatureInstance } from '@ewa/core';
-import { itemInfo } from '../data/content';
+import { displayName, itemInfo, wornForm } from '../data/content';
 import { ApiFailure, apiFetch, storeTokens } from '../net/api';
 import { describeError, statusOf, toActionError } from '../net/errors';
 import type { ActionError } from '../net/errors';
@@ -173,8 +173,14 @@ const CREATURE_HANDLERS: Readonly<Record<string, Handler>> = {
     const res = await apiFetch('creatureSetup', { params: { id: str(p['id']) }, body: { ability: str(p['ability']), heldItem: held.length === 0 ? null : held } });
     // the equipped / returned held items come back as an inventoryDelta body (server part 2, P1)
     const { inventoryDelta, ...creature } = res;
+    const inv = useSessionStore.getState().inventory;
+    const before = [...(inv?.party ?? []), ...(inv?.box ?? [])].find((x) => x.id === creature.id);
     applyDelta(inventoryDelta);
     updated(creature);
+    // a held relic changes ravatar's form at once, outside a battle too (wornForm): say so when it did
+    const was = before === undefined ? null : wornForm(before);
+    const now = wornForm(creature);
+    if (now?.id !== was?.id) toast('info', now !== null ? `${displayName(creature)} took its ${now.name}.` : `${displayName(creature)} returned to its own form.`);
   },
   async moves(p) {
     const moves = Array.isArray(p['moves']) ? (p['moves'] as unknown[]).map(str) : [];

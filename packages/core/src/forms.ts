@@ -44,6 +44,21 @@ export function formMove(content: ContentIndex, sp: SpeciesDef, b: { readonly fo
   return { ...move, type, ...(move.effectOnlyBaseForm === true ? { effect: null } : {}) };
 }
 
+/**
+ * The form a creature wears outside a battle: the relic form its held item opens on entering the field (a `heldItem`
+ * form with no hp line, ravatar's Water / Earth / Fire / Air), else null. A form with a line (the Avatar State) or a
+ * band waits for the battle. Read by the party screens, the follower and its field powers; never by the engine.
+ */
+export function heldForm(sp: SpeciesDef, heldItem: string | null | undefined): BattleFormDef | null {
+  if (heldItem == null) return null;
+  const forms = formsOf(sp);
+  for (let i = 0; i < forms.length; i++) {
+    const f = forms[i]!;
+    if (f.heldItem === heldItem && f.hpBelowPct === undefined) return f;
+  }
+  return null;
+}
+
 /** The base atk / def / spd the battler's stats derive from: the active form's, else the species'. */
 export function formBase(sp: SpeciesDef, b: { readonly form?: string }): { readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number } {
   return activeForm(sp, b) ?? sp;

@@ -1085,7 +1085,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   private setLead(ud: ZoneUserData, ps: PlayerState, party: readonly CreatureInstance[]): void {
     const lead = fieldLeadOf(party, (id) => {
       try {
-        return this.deps.content.species(id).types as readonly string[];
+        return this.deps.content.species(id);
       } catch (_e) {
         return null;
       }

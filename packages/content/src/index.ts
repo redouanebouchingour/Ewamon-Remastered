@@ -609,6 +609,7 @@ export {
   hauntPath,
   hauntPosition,
   isDarkHere,
+  leadLook,
   planGlide,
   reachFromSpawn,
 } from './fieldPowers';

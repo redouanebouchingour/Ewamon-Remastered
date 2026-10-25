@@ -29,12 +29,14 @@ import {
   fieldPowersOf,
   getHeightfield,
   isDarkHere,
+  leadLook,
   planGlide,
   reachFromSpawn,
   zonePlan,
 } from '@ewa/content';
 import type { FieldPower, GlidePlan, ZoneDef, ZoneId } from '@ewa/content';
-import type { CreatureInstance } from '@ewa/core';
+import { formsOf } from '@ewa/core';
+import type { CreatureInstance, SpeciesDef } from '@ewa/core';
 import type { FieldFxKind, FollowerPool, ObstaclesHandle } from '@ewa/render';
 import type { SensedGhost, ServerMessageOf } from '@ewa/protocol';
 import { speciesName } from '../data/content';
@@ -55,15 +57,23 @@ export interface FieldLeadInfo {
   readonly name: string;
   readonly types: readonly string[];
   readonly variantKey: string;
+  /** the form a held relic puts it in (`leadLook`), null for the species' own look */
+  readonly form: string | null;
   readonly powers: readonly FieldPower[];
 }
 
-/** The lead of the session party as the chip and the targets see it (the server reads the same rule). */
-export function leadInfo(party: readonly CreatureInstance[], typesOf: (speciesId: string) => readonly string[] | undefined): FieldLeadInfo | null {
+/**
+ * The lead of the session party as the chip and the targets see it (the server reads the same rule): a held relic puts
+ * it in its form (`leadLook`), and the form's types give the powers.
+ */
+export function leadInfo(party: readonly CreatureInstance[], speciesOf: (speciesId: string) => SpeciesDef | undefined): FieldLeadInfo | null {
   const c = fieldLead(party);
   if (c === null) return null;
-  const types = typesOf(c.speciesId) ?? [];
-  return { speciesId: c.speciesId, name: c.nickname ?? speciesName(c.speciesId), types, variantKey: c.variantKey, powers: fieldPowersOf(types) };
+  const sp = speciesOf(c.speciesId);
+  const look = sp === undefined ? null : leadLook(sp, c.heldItem);
+  const types = look?.types ?? [];
+  const form = sp === undefined || look === null || look.form === 0 ? null : (formsOf(sp)[look.form - 1]?.id ?? null);
+  return { speciesId: c.speciesId, name: c.nickname ?? speciesName(c.speciesId), types, variantKey: c.variantKey, form, powers: fieldPowersOf(types) };
 }
 
 /** What the chip says each power does in this zone now. Pure. */
@@ -116,7 +126,7 @@ export interface FieldPowerDeps {
   shadow(): number;
   daylight(): number;
   party(): readonly CreatureInstance[];
-  typesOf(speciesId: string): readonly string[] | undefined;
+  speciesOf(speciesId: string): SpeciesDef | undefined;
   flags(): ReadonlySet<string>;
   /** the player stands in a hall pocket */
   indoors(): boolean;
@@ -203,7 +213,7 @@ export class FieldPowerSystem {
 
   /** The lead, the flags or the room's switch changed: targets, brambles, the chip. */
   refresh(): void {
-    this.lead = leadInfo(this.d.party(), this.d.typesOf);
+    this.lead = leadInfo(this.d.party(), (id) => this.d.speciesOf(id));
     const z = this.zone;
     const on = this.d.enabled();
     this.wasEnabled = on;
@@ -388,7 +398,7 @@ export class FieldPowerSystem {
     const lead = this.lead;
     const on = this.d.enabled();
     const chip: FieldChip = {
-      lead: lead === null ? null : { speciesId: lead.speciesId, name: lead.name, types: lead.types, variantKey: lead.variantKey },
+      lead: lead === null ? null : { speciesId: lead.speciesId, name: lead.name, types: lead.types, variantKey: lead.variantKey, form: lead.form },
       enabled: on,
       hints:
         on && z !== null && lead !== null

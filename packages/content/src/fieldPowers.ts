@@ -9,8 +9,8 @@
  * gate (a `RectSolid` the server checks in movement validation while the server env FIELD_POWERS is on), not a stamp in
  * the heightfield, so no zone's heightfield digest moves.
  */
-import { createRng } from '@ewa/core';
-import type { TypeName } from '@ewa/core';
+import { createRng, formsOf, heldForm } from '@ewa/core';
+import type { SpeciesDef, TypeName } from '@ewa/core';
 import { getHeightfield, isWalkable, isWater, obstacleAt, playableBounds, sampleHeight, walkableComponent } from './heightfield';
 import type { Heightfield } from './heightfield';
 import type { PlanEllipse, RectSolid } from './plan';
@@ -57,6 +57,16 @@ export function fieldPowersOf(types: readonly string[]): FieldPower[] {
 export function fieldLead<C extends { readonly hp: number }>(party: readonly C[]): C | null {
   for (const c of party) if (c.hp > 0) return c;
   return null;
+}
+
+/**
+ * How the lead walks: the types its powers come from and the 1-based slot in `formsOf` of the form its held item opens
+ * (core `heldForm`: ravatar holding a relic walks in that form, with that form's types; 0 = the species' own look).
+ * The server's lead and the client's chip read the same rule.
+ */
+export function leadLook(sp: SpeciesDef, heldItem: string | null): { readonly types: readonly TypeName[]; readonly form: number } {
+  const f = heldForm(sp, heldItem);
+  return f === null ? { types: sp.types, form: 0 } : { types: f.types ?? sp.types, form: formsOf(sp).indexOf(f) + 1 };
 }
 
 /** Interact ranges (m) of the targeted powers, measured from the server's accepted position. */

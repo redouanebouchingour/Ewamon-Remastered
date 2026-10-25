@@ -2819,3 +2819,22 @@ the second isolated client (the component over the landing page: the foe and own
   a flash and four element rings), portrait `ravatar`, premix `sig_cosmic_convergence`, move style `orb`. The
   signature test now asks a signature of every fully evolved legendary / mythical (the Elemutt line's is ravatar's).
   `spriteCatalog.test` lists the line with hyoryu as stills.
+
+## Relic forms outside a battle (2026-10-25)
+
+- Giving ravatar a relic changes its form at once, outside a battle too. Nothing is stored: `wornForm(c)` (core
+  `heldForm`) derives it from the held item, so every view follows the party store as the setup response lands.
+  `CreatureSprite` takes `form` (the `<species>_<form>` thumb, falling back to the species' own), and the creature
+  card, party lineup, creature detail (types, a form pill, atk / def / spd through `statsOf`), the bag's party picker,
+  the HUD party strip (`partyStrip`) and the field-power chip all show the worn form. `typesOf(c)` is the types they show.
+- The follower reads the form from `leadFlags` bits 5..7 (`followerSprite`) and draws that manifest entry; the zone
+  load preloads a worn form's atlas with the party's. The chip's powers come from the form's types (content `leadLook`,
+  the same rule as the server's lead): Water dives, Earth digs, Fire lights, Air glides. The Vial's Avatar State keeps
+  its hp line and opens only in a battle. The setup action toasts "Ravatar took its Fire Form." / "returned to its own
+  form." when the form changed.
+- Live check (alt pair, headless Chrome, an act3c account with ravatar leading): Save setup with each relic switched
+  the party card, detail, HUD strip, chip and the follower (`debug().followers.selfSprite` `ravatar_fire` /
+  `ravatar_water` / `ravatar`) and the chip's power (Light / Dive / none) without a reload; a fresh page load came up
+  in the held form. Battles are unchanged.
+- Tests: `test/relics.test.tsx` (worn form, types, stats, the card), `test/followers.test.tsx` (follower sprite and
+  descriptor types, the strip, the chip lead's form and powers).

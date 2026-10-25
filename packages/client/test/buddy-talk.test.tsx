@@ -154,7 +154,7 @@ describe('the speech bubble', () => {
 
 describe('the ways in', () => {
   it('the field power chip names the talk key', () => {
-    useFieldPowerStore.getState().setChip({ lead: { speciesId: 'glimfin', name: 'Glimfin', types: ['Water', 'Electric'], variantKey: 'normal' }, enabled: true, hints: [] });
+    useFieldPowerStore.getState().setChip({ lead: { speciesId: 'glimfin', name: 'Glimfin', types: ['Water', 'Electric'], variantKey: 'normal', form: null }, enabled: true, hints: [] });
     render(<FieldPowerChip />);
     const t = screen.getByTestId('field-power-talk');
     expect(t.textContent).toBe('YTalk with Glimfin');

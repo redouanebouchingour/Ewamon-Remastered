@@ -270,3 +270,7 @@ The user's form-change gimmick (`.design/majin-tenjin.md`; spine §2.3 `BattleFo
   switch-in, counted in the optional `Volatile.stanceGained` (reset with the volatile on switch-out).
 - Every new field is optional and absent on legacy content, and no new rng draw sits on a shared path: the singles and
   doubles fuzz digests are unchanged. `test/relicForms.test.ts` (7); the test fixture gained `withAbility` / `withItem`.
+- `heldForm(sp, heldItem)` (2026-10-25): the form a creature wears outside a battle, the `heldItem` form with no hp
+  line its item opens (ravatar's Water / Earth / Fire / Air), else null; the Avatar State waits for the battle. Read by
+  content's `leadLook` (the follower and its field powers) and the client's screens, never by the engine, so battles and
+  both fuzz digests are unchanged.

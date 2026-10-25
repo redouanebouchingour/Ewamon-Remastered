@@ -32,7 +32,7 @@ export class PlayerState extends Schema {
    * Written only when the lead changes, so it costs nothing per tick.
    */
   @type('string') lead = '';
-  /** Followers: the lead's look, packed (`encodeLeadFlags`: bit 0 shiny, bit 1 alpha, bits 2..4 the variant). */
+  /** Followers: the lead's look, packed (`encodeLeadFlags`: bit 0 shiny, bit 1 alpha, bits 2..4 the variant, bits 5..7 the held form). */
   @type('uint8') leadFlags = 0;
 }
 
@@ -40,14 +40,19 @@ export class PlayerState extends Schema {
 export const LEAD_VARIANTS = ['normal', 'dawn', 'dusk', 'verdant', 'ember'] as const;
 export type LeadVariant = (typeof LEAD_VARIANTS)[number];
 
-/** Followers: packs a lead's look into `PlayerState.leadFlags` (unknown variant = normal). */
-export function encodeLeadFlags(look: { readonly isShiny?: boolean; readonly isAlpha?: boolean; readonly variantKey?: string }): number {
+/**
+ * Followers: packs a lead's look into `PlayerState.leadFlags` (unknown variant = normal). `form` is the 1-based slot in
+ * core `formsOf(species)` of the form its held item opens (core `heldForm`, ravatar's relic forms), 0 or absent = none;
+ * three bits, so slots 1..7.
+ */
+export function encodeLeadFlags(look: { readonly isShiny?: boolean; readonly isAlpha?: boolean; readonly variantKey?: string; readonly form?: number }): number {
   const v = Math.max(0, LEAD_VARIANTS.indexOf((look.variantKey ?? 'normal') as LeadVariant));
-  return (look.isShiny === true ? 1 : 0) | (look.isAlpha === true ? 2 : 0) | (v << 2);
+  const f = look.form ?? 0;
+  return (look.isShiny === true ? 1 : 0) | (look.isAlpha === true ? 2 : 0) | (v << 2) | ((f >= 1 && f <= 7 ? f : 0) << 5);
 }
 
-/** Followers: unpacks `PlayerState.leadFlags`. */
-export function decodeLeadFlags(flags: number): { readonly isShiny: boolean; readonly isAlpha: boolean; readonly variantKey: LeadVariant } {
+/** Followers: unpacks `PlayerState.leadFlags` (`form` 0 = the species' own look). */
+export function decodeLeadFlags(flags: number): { readonly isShiny: boolean; readonly isAlpha: boolean; readonly variantKey: LeadVariant; readonly form: number } {
   const v = (flags >> 2) & 7;
-  return { isShiny: (flags & 1) === 1, isAlpha: (flags & 2) === 2, variantKey: LEAD_VARIANTS[v] ?? 'normal' };
+  return { isShiny: (flags & 1) === 1, isAlpha: (flags & 2) === 2, variantKey: LEAD_VARIANTS[v] ?? 'normal', form: (flags >> 5) & 7 };
 }

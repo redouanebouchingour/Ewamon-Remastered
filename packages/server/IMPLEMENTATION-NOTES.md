@@ -1475,3 +1475,10 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   gate, so the gates alone could not hold them.
 - A shrine's fight forms at the shrine's door approach (content `fightsAtDoor` through `interiorArenaFor`).
 - Tests: `test/interiors.test.ts` "relic shrines" (refusals, the battle at the door, the relic after the guardian).
+
+## Relic forms outside a battle (2026-10-25)
+
+- `fieldLeadOf` takes the species (not its types) and reads content `leadLook`: a lead holding a relic walks in that
+  form, the form's slot rides in `leadFlags` bits 5..7 and its types give the field powers. The setup route already
+  publishes `ewa:party`, so giving or taking a relic moves `PlayerState.leadFlags` at once
+  (`test/fieldPowers.test.ts`). Battles are unchanged: the relic form still opens as the battler lands.

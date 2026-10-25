@@ -102,14 +102,20 @@ describe('followers: the lead look packed into PlayerState.leadFlags', () => {
     for (const variantKey of LEAD_VARIANTS) {
       for (const isShiny of [false, true]) {
         for (const isAlpha of [false, true]) {
-          const f = encodeLeadFlags({ isShiny, isAlpha, variantKey });
-          expect(f).toBeGreaterThanOrEqual(0);
-          expect(f).toBeLessThan(256);
-          expect(decodeLeadFlags(f)).toEqual({ isShiny, isAlpha, variantKey });
+          for (const form of [0, 1, 7]) {
+            const f = encodeLeadFlags({ isShiny, isAlpha, variantKey, form });
+            expect(f).toBeGreaterThanOrEqual(0);
+            expect(f).toBeLessThan(256);
+            expect(decodeLeadFlags(f)).toEqual({ isShiny, isAlpha, variantKey, form });
+          }
         }
       }
     }
-    expect(decodeLeadFlags(encodeLeadFlags({ variantKey: 'unknown' }))).toEqual({ isShiny: false, isAlpha: false, variantKey: 'normal' });
+    expect(decodeLeadFlags(encodeLeadFlags({ variantKey: 'unknown' }))).toEqual({ isShiny: false, isAlpha: false, variantKey: 'normal', form: 0 });
+    // a form slot outside 1..7 packs as none rather than spilling into the other bits
+    expect(decodeLeadFlags(encodeLeadFlags({ form: 8 })).form).toBe(0);
+    // flags without the form bits (a lead packed before held forms) still read as the species' own look
+    expect(decodeLeadFlags(encodeLeadFlags({ isShiny: true, variantKey: 'ember' })).form).toBe(0);
   });
 });
 

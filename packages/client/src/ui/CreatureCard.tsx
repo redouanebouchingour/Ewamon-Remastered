@@ -1,6 +1,6 @@
 import type { KeyboardEvent, ReactNode } from 'react';
 import type { CreatureInstance } from '@ewa/core';
-import { displayName, itemInfo, maxHpOf, species } from '../data/content';
+import { displayName, itemInfo, maxHpOf, typesOf, wornForm } from '../data/content';
 import s from './CreatureCard.module.css';
 import { CreatureSprite } from './CreatureSprite';
 import { cx } from './cx';
@@ -66,7 +66,8 @@ export function CreatureCard({
   trailing,
   className,
 }: CreatureCardProps) {
-  const sp = species(creature.speciesId);
+  const types = typesOf(creature);
+  const form = wornForm(creature)?.id ?? null;
   const name = displayName(creature);
   const maxHp = maxHpOf(creature);
   const list = badges ?? badgesOf(creature);
@@ -79,7 +80,7 @@ export function CreatureCard({
   };
   const common = {
     'data-testid': 'creaturecard',
-    'data-type': sp?.types[0] ?? 'Normal',
+    'data-type': types[0] ?? 'Normal',
     role: interactive ? 'button' : undefined,
     tabIndex: interactive ? 0 : undefined,
     'aria-pressed': interactive ? selected : undefined,
@@ -92,7 +93,7 @@ export function CreatureCard({
   if (variant === 'tile') {
     return (
       <div {...common} className={cx(s.card, s.tile, interactive && s.interactive, selected && s.selected, draggable && s.draggable, className)} title={`${name} · Lv ${creature.level}`}>
-        <CreatureSprite speciesId={creature.speciesId} variantKey={creature.variantKey} size="lg" className={s.tileSprite} />
+        <CreatureSprite speciesId={creature.speciesId} form={form} variantKey={creature.variantKey} size="lg" className={s.tileSprite} />
         <span className={s.tileLevel}>{creature.level}</span>
         <Badges list={list} />
         <FormMark speciesId={creature.speciesId} className={s.tileForm} />
@@ -104,10 +105,10 @@ export function CreatureCard({
     return (
       <div {...common} className={cx(s.card, s.showcase, interactive && s.interactive, selected && s.selected, className)}>
         <span className={s.showcaseGlow} aria-hidden />
-        <CreatureSprite speciesId={creature.speciesId} variantKey={creature.variantKey} size="xl" />
+        <CreatureSprite speciesId={creature.speciesId} form={form} variantKey={creature.variantKey} size="xl" />
         <div className={s.showcaseText}>
           <h3 className={s.showcaseName}>{name}</h3>
-          <div className={s.types}>{sp?.types.map((t) => <TypeBadge key={t} type={t} size="sm" />)}</div>
+          <div className={s.types}>{types.map((t) => <TypeBadge key={t} type={t} size="sm" />)}</div>
           {caption !== undefined && <p className={s.caption}>{caption}</p>}
         </div>
         {selected && (
@@ -122,7 +123,7 @@ export function CreatureCard({
   const held = creature.heldItem === null ? null : itemInfo(creature.heldItem);
   return (
     <div {...common} className={cx(s.card, s.row, interactive && s.interactive, selected && s.selected, draggable && s.draggable, className)}>
-      <CreatureSprite speciesId={creature.speciesId} variantKey={creature.variantKey} size="md" />
+      <CreatureSprite speciesId={creature.speciesId} form={form} variantKey={creature.variantKey} size="md" />
       <div className={s.rowMain}>
         <div className={s.rowTop}>
           <span className={s.name}>{name}</span>
@@ -131,7 +132,7 @@ export function CreatureCard({
           <FormMark speciesId={creature.speciesId} className={list.length === 0 ? s.formEnd : undefined} />
         </div>
         <div className={s.rowMid}>
-          <div className={s.types}>{sp?.types.map((t) => <TypeBadge key={t} type={t} size="sm" compact />)}</div>
+          <div className={s.types}>{types.map((t) => <TypeBadge key={t} type={t} size="sm" compact />)}</div>
           {held !== null && (
             <span className={s.held} title={`Holding ${held.name}`}>
               <Icon name="bag" size="sm" />

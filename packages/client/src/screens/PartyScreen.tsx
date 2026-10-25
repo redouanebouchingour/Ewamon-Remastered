@@ -10,7 +10,7 @@ import type { DragEvent, KeyboardEvent } from 'react';
 import { useSearchParams } from 'react-router';
 import { FIELD_POWER_TEXT, FIELD_POWER_TYPE, fieldLead, fieldPowersOf, zone as zoneDef } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
-import { displayName, itemInfo, maxHpOf, species } from '../data/content';
+import { displayName, itemInfo, maxHpOf, typesOf, wornForm } from '../data/content';
 import { openBuddyTalk } from '../state/buddy';
 import { useSessionStore } from '../state/session';
 import { Button } from '../ui/Button';
@@ -51,9 +51,11 @@ const MARK: Readonly<Record<CreatureBadge, { readonly icon: IconName; readonly l
 
 /** One lineup card: the type slab with the sprite and the slot number, then name · level · skewed HP bar. */
 function LineupCard({ creature: c, slot, selected, leads, onSelect }: { readonly creature: CreatureInstance; readonly slot: number; readonly selected: boolean; readonly leads: boolean; readonly onSelect: () => void }) {
-  const sp = species(c.speciesId);
+  // a held relic puts ravatar in its form: the form's art and types, and the powers they give
+  const types = typesOf(c);
+  const form = wornForm(c);
   // followers with field powers: what this creature does in the world when it leads (and walks behind the player)
-  const powers = fieldPowersOf(sp?.types ?? []);
+  const powers = fieldPowersOf(types);
   const powerText = powers.length === 0 ? 'no field power' : `field power ${powers.map((p) => FIELD_POWER_TEXT[p].label).join(' and ')}`;
   const name = displayName(c);
   const max = maxHpOf(c);
@@ -66,16 +68,16 @@ function LineupCard({ creature: c, slot, selected, leads, onSelect }: { readonly
     <button
       type="button"
       className={cx(s.card, selected && s.selected, fainted && s.fainted)}
-      data-type={sp?.types[0] ?? 'Normal'}
+      data-type={types[0] ?? 'Normal'}
       aria-pressed={selected}
-      aria-label={`${name}, level ${c.level}, ${c.hp} of ${max} HP${fainted ? ', fainted' : ''}${formKind !== null ? `, ${formMarkLabel(formKind).toLowerCase()}` : ''}, ${powerText}${leads ? ', walking with you' : ''}`}
+      aria-label={`${name}${form !== null ? ` in ${form.name}` : ''}, level ${c.level}, ${c.hp} of ${max} HP${fainted ? ', fainted' : ''}${formKind !== null ? `, ${formMarkLabel(formKind).toLowerCase()}` : ''}, ${powerText}${leads ? ', walking with you' : ''}`}
       onClick={onSelect}
     >
       <span className={s.art}>
         <span className={s.slotNo} aria-hidden>
           {String(slot).padStart(2, '0')}
         </span>
-        <CreatureSprite speciesId={c.speciesId} variantKey={c.variantKey} size="xl" className={s.sprite} />
+        <CreatureSprite speciesId={c.speciesId} form={form?.id ?? null} variantKey={c.variantKey} size="xl" className={s.sprite} />
         {(marks.length > 0 || formKind !== null) && (
           <span className={s.marks} aria-hidden>
             {marks.map((b) => (
@@ -194,7 +196,7 @@ export function PartyScreen() {
   }
 
   const avgLevel = ordered.length === 0 ? 0 : Math.round(ordered.reduce((sum, c) => sum + c.level, 0) / ordered.length);
-  const typeCount = new Set(ordered.flatMap((c) => species(c.speciesId)?.types ?? [])).size;
+  const typeCount = new Set(ordered.flatMap((c) => typesOf(c))).size;
   const fainted = ordered.filter((c) => c.hp <= 0).length;
   // followers: the first creature still standing walks behind the player (and its field powers work)
   const walker = fieldLead(ordered)?.id ?? null;

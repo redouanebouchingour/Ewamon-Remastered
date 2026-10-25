@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { HONOR_DELTAS, HONOR_MAX, HONOR_MIN, MAX_LEVEL, evolutionTarget, expToLevel, tracksHonor } from '@ewa/core';
 import type { CreatureInstance, SpeciesDef } from '@ewa/core';
-import { CREATURE_ITEMS, HELD_ITEMS, MULTI_USE_ITEMS, STONE_IDS, ability as abilityDef, displayName, itemInfo, maxHpOf, move as moveDef, species, statsOf, stoneTarget } from '../data/content';
+import { CREATURE_ITEMS, HELD_ITEMS, MULTI_USE_ITEMS, STONE_IDS, ability as abilityDef, displayName, itemInfo, maxHpOf, move as moveDef, species, statsOf, stoneTarget, typesOf, wornForm } from '../data/content';
 import { useSessionStore } from '../state/session';
 import { Button } from '../ui/Button';
 import { badgesOf } from '../ui/CreatureCard';
@@ -212,9 +212,13 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
   const name = displayName(c);
   const dexNo = sp !== undefined ? String(sp.dexNumber).padStart(3, '0') : null;
 
+  // a held relic puts ravatar in its form at once: the form's art, types and stats (wornForm)
+  const form = wornForm(c);
+  const types = typesOf(c);
   const typeRow = (
     <div className={l.row}>
-      {sp?.types.map((t) => <TypeBadge key={t} type={t} />)}
+      {types.map((t) => <TypeBadge key={t} type={t} />)}
+      {form !== null && <Pill tone="info">{form.name}</Pill>}
       {c.variantKey !== 'normal' && <Pill tone="info">{c.variantKey}</Pill>}
       {badgesOf(c).includes('alpha') && <Pill tone="danger">Alpha</Pill>}
     </div>
@@ -355,7 +359,7 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
 
   if (band) {
     return (
-      <aside className={s.band} data-type={sp?.types[0] ?? 'Normal'} aria-label={`${name} details`}>
+      <aside className={s.band} data-type={types[0] ?? 'Normal'} aria-label={`${name} details`}>
         <div className={s.bandMain}>
           <div className={s.bandCol}>
             <p className={s.idLabel}>
@@ -406,9 +410,9 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
   }
 
   return (
-    <aside className={l.detail} data-type={sp?.types[0] ?? 'Normal'} aria-label={`${name} details`}>
+    <aside className={l.detail} data-type={types[0] ?? 'Normal'} aria-label={`${name} details`}>
       <div className={l.detailHead}>
-        <CreatureSprite speciesId={c.speciesId} variantKey={c.variantKey} size="xl" />
+        <CreatureSprite speciesId={c.speciesId} form={form?.id ?? null} variantKey={c.variantKey} size="xl" />
         <div className={l.detailTitle}>
           <h3 className={l.h2}>{name}</h3>
           <p className={l.muted}>

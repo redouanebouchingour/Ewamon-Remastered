@@ -25,7 +25,7 @@ export function FieldPowerChip() {
   return (
     <aside className={s.chip} aria-label="Field powers" data-testid="field-power-chip">
       <div className={s.head}>
-        <CreatureSprite speciesId={lead.speciesId} variantKey={lead.variantKey as VariantKey} size="sm" className={s.sprite} />
+        <CreatureSprite speciesId={lead.speciesId} form={lead.form} variantKey={lead.variantKey as VariantKey} size="sm" className={s.sprite} />
         <span className={s.lead}>
           <span className={s.eyebrow}>Walking with you</span>
           <span className={s.name}>{lead.name}</span>

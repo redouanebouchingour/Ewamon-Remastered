@@ -1576,6 +1576,10 @@ same function. Never a story gate: every spot is optional, and Cut / Strength ob
 - **The lead** (`fieldLead`): the first party creature still standing walks behind its trainer (`PlayerState.lead` /
   `leadFlags`, §4.1) and its types give its powers (`fieldPowersOf`, `FIELD_POWER_TYPE`): Flying `glide`, Fire `light`,
   Ground `dig`, Psychic `sense`, Water `dive`; a dual type has both. Every creature has its line on the party screen.
+  <!-- amended 2026-10-25: held relic forms outside a battle --> A lead holding a relic walks in the form the relic opens (core `heldForm`: a `heldItem` form with no hp
+  line, ravatar's Water / Earth / Fire / Air; the Avatar State waits for a battle), and that form's types give the powers
+  (`leadLook`, read by the server's lead and the client's chip alike). The party and creature screens show the same worn
+  form (its art, types and atk / def / spd); nothing is persisted, the form follows the held item.
 - **Glide** (Flying): a step off a cliff edge glides instead of being stopped. `planGlide(h, x0, z0, dx, dz, standable,
   reach)`: from a standable take-off with at most `GLIDE.edgeM` 1 m of ground ahead, the flier sinks along a line of
   `GLIDE.ratio` 3 m flown per metre lost over cliff samples (`cliffSample`: in bounds, unwalkable, dry, not a Cut /
@@ -1676,7 +1680,7 @@ export class PlayerState extends Schema {
   @type('boolean') surfing = false;  // Phase D8: the accepted pose is on open water (water, not walkable) — remotes ride the level
   @type('boolean') biking = false;   // Phase D11: the last accepted input was ridden (the bike cap applied)
   @type('string') lead = '';         // added 2026-10-21 (followers, §3.18): the species of the party lead walking behind this player ('' = every creature fainted); written only on a change
-  @type('uint8') leadFlags = 0;      // added 2026-10-21: the lead's look packed (`encodeLeadFlags`: bit 0 shiny, bit 1 alpha, bits 2..4 the variant in core VariantKey order)
+  @type('uint8') leadFlags = 0;      // added 2026-10-21: the lead's look packed (`encodeLeadFlags`: bit 0 shiny, bit 1 alpha, bits 2..4 the variant in core VariantKey order, bits 5..7 the 1-based slot in core `formsOf` of its worn relic form, 0 = none <!-- amended 2026-10-25: held relic forms outside a battle -->)
 }
 
 export class SpawnState extends Schema {

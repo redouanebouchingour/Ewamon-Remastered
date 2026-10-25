@@ -19,8 +19,8 @@ import {
   tmMoveOf,
 } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
-import { calcMaxHp, calcStat, formsOf, itemEvolutionTarget, tradeEvolutionTarget } from '@ewa/core';
-import type { AbilityDef, ContentIndex, CreatureInstance, MoveDef, SpeciesDef, TypeName } from '@ewa/core';
+import { calcMaxHp, calcStat, formsOf, heldForm, itemEvolutionTarget, tradeEvolutionTarget } from '@ewa/core';
+import type { AbilityDef, BattleFormDef, ContentIndex, CreatureInstance, MoveDef, SpeciesDef, TypeName } from '@ewa/core';
 
 let index: ContentIndex | null = null;
 export function content(): ContentIndex {
@@ -75,14 +75,29 @@ export interface StatLine {
   readonly base: number;
 }
 
-export function statsOf(c: Pick<CreatureInstance, 'speciesId' | 'level'>): readonly StatLine[] {
+/**
+ * The form a creature wears outside a battle: the relic form its held item opens (core `heldForm`, ravatar holding a
+ * relic), else null. Its art, types and atk / def / spd show wherever the creature does; max hp keeps the species'.
+ */
+export function wornForm(c: Pick<CreatureInstance, 'speciesId' | 'heldItem'>): BattleFormDef | null {
+  const sp = speciesMap.get(c.speciesId);
+  return sp === undefined ? null : heldForm(sp, c.heldItem);
+}
+
+/** The creature's types as it stands now: its worn form's when the form names its own, else the species'. */
+export function typesOf(c: Pick<CreatureInstance, 'speciesId' | 'heldItem'>): readonly TypeName[] {
+  return wornForm(c)?.types ?? speciesMap.get(c.speciesId)?.types ?? ['Normal'];
+}
+
+export function statsOf(c: Pick<CreatureInstance, 'speciesId' | 'level'> & { readonly heldItem?: string | null }): readonly StatLine[] {
   const sp = speciesMap.get(c.speciesId);
   if (sp === undefined) return [];
+  const b = (c.heldItem === undefined ? null : heldForm(sp, c.heldItem)) ?? sp;
   return [
     { key: 'hp', label: 'HP', value: calcMaxHp(sp.baseHp, c.level), base: sp.baseHp },
-    { key: 'atk', label: 'Attack', value: calcStat(sp.baseAtk, c.level), base: sp.baseAtk },
-    { key: 'def', label: 'Defense', value: calcStat(sp.baseDef, c.level), base: sp.baseDef },
-    { key: 'spd', label: 'Speed', value: calcStat(sp.baseSpd, c.level), base: sp.baseSpd },
+    { key: 'atk', label: 'Attack', value: calcStat(b.baseAtk, c.level), base: b.baseAtk },
+    { key: 'def', label: 'Defense', value: calcStat(b.baseDef, c.level), base: b.baseDef },
+    { key: 'spd', label: 'Speed', value: calcStat(b.baseSpd, c.level), base: b.baseSpd },
   ];
 }
 

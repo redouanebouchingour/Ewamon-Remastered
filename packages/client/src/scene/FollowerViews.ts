@@ -16,7 +16,9 @@
  */
 import { FOLLOWER, MAX_SINGLES, VARIANT_KEYS } from '@ewa/render';
 import type { AtlasSet, FollowerPool, SpriteDescriptor, SpriteFrame } from '@ewa/render';
+import { formsOf } from '@ewa/core';
 import { decodeLeadFlags } from '@ewa/protocol';
+import { species } from '../data/content';
 import type { SpriteCatalog } from './spriteCatalog';
 import type { CreatureTextures, SpriteLease } from './creatureTextures';
 
@@ -42,11 +44,23 @@ interface Want { readonly speciesId: string; readonly flags: number }
 interface Live {
   readonly speciesId: string;
   readonly flags: number;
+  /** the manifest entry it walks as (`followerSprite`) */
+  readonly sprite: string;
   readonly lease: SpriteLease;
   readonly single: { readonly atlas: string; readonly px: readonly number[] } | null;
 }
 
 const VARIANTS: ReadonlySet<string> = new Set(VARIANT_KEYS);
+
+/**
+ * The manifest entry a lead walks as: `<species>_<form>` for the form its held item opens (`leadFlags` bits 5..7, the
+ * 1-based slot in `formsOf`: ravatar holding a relic), else the species' own.
+ */
+export function followerSprite(speciesId: string, form: number): string {
+  const sp = form === 0 ? undefined : species(speciesId);
+  const f = sp === undefined ? undefined : formsOf(sp)[form - 1];
+  return f === undefined ? speciesId : `${speciesId}_${f.id}`;
+}
 
 export class FollowerViews {
   private readonly wants = new Map<string, Want>();
@@ -65,6 +79,11 @@ export class FollowerViews {
   modeOf(id: string): 'atlas' | 'single' | null {
     const l = this.live.get(id);
     return l === undefined ? null : l.single === null ? 'atlas' : 'single';
+  }
+
+  /** The manifest entry a player's follower walks as (its species, or `<species>_<form>`), null when none (tests, the dev handle). */
+  spriteOf(id: string): string | null {
+    return this.live.get(id)?.sprite ?? null;
   }
 
   /** A player's lead from the room state ('' = none). Takes effect on the next `sync` (the player's own: at once). */
@@ -139,16 +158,17 @@ export class FollowerViews {
     if (pool === null || cat === null || tex === null) return;
     const look = decodeLeadFlags(w.flags);
     const variant = (VARIANTS.has(look.variantKey) ? look.variantKey : 'normal') as SpriteDescriptor['variant'];
-    const desc = cat.descriptor(w.speciesId, `follower:${id}`, variant, look.isAlpha, look.isShiny);
+    const sprite = followerSprite(w.speciesId, look.form);
+    const desc = cat.descriptor(w.speciesId, `follower:${id}`, variant, look.isAlpha, look.isShiny, sprite === w.speciesId ? undefined : sprite);
     if (desc === null) return;
-    const side = cat.sideAtlases(w.speciesId, 'front');
+    const side = cat.sideAtlases(sprite, 'front');
     if (side === null) return;
     let lease: SpriteLease;
     let single: Live['single'] = null;
     if (self || tex.isBound(side.atlas)) {
       // the static atlas both sides are drawn from, held while it walks (no flipbook: a follower stays still-framed)
-      const front = tex.show(w.speciesId, 'front', 'still');
-      const back = tex.show(w.speciesId, 'back', 'still');
+      const front = tex.show(sprite, 'front', 'still');
+      const back = tex.show(sprite, 'back', 'still');
       lease = { release: () => { front.release(); back.release(); } };
     } else {
       const s = this.d.singles();
@@ -164,7 +184,7 @@ export class FollowerViews {
       lease.release();
       return;
     }
-    this.live.set(id, { speciesId: w.speciesId, flags: w.flags, lease, single });
+    this.live.set(id, { speciesId: w.speciesId, flags: w.flags, sprite, lease, single });
     if (this.hidden.has(id)) pool.setShown(id, false);
   }
 

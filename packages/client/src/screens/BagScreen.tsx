@@ -16,7 +16,7 @@ import { tmMoveOf } from '@ewa/content';
 import type { CreatureInstance } from '@ewa/core';
 import { BAG_GROUPS, groupBag, noEffectReason } from '../data/bag';
 import type { BagRow } from '../data/bag';
-import { MULTI_USE_ITEMS, displayName, itemInfo, maxHpOf } from '../data/content';
+import { MULTI_USE_ITEMS, displayName, itemInfo, maxHpOf, wornForm } from '../data/content';
 import type { ItemInfo } from '../data/content';
 import { useSessionStore } from '../state/session';
 import { Button } from '../ui/Button';
@@ -75,7 +75,7 @@ function PickerModal({ picker, onClose, fetcher }: { readonly picker: Picker; re
               const name = displayName(c);
               return (
                 <li key={c.id} className={s.target}>
-                  <CreatureSprite speciesId={c.speciesId} variantKey={c.variantKey} size="sm" />
+                  <CreatureSprite speciesId={c.speciesId} form={wornForm(c)?.id ?? null} variantKey={c.variantKey} size="sm" />
                   <span className={s.targetText}>
                     <span className={s.targetName}>
                       {name} <span className={l.caption}>Lv {c.level}</span>

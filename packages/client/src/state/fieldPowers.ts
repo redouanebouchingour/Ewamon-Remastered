@@ -17,7 +17,7 @@ export interface FieldHint {
 
 export interface FieldChip {
   /** the lead walking behind the player (null: every creature fainted, or no world) */
-  readonly lead: { readonly speciesId: string; readonly name: string; readonly types: readonly string[]; readonly variantKey: string } | null;
+  readonly lead: { readonly speciesId: string; readonly name: string; readonly types: readonly string[]; readonly variantKey: string; readonly form: string | null } | null;
   /** false: the server has field powers off (the follower still walks) */
   readonly enabled: boolean;
   readonly hints: readonly FieldHint[];
@@ -38,7 +38,7 @@ export const useFieldPowerStore = create<FieldPowerState>()((set) => ({
 export function sameChip(a: FieldChip, b: FieldChip): boolean {
   if (a.enabled !== b.enabled) return false;
   if ((a.lead === null) !== (b.lead === null)) return false;
-  if (a.lead !== null && b.lead !== null && (a.lead.speciesId !== b.lead.speciesId || a.lead.name !== b.lead.name || a.lead.variantKey !== b.lead.variantKey)) return false;
+  if (a.lead !== null && b.lead !== null && (a.lead.speciesId !== b.lead.speciesId || a.lead.name !== b.lead.name || a.lead.variantKey !== b.lead.variantKey || a.lead.form !== b.lead.form)) return false;
   if (a.hints.length !== b.hints.length) return false;
   for (let i = 0; i < a.hints.length; i++) {
     const x = a.hints[i]!;

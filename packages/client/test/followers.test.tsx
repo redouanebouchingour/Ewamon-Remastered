@@ -19,10 +19,11 @@ import { BillboardPool, FollowerPool } from '@ewa/render';
 import type { AtlasDecoder, FieldFxKind, ObstaclesHandle } from '@ewa/render';
 import { encodeLeadFlags } from '@ewa/protocol';
 import { HELD } from '../src/scene/input';
+import { partyStrip } from '../src/scene/HudWriter';
 import { GLIDE_INTENT_STEPS, GLIDE_REST_STEPS, LocalPlayerController } from '../src/scene/LocalPlayerController';
 import type { InputPayload } from '../src/scene/LocalPlayerController';
 import type { StepCollider } from '../src/scene/collider';
-import { FollowerViews } from '../src/scene/FollowerViews';
+import { FollowerViews, followerSprite } from '../src/scene/FollowerViews';
 import { CreatureTextures } from '../src/scene/creatureTextures';
 import { createSpriteCatalog } from '../src/scene/spriteCatalog';
 import type { CreatureManifest } from '../src/scene/spriteCatalog';
@@ -161,9 +162,9 @@ describe('the glide in prediction', () => {
 
 const map = (u: string) => ({ url: `atlases/${u}.webp`, mips: [1, 2, 3].map((i) => `atlases/${u}.m${i}.webp`), bytes: 10 });
 const rect = (atlas: string, x: number) => ({ atlas, px: [x * 2048, 0, 1024, 1024] as const, uv: [x, 0.5, x + 0.5, 1] as const, footV: 0.08, aspect: 1 });
-const SPECIES = ['bramblecub', 'cindercap', 'glimfin', 'zaptus', 'mudbub', 'flampling'];
+const SPECIES = ['bramblecub', 'cindercap', 'glimfin', 'zaptus', 'mudbub', 'flampling', 'ravatar', 'ravatar_fire'];
 function manifest(): CreatureManifest {
-  const atlases = [0, 1, 2].map((i) => {
+  const atlases = Array.from({ length: Math.ceil(SPECIES.length / 2) }, (_, i) => i).map((i) => {
     const id = `a-00${i}`;
     return { id, species: [] as string[], size: 2048 as const, albedo: map(`${id}.albedo`), normal: map(`${id}.normal`), emissive: map(`${id}.emissive`), normalScale: 0.5 as const };
   });
@@ -228,6 +229,27 @@ describe('FollowerViews', () => {
     expect(h.pool.size).toBe(0);
     zoneHold.release();
   });
+
+  it('a lead holding a relic walks in its form (leadFlags bits 5..7) and changes back when the relic comes off', () => {
+    const h = followerHarness();
+    const fire = species('ravatar')!.battleForms!.findIndex((f) => f.id === 'fire') + 1;
+    expect(followerSprite('ravatar', fire)).toBe('ravatar_fire');
+    expect(followerSprite('ravatar', 0)).toBe('ravatar');
+    expect(followerSprite('flampling', 3)).toBe('flampling');
+    // the HUD party strip draws the worn form's thumb too
+    const strip = partyStrip([{ speciesId: 'ravatar', heldItem: 'sun_dragon_ember', variantKey: 'normal', hp: 10, status: [] }, { speciesId: 'ravatar', heldItem: null, variantKey: 'normal', hp: 10, status: [] }], () => 10);
+    expect(strip.map((p) => p.speciesId)).toEqual(['ravatar_fire', 'ravatar']);
+    h.views.setLead('me', 'ravatar', encodeLeadFlags({ form: fire }));
+    expect(h.views.modeOf('me')).toBe('atlas');
+    expect(h.pool.billboardOf('me')!.descriptor.types).toEqual(['Fire']);
+    expect(h.views.spriteOf('me')).toBe('ravatar_fire');
+    expect(h.textures.refs('a-003')).toBeGreaterThan(0);
+    // the relic comes off: the base form, Normal, from its own cell
+    h.views.setLead('me', 'ravatar', encodeLeadFlags({}));
+    expect(h.pool.billboardOf('me')!.descriptor.types).toEqual(['Normal']);
+    expect(h.views.spriteOf('me')).toBe('ravatar');
+    h.views.clear();
+  });
 });
 
 // ─── field powers ────────────────────────────────────────────────────────────
@@ -260,7 +282,7 @@ function fieldHarness(party: CreatureInstance[], o: { enabled?: boolean; flags?:
     shadow: () => 0,
     daylight: () => 1,
     party: () => party,
-    typesOf: (id) => species(id)?.types,
+    speciesOf: (id) => species(id),
     flags: () => flags,
     indoors: () => false,
     collider: () => collider,
@@ -355,9 +377,18 @@ describe('FieldPowerSystem', () => {
   });
 
   it('the lead is the first creature standing; its powers by type', () => {
-    expect(leadInfo([mon('flampling', 0), mon('mudbub')], (id) => species(id)?.types)?.powers).toEqual(['dig', 'dive']);
-    expect(leadInfo([mon('flampling')], (id) => species(id)?.types)?.powers).toEqual(['light', 'glide']);
-    expect(leadInfo([mon('zaptus', 0)], (id) => species(id)?.types)).toBeNull();
+    expect(leadInfo([mon('flampling', 0), mon('mudbub')], (id) => species(id))?.powers).toEqual(['dig', 'dive']);
+    expect(leadInfo([mon('flampling')], (id) => species(id))?.powers).toEqual(['light', 'glide']);
+    expect(leadInfo([mon('zaptus', 0)], (id) => species(id))).toBeNull();
+    // a held relic: the form's types give the powers (Water dives, Earth digs); the Vial's form waits for a battle
+    const ravatar = (heldItem: string | null): CreatureInstance => ({ ...mon('ravatar'), heldItem });
+    expect(leadInfo([ravatar(null)], (id) => species(id))?.powers).toEqual([]);
+    expect(leadInfo([ravatar('spirit_koi_scale')], (id) => species(id))).toMatchObject({ form: 'water', powers: ['dive'] });
+    expect(leadInfo([ravatar(null)], (id) => species(id))?.form).toBeNull();
+    expect(leadInfo([ravatar('badgermole_gem')], (id) => species(id))?.powers).toEqual(['dig']);
+    expect(leadInfo([ravatar('sun_dragon_ember')], (id) => species(id))?.powers).toEqual(['light']);
+    expect(leadInfo([ravatar('sky_bison_whistle')], (id) => species(id))?.powers).toEqual(['glide']);
+    expect(leadInfo([ravatar('spirit_water_vial')], (id) => species(id))?.powers).toEqual([]);
   });
 
   it('the chip says what each power does in this zone; a dive in a zone without dark water is dimmed', () => {
@@ -376,7 +407,7 @@ describe('FieldPowerSystem', () => {
 describe('the chip, the party line, the key', () => {
   it('the chip shows the lead and a line per power, the sense key on a paper chip', () => {
     useFieldPowerStore.getState().setChip({
-      lead: { speciesId: 'zaptus', name: 'Zaptus', types: ['Psychic'], variantKey: 'normal' },
+      lead: { speciesId: 'zaptus', name: 'Zaptus', types: ['Psychic'], variantKey: 'normal', form: null },
       enabled: true,
       hints: [{ power: 'sense', text: 'Sense the ghost trainers walking here', here: true, key: 'F' }],
     });

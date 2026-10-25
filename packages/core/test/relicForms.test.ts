@@ -5,7 +5,7 @@
  * line: `modifyDamage` with `when: 'fullHp'` / `contact` (Inner Chi) and `afterMoveUsed` (Stance Change).
  */
 import { describe, expect, it } from 'vitest';
-import { calcDamage, createBattle, createRng, formMove, formsOf, resolveTurn } from '../src/index';
+import { calcDamage, createBattle, createRng, formMove, formsOf, heldForm, resolveTurn } from '../src/index';
 import type { BattleFormDef, BattleState, ItemDef } from '../src/index';
 import { activeOf, content, customMove, eventsOf, makeSide, move } from './helpers';
 import type { CreatureSpec } from './helpers';
@@ -54,6 +54,15 @@ describe('relic forms', () => {
   it('formsOf reads battleForms, else the one battleForm, else none', () => {
     expect(formsOf(content.species('R:ravatar')).map((f) => f.id)).toEqual(['water', 'avatar']);
     expect(formsOf(content.species('mufflo'))).toEqual([]);
+  });
+
+  it('heldForm: the relic form worn outside a battle; a form with an hp line waits for the battle', () => {
+    const sp = content.species('R:ravatar');
+    expect(heldForm(sp, 'R:scale')?.id).toBe('water');
+    expect(heldForm(sp, 'R:vial')).toBeNull();
+    expect(heldForm(sp, null)).toBeNull();
+    expect(heldForm(sp, 'Choice Band')).toBeNull();
+    expect(heldForm(content.species('mufflo'), 'R:scale')).toBeNull();
   });
 
   it('a held relic opens its form as the battler lands; no relic, no form', () => {

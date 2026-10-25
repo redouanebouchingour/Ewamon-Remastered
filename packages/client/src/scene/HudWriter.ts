@@ -11,6 +11,7 @@
  * from the TimelinePlayer, dev at 1 Hz. React-free; `flush` is allocation-free.
  */
 import type { HudModel, VariantKey } from '@ewa/render';
+import { wornForm } from '../data/content';
 
 export type HudField = keyof HudModel;
 export type HudParty = HudModel['party'];
@@ -156,15 +157,19 @@ const HIDDEN: Readonly<Record<HudField, unknown>> = {
   battle: null, connection: 'connected', dev: null,
 };
 
-/** Builds the party strip value (on applyInventoryDelta; not per frame). */
+/**
+ * Builds the party strip value (on applyInventoryDelta; not per frame). A creature holding a relic shows the form it
+ * opens (`wornForm`): the strip's id is the thumb it draws, `<species>_<form>`.
+ */
 export function partyStrip(
-  party: readonly { readonly speciesId: string; readonly variantKey: VariantKey; readonly hp: number; readonly status: readonly string[] }[],
+  party: readonly { readonly speciesId: string; readonly heldItem?: string | null; readonly variantKey: VariantKey; readonly hp: number; readonly status: readonly string[] }[],
   maxHpOf: (i: number) => number,
 ): HudParty {
   return party.slice(0, 6).map((c, i) => {
     const max = Math.max(1, maxHpOf(i));
     const major = c.status.find((s) => s !== 'confuse') ?? null;
-    return { speciesId: c.speciesId, variantKey: c.variantKey, hpFrac: Math.max(0, Math.min(1, c.hp / max)), status: major === null ? null : STATUS_GLYPH[major] ?? null, fainted: c.hp <= 0 };
+    const form = c.heldItem === undefined ? null : wornForm({ speciesId: c.speciesId, heldItem: c.heldItem });
+    return { speciesId: form === null ? c.speciesId : `${c.speciesId}_${form.id}`, variantKey: c.variantKey, hpFrac: Math.max(0, Math.min(1, c.hp / max)), status: major === null ? null : STATUS_GLYPH[major] ?? null, fainted: c.hp <= 0 };
   });
 }
 

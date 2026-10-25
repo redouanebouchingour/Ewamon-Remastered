@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-25 held relic forms outside a battle. One entry. -->
+
+## 2026-10-25 · `00-spine.md` §3.18 (the lead walks in its worn relic form), §4.1 (`leadFlags` bits 5..7)
+Why: the user asked that giving Ravatar a held item changes its form at once, outside a battle too. The form is derived from the held item (core `heldForm`), never stored: the party, box, bag picker and creature screens show its art, types and atk / def / spd, the follower walks in it, and its types give the field powers (Water dives, Earth digs, Fire lights, Air glides). The Avatar State keeps its 30% line and opens only in a battle. Battles are unchanged: the relic form still opens as the battler lands.
+Evidence: `packages/core/test/relicForms.test.ts` (heldForm), `packages/protocol/test/schema.test.ts` (the form round-trips in `leadFlags`), `packages/server/test/fieldPowers.test.ts` (the lead's form and powers; giving and taking a relic over REST moves `leadFlags` at once), `packages/client/test/relics.test.tsx` and `followers.test.tsx` (worn form, card, follower sprite, chip powers); both fuzz digest files unchanged.
+Affects: `packages/core/src/forms.ts`; `packages/content/src/fieldPowers.ts`; `packages/protocol/src/state/PlayerState.ts`; `packages/server/src/game/fieldPowers.ts`, `rooms/ZoneRoom.ts`; `packages/client/src/{data/content,ui/CreatureSprite,ui/CreatureCard,screens/CreatureDetail,screens/PartyScreen,screens/BagScreen,app/actions,scene/FollowerViews,scene/fieldPowers,scene/HudWriter,scene/World3D,state/fieldPowers,world/FieldPowerChip}`.
+
 <!-- 2026-10-25 the Harmonic Cycle: the mythical Elemutt line (#142–144), ravatar's relic forms, the four relic shrines. One entry. -->
 
 ## 2026-10-25 · `00-spine.md` §2.3 (dexNumber 1..144, `battleForms`, optional `hpBelowPct`), §2.4 (`typeFromForm`, `effectOnlyBaseForm`), §2.5 (`afterMoveUsed`, `modifyDamage` `fullHp` / `contact`), §3.4 (quests q13, q14; achievements), §3.10 rule 3, §3.11 battle pass; `20-client.md` §20.9.5; `40-pipelines.md` §40.1.1, §40.1.4 accounting, §40.6 (`creatures/` ≤ 44 MiB); `50-verification-budget.md` §50.1 rule 11, §50.4.2 / §50.4.6 / §50.4.8

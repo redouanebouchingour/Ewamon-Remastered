@@ -39,7 +39,7 @@ import { decodeLeadFlags } from '@ewa/protocol';
 import type { ZoneRoom } from '../src/rooms/ZoneRoom';
 import { standable, validateInput } from '../src/rooms/movement';
 import type { MovePrev } from '../src/rooms/movement';
-import { fieldLeadOf, fieldRefusalText, hauntingNear, senseGhosts } from '../src/game/fieldPowers';
+import { fieldLeadOf, fieldRefusalText, hauntingNear, leadCan, senseGhosts } from '../src/game/fieldPowers';
 import { newCreature } from '../src/game/creatures';
 import { FIELD_POWER_REFUSALS, FIELD_POWER_ACTIONS } from '@ewa/protocol';
 import { api, content, enter, ofType, placePlayer, rawQuery, register, sleep, startServer, storyOnly, waitFor } from './helpers';
@@ -162,10 +162,30 @@ describe('brambles, the lead, the sense (pure)', () => {
   it('the lead is the first creature standing; its look packs into leadFlags', () => {
     const a = { ...newCreature(content, 'flampling', 12, { ownerId: 'x', moves: 'level' }), hp: 0 };
     const b = { ...newCreature(content, 'mudbub', 10, { ownerId: 'x', moves: 'level' }), isShiny: true };
-    const lead = fieldLeadOf([a, b], (id) => content.species(id).types);
+    const lead = fieldLeadOf([a, b], (id) => content.species(id));
     expect(lead?.speciesId).toBe('mudbub');
     expect(decodeLeadFlags(lead!.flags).isShiny).toBe(true);
-    expect(fieldLeadOf([a], (id) => content.species(id).types)).toBeNull();
+    expect(decodeLeadFlags(lead!.flags).form).toBe(0);
+    expect(fieldLeadOf([a], (id) => content.species(id))).toBeNull();
+  });
+
+  it('a lead holding a relic walks in its form: the form rides in leadFlags and its types give the powers', () => {
+    const base = newCreature(content, 'ravatar', 50, { ownerId: 'x', moves: 'level' });
+    const forms = content.species('ravatar').battleForms!;
+    const plain = fieldLeadOf([base], (id) => content.species(id))!;
+    expect(plain.types).toEqual(['Normal']);
+    expect(decodeLeadFlags(plain.flags).form).toBe(0);
+    const water = fieldLeadOf([{ ...base, heldItem: 'spirit_koi_scale' }], (id) => content.species(id))!;
+    expect(water.types).toEqual(['Water']);
+    expect(forms[decodeLeadFlags(water.flags).form - 1]!.id).toBe('water');
+    expect(leadCan(water, 'dive')).toBe(true);
+    const earth = fieldLeadOf([{ ...base, heldItem: 'badgermole_gem' }], (id) => content.species(id))!;
+    expect(earth.types).toEqual(['Ground', 'Rock']);
+    expect(leadCan(earth, 'dig')).toBe(true);
+    // the Vial's Avatar State opens below its hp line in a battle, never on the road
+    const vial = fieldLeadOf([{ ...base, heldItem: 'spirit_water_vial' }], (id) => content.species(id))!;
+    expect(vial.types).toEqual(['Normal']);
+    expect(decodeLeadFlags(vial.flags).form).toBe(0);
   });
 
   it('senses this zone ghosts on their haunts, never your own; the wanted ones wherever they walk', () => {
@@ -256,6 +276,25 @@ describe('followers (integration)', () => {
     expect(r.status).toBe(200);
     await waitFor(() => me(j, acc).lead === 'zaptus', 3000);
     expect(decodeLeadFlags(me(j, acc).leadFlags).isShiny).toBe(true);
+    await j.room.leave(true);
+  }, 60_000);
+
+  it('giving the lead a relic puts its follower in that form at once; taking it back returns the base form', async () => {
+    const acc = await register(s, 'glimfin');
+    await leadAs(acc.id, 'ravatar', 50);
+    await tx((t) => s.repos.inventory.add(t, acc.id, 'sun_dragon_ember', 1));
+    const spawn = zoneById('mire_route').spawn;
+    const j = await at(acc, 'mire_route', spawn.x, spawn.z);
+    await waitFor(() => me(j, acc).lead === 'ravatar', 3000);
+    expect(decodeLeadFlags(me(j, acc).leadFlags).form).toBe(0);
+    const lead = (await tx((t) => s.repos.creatures.party(t, acc.id)))[0]!;
+    const fire = content.species('ravatar').battleForms!.findIndex((f) => f.id === 'fire') + 1;
+    const give = await api(s, 'POST', `/creature/${lead.id}/setup`, acc.access, { ability: lead.ability, heldItem: 'sun_dragon_ember' });
+    expect(give.status).toBe(200);
+    await waitFor(() => decodeLeadFlags(me(j, acc).leadFlags).form === fire, 3000);
+    const take = await api(s, 'POST', `/creature/${lead.id}/setup`, acc.access, { ability: lead.ability, heldItem: null });
+    expect(take.status).toBe(200);
+    await waitFor(() => decodeLeadFlags(me(j, acc).leadFlags).form === 0, 3000);
     await j.room.leave(true);
   }, 60_000);
 });

@@ -58,7 +58,7 @@ import { foeIdentity } from '../battle/foe';
 import { STEP_MS } from '../battle/constants';
 import { TIMELINE_SFX } from '../battle/timeline';
 import { MOVE_ANIMS } from '../battle/moveAnims';
-import { battleSpriteIds, content, maxHpOf, species as speciesDef } from '../data/content';
+import { battleSpriteIds, content, maxHpOf, species as speciesDef, wornForm } from '../data/content';
 import { apiFetch } from '../net/api';
 import { getWorldSession } from '../net/WorldSession';
 import type { WorldSession, ZoneRoom } from '../net/WorldSession';
@@ -1124,7 +1124,11 @@ class World implements World3D {
     const cat = this.catalog;
     const tex = this.textures;
     if (cat === null || tex === null) return NO_LEASE;
-    const party = (useSessionStore.getState().inventory?.party ?? []).map((c) => c.speciesId);
+    // a creature holding a relic walks in its form (the follower draws `<species>_<form>`): its atlas joins the party's
+    const party = (useSessionStore.getState().inventory?.party ?? []).flatMap((c) => {
+      const f = wornForm(c);
+      return f === null ? [c.speciesId] : [c.speciesId, `${c.speciesId}_${f.id}`];
+    });
     const statics = [...cat.zoneAtlases(zoneId), ...tex.staticAtlasesOf(party)];
     const near = (s: { readonly x: number; readonly z: number }): boolean => focus === null || Math.hypot(s.x - focus.x, s.z - focus.z) <= STATIC_FLIPBOOK_NEAR_M;
     const flipbooks = visibleStatics(zoneId, flags).filter(near).flatMap((s) => tex.sideAtlases(s.species, 'front'));
@@ -2286,7 +2290,7 @@ class World implements World3D {
       items: useSessionStore.getState().inventory?.items ?? {},
       authoritativeTurn: ui.battle?.authoritative.turn ?? null,
       textures: this.textureSummary(),
-      followers: this.followers === null ? null : { live: this.followers.size, self: this.followers.modeOf(selfId) },
+      followers: this.followers === null ? null : { live: this.followers.size, self: this.followers.modeOf(selfId), selfSprite: this.followers.spriteOf(selfId) },
       field:
         this.field === null
           ? null
@@ -2334,7 +2338,7 @@ class World implements World3D {
       shadow: () => this.room?.state.shadow ?? 0,
       daylight: () => rendererInternals(r)?.day.sample.daylight ?? 1,
       party: () => useSessionStore.getState().inventory?.party ?? [],
-      typesOf: (id) => speciesDef(id)?.types,
+      speciesOf: (id) => speciesDef(id),
       flags: () => this.flags(),
       indoors: () => this.director.pocket !== null,
       collider: () => this.stepCollider,
