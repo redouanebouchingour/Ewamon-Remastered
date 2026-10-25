@@ -23,14 +23,13 @@
  * Budgets: no new program (the `glow` term is in the one billboard program from boot; the light is the reserved beacon
  * 0 that exists from `createRenderer`, so the light set never changes; VFX are slices of the pooled emitters), no
  * allocation per frame (preallocated sample and scratch vectors), and the cleanup restores the beacon light (position,
- * target, colour, intensity, cone, range, shadow update), the post exposure / vignette and the sprite pool's bindings
+ * target, colour, intensity, cone, range), the post exposure / vignette and the sprite pool's bindings
  * (both billboards disposed) exactly.
  */
 import { Vector3 } from 'three/webgpu';
 import type { Color, Object3D, SpotLight, UniformNode } from 'three/webgpu';
 import type { EvolutionHandle, EvolutionPhase, EvolutionRequest, TypeName } from '../contracts.js';
 import type { EffectsFlags } from '../descriptors.js';
-import { LAYERS } from '../descriptors.js';
 import { INSPECT_AIM, INSPECT_DISTANCE, INSPECT_OFFSET } from '../camera/battle.js';
 import type { DioramaRig } from '../camera/rig.js';
 import type { BillboardPool, CreatureBillboard } from '../sprites/billboard.js';
@@ -327,7 +326,7 @@ export function spotScore(x: number, z: number, towardX: number, towardZ: number
 
 interface SavedLight {
   readonly position: Vector3; readonly target: Vector3; readonly color: Color;
-  intensity: number; angle: number; penumbra: number; distance: number; decay: number; autoUpdate: boolean; layers: number;
+  intensity: number; angle: number; penumbra: number; distance: number; decay: number;
 }
 
 const _fwd = new Vector3();
@@ -425,18 +424,13 @@ export class EvolutionSequence implements EvolutionHandle {
     const L = d.light;
     this.saved = {
       position: L.position.clone(), target: d.lightTarget.position.clone(), color: L.color.clone(),
-      intensity: L.intensity, angle: L.angle, penumbra: L.penumbra, distance: L.distance, decay: L.decay, autoUpdate: L.shadow.autoUpdate,
-      layers: L.shadow.camera.layers.mask,
+      intensity: L.intensity, angle: L.angle, penumbra: L.penumbra, distance: L.distance, decay: L.decay,
     };
     L.position.set(x - _fwd.x * E.lightForwardM, y + E.lightHeightM, z - _fwd.z * E.lightForwardM);
     d.lightTarget.position.set(x, y + h * E.lightTargetFrac, z);
     L.color.setRGB(E.lightColor[0], E.lightColor[1], E.lightColor[2]);
     L.angle = E.lightAngle; L.penumbra = E.lightPenumbra; L.distance = E.lightRangeM; L.decay = E.lightDecay;
-    L.intensity = 0;
-    L.shadow.autoUpdate = true;
-    // only the creature cards cast into this light's shadow map: its one shadow-pass program (the billboard's) is
-    // compiled at boot (`Stage.armWarmupShadows`), whatever props or trees stand in the cone
-    L.shadow.camera.layers.set(LAYERS.billboards);
+    L.intensity = 0;   // the beacons cast no shadow map (2026-10-25: lit shaders without spot shadows, render notes)
     this.savedExposure = d.post?.exposure.value ?? 1;
     this.savedVignette = d.post?.vignette.value ?? 0;
 
@@ -576,7 +570,6 @@ export class EvolutionSequence implements EvolutionHandle {
     o.setGlow(s.glowOld); n.setGlow(s.glowNew);
     const L = this.d.light;
     L.intensity = E.lightIntensity * s.light;
-    L.shadow.autoUpdate = true;
     const post = this.d.post;
     if (post) {
       post.exposure.value = this.savedExposure * lerp(1, E.exposureDim, s.dim);
@@ -595,8 +588,6 @@ export class EvolutionSequence implements EvolutionHandle {
     const L = d.light; const sv = this.saved;
     L.position.copy(sv.position); d.lightTarget.position.copy(sv.target); L.color.copy(sv.color);
     L.intensity = sv.intensity; L.angle = sv.angle; L.penumbra = sv.penumbra; L.distance = sv.distance; L.decay = sv.decay;
-    L.shadow.autoUpdate = sv.autoUpdate;
-    L.shadow.camera.layers.mask = sv.layers;
     if (d.post) { d.post.exposure.value = this.savedExposure; d.post.vignette.value = this.savedVignette; }
     if (reason === 'cancelled') {
       d.vfx.clear();

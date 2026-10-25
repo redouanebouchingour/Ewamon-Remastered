@@ -2390,3 +2390,75 @@ pool; `Part3.worldFx`).
 - `zone/generators/trophies.ts` reuses the set's builders (crystal housing, brazier, lantern, crate) and composes the
   wanted board, the scar stone and the banner from `box` / `beam` / `lathe` with the set's own surfaces, all of which
   `setSurfaces` already binds, so no surface or program is new to a route. No collider footprint: walk-through.
+
+## Performance and load time (2026-10-25, deviations from §10.3.2 / §10.7.5)
+
+Measured on an i7-10750H + GTX 1650 at 1920 × 1080, DPR 1, mirevale at noon in the client harness. GPU timestamp
+queries under-report badly on this adapter (`probe.gpuFrameMs()` said 2.6 ms against ~16 ms real): measure real GPU
+time by draining the queue, running one `tick()` and timing until `device.queue.onSubmittedWorkDone()`.
+
+### Local-light packing (deviates from §10.3.2 "every light rendered every frame")
+
+- `LocalLightsNode.update` (`lighting/layout.ts`) packs only lights that can reach a visible fragment: lit
+  (colour × intensity > 0) and, with a range, a range sphere inside the camera frustum (`localLightReaches`). The loop
+  bound is the packed count (`packedCount`), so by day (§10.3.5 multiplier 0) the zone's lamps cost nothing and at
+  night off-screen lamps cost nothing. Order is registration order. ~4.3 ms GPU per frame at noon in mirevale (21
+  dark lamps looped by every lit fragment).
+
+### Shadow update staggering
+
+- `LightRig.scheduleShadows(camera)`, called per frame in `frameSteps` step 2, sets each CSM cascade light's
+  `shadow.autoUpdate` from `CASCADE_SCHEDULE` (`[0,1] [0,2] [0,1] [0,3]`): the near cascade every frame, 14–34 m every
+  2nd, the far two every 4th; 2 of 4 maps per frame. Every cascade renders after a camera jump (> `CASCADE_JUMP_M`), a
+  turn or sun turn (`CASCADE_TURN_EPS`), a projection change, `setSunShadowMap` or `updateFrustums`.
+- Correctness rests on three 0.186: `ShadowNode.renderShadow` is the only place a shadow-casting light's
+  `shadow.updateMatrices` runs (`lightShadowMatrix` re-derives only for `castShadow !== true`), so a skipped cascade's
+  map and matrix stay paired and lag a few frames without swimming.
+- Main thread 27.6 → 11.7 ms per frame, shadow draws 299 → 126, 32 → 50 fps.
+
+### Lit shaders without spot shadows (deviates from §10.3.2 / §10.7.5)
+
+- No punctual light renders a shadow map. The layout's 2 shadow spot slots (`LIGHT_LAYOUT.shadowSpotSlots`,
+  `reservedShadowLights`, `idleShadowMap`, `castsShadowMap`, `slotLightsInUse`) are gone; a `castShadow: true` source
+  is a looped local light and still counts against the content budget's 8. The arena beacons (`battleStage.ts`) and
+  the evolution sequence's borrowed beacon cast none either (`armWarmupShadows`, `beaconShadowsLive`, the warm-up
+  shadow frames are gone). `LIGHT_LAYOUT.maxLocalLights` 32 → 40.
+- Each shadowed spot inlined ~88 lines into every lit fragment shader (projection, 5-tap PCF, the direct-light call),
+  four of them, lit or not. Largest lit fragment shader 102 → 69 KB, all shaders −27 %, boot compile ~26 s → ~17–21 s.
+- Visual cost: lamps and beacons light but cast no shadows; the sun's CSM still casts every world shadow.
+- `stats.ts` `dumpZone` lost `extraLights`; `countPunctualLights` lost the `ewaIdle` skip (only idle slots set it).
+
+### Occluder fade bound (`materials/occlusion.ts`)
+
+- The foreground volume faded everything taller than `fgHeightM` and more than `fgNearM` ahead of the player, with no
+  bound beside or below the sight line: town roofs in the lower screen dithered away and showed hollow interiors. It
+  now fades only within `fgSideM` (3.5 m) of the camera → chest line sideways and no lower than `fgBelowM` (1 m) under
+  it, each eased over `fgRampM`. The real-occluder capsule is unchanged.
+
+### Boot-time zone prepare
+
+- `RendererOptions.beforeWarmUp(host)` runs right before step 8's warm-up compile (a throw is logged in dev and
+  swallowed). The owner starts `prepareZone(spec, { eager: true })` there so the zone's texture fetch and build run
+  while the main thread would otherwise wait on the GPU process; `loadZone` adopts it, a wrong guess is dropped there.
+- `eager`: `ZoneSystem.prepare` uses `PREPARE_EAGER_SLICE_MS` (32 ms) slices yielding a task (`nextSlice`) instead of
+  8 ms slices per frame (without this the boot prepare was slower, 40.6 s against 34.6 s); `prepareZone` compiles the
+  near units at `COMPILE_CONCURRENCY`, then the far ones in background slots. Playable ~8 s sooner (34.6 / 42.5 s →
+  24.8 / 36.5 s).
+- Side effect: the eager near compile usually lands inside the warm-up, so `captureBaseline()` includes the prepared
+  zone's programs / geometries. Only the harness `info()` reads `baseline`, and only `?bootprep=1` sees it raised.
+
+### Splat lookup index (`zone/layout.ts`)
+
+- `splatAt` builds a per-context index on first use (module `WeakMap`): road segments in flat arrays, precomputed
+  cos / sin per building / pocket / grass patch, and a lazily filled 4 m grid of the segments and buildings that can
+  decide a sample in that cell (1-Lipschitz bound with margin; an exact nearest-segment search, not a radius cut).
+  Kept candidates run the same arithmetic in the original order, so every output is bit-identical
+  (`test/splat-index.test.ts` holds the frozen old version; `EWA_SPLAT_FULL=1` checks every sample of all 21 zones).
+  All zones 4.2 s → 1.5 s; mirevale ~195 → ~85 ms.
+
+### Tried and rejected
+
+- `COMPILE_CONCURRENCY` 12 instead of 4: no gain beyond run-to-run spread (the GPU process compiles largely serially).
+- Lower quality presets: barely changed GPU time at 1080p on the GTX 1650.
+- Deferring the 83 library warm-up quads: only ~8–27 distinct programs, which the first zone needs anyway.
+- A lazy or word-wise `geometryDigest`: ~56 ms over 25 MB; the SPEC defines it byte-wise.

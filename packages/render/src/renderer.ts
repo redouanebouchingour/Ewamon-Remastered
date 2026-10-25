@@ -99,6 +99,13 @@ export interface RendererOptions {
    * `dispose()` destroys itself, nor on the WebGL2 fallback.
    */
   readonly onDeviceLost?: (info: DeviceLostInfo) => void;
+  /**
+   * Load time (addition 2026-10-25): called once the host exists, right before step 8's warm-up compile. That compile
+   * waits on the GPU process for seconds with the main thread idle; an owner that knows the zone it will enter can start
+   * `prepareZone` here so the zone's texture fetch and build run meanwhile (`loadZone` adopts it; a wrong guess is
+   * dropped there). A throw is logged (dev builds) and swallowed: the boot goes on.
+   */
+  readonly beforeWarmUp?: (r: Renderer) => void;
 }
 
 /** Phase E6: what `GPUDevice.lost` resolved with (`GPUDeviceLostInfo.reason` / `.message`). */
@@ -394,7 +401,8 @@ export async function createRenderer(o: RendererOptions, subsystems: RendererSub
   const host = new RendererHost(gpu, backend, caps, ktx2, o, subsystems);
   // E6: a lost device stops the frames and tells the owner (subscribed before the warm-up, which can take seconds)
   if (backend === 'webgpu') watchDeviceLost((gpu.backend as unknown as BackendLike).device as DeviceLostSource | undefined, (info) => host.handleDeviceLost(info), () => host.isDisposed);
-  // 8.
+  // 8. (the owner may start a zone's prepare first: it builds while the warm-up compiles)
+  try { o.beforeWarmUp?.(host); } catch (e) { if (isDevBuild()) console.error('@ewa/render: beforeWarmUp threw', e); }
   await host.warmUp();
   INTERNALS.set(host, host);
   return host;
@@ -428,7 +436,7 @@ interface CompileStat { readonly objects: number; readonly ms: number | null; re
 interface CompileRun { cancelled: boolean; /** a prepared zone's run once its zone is adopted: no background slots */ urgent?: boolean }
 
 /** What `ZoneSystem.prepare` takes from the renderer (Handover II: the sliced build's controls). */
-interface PrepareOptions { readonly cancelled?: () => boolean; readonly urgent?: () => boolean; readonly stats?: SliceStats }
+interface PrepareOptions { readonly eager?: boolean; readonly cancelled?: () => boolean; readonly urgent?: () => boolean; readonly stats?: SliceStats }
 
 /** A zone being prepared off-scene (handover (b)): its build, its compile run and when that run ends. */
 interface PreparedRecord { readonly spec: ZoneSpec; readonly ready: Promise<PreparedZone | null>; readonly run: CompileRun; readonly done: Promise<void> }
@@ -453,6 +461,11 @@ function backgroundSlot(): Promise<void> {
 export interface LoadZoneOptions {
   /** Where the player will stand (spawn / handover arrival): phase 1 compiles what the diorama camera sees from there. Absent → the rig's focus. */
   readonly focus?: { readonly x: number; readonly z: number } | null;
+  /**
+   * `prepareZone` only (load-time addition 2026-10-25): no frames to protect (the boot compile is running): the build
+   * runs in larger task slices and the first view's units compile at `COMPILE_CONCURRENCY` instead of in background slots.
+   */
+  readonly eager?: boolean;
 }
 
 class RendererHost implements Renderer, HostContext {
@@ -1047,7 +1060,8 @@ class RendererHost implements Renderer, HostContext {
     // Handover II: the build runs in slices between frames; a drop stops it, an adopting `loadZone` hurries it
     const stats = createSliceStats();
     this.prepareStats = stats;
-    const ready = zones.prepare(next, { cancelled: () => run.cancelled || this.disposed, urgent: () => run.urgent === true, stats }).then((z) => {
+    const eager = opts.eager === true;
+    const ready = zones.prepare(next, { eager, cancelled: () => run.cancelled || this.disposed, urgent: () => run.urgent === true, stats }).then((z) => {
       if (run.cancelled || this.disposed) { z.drop(); return null; }
       return z;
     }, (e: unknown) => {
@@ -1059,9 +1073,15 @@ class RendererHost implements Renderer, HostContext {
       // every unit gated (a frame after the adoption never compiles one synchronously), nearest the arrival first
       const units = planZoneCompile(z.handle.group, this.predictView(z.handle, opts.focus ?? null));
       for (const u of units) this.gate(u.object);
-      const items: CompileItem[] = [...orderUnits(units.filter((u) => u.near)), ...units.filter((u) => !u.near).sort((a, b) => a.distance - b.distance)]
-        .map((u) => ({ object: u.object, owned: true }));
-      await this.compileQueue('background', next.id, items, BACKGROUND_CONCURRENCY, run, true);
+      const near: CompileItem[] = orderUnits(units.filter((u) => u.near)).map((u) => ({ object: u.object, owned: true }));
+      const far: CompileItem[] = units.filter((u) => !u.near).sort((a, b) => a.distance - b.distance).map((u) => ({ object: u.object, owned: true }));
+      if (eager) {
+        // the first view at full concurrency (no frames to protect), the rest in background slots as usual
+        await this.compileQueue('background', next.id, near, COMPILE_CONCURRENCY, run, false);
+        if (!run.cancelled) await this.compileQueue('background', next.id, far, BACKGROUND_CONCURRENCY, run, true);
+      } else {
+        await this.compileQueue('background', next.id, [...near, ...far], BACKGROUND_CONCURRENCY, run, true);
+      }
     }).catch((e: unknown) => { if (isDevBuild()) console.error(`@ewa/render: prepareZone('${next.id}') compile failed`, e); });
     this.prepared = { spec: next, ready, run, done };
     return done;
@@ -1321,6 +1341,7 @@ class RendererHost implements Renderer, HostContext {
     this.renderClockS += scaled / 1000;
     this.day.update(dt, scaled / 1000, focus);
     this.lighting.update(this.renderClockS);
+    this.lighting.scheduleShadows(this.camera3);   // which sun cascades re-render this frame (far ones staggered)
     this.sky.follow(this.camera3.position);
     this.precipitation.follow(focus);
     // (3) billboards and other subsystem hooks (uniform writes only)
@@ -1408,7 +1429,6 @@ class RendererHost implements Renderer, HostContext {
     const counts = this.frameCounts ?? this.readCounts();
     return dumpZone({
       zone: zoneId, harvestLevel: this.harvest, root, library: this.materials, counts, culledChunks: culled, spriteScan: this.scene,
-      extraLights: this.zone !== null && !isDisposedHandle(this.zone) ? this.lighting.slotLightsInUse() : [],
       ...(this.frameCounts !== null ? { shadowDrawCalls: this.frameShadowDraws } : {}),
     });
   }

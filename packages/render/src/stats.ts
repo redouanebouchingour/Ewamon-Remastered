@@ -266,8 +266,7 @@ export function countPunctualLights(root: Object3D, out: LightCountsOut): LightC
   out.shadow = 0; out.nonShadow = 0;
   const visit = (o: Object3D): void => {
     if ((o.layers.mask & DEBUG_MASK) !== 0) return;
-    // the fixed light layout's idle shadow slots light nothing (render IMPLEMENTATION-NOTES, handover)
-    if ((o instanceof PointLight || o instanceof SpotLight) && o.userData?.ewaIdle !== true) { if (o.castShadow) out.shadow++; else out.nonShadow++; }
+    if (o instanceof PointLight || o instanceof SpotLight) { if (o.castShadow) out.shadow++; else out.nonShadow++; }
     for (const c of o.children) visit(c);
   };
   visit(root);
@@ -339,8 +338,6 @@ export interface DumpInput {
    * every billboard material found under it. `materials[]` stays the zone root's set (what `counts.materials` counts).
    */
   readonly spriteScan?: Object3D;
-  /** Lights of the zone that live outside its root: the fixed layout's shadow slots the zone borrows (handover). */
-  readonly extraLights?: readonly (PointLight | SpotLight)[];
 }
 
 function numericParams(g: BufferGeometry): Record<string, number> | null {
@@ -444,7 +441,6 @@ export function dumpZone(i: DumpInput): ZoneDump {
   const seenM = new Map<string, DumpMaterialClass>();
 
   i.root.updateMatrixWorld(true);
-  for (const l of i.extraLights ?? []) { l.updateWorldMatrix(true, false); lights.push(l); }
   const visit = (o: Object3D): void => {
     if ((o.layers.mask & DEBUG_MASK) !== 0) return;
     if (o instanceof PointLight || o instanceof SpotLight) lights.push(o);

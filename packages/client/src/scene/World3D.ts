@@ -79,6 +79,7 @@ import { useUiStore } from '../state/ui';
 import { FONT, TYPE_COLORS } from '../ui/tokens';
 import { createStepCollider } from './collider';
 import type { StepCollider } from './collider';
+import { withNeighbours, zoneSpecFor } from './zoneSpecFor';
 import { beatDialogue, gymPlan, leaguePostDialogue, leagueSpeaker, npcPlan, rematchOfBattle, storyFlagSet, trainerPlan } from './dialogue';
 import { questHintFor } from './questHint';
 import type { DialogueLines, InteractPlan } from './dialogue';
@@ -119,7 +120,7 @@ import { createSpriteCatalog, loadCreatureManifest } from './spriteCatalog';
 import { ARENA_FALLBACK, mountArenaBackdrop } from './arenaBackdrop';
 import type { MountedBackdrop } from './arenaBackdrop';
 import { DeviceRecovery } from './deviceRecovery';
-import { awaitArrival } from './arrival';
+import { arrivalOf, awaitArrival } from './arrival';
 import { fetchIntoCache, neighbourPrefetchPlan, runPrefetch } from './prefetch';
 import type { PrefetchToken } from './prefetch';
 import type { SpriteCatalog } from './spriteCatalog';
@@ -443,6 +444,7 @@ class World implements World3D {
       quality: useSettingsStore.getState().graphics.quality,
       onCompileProgress: (p) => this.onCompileProgress(p),
       onDeviceLost: (info) => void this.recovery.onLost(info),
+      beforeWarmUp: (renderer) => this.prepareBootZone(renderer),
     });
     if (this.disposed) {
       r.dispose();
@@ -996,6 +998,27 @@ class World implements World3D {
     this.input.clear();
     this.spectatorArenas.clear();
     this.followers?.clear();
+  }
+
+  /**
+   * Load time (2026-10-25): the renderer's boot compile waits on the GPU process for many seconds with the main thread
+   * idle, and the zone load used to start only after it. The zone the player will enter is prepared meanwhile, so its
+   * textures load and its geometry builds during the compile; `enterZone`'s `loadZone` adopts it (the same spec as
+   * `SceneDirector.doLoad`: `sameZone` compares id, seed and harvest level). The zone is the joined room's when the
+   * join already landed, else the session's (`hydrateFromMe` seeds it from `/me` presence before the play route
+   * mounts the world; it is the zone `PlayShell` enters). A wrong guess is dropped by that `loadZone`.
+   */
+  private prepareBootZone(r: Renderer): void {
+    if (this.inArena || this.ws.kind === 'arena') return;
+    const s = useSessionStore.getState();
+    if (s.progression === null) return;   // the harvest state needs the story flags
+    const zoneId = this.roomZone ?? s.zoneId;
+    if (zoneId === null) return;
+    const z = zoneDef(zoneId);
+    // where the player will stand: the room's state once it carries the local player, else the zone's spawn (doLoad's own fallback)
+    const room = this.roomZone === zoneId ? this.room : null;
+    const focus = (room !== null ? arrivalOf(room, this.ws.selfId) : null) ?? { x: z.spawn.x, z: z.spawn.z };
+    void r.prepareZone?.(withNeighbours(zoneSpecFor(z, harvestStateFor(zoneId, this.flags())), z), { focus, eager: true });
   }
 
   /** A room (join / handover) is live and the renderer exists: load its zone (`label`: the overlay text, E6 recovery). */

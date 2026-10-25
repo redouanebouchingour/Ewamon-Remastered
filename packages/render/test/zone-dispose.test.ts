@@ -33,7 +33,7 @@ describe('§10.5.9 dispose-contract', () => {
     expect(h.group.parent).toBe(scene);
     let lights = 0;
     h.group.traverse((o) => { if (o instanceof PointLight || o instanceof SpotLight) lights++; });
-    expect(lights + rig.slotLightsInUse().length).toBe(spec.lights.length);   // shadow casters borrow layout slots
+    expect(lights).toBe(spec.lights.length);
     expect(rig.counts()).toEqual({ shadow: 1, nonShadow: 0 });
     const disposedGeo = new Set<BufferGeometry>();
     for (const g of h.geometries) g.addEventListener('dispose', () => disposedGeo.add(g));
@@ -51,7 +51,6 @@ describe('§10.5.9 dispose-contract', () => {
     expect(instancedDisposed.size).toBe(h.instanced.length);
     expect(meshEvents.size).toBe(meshes.length);                 // plain meshes get the event their render objects listen to
     expect(rig.counts()).toEqual({ shadow: 0, nonShadow: 0 });
-    expect(rig.slotLightsInUse()).toEqual([]);                   // the borrowed slot went idle, still in the scene
     expect(evict).toHaveBeenCalledWith([]);
     h.dispose();                                                  // second call: no-op
     expect(evict).toHaveBeenCalledTimes(1);

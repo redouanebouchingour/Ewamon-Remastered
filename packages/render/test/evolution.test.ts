@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Group, NearestFilter, PerspectiveCamera, PointLight, SpotLight, Texture } from 'three/webgpu';
 import type { Object3D, UniformNode } from 'three/webgpu';
 import { uniform } from 'three/tsl';
-import { ALL_EFFECTS, LAYERS, applyReducedEffects } from '../src/index.js';
+import { ALL_EFFECTS, applyReducedEffects } from '../src/index.js';
 import type { EffectsFlags } from '../src/descriptors.js';
 import { createMaterialLibraryWith } from '../src/materials/library.js';
 import { DioramaRig } from '../src/camera/rig.js';
@@ -225,7 +225,6 @@ function lights(root: Object3D): (SpotLight | PointLight)[] {
 function snapshotLight(L: SpotLight): unknown {
   return {
     p: L.position.toArray(), t: L.target.position.toArray(), c: L.color.toArray(), i: L.intensity, a: L.angle, pe: L.penumbra, d: L.distance, de: L.decay,
-    au: L.shadow.autoUpdate, layers: L.shadow.camera.layers.mask,
   };
 }
 
@@ -257,7 +256,7 @@ describe('§10.7.5 evolution sequence — runtime on the stage', () => {
     for (let i = 0; i < 700 && h.phase !== 'done'; i++) {
       f.frame(dt); clock += dt;
       if (post.exposure.value < 0.8) sawDim = true;
-      if (L.intensity > 0) { sawLight = true; expect(L.shadow.autoUpdate).toBe(true); expect(L.shadow.camera.layers.mask).toBe(1 << LAYERS.billboards); }
+      if (L.intensity > 0) { sawLight = true; expect(L.castShadow).toBe(false); }
       if (cover.active.has(0) && cut.active.has(0)) sawSite = true;
       if (f.actors.emoteOf('me').n === 2) cheered = true;
       const e = stage.evolution;
@@ -365,7 +364,6 @@ describe('§10.7.5 evolution sequence — runtime on the stage', () => {
     const after = snapshotLight(L) as Record<string, unknown>;
     const b = before as Record<string, unknown>;
     // the battle moved the beacon (its own placement); the evolution's own settings are gone
-    expect(after.layers).toBe(b.layers);
     expect(after.a).toBe(b.a); expect(after.pe).toBe(b.pe); expect(after.d).toBe(b.d);
     expect(after.i).toBe(0);
     // a second evolve after the battle starts cleanly; evolve() also cancels a running one

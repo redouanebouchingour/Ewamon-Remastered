@@ -2862,3 +2862,17 @@ the second isolated client (the component over the landing page: the foe and own
 - Live check: the alt pair with an act3c account holding every species and an act2 account; screenshots of tiles,
   list, every entry tab (dustcub's split, hyoryu's Majin Form, ravatar's relic forms, a seen-only gated entry), the
   habitat atlas, compare, and the rewards view.
+
+## Load time and Docker CPU (2026-10-25)
+
+- `World3D.prepareBootZone` (`createRenderer`'s `beforeWarmUp`): prepares the zone the player will enter
+  (`roomZone ?? session zoneId`, which `/me` fills before `PlayShell` mounts) with `eager: true` during the boot shader
+  compile. The spec is `withNeighbours(zoneSpecFor(z, harvestStateFor(id, flags)), z)`, what `SceneDirector.doLoad`
+  builds, so `loadZone` adopts it (`sameZone`: id, seed, harvest level). Focus is the room's player position if known,
+  else the zone spawn (doLoad's own fallback); it only steers the eager first-view compile. Skipped in an arena or
+  without progression. Device-loss recovery runs it again.
+- Harness: `?bootprep=1` (`HarnessWorld.bootPrepare`) for A/B: compare `?zone=mirevale&bg=1` with `…&bg=1&bootprep=1`,
+  reading `renderer ready` and `zone mirevale loaded`, alternating runs.
+- Docker dev watchers: `tsx watch` polls at `CHOKIDAR_INTERVAL` 1000 ms (was chokidar's 100 ms, ~55 % of a core); Vite
+  polls sources every 1000 ms (was 300 ms, ~40 %) and no longer polls `public/` (an edited asset needs a page reload, a
+  new one `docker compose restart client`). Apply the compose change with `docker compose up -d server`.

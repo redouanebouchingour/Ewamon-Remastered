@@ -134,7 +134,7 @@ describe('§10.7.5 BattleStage bookkeeping', () => {
     const lightsBefore = lights(scene).map((l) => l.uuid);
     expect(lightsBefore).toHaveLength(2);                      // the reserved slots exist from construction
     expect(stage.beaconIntensity).toBe(0);
-    expect(stage.beaconShadowsLive).toBe(false);               // undressed: no shadow-map cost
+    expect(lights(scene).every((l) => !l.castShadow)).toBe(true);
     const libDispose = vi.spyOn(Material.prototype, 'dispose');
     stage.dress({ x: 10, z: -4 }, 'grove', ['p1']);
     for (let i = 0; i < 40; i++) stage.update(16, 16);
@@ -142,7 +142,6 @@ describe('§10.7.5 BattleStage bookkeeping', () => {
     expect(stage.arenaRoot.visible).toBe(true);
     expect(stage.arenaRoot.position.y).toBeCloseTo(0, 6);     // fully risen
     expect(stage.beaconIntensity).toBeCloseTo(STAGE.beaconIntensity, 3);
-    expect(stage.beaconShadowsLive).toBe(true);
     expect(lights(scene).map((l) => l.uuid)).toEqual(lightsBefore);   // same light set during the battle (Pillar 7)
     expect(stage.spectatorIds.length).toBeLessThanOrEqual(6);
     expect(actors.liveCount).toBe(stage.spectatorIds.length);
@@ -168,7 +167,6 @@ describe('§10.7.5 BattleStage bookkeeping', () => {
     for (let i = 0; i < 40; i++) stage.update(16, 16);
     expect(stage.arenaRoot.visible).toBe(false);
     expect(stage.beaconIntensity).toBe(0);
-    expect(stage.beaconShadowsLive).toBe(false);
     expect(lights(scene).map((l) => l.uuid)).toEqual(lightsBefore);
     expect(zoneRoot.parent).toBe(scene);                        // the zone root is never touched
     expect(libDispose).not.toHaveBeenCalled();                  // nothing shared is disposed by undress
