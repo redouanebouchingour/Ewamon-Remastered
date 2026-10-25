@@ -2456,6 +2456,50 @@ time by draining the queue, running one `tick()` and timing until `device.queue.
   (`test/splat-index.test.ts` holds the frozen old version; `EWA_SPLAT_FULL=1` checks every sample of all 21 zones).
   All zones 4.2 s → 1.5 s; mirevale ~195 → ~85 ms.
 
+### Water backdrop without transmission (deviates from §10.5.6 "MeshPhysicalNodeMaterial with transmission")
+
+- The water is still a `MeshPhysicalNodeMaterial` (opaque, IOR 1.333, roughness / foam fades unchanged), but
+  `transmission` is 0. In three 0.186, transmission > 0 makes `PhysicalLightingModel` sample
+  `viewportOpaqueMipTexture()`: per render, `ViewportTextureNode.updateBefore` → `Renderer.copyFramebufferToTexture`.
+  `WebGPUBackend.copyFramebufferToTexture` ends the scene pass (4 HalfFloat MRT targets + depth), copies, builds the
+  whole mip chain and reopens the pass with `loadOp: load`. Then every water fragment runs `getIBLVolumeRefraction`
+  with a two-level bicubic tap (`textureBicubicLevel`).
+- `materials/waterBackdrop.ts` rebuilds the same term on three's own hook instead. `backdropNode` is
+  (1 − EnvironmentBRDF) × `diffuseContribution` × the backdrop, which is `getIBLVolumeRefraction` with the water's
+  zero thickness. `backdropAlphaNode` is `tr × (1 − h) × (1 − foam) × weight`. `LightsNode` mixes the diffuse toward it
+  exactly as for transmission, and the material stays in the transparent list as before. The backdrop is one shared
+  `ViewportTextureNode` subclass in `SharedUniforms.waterBackdrop`, so there is one copy per render however many
+  water materials read it. It is read with one trilinear tap at three's LOD (log2(width) × roughness × 0.666, so a
+  harvest-roughened water still sees a blurred bed). The tap is shifted by (final − geometric) view normal × 0.012
+  UV, ramped in over the first metre of depth (none at the bank). three's thickness-0 transmission had no shift.
+- A lower-resolution copy is not possible through three's API: `copyFramebufferToTexture` is a `copyTextureToTexture`
+  of equal extents (only a sub-rectangle), and nothing else can split the scene pass. It would not help anyway: a 1 × 1
+  copy cost the same as the full copy with mips (see below). The cost is the pass split.
+- `QualityProfile.waterBackdrop` is `high` only. `setWaterBackdrop(b, false)` (`medium` / `low`, applied in the renderer's
+  constructor and `setQuality`) zeroes the weight uniform and sets a flag that makes `updateBefore` return before the
+  copy. The scene pass is never split, and the texture stays its 1 × 1 placeholder (or the last copy). There is one
+  water program either way: switching compiles nothing, and the boot program count (119 in tide_route) is unchanged.
+- Measured on an Apple M2 Max (not the GTX 1650), 1920 × 1080, DPR 1, `high`. Harness `tide_route` (harvest thinning)
+  at noon, `place(22, -50)`, heading 0, zoom stop 2, about 85 % of the frame water. Real GPU time (drain the queue,
+  `tick()`, until `onSubmittedWorkDone`), medians of 240 frames, interleaved rounds:
+
+  | Case | ms / frame |
+  |---|---|
+  | before: three transmission (full copy + mip chain + bicubic) | 9.1–9.5 |
+  | before, mip generation off | 9.1 |
+  | before, a 1 × 1 copy (pass split, no bandwidth) | 9.2 |
+  | before, copy skipped (transmission still shaded) | 7.2–7.3 |
+  | before, transmission 0 (no backdrop at all) | 6.4 |
+  | after, `high` (backdrop on) | 8.3 |
+  | after, `high` without mips (not adopted, the bed loses its rough-water blur) | 8.0 |
+  | after, `medium` / `low` (backdrop off) | 6.1–6.3 |
+  | after, backdrop node removed from the graph | 6.2 |
+
+  On this GPU the saving is −1.1 ms on `high` and −3.1 ms on `medium` / `low`. On an immediate-mode GPU such as the
+  GTX 1650 the pass split is cheaper and the copy bandwidth a larger share; it has not been re-measured there.
+- Visual: before / after at `high` match by day and at night with the moon glints. Without the backdrop the water
+  reads a little lighter and bluer (no darker bed mixed in).
+
 ### Tried and rejected
 
 - `COMPILE_CONCURRENCY` 12 instead of 4: no gain beyond run-to-run spread (the GPU process compiles largely serially).

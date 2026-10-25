@@ -1,7 +1,8 @@
 /**
  * Graphics quality presets (addition, IMPLEMENTATION-NOTES "Quality presets"). `high` is the §10 SPEC graph and
  * numbers unchanged; `medium` and `low` trade the costliest GPU work for frame time on weak GPUs (integrated Intel
- * parts first): the drawing-buffer pixel ratio, the sun's cascade resolution, GTAO, the tilt-shift DOF and bloom.
+ * parts first): the drawing-buffer pixel ratio, the sun's cascade resolution, GTAO, the tilt-shift DOF, bloom and the
+ * water's backdrop.
  * Pure; the renderer applies a profile in `setQuality`, the client picks one (`recommendedQuality` for "auto").
  */
 export type GraphicsQuality = 'low' | 'medium' | 'high';
@@ -19,12 +20,17 @@ export interface QualityProfile {
   readonly dof: boolean;
   /** Bloom allowed (the user's bloom toggle still applies on top): its mip chain is a dozen extra passes. */
   readonly bloom: boolean;
+  /**
+   * The water shows the bed and bank through it (`materials/waterBackdrop.ts`). Off: tint, caustics and foam only, and
+   * no mid-pass copy of the scene. A uniform and a flag on the one water program: switching compiles nothing.
+   */
+  readonly waterBackdrop: boolean;
 }
 
 export const QUALITY_PROFILES: Readonly<Record<GraphicsQuality, QualityProfile>> = Object.freeze({
-  high: Object.freeze({ pixelRatioCap: 1.5, sunShadowMap: 2048, gtao: true, gtaoSamples: 16, dof: true, bloom: true }),
-  medium: Object.freeze({ pixelRatioCap: 1.25, sunShadowMap: 1024, gtao: true, gtaoSamples: 8, dof: true, bloom: true }),
-  low: Object.freeze({ pixelRatioCap: 1, sunShadowMap: 1024, gtao: false, gtaoSamples: 8, dof: false, bloom: false }),
+  high: Object.freeze({ pixelRatioCap: 1.5, sunShadowMap: 2048, gtao: true, gtaoSamples: 16, dof: true, bloom: true, waterBackdrop: true }),
+  medium: Object.freeze({ pixelRatioCap: 1.25, sunShadowMap: 1024, gtao: true, gtaoSamples: 8, dof: true, bloom: true, waterBackdrop: false }),
+  low: Object.freeze({ pixelRatioCap: 1, sunShadowMap: 1024, gtao: false, gtaoSamples: 8, dof: false, bloom: false, waterBackdrop: false }),
 });
 
 /**

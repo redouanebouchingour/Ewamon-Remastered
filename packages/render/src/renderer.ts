@@ -54,6 +54,7 @@ import { coerceTimeScale } from './post/effects.js';
 import { GROVE_GRADE, type GradePalette } from './post/grade.js';
 import { ALL_PASSES_ON, GRAPH_PASSES, PostStack, type PassSwitches } from './post/pipeline.js';
 import { QUALITY_PROFILES, recommendedQuality, type GraphicsQuality } from './quality.js';
+import { setWaterBackdrop } from './materials/waterBackdrop.js';
 import {
   computePassMs, copyInfo, countPunctualLights, createRenderStats, dumpZone, median, PassTimer, readBudgetCounts, TimestampResolver,
   type LightCountsOut, type MutableRenderStats, type TimestampPoolLike, type ZoneDump,
@@ -180,7 +181,7 @@ export interface Renderer {
   setHarvestLevel(l: HarvestLevel): void;      // §10.2.6
   setEffects(f: EffectsFlags): void;           // rebuilds the post graph; §10.8.4
   setPixelRatio(r: number): void;              // re-clamped by §10.1.3
-  /** Quality preset addition (`quality.ts`): pixel-ratio cap, sun cascade size, GTAO / DOF. Optional for fakes. */
+  /** Quality preset addition (`quality.ts`): pixel-ratio cap, sun cascade size, GTAO / DOF, the water backdrop. Optional for fakes. */
   setQuality?(q: GraphicsQuality | 'auto'): void;
   /** The preset in effect (`'auto'` resolved). Optional for fakes. */
   readonly quality?: GraphicsQuality;
@@ -572,6 +573,7 @@ class RendererHost implements Renderer, HostContext {
     if (this.materials.uniforms.occlusion !== undefined) this.materials.uniforms.occlusion.camera = this.camera3;   // M2-spawn-noon-9
     this.lighting = new LightRig(this.scene);
     this.lighting.setSunShadowMap(QUALITY_PROFILES[this.quality].sunShadowMap);
+    if (this.materials.uniforms.waterBackdrop !== undefined) setWaterBackdrop(this.materials.uniforms.waterBackdrop, QUALITY_PROFILES[this.quality].waterBackdrop);
     this.sky = new SkyController(gpu, this.scene);
     this.fog = createHeightFog();
     this.scene.fogNode = this.fog.node;
@@ -1230,6 +1232,7 @@ class RendererHost implements Renderer, HostContext {
     if (next === this.quality) return;
     this.quality = next;
     this.lighting.setSunShadowMap(QUALITY_PROFILES[next].sunShadowMap);
+    if (this.materials.uniforms.waterBackdrop !== undefined) setWaterBackdrop(this.materials.uniforms.waterBackdrop, QUALITY_PROFILES[next].waterBackdrop);
     this.post.setQuality(next);
     this.resize(this.cssW, this.cssH);
   }

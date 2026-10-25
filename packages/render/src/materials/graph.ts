@@ -37,6 +37,7 @@ import { harvestBlend, type SharedUniforms } from './harvest.js';
 import { cloudShade } from './clouds.js';
 import { WEATHER_SURFACE, weatherSurface } from './weatherSurface.js';
 import { waterLife } from './waterLife.js';
+import { waterBackdropColor } from './waterBackdrop.js';
 import { occlusionKeep } from './occlusion.js';
 import type { SurfaceDef, SurfaceExtras } from './surfaces.js';
 import { triplanarSample } from './triplanar.js';
@@ -249,8 +250,9 @@ export function buildSurfaceGraph(def: SurfaceDef, _extras: SurfaceExtras, maps:
 export const WATER_DEPTH_ATTRIBUTE = 'depthBelow';
 
 /**
- * §10.5.6 water: `MeshPhysicalNodeMaterial` with transmission, two scrolling normal samples, a depth
- * tint from a build-time vertex attribute (no depth-buffer read), flattened at harvest level 2.
+ * §10.5.6 water: `MeshPhysicalNodeMaterial`, two scrolling normal samples, a depth tint from a build-time vertex
+ * attribute (no depth-buffer read), flattened at harvest level 2. The backdrop seen through it comes from
+ * `waterBackdrop.ts` instead of three's transmission (deviation, IMPLEMENTATION-NOTES).
  */
 function buildWaterGraph(def: SurfaceDef, maps: SurfaceMaps, p: SurfaceParams, u: SharedUniforms): MeshPhysicalNodeMaterial {
   const m = new MeshPhysicalNodeMaterial();
@@ -271,9 +273,13 @@ function buildWaterGraph(def: SurfaceDef, maps: SurfaceMaps, p: SurfaceParams, u
   m.normalNode = mix(mix(tangentNormal(nrm, float(0.35)), normalView, h), normalView, life.foam).normalize();
   m.roughnessNode = mix(mix(p.roughBias, float(0.95), h), float(0.7), life.foam);   // §10.5.6 roughness 0.05 (the def value); foam is matte
   m.metalnessNode = float(0);
+  // The backdrop (what shows through) is three's backdrop hook on one shared copy, not three's transmission
+  // (IMPLEMENTATION-NOTES "Water backdrop without transmission"): `transmission` stays 0. Same weight as before.
   const tr = p.transmission ?? uniform(0.6);
-  m.transmission = tr.value;                            // > 0 enables the transmission path at build time
-  m.transmissionNode = tr.mul(oneMinus(h)).mul(oneMinus(life.foam));
+  if (u.waterBackdrop !== undefined) {
+    m.backdropNode = waterBackdropColor(u.waterBackdrop, depth);
+    m.backdropAlphaNode = tr.mul(oneMinus(h)).mul(oneMinus(life.foam)).mul(u.waterBackdrop.weight);
+  }
   m.ior = 1.333;
   m.side = def.doubleSide ? DoubleSide : FrontSide;
   m.transparent = false;
