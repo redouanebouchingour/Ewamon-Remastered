@@ -5,7 +5,87 @@
  */
 
 .search {
-  flex: 1 1 240px;
+  flex: 1 1 160px;
+}
+
+.views {
+  margin-bottom: var(--s-5);
+}
+
+.toolbars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.toolbar2 {
+  align-items: center;
+}
+
+.toggle {
+  flex: none;
+}
+
+/* list density: the stats as columns */
+.list {
+  grid-column: 1 / -1;
+}
+
+.mono {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.listName {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.shinyInline {
+  color: var(--warn);
+}
+
+.capital {
+  text-transform: capitalize;
+}
+
+.stateTag {
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.st_caught {
+  color: var(--text-hi);
+}
+
+.st_seen {
+  color: var(--text-1);
+}
+
+.st_unknown {
+  color: var(--text-2);
+}
+
+.showing {
+  margin-inline-start: auto;
+  color: var(--text-1);
+}
+
+.tileTypes {
+  display: flex;
+  gap: var(--s-1);
 }
 
 .hero {
@@ -19,6 +99,31 @@
   border-radius: 0;
   background: var(--bg-2);
   box-shadow: inset 0 0 0 1px var(--line-1);
+}
+
+/* an open entry: the count stays, smaller, so the entry gets the room */
+.heroCompact {
+  margin-bottom: var(--s-4);
+  padding: var(--s-3) var(--s-5);
+}
+
+.heroCompact .count {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--s-4);
+}
+
+.heroCompact .countValue {
+  font-size: var(--t-h1);
+  line-height: 1;
+}
+
+.heroCompact .countTotal {
+  font-size: var(--t-h3);
+}
+
+.heroCompact .legend {
+  display: none;
 }
 
 .count {
@@ -118,7 +223,7 @@
 }
 
 .withDetail {
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: 280px minmax(0, 1fr);
 }
 
 /* §20.9.5: 6 columns */
@@ -128,8 +233,79 @@
   gap: var(--s-3);
 }
 
-.withDetail .grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+/* an open entry folds the grid into a rail of rows beside it (2026-10-26) */
+.rail {
+  position: sticky;
+  inset-block-start: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  max-block-size: calc(100vh - 220px);
+  margin: 0;
+  padding: 0 var(--s-2) 0 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-3);
+  inline-size: 100%;
+  padding: var(--s-1) var(--s-3) var(--s-1) var(--s-2);
+  border: none;
+  border-inline-start: 4px solid var(--bg-3);
+  background: var(--bg-2);
+  color: var(--text-1);
+  text-align: start;
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--bg-3);
+}
+
+.row.caught {
+  border-inline-start-color: var(--tc, var(--text-hi));
+}
+
+.row.seen {
+  border-inline-start-color: var(--text-2);
+}
+
+.row.unknown {
+  background: var(--bg-1);
+}
+
+.row.selected {
+  box-shadow: inset 0 0 0 2px var(--accent);
+  transform: none;
+}
+
+.row .num {
+  position: static;
+}
+
+.row .alphaMark,
+.row .shinyMark,
+.row .formMark {
+  position: static;
+  grid-column: 4;
+  grid-row: 1;
+}
+
+.row .shinyMarkShift {
+  margin-inline-end: var(--s-5);
+}
+
+.row .name {
+  font-size: var(--t-body);
+}
+
+.row::before {
+  display: none;
 }
 
 .entry {

@@ -1,0 +1,205 @@
+/*
+ * Compare: a broadcast "tale of the tape". Two type-headed cards with VS between them, then mirrored stat bars that
+ * meet at the label; the higher side is paper white, the lower graphite.
+ */
+
+.compare {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+  padding: var(--s-6);
+  background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+}
+
+.top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--s-6);
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-4);
+  border: none;
+  border-top: 6px solid var(--tc, var(--line-2));
+  background: var(--bg-1);
+  color: var(--text-1);
+  cursor: pointer;
+}
+
+.card:hover {
+  background: var(--bg-3);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.name {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h2);
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.vs {
+  align-self: center;
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-display);
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+}
+
+.closeRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-block-start: calc(var(--s-4) * -1);
+}
+
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.statRow {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 64px minmax(0, 1fr) 56px;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.val {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: 1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.left {
+  text-align: end;
+}
+
+.win {
+  color: var(--text-hi);
+}
+
+.label {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.bar {
+  display: flex;
+  block-size: 10px;
+  background: var(--bg-3);
+  overflow: hidden;
+  transform: skewX(-12deg);
+}
+
+.barLeft {
+  justify-content: flex-end;
+}
+
+.fill {
+  display: block;
+  block-size: 100%;
+  inline-size: calc(var(--p) * 100%);
+  background: var(--line-2);
+}
+
+.fillWin {
+  background: var(--text-hi);
+}
+
+.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-6);
+}
+
+.three {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--s-5);
+}
+
+.matchCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.matchLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+}
+
+.mult {
+  min-inline-size: 32px;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  font-weight: 800;
+  font-style: italic;
+}
+
+.moveCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.moveTitle {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.moves {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.move {
+  padding: var(--s-1) var(--s-2);
+  background: var(--bg-1);
+  color: var(--text-1);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  font-weight: 700;
+  text-transform: uppercase;
+}
