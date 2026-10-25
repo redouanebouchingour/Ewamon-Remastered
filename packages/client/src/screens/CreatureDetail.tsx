@@ -9,6 +9,8 @@ import type { ReactNode } from 'react';
 import { HONOR_DELTAS, HONOR_MAX, HONOR_MIN, MAX_LEVEL, evolutionTarget, expToLevel, tracksHonor } from '@ewa/core';
 import type { CreatureInstance, SpeciesDef } from '@ewa/core';
 import { CREATURE_ITEMS, HELD_ITEMS, MULTI_USE_ITEMS, STONE_IDS, ability as abilityDef, displayName, itemInfo, maxHpOf, move as moveDef, species, statsOf, stoneTarget, typesOf, wornForm } from '../data/content';
+import { navigateTo } from '../app/navigation';
+import { dexHref } from '../data/dexInfo';
 import { useSessionStore } from '../state/session';
 import { Button } from '../ui/Button';
 import { badgesOf } from '../ui/CreatureCard';
@@ -176,6 +178,11 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
   const [abilityId, setAbilityId] = useState(c.ability);
   const [held, setHeld] = useState(c.heldItem ?? '');
   const [confirmRelease, setConfirmRelease] = useState(false);
+  const dexButton = (
+    <Button size="sm" variant="ghost" icon="dex" onClick={() => navigateTo(dexHref(c.speciesId))}>
+      Dex entry
+    </Button>
+  );
   const [useId, setUseId] = useState('');
 
   useEffect(() => {
@@ -387,7 +394,10 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
           <div className={s.bandCol}>
             <h4 className={l.sectionTitle}>Moves</h4>
             <MoveRows creature={c} />
-            {extraActions !== undefined && <div className={s.bandActions}>{extraActions}</div>}
+            <div className={s.bandActions}>
+              {dexButton}
+              {extraActions}
+            </div>
           </div>
         </div>
         <div className={s.tools}>
@@ -453,6 +463,7 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
       <CreatureHistory creatureId={c.id} />
 
       <div className={s.footer}>
+        {dexButton}
         {extraActions}
         {release}
       </div>

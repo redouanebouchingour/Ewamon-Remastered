@@ -198,3 +198,9 @@
 :global(:root[data-reduced='1']) .flash {
   animation: none;
 }
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--s-3);
+}

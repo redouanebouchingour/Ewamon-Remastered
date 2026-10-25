@@ -12,6 +12,8 @@ import { currentWorld } from '../scene/worldHost';
 import { getEffectiveSettings } from '../state/applySettings';
 import { useDaycareStore } from '../state/daycare';
 import { useUiStore } from '../state/ui';
+import { navigateTo } from '../app/navigation';
+import { dexHref } from '../data/dexInfo';
 import { Button } from '../ui/Button';
 import { CreatureSprite } from '../ui/CreatureSprite';
 import { Egg } from '../ui/Egg';
@@ -111,9 +113,20 @@ export function HatchReveal() {
             <p className={s.where}>
               {displayName(c)} {hatch.placement === 'party' ? 'joined your party' : 'went to your box (your party is full)'}.
             </p>
-            <Button variant="primary" onClick={done}>
-              Continue
-            </Button>
+            <div className={s.actions}>
+              <Button
+                icon="dex"
+                onClick={() => {
+                  done();
+                  navigateTo(dexHref(c.speciesId));
+                }}
+              >
+                Dex entry
+              </Button>
+              <Button variant="primary" onClick={done}>
+                Continue
+              </Button>
+            </div>
           </>
         ) : (
           <>
