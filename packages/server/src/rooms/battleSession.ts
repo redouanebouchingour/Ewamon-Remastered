@@ -27,7 +27,7 @@ import {
   validateAction,
 } from '@ewa/core';
 import type { Action, BandKind, BattleEvent, BattleFormat, BattleOutcome, BattleState, ContentIndex, CreatureInstance, Rng, RngState, Side, SideChoice, Terrain, WeatherKind } from '@ewa/core';
-import type { ArenaDifficulty, ArenaKind, QuestProgressEntry, RewardsSummary, ServerMessage } from '@ewa/protocol';
+import type { ArenaDifficulty, ArenaKind, QuestProgressEntry, ResearchLevelUp, RewardsSummary, ServerMessage } from '@ewa/protocol';
 import type { BattleStartSnapshot, Db, Repos, StreakState } from '@ewa/persist';
 import type { Logger } from '../log';
 import type { RoomMetrics } from '../metrics';
@@ -39,6 +39,8 @@ import { replayOpts } from '../game/replay';
 import { advanceQuests } from '../game/quests';
 import type { QuestEvent } from '../game/quests';
 import type { SpawnRecord } from './spawnDirector';
+import { RESEARCH_SHINY_ODDS, SHINY_ODDS, shinyFor } from './spawnDirector';
+import { SHINY_RESEARCH_LEVEL, battleResearchBumps, catchBonusOpt, researchLevelFor, researchLevelUps, sightingExtras } from '../game/research';
 import { completeBeatInTx } from './storyBeats';
 import { FACTION_POINTS, deedsOf, ecoWeek, seasonAt } from '@ewa/content';
 import { countsForEcosystem, takeOf } from '../game/ecosystem';
@@ -213,6 +215,8 @@ export interface BattleDeps {
   readonly bounties?: () => boolean;
   /** Camp bases: a raid settled on this zone's camp (the room re-reads it: a takeover changes owner and banner) */
   readonly campChanged?: (zoneId: string) => void;
+  /** Dex research: whether it is night in this zone now (a sighting then counts `seenNight`; absent: never night) */
+  readonly night?: () => boolean;
 }
 
 /** Where a battle forms (ZoneRoom `battleAt`): a hall arena + its battle-axis yaw inside an interior, else the player. */
@@ -242,6 +246,10 @@ interface LoadedPlayer {
   readonly canCatch: boolean;
   /** the first-encounter flag this start set (sent to the client and the room cache) */
   readonly metFlag: string | null;
+  /** Dex research: the player's research level for the opposing lead after this sighting (0 without one) */
+  readonly research: number;
+  /** Dex research: the levels this sighting raised */
+  readonly researchUps: ResearchLevelUp[];
 }
 
 export interface ArenaStart {
@@ -323,6 +331,8 @@ interface PlayerDelta {
   bounty: ServerMessage[];
   /** Camp bases: what a won raid took (sent after `battleEnd`) */
   camp: ServerMessage[];
+  /** Dex research: the research levels this turn raised (progressionDelta `research`) */
+  research: ResearchLevelUp[];
 }
 
 function emptyDelta(): PlayerDelta {
@@ -347,6 +357,7 @@ function emptyDelta(): PlayerDelta {
     nemesis: [],
     bounty: [],
     camp: [],
+    research: [],
   };
 }
 
@@ -536,8 +547,14 @@ export class BattleCoordinator {
    * modes: each player's active run; with `encounterZone` (a wild or static battle) the zone's first encounter of the
    * run is consumed here (its flag set) and only that one may be caught (`canCatch`).
    */
-  private async loadPlayers(ids: readonly string[], seenSpecies: string | null, encounterZone: string | null = null): Promise<Map<string, LoadedPlayer>> {
+  private async loadPlayers(
+    ids: readonly string[],
+    seenSpecies: string | null,
+    encounterZone: string | null = null,
+    sighting: { readonly water?: boolean } = {},
+  ): Promise<Map<string, LoadedPlayer>> {
     const { repos, clock } = this.deps;
+    const zone = this.deps.zone.id === 'arena' ? null : this.deps.zone.id;
     const out = new Map<string, LoadedPlayer>();
     await repos.db.transaction(async (tx) => {
       await repos.players.lockMany(tx, ids);
@@ -545,8 +562,16 @@ export class BattleCoordinator {
         const party = await repos.creatures.party(tx, id);
         const inventory = await repos.inventory.all(tx, id);
         let questProgress: QuestProgressEntry[] = [];
-        if (seenSpecies !== null && party.some((c) => c.hp > 0) && (await repos.progress.markSeen(tx, id, seenSpecies, new Date(clock())))) {
-          questProgress = await advanceQuests(tx, repos, id, [{ kind: 'seen', species: seenSpecies }], clock());
+        let research = 0;
+        let researchUps: ResearchLevelUp[] = [];
+        if (seenSpecies !== null && party.some((c) => c.hp > 0)) {
+          // Dex research: every sighting counts (at night, on water), read around the write for the level it raises
+          const before = await repos.progress.counters(tx, id, [seenSpecies]);
+          const isNew = await repos.progress.markSeen(tx, id, seenSpecies, new Date(clock()), { zone, also: sightingExtras({ night: this.deps.night?.() === true, water: sighting.water }) });
+          const after = await repos.progress.counters(tx, id, [seenSpecies]);
+          research = researchLevelFor(seenSpecies, after[seenSpecies]);
+          researchUps = researchLevelUps(before, after);
+          if (isNew) questProgress = await advanceQuests(tx, repos, id, [{ kind: 'seen', species: seenSpecies }], clock());
         }
         const challenge = challengeActive(await repos.progress.flags(tx, id));
         let canCatch = true;
@@ -559,7 +584,7 @@ export class BattleCoordinator {
             metFlag = f;
           }
         }
-        out.set(id, { party, inventory, questProgress, challenge, canCatch, metFlag });
+        out.set(id, { party, inventory, questProgress, challenge, canCatch, metFlag, research, researchUps });
       }
     });
     return out;
@@ -571,9 +596,10 @@ export class BattleCoordinator {
   }
 
   /** Quest / mission progress from the start transaction (a newly seen lead), sent after battleStart. */
-  private sendStartProgress(loaded: Map<string, { questProgress: QuestProgressEntry[]; metFlag?: string | null }>): void {
+  private sendStartProgress(loaded: Map<string, { questProgress: QuestProgressEntry[]; metFlag?: string | null; researchUps?: ResearchLevelUp[] }>): void {
     for (const [pid, l] of loaded) {
       if (l.questProgress.length > 0) this.deps.host.send(pid, progressionOnly({ questProgress: l.questProgress }));
+      if (l.researchUps !== undefined && l.researchUps.length > 0) this.deps.host.send(pid, progressionOnly({ research: l.researchUps }));
       // challenge modes: this zone's first encounter of the run is spent
       if (l.metFlag != null) {
         this.deps.host.send(pid, progressionOnly({ flags: [l.metFlag] }));
@@ -587,6 +613,8 @@ export class BattleCoordinator {
     sides: readonly [Omit<Side, 'mustSwitch' | 'consumedItems'>, Omit<Side, 'mustSwitch' | 'consumedItems'>],
     seed: RngState,
     doubles = false,
+    /** Dex research: the thrower's catch multiplier for the wild species (rides the start snapshot for replays) */
+    catchBonus?: Readonly<Record<string, number>>,
   ): { session: BattleSession; events: readonly BattleEvent[] } {
     const now = this.deps.clock();
     const terrain = TERRAIN_BY_BIOME[this.deps.zone.biome];
@@ -600,8 +628,9 @@ export class BattleCoordinator {
     // Camp bases: a raid fights with noExp too (no exp, and the fight itself moves no honor: the raid's own toll is settled at the end)
     const noExp = base.tower === true || base.arena !== undefined || base.camp !== undefined ? { noExp: true as const } : {};
     const arena = base.arena !== undefined ? { arena: base.arena.kind } : {};
-    const start = JSON.parse(JSON.stringify({ zoneId: base.zoneId, terrain, sides, ...ambient, ...slots, ...noExp, ...arena })) as BattleStartSnapshot;
-    const { state, events } = createBattle({ id: base.id, format: base.format, zoneId: base.zoneId, terrain, seed, sides, ...ambient, ...slots, ...noExp }, this.deps.content);
+    const bonus = catchBonus !== undefined ? { catchBonus } : {};
+    const start = JSON.parse(JSON.stringify({ zoneId: base.zoneId, terrain, sides, ...ambient, ...slots, ...noExp, ...arena, ...bonus })) as BattleStartSnapshot;
+    const { state, events } = createBattle({ id: base.id, format: base.format, zoneId: base.zoneId, terrain, seed, sides, ...ambient, ...slots, ...noExp, ...bonus }, this.deps.content);
     const session: BattleSession = {
       ...base,
       start,
@@ -643,16 +672,18 @@ export class BattleCoordinator {
    */
   async startWild(p: PlayerSeat, spawn: SpawnRecord, at: BattleAt, nemesis?: Nemesis): Promise<StartResult> {
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
-    const loaded = await this.loadPlayers([p.playerId], spawn.speciesId, this.deps.zone.id);
+    const loaded = await this.loadPlayers([p.playerId], spawn.speciesId, this.deps.zone.id, { water: spawn.medium === 'water' });
     const me = loaded.get(p.playerId)!;
     const side0 = this.playerSide(me.party, p.playerId, true, me.canCatch, me.inventory);
     if (side0 === null) return { ok: false, code: 'notAllowed', detail: 'noUsableParty' };
     if (this.byPlayer.has(p.playerId)) return { ok: false, code: 'busy', detail: 'inBattle' };
+    // Dex research: at level 5 for this species the player's shiny odds double (the spawn's own roll, read at their odds)
+    const isShiny = shinyFor(spawn, me.research >= SHINY_RESEARCH_LEVEL ? RESEARCH_SHINY_ODDS : SHINY_ODDS);
     const wild =
       nemesis !== undefined
         ? nemesisCreature(this.deps.content, nemesis, spawn.level, `wild:${spawn.id}`)
         : withSyntheticId(
-            newCreature(this.deps.content, spawn.speciesId, spawn.level, { ability: spawn.ability, variantKey: spawn.variantKey, isAlpha: spawn.isAlpha, isShiny: spawn.isShiny === true }),
+            newCreature(this.deps.content, spawn.speciesId, spawn.level, { ability: spawn.ability, variantKey: spawn.variantKey, isAlpha: spawn.isAlpha, isShiny }),
             `wild:${spawn.id}`,
           );
     const side1: Omit<Side, 'mustSwitch' | 'consumedItems'> = { kind: 'wild', party: [projectBattler(wild, this.deps.content)], active: 0, trainerId: null, canFlee: false, canCatch: false };
@@ -677,6 +708,8 @@ export class BattleCoordinator {
       },
       [side0, side1],
       this.rng.fork().snapshot(),
+      false,
+      catchBonusOpt(wild.speciesId, me.research),
     );
     this.deps.host.send(p.playerId, progressionOnly({ dexSeen: [spawn.speciesId] }));
     this.sendStartProgress(loaded);
@@ -712,6 +745,8 @@ export class BattleCoordinator {
       },
       [side0, side1],
       this.rng.fork().snapshot(),
+      false,
+      catchBonusOpt(st.species, me.research),
     );
     this.sendStartProgress(loaded);
     return { ok: true, session };
@@ -1279,7 +1314,14 @@ export class BattleCoordinator {
         });
       }
       const progressed =
-        d.trainerExp !== null || d.badges !== null || d.rating !== null || d.dexSeen.length > 0 || d.dexCaught.length > 0 || d.flags.length > 0 || d.questProgress.length > 0;
+        d.trainerExp !== null ||
+        d.badges !== null ||
+        d.rating !== null ||
+        d.dexSeen.length > 0 ||
+        d.dexCaught.length > 0 ||
+        d.flags.length > 0 ||
+        d.questProgress.length > 0 ||
+        d.research.length > 0;
       if (progressed) {
         host.send(pid, {
           type: 'progressionDelta',
@@ -1291,6 +1333,7 @@ export class BattleCoordinator {
           dexCaught: d.dexCaught.length > 0 ? d.dexCaught : null,
           flags: d.flags.length > 0 ? d.flags : null,
           questProgress: d.questProgress.length > 0 ? d.questProgress : null,
+          ...(d.research.length > 0 ? { research: d.research } : {}),
         });
       }
       if (d.flags.length > 0 || d.badges !== null || d.inventoryAll !== null) {
@@ -1338,6 +1381,11 @@ export class BattleCoordinator {
         const d = emptyDelta();
         const questEvents: QuestEvent[] = [];
         let trainerExpGain = 0;
+        // Dex research: arena training and the daily challenge write nothing to the dex (as with the seen marks below)
+        const researchOff = session.arena?.kind === 'training' || session.arena?.kind === 'daily';
+        const researchBumps = researchOff ? new Map<string, Record<string, number>>() : battleResearchBumps(events, next, side, this.deps.content);
+        const researchSpecies = researchOff ? [] : researchSpeciesOf(events, next, side, researchBumps);
+        const researchBefore = researchSpecies.length > 0 ? await repos.progress.counters(tx, pid, researchSpecies) : {};
 
         // b. creature rows: only the fields battle may change, read back from result.state
         const bSide = before.sides[side];
@@ -1422,9 +1470,12 @@ export class BattleCoordinator {
           if (ev.t !== 'switchIn' || ev.who.side !== other) continue;
           const sp = next.sides[other].party[ev.who.slot]?.creature.speciesId;
           if (sp === undefined || d.dexSeen.includes(sp)) continue;
-          if (await repos.progress.markSeen(tx, pid, sp, now)) questEvents.push({ kind: 'seen', species: sp });
+          const sighting = { zone: session.arena === undefined ? session.zoneId : null, also: sightingExtras({ night: this.deps.night?.() === true }) };
+          if (await repos.progress.markSeen(tx, pid, sp, now, sighting)) questEvents.push({ kind: 'seen', species: sp });
           d.dexSeen.push(sp);
         }
+        // Dex research: foes knocked out, battle forms and signature moves seen, High / Low Honor reached
+        for (const sp of [...researchBumps.keys()].sort()) await repos.progress.bumpCounters(tx, pid, sp, researchBumps.get(sp)!);
 
         // g. battle end: rewards, history, audit, beat completion, static flag
         let money = 0;
@@ -1686,6 +1737,7 @@ export class BattleCoordinator {
           await repos.audit.write(tx, { actorId: pid, action: 'battle.end', subject: session.id, detail: { format: session.format, result: resultFor(outcome, side), turns: next.turn } }, now);
         }
         d.inventoryAll = await repos.inventory.all(tx, pid);
+        if (researchSpecies.length > 0) d.research = researchLevelUps(researchBefore, await repos.progress.counters(tx, pid, researchSpecies));
         out.set(pid, d);
       }
       // honor shapes the world: this turn's deeds count in the zone the battle was fought in (world battles only: not
@@ -1920,5 +1972,24 @@ export function progressionOnly(p: Partial<Omit<Extract<ServerMessage, { type: '
     dexCaught: p.dexCaught ?? null,
     flags: p.flags ?? null,
     questProgress: p.questProgress ?? null,
+    ...(p.research !== undefined && p.research.length > 0 ? { research: p.research } : {}),
   };
+}
+
+/**
+ * Dex research: the species whose counters a turn may move for the player on `side`: the foes that came in (seen), the
+ * creature caught, and every species in `bumps`.
+ */
+function researchSpeciesOf(events: readonly BattleEvent[], next: BattleState, side: 0 | 1, bumps: ReadonlyMap<string, unknown>): string[] {
+  const out = new Set<string>(bumps.keys());
+  for (const ev of events) {
+    if (ev.t === 'switchIn' && ev.who.side !== side) {
+      const sp = next.sides[ev.who.side].party[ev.who.slot]?.creature.speciesId;
+      if (sp !== undefined) out.add(sp);
+    } else if (ev.t === 'catchResult' && ev.caught && side === 0) {
+      const sp = next.sides[1].party[ev.target.slot]?.creature.speciesId;
+      if (sp !== undefined) out.add(sp);
+    }
+  }
+  return [...out].sort();
 }

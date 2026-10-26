@@ -19,6 +19,12 @@ export interface SpawnRecord {
   readonly isAlpha: boolean;
   /** Phase D4: the 1/512 shiny tier — the low 9 bits of the alpha draw (no extra draw; absent = false) */
   readonly isShiny?: boolean;
+  /**
+   * Dex research: those low 9 bits (the alpha draw's u32 mod SHINY_ODDS, 0..511), kept so the battle can apply the
+   * engaging player's own odds (`shinyFor`): 0 is shiny at any odds, `% 256 === 0` at RESEARCH_SHINY_ODDS. Absent on a
+   * record that was not rolled (a nemesis, a roamer): then only `isShiny` counts.
+   */
+  readonly shinyRoll?: number;
   /** species.abilities[rng.int(abilities.length)] — one draw at spawn */
   readonly ability: string;
   /** EncounterSlot.medium ?? 'land' */
@@ -53,14 +59,30 @@ export const DEFAULT_LIVE_OPS: LiveOpsMods = { alphaBonus: 0, variantBonus: 0, s
 
 /** Phase D4: one spawn in SHINY_ODDS is shiny. */
 export const SHINY_ODDS = 512;
+/** Dex research: a player at research level 5 for the rolled species gets one in RESEARCH_SHINY_ODDS (a divisor of SHINY_ODDS). */
+export const RESEARCH_SHINY_ODDS = 256;
 
 /**
  * Phase D4: shiny from the alpha draw's low bits. `next()` is u32 / 2^32 (exact), so `u * 2^32` is the u32 and
  * `u32 mod 512 === 0` has probability exactly 1/512. The alpha test reads the high bits (`u < ~0.01`), so the two
  * are independent to within one part in 2^23 — and the spawn stream gains no draw: every seeded sequence is unchanged.
  */
-export function shinyFromDraw(u: number): boolean {
-  return (u * 4294967296) % SHINY_ODDS === 0;
+export function shinyFromDraw(u: number, odds: number = SHINY_ODDS): boolean {
+  return (u * 4294967296) % odds === 0;
+}
+
+/** Dex research: the alpha draw's low 9 bits (SpawnRecord.shinyRoll). */
+export function shinyRollOf(u: number): number {
+  return (u * 4294967296) % SHINY_ODDS;
+}
+
+/**
+ * Dex research: whether a rolled creature is shiny for a player whose odds are `odds` (SHINY_ODDS, or
+ * RESEARCH_SHINY_ODDS at research level 5 for its species). Every SHINY_ODDS shiny stays shiny at the better odds.
+ */
+export function shinyFor(rec: Pick<SpawnRecord, 'isShiny' | 'shinyRoll'>, odds: number = SHINY_ODDS): boolean {
+  if (rec.isShiny === true) return true;
+  return rec.shinyRoll !== undefined && rec.shinyRoll % odds === 0;
 }
 
 /** Engage range (§30.3): distance ≤ 3.0 m. */
@@ -156,6 +178,7 @@ export function rollWild(
   const alphaDraw = rng.next();
   const isAlpha = slot.tier === 'alpha' || alphaDraw < ALPHA_CHANCE + mods.alphaBonus + (featured ? FEATURED_ALPHA_BONUS : 0);
   const isShiny = shinyFromDraw(alphaDraw);
+  const shinyRoll = shinyRollOf(alphaDraw);
   let variantKey: VariantKey = 'normal';
   const pool = mods.variantPool.length > 0 ? mods.variantPool : NON_NORMAL_VARIANTS;
   if (rng.next() < VARIANT_CHANCE + mods.variantBonus + (featured ? FEATURED_VARIANT_BONUS : 0)) variantKey = rng.pick(pool);
@@ -168,6 +191,7 @@ export function rollWild(
     variantKey,
     isAlpha,
     isShiny,
+    shinyRoll,
     ability,
     medium,
     x: at.x,
@@ -280,6 +304,7 @@ export class SpawnDirector {
     const alphaDraw = this.rng.next();
     const alphaRoll = alphaDraw < ALPHA_CHANCE + this.mods.alphaBonus + (featured ? FEATURED_ALPHA_BONUS : 0);
     const isShiny = shinyFromDraw(alphaDraw);
+    const shinyRoll = shinyRollOf(alphaDraw);
     const isAlpha = slot.tier === 'alpha' || alphaRoll;
     // variant: one draw, plus one pick on success
     let variantKey: VariantKey = 'normal';
@@ -321,6 +346,7 @@ export class SpawnDirector {
         variantKey,
         isAlpha,
         isShiny,
+        shinyRoll,
         ability,
         medium,
         x,

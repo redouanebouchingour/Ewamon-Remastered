@@ -843,3 +843,21 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   door approach in the town (`arenaAt`).
 - Tests: `test/harmonic.test.ts` (8); the count tests follow (144 species, 74 families, 14 legendary flags, 198 moves,
   28 abilities, 14 quests, the full-dex achievement at 144).
+
+## Dex research tasks (2026-10-26, not in the SPEC yet)
+
+- `src/data/research.ts` (exported from the index): `researchTasksOf(speciesId)` builds a species' tasks from
+  templates (seen, caught, defeated, seenNight with a night slot, seenWater with a water slot, evolved with an
+  evolution, evolvedInto with an `evolvesFrom`, variant when the species or an ancestor is wild) plus specials (one
+  `form:<id>` task per battle form, `signature` for a form signature move or a legendary's / mythical's newest move it
+  alone learns, `honorHigh` / `honorLow` for the honor-split lines dustcub and cryptorb, `alpha` when the line is
+  wild). Every tier reached gives the task's points (templates 1, specials 2; legendaries and mythicals get smaller
+  counts at 2 points per template tier); `researchLevel(points)` gives 0..5 at `RESEARCH_LEVEL_POINTS` [1, 4, 8, 12, 16].
+  `researchProgressOf(speciesId, counters)` gives tasks, tiers reached, points, max points and level for the UI.
+- Deviation from the brief: two templates were added. "Obtained by evolution" (`evolvedInto`) so final stages that are
+  never wild (the starter lines) still reach level 5; the honor tasks use a line of 5 (`RESEARCH_HONOR_LINE`), since
+  the split itself sits at 0. elemutt is the tightest species: its 16 points need every tier it has.
+- `validate()` checks every species: at least one task, unique ids, counters the server writes, ascending tiers,
+  positive points, every task completable by that species (night / water slots, evolutions, a wild line, its forms,
+  its signature moves existing) and level 5 reachable from those tasks alone.
+- Tests: `test/research.test.ts` (7, incl. a mutation that drops elemutt's evolution).

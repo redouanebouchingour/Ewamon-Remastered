@@ -228,6 +228,8 @@ export interface BattleStartSnapshot {
   readonly noExp?: true;
   /** Arena PvP: the arena battle's kind (protocol ArenaKind — 'standard' | 'level50' | 'ranked' | 'cup' | 'friend' | 'training'); absent otherwise */
   readonly arena?: string;
+  /** Dex research: the thrower's catch multiplier per wild species (createBattle `catchBonus`); absent = none */
+  readonly catchBonus?: Readonly<Record<string, number>>;
 }
 
 /**

@@ -87,6 +87,8 @@ export interface MState {
   slots?: 2;
   /** Phase D14: battle tower — no exp is awarded; absent otherwise */
   noExp?: true;
+  /** Dex research: the catch multiplier per wild species id; absent = none (never mutated, shared by clones) */
+  catchBonus?: Readonly<Record<string, number>>;
 }
 
 export interface Ctx {
@@ -150,6 +152,7 @@ export function cloneState(s: BattleState): MState {
   };
   if (s.slots === 2) out.slots = 2;
   if (s.noExp === true) out.noExp = true;
+  if (s.catchBonus !== undefined) out.catchBonus = s.catchBonus;
   return out;
 }
 

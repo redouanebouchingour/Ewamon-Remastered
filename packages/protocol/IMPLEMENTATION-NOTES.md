@@ -331,3 +331,12 @@ installed library that future readers should not have to re-derive. The spec its
   `JournalDayParams`, `JournalWriteReq` { text, at most `JOURNAL_WRITE_MAX` 2000 before the server cleans and cuts it }.
 - Routes `journal` `GET /journal`, `journalDay` `GET /journal/day/:day`, `journalWrite` `POST /journal/day/:day`
   (rate limit key `journal`). Route count 118 → 121.
+
+## Dex research (2026-10-26, not in the SPEC yet)
+
+- `DexRes` gained three optional fields, so older clients keep working: `entries` (species id to `DexEntrySchema`
+  { seenAt, caughtAt, counters, firstSeenZone, viewedAt }), `research` (species id to level 0..5) and `rewards` (the
+  claimed reward ids). `DexSpeciesParams`, `DexViewedRes` { speciesId, viewedAt }.
+- Route `dexViewed` `POST /dex/viewed/:speciesId` (404 for a species not in the caller's dex). Route count 121 → 122.
+- `progressionDelta.research?: ResearchLevelUp[]` ({ speciesId, level 1..5 }), present only on a level-up.
+- `BattleStateSchema` and `ReplayStartSchema` gained the optional `catchBonus` (core `BattleState.catchBonus`).

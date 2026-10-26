@@ -400,6 +400,18 @@ export const ItemUseRes = z.object({
 
 // ---- dex / shop ----------------------------------------------------------------------------------------------------
 
+/**
+ * Dex research: one entry's record. `counters` are the research counters (content `RESEARCH_COUNTERS`, `form:<id>`;
+ * absent = 0), which content `researchProgressOf(speciesId, counters)` turns into tasks, tiers, points and the level.
+ */
+export const DexEntrySchema = z.object({
+  seenAt: IsoDate,
+  caughtAt: IsoDate.nullable(),
+  counters: z.record(z.string().max(48), z.number().int().min(0)),
+  firstSeenZone: z.string().max(32).nullable(),
+  viewedAt: IsoDate.nullable(),
+});
+export const ResearchLevelSchema = z.number().int().min(0).max(5);
 export const DexRes = z.object({
   seen: StringList,
   caught: StringList,
@@ -407,7 +419,15 @@ export const DexRes = z.object({
   alpha: StringList,
   /** Phase D4: species of which a shiny was caught */
   shiny: StringList.optional(),
+  /** Dex research: every entry by species id (optional: older servers omit it) */
+  entries: z.record(z.string(), DexEntrySchema).optional(),
+  /** Dex research: the research level 0..5 of every entry, by species id */
+  research: z.record(z.string(), ResearchLevelSchema).optional(),
+  /** Dex research: the completion reward ids the player claimed */
+  rewards: StringList.optional(),
 });
+export const DexSpeciesParams = z.object({ speciesId: z.string().min(1).max(32) });
+export const DexViewedRes = z.object({ speciesId: z.string(), viewedAt: IsoDate });
 export const ShopParams = z.object({ zoneId: ZoneIdSchema });
 /** `ShopRes` (stock, prices, the haggle deal) is defined with shop haggling below. */
 export const ShopTradeReq = z.object({ item: ItemId, qty: Qty });
@@ -574,6 +594,8 @@ export const ReplayStartSchema = z.object({
   slots: z.literal(2).optional(),
   noExp: z.literal(true).optional(),
   arena: ArenaKindSchema.optional(),
+  /** Dex research: the thrower's catch multiplier per wild species (createBattle `catchBonus`); absent = none */
+  catchBonus: z.record(z.string().max(32), z.number().positive().max(10)).optional(),
 });
 export const ReplayRes = z.object({
   token: ShareToken,
@@ -1405,6 +1427,8 @@ export const ROUTES = {
   itemUse: route({ method: 'POST', path: '/item/use', auth: 'bearer', request: ItemUseReq, response: ItemUseRes }),
   heal: route({ method: 'POST', path: '/heal', auth: 'bearer', request: Nothing, response: PartyRes }),
   dex: route({ method: 'GET', path: '/dex', auth: 'bearer', response: DexRes }),
+  // Dex research: the player opened an entry (the "new" marker clears); 404 for a species not in their dex
+  dexViewed: route({ method: 'POST', path: '/dex/viewed/:speciesId', auth: 'bearer', params: DexSpeciesParams, request: Nothing, response: DexViewedRes }),
   shop: route({ method: 'GET', path: '/shop/:zoneId', auth: 'bearer', params: ShopParams, response: ShopRes }),
   shopBuy: route({ method: 'POST', path: '/shop/buy', auth: 'bearer', request: ShopTradeReq, response: InventoryMoneyRes }),
   shopSell: route({ method: 'POST', path: '/shop/sell', auth: 'bearer', request: ShopTradeReq, response: InventoryMoneyRes }),

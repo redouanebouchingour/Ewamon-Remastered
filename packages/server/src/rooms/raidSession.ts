@@ -714,7 +714,7 @@ export class RaidRunner {
           const inserted = await repos.creatures.insert(tx, { ...roll.creature, ownerId: playerId, caughtAt: { zoneId: zone.id, at: nowMs } }, idx === -1 ? { kind: 'box', index: 'nextBox' } : { kind: 'party', index: idx });
           added.push(toInstance(inserted));
           placement[inserted.id] = idx === -1 ? 'box' : 'party';
-          await repos.progress.markSeen(tx, playerId, roll.creature.speciesId, now);
+          await repos.progress.markSeen(tx, playerId, roll.creature.speciesId, now, { zone: zone.id });
           newDex = (await repos.progress.markCaught(tx, playerId, roll.creature.speciesId, roll.creature.variantKey, roll.creature.isAlpha, now)).newSpecies;
           const exp = TRAINER_EXP.catch + (newDex ? TRAINER_EXP.catchNewSpecies : 0);
           await repos.players.addTrainerExp(tx, playerId, exp);

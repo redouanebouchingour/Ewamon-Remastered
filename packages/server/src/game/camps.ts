@@ -11,6 +11,7 @@ import {
   CAMP_HELD_POINTS,
   CAMP_RAID_COOLDOWN_MS,
   CAMP_RAID_HONOR,
+  RESEARCH_HONOR_LINE,
   campInactive,
   campRaidCut,
   defaultCampName,
@@ -155,6 +156,8 @@ export async function settleRaid(
     if (honor !== (first.honor ?? 0)) {
       lead = { ...first, honor };
       await repos.creatures.update(tx, lead);
+      // Dex research: the toll can carry the lead over the Low Honor line
+      if (honor <= -RESEARCH_HONOR_LINE && (first.honor ?? 0) > -RESEARCH_HONOR_LINE) await repos.progress.bumpCounter(tx, p.raiderId, first.speciesId, 'honorLow');
     }
   }
   return { cut, lead, tookOver, text: raidWonText(p.ownerName, cut, tookOver) };

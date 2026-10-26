@@ -47,13 +47,16 @@ export function catchStatusBonus(wild: Battler): number {
   return 1.5;
 }
 
-/** The `a` value of §2.15: floor((3M - 2H) * rate * orb * statusBonus / (3M)), min 1. */
-export function catchValue(wild: Battler, species: SpeciesDef, orb: OrbDef): number {
+/**
+ * The `a` value of §2.15: floor((3M - 2H) * rate * orb * statusBonus * bonus / (3M)), min 1. `bonus`: the Dex research
+ * perk (`BattleState.catchBonus`); the default 1 leaves every value exactly as before (a product with 1 is exact).
+ */
+export function catchValue(wild: Battler, species: SpeciesDef, orb: OrbDef, bonus = 1): number {
   const M = wild.maxHp;
   const H = wild.creature.hp;
   let rate = species.catchRate;
   if (wild.creature.isAlpha) rate = Math.max(3, Math.floor(rate / 2));
-  const a = Math.floor(((3 * M - 2 * H) * rate * orbMultiplier(orb, wild, species) * catchStatusBonus(wild)) / (3 * M));
+  const a = Math.floor(((3 * M - 2 * H) * rate * orbMultiplier(orb, wild, species) * catchStatusBonus(wild) * bonus) / (3 * M));
   return Math.max(1, a);
 }
 
@@ -65,8 +68,8 @@ export interface CatchRoll {
 }
 
 /** a >= 255 → caught with 0 rng draws; otherwise up to 4 draws of rng.int(65536) against CATCH_B[a]. */
-export function resolveCatch(wild: Battler, species: SpeciesDef, orb: OrbDef, rng: Rng): CatchRoll {
-  const a = catchValue(wild, species, orb);
+export function resolveCatch(wild: Battler, species: SpeciesDef, orb: OrbDef, rng: Rng, bonus = 1): CatchRoll {
+  const a = catchValue(wild, species, orb, bonus);
   if (a >= 255) return { a, caught: true, shakes: 4 };
   const b = CATCH_B[a]!;
   let shakes = 0;

@@ -274,3 +274,11 @@ The user's form-change gimmick (`.design/majin-tenjin.md`; spine §2.3 `BattleFo
   line its item opens (ravatar's Water / Earth / Fire / Air), else null; the Avatar State waits for the battle. Read by
   content's `leadLook` (the follower and its field powers) and the client's screens, never by the engine, so battles and
   both fuzz digests are unchanged.
+
+## Dex research catch bonus (2026-10-26)
+
+- `BattleState.catchBonus?` (species id to multiplier) and `CreateBattleOpts.catchBonus?`: `createBattle` copies a
+  non-empty map onto the state; `cloneState` carries it (never mutated); `catchValue(wild, species, orb, bonus = 1)`
+  multiplies it inside the floor and `resolveCatch` passes `st.catchBonus?.[speciesId] ?? 1`. Absent or empty, the
+  state shape, its digest and every catch value are unchanged (a product with 1 is exact): both fuzz digests are
+  byte-identical. The server fills it for a wild species at research level 3 or more. `test/catch-bonus.test.ts` (3).

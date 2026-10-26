@@ -116,6 +116,8 @@ export const BattleStateSchema = z.looseObject({
   slots: z.literal(2).optional(),
   /** Phase D14: true in a battle tower fight (no exp); absent otherwise */
   noExp: z.literal(true).optional(),
+  /** Dex research: the thrower's catch multiplier per wild species id; absent = none */
+  catchBonus: z.record(z.string(), z.number().positive()).optional(),
 });
 
 /** §4.4 RewardsSummary */

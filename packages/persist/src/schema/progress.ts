@@ -39,6 +39,12 @@ export const dexEntries = pgTable(
     alphaSeen: boolean('alpha_seen').notNull().default(false),
     /** Phase D4 (migration 0003): a shiny of this species was caught */
     shinyCaught: boolean('shiny_caught').notNull().default(false),
+    /** Dex research (migration 0025): counter id -> count (content `RESEARCH_COUNTERS`, `form:<id>`); absent = 0 */
+    counters: jsonb('counters').$type<Record<string, number>>().notNull().default({}),
+    /** Dex research: the zone the species was first seen in; null when it came another way (a gift, a trade) */
+    firstSeenZone: varchar('first_seen_zone', { length: 32 }),
+    /** Dex research: when the player last opened the entry (the client's "new" marker); null = never */
+    viewedAt: timestamp('viewed_at', { withTimezone: true }),
   },
   (t) => [primaryKey({ columns: [t.playerId, t.speciesId] })],
 );
@@ -58,7 +64,21 @@ export const questProgress = pgTable(
   (t) => [primaryKey({ columns: [t.playerId, t.questId, t.objectiveId] })],
 );
 
+/** Dex research: a completion reward the player claimed (content reward ids), once each. */
+export const dexRewards = pgTable(
+  'dex_rewards',
+  {
+    playerId: uuid('player_id')
+      .notNull()
+      .references(() => players.id, { onDelete: 'cascade' }),
+    rewardId: varchar('reward_id', { length: 64 }).notNull(),
+    claimedAt: timestamp('claimed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.playerId, t.rewardId] })],
+);
+
 export type BadgeRow = typeof badges.$inferSelect;
 export type StoryFlagRow = typeof storyFlags.$inferSelect;
 export type DexEntryRow = typeof dexEntries.$inferSelect;
+export type DexRewardRow = typeof dexRewards.$inferSelect;
 export type QuestProgressRow = typeof questProgress.$inferSelect;

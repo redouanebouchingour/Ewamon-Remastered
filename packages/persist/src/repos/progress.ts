@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, isNotNull, isNull, like, lt, sql } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import type { Tx } from '../db';
-import { badges, dexEntries, players, questProgress, storyFlags } from '../schema/index';
+import { badges, dexEntries, dexRewards, players, questProgress, storyFlags } from '../schema/index';
 import type { PlayerRow } from '../schema/index';
 import type { BadgeId, VariantKey } from '../types';
 import { escapeLike } from '../util';
@@ -13,6 +14,44 @@ export interface DexSummary {
   readonly alpha: string[];
   /** Phase D4: species of which the player caught a shiny */
   readonly shiny: string[];
+  /** Dex research (migration 0025): every entry with its timestamps and counters, by species id */
+  readonly entries: Record<string, DexEntryState>;
+}
+
+/** One dex entry for the research system. */
+export interface DexEntryState {
+  readonly seenAt: Date;
+  readonly caughtAt: Date | null;
+  /** counter id -> count (content `RESEARCH_COUNTERS`, `form:<id>`); absent = 0 */
+  readonly counters: Record<string, number>;
+  readonly firstSeenZone: string | null;
+  readonly viewedAt: Date | null;
+}
+
+/** A research counter never goes past this (int4 stays far away). */
+export const DEX_COUNTER_MAX = 1_000_000;
+
+/** Positive integer bumps only, keys sorted (a stable statement). */
+function cleanBumps(bumps: Readonly<Record<string, number>>): [string, number][] {
+  return Object.keys(bumps)
+    .sort()
+    .flatMap((k): [string, number][] => {
+      const n = Math.trunc(bumps[k]!);
+      return k.length > 0 && k.length <= 48 && Number.isFinite(n) && n > 0 ? [[k, Math.min(n, DEX_COUNTER_MAX)]] : [];
+    });
+}
+
+/** `counters` plus the bumps, each capped at DEX_COUNTER_MAX (JS side, for a row read under lock). */
+function addCounters(counters: Readonly<Record<string, number>>, bumps: readonly [string, number][]): Record<string, number> {
+  const out: Record<string, number> = { ...counters };
+  for (const [k, n] of bumps) out[k] = Math.min(DEX_COUNTER_MAX, (out[k] ?? 0) + n);
+  return out;
+}
+
+/** The SQL `counters || jsonb_build_object(k, least(coalesce(counters->>k, 0) + n, max), ...)`: an atomic bump. */
+function bumpSql(bumps: readonly [string, number][]): SQL {
+  const parts = bumps.map(([k, n]) => sql`${k}::text, least(coalesce((${dexEntries.counters} ->> ${k}::text)::int, 0) + ${n}::int, ${DEX_COUNTER_MAX}::int)`);
+  return sql`${dexEntries.counters} || jsonb_build_object(${sql.join(parts, sql`, `)})`;
 }
 
 export interface QuestObjectiveState {
@@ -75,14 +114,35 @@ export const progressRepo = {
   // ---- dex -----------------------------------------------------------------------------------
   async dex(tx: Tx, playerId: string): Promise<DexSummary> {
     const rows = await tx.select().from(dexEntries).where(eq(dexEntries.playerId, playerId)).orderBy(asc(dexEntries.speciesId));
-    const out: { seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[]; shiny: string[] } = { seen: [], caught: [], variants: {}, alpha: [], shiny: [] };
+    const out: { seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[]; shiny: string[]; entries: Record<string, DexEntryState> } = {
+      seen: [],
+      caught: [],
+      variants: {},
+      alpha: [],
+      shiny: [],
+      entries: {},
+    };
     for (const r of rows) {
       out.seen.push(r.speciesId);
       if (r.caughtAt !== null) out.caught.push(r.speciesId);
       if (r.variants.length > 0) out.variants[r.speciesId] = [...r.variants];
       if (r.alphaSeen) out.alpha.push(r.speciesId);
       if (r.shinyCaught) out.shiny.push(r.speciesId);
+      out.entries[r.speciesId] = { seenAt: r.seenAt, caughtAt: r.caughtAt, counters: { ...r.counters }, firstSeenZone: r.firstSeenZone, viewedAt: r.viewedAt };
     }
+    return out;
+  },
+
+  /** Dex research: the counters of these species (a species without an entry is absent). */
+  async counters(tx: Tx, playerId: string, speciesIds: readonly string[]): Promise<Record<string, Record<string, number>>> {
+    const unique = [...new Set(speciesIds)];
+    if (unique.length === 0) return {};
+    const rows = await tx
+      .select({ speciesId: dexEntries.speciesId, counters: dexEntries.counters })
+      .from(dexEntries)
+      .where(and(eq(dexEntries.playerId, playerId), inArray(dexEntries.speciesId, unique)));
+    const out: Record<string, Record<string, number>> = {};
+    for (const r of rows) out[r.speciesId] = { ...r.counters };
     return out;
   },
 
@@ -92,33 +152,95 @@ export const progressRepo = {
     return rows.length;
   },
 
-  /** Idempotent. Returns true when the species was new to the player's dex (live-ops `newSpeciesSeen`). */
-  async markSeen(tx: Tx, playerId: string, speciesId: string, now: Date): Promise<boolean> {
+  /**
+   * An upsert: the entry is created when new, and every call counts one sighting (`counters.seen`) plus `also` (the
+   * research counters a sighting can add, e.g. `seenNight`, `seenWater`). `zone`: where it was seen (kept as
+   * `first_seen_zone` while none is recorded). Returns true when the species was new to the player's dex (live-ops
+   * `newSpeciesSeen`).
+   */
+  async markSeen(tx: Tx, playerId: string, speciesId: string, now: Date, opts: { readonly zone?: string | null; readonly also?: Readonly<Record<string, number>> } = {}): Promise<boolean> {
+    const bumps = cleanBumps({ ...opts.also, seen: 1 });
+    const zone = opts.zone === undefined || opts.zone === null ? null : opts.zone.slice(0, 32);
     const res = await tx
       .insert(dexEntries)
-      .values({ playerId, speciesId, seenAt: now })
-      .onConflictDoNothing({ target: [dexEntries.playerId, dexEntries.speciesId] })
-      .returning({ s: dexEntries.speciesId });
-    return res.length > 0;
+      .values({ playerId, speciesId, seenAt: now, counters: addCounters({}, bumps), firstSeenZone: zone })
+      .onConflictDoUpdate({
+        target: [dexEntries.playerId, dexEntries.speciesId],
+        set: { counters: bumpSql(bumps), firstSeenZone: sql`coalesce(${dexEntries.firstSeenZone}, excluded.first_seen_zone)` },
+      })
+      .returning({ inserted: sql<boolean>`(xmax = 0)` });
+    return res[0]?.inserted === true;
   },
 
-  /** Records a catch; appends the variant when new; flags alpha (and shiny, Phase D4). Returns whether the species was new to the caught list. */
+  /**
+   * Records a catch; appends the variant when new; flags alpha (and shiny, Phase D4). Dex research: counts the catch
+   * (`counters.caught`, plus `variant` for a non-normal variant and `alpha` for an alpha); an entry created here also
+   * counts as seen once. Returns whether the species was new to the caught list.
+   */
   async markCaught(tx: Tx, playerId: string, speciesId: string, variant: VariantKey, isAlpha: boolean, now: Date, isShiny = false): Promise<{ newSpecies: boolean }> {
+    const bumps = cleanBumps({ caught: 1, ...(variant !== 'normal' ? { variant: 1 } : {}), ...(isAlpha ? { alpha: 1 } : {}) });
     const [existing] = await tx
       .select()
       .from(dexEntries)
       .where(and(eq(dexEntries.playerId, playerId), eq(dexEntries.speciesId, speciesId)))
       .for('update');
     if (!existing) {
-      await tx.insert(dexEntries).values({ playerId, speciesId, seenAt: now, caughtAt: now, variants: [variant], alphaSeen: isAlpha, shinyCaught: isShiny });
+      await tx.insert(dexEntries).values({ playerId, speciesId, seenAt: now, caughtAt: now, variants: [variant], alphaSeen: isAlpha, shinyCaught: isShiny, counters: addCounters({ seen: 1 }, bumps) });
       return { newSpecies: true };
     }
     const variants = existing.variants.includes(variant) ? existing.variants : [...existing.variants, variant];
     await tx
       .update(dexEntries)
-      .set({ caughtAt: existing.caughtAt ?? now, variants, alphaSeen: existing.alphaSeen || isAlpha, shinyCaught: existing.shinyCaught || isShiny })
+      .set({ caughtAt: existing.caughtAt ?? now, variants, alphaSeen: existing.alphaSeen || isAlpha, shinyCaught: existing.shinyCaught || isShiny, counters: addCounters(existing.counters, bumps) })
       .where(and(eq(dexEntries.playerId, playerId), eq(dexEntries.speciesId, speciesId)));
     return { newSpecies: existing.caughtAt === null };
+  },
+
+  /** Dex research: adds `by` to one counter of an existing entry. false when the species has no entry (nothing is created). */
+  async bumpCounter(tx: Tx, playerId: string, speciesId: string, counter: string, by = 1): Promise<boolean> {
+    return progressRepo.bumpCounters(tx, playerId, speciesId, { [counter]: by });
+  },
+
+  /** Dex research: several counters of one existing entry in one statement. false when there is no entry or no bump. */
+  async bumpCounters(tx: Tx, playerId: string, speciesId: string, bumps: Readonly<Record<string, number>>): Promise<boolean> {
+    const clean = cleanBumps(bumps);
+    if (clean.length === 0) return false;
+    const res = await tx
+      .update(dexEntries)
+      .set({ counters: bumpSql(clean) })
+      .where(and(eq(dexEntries.playerId, playerId), eq(dexEntries.speciesId, speciesId)))
+      .returning({ s: dexEntries.speciesId });
+    return res.length > 0;
+  },
+
+  /** Dex research: the player opened the entry. false when the species has no entry. */
+  async markViewed(tx: Tx, playerId: string, speciesId: string, now: Date): Promise<boolean> {
+    const res = await tx
+      .update(dexEntries)
+      .set({ viewedAt: now })
+      .where(and(eq(dexEntries.playerId, playerId), eq(dexEntries.speciesId, speciesId)))
+      .returning({ s: dexEntries.speciesId });
+    return res.length > 0;
+  },
+
+  /** Dex research: claims a completion reward once. true on the first claim, false when it was already claimed. */
+  async claimReward(tx: Tx, playerId: string, rewardId: string, now: Date): Promise<boolean> {
+    const res = await tx
+      .insert(dexRewards)
+      .values({ playerId, rewardId, claimedAt: now })
+      .onConflictDoNothing({ target: [dexRewards.playerId, dexRewards.rewardId] })
+      .returning({ r: dexRewards.rewardId });
+    return res.length > 0;
+  },
+
+  /** Dex research: the reward ids the player claimed, oldest first. */
+  async claimedRewards(tx: Tx, playerId: string): Promise<string[]> {
+    const rows = await tx
+      .select({ rewardId: dexRewards.rewardId })
+      .from(dexRewards)
+      .where(eq(dexRewards.playerId, playerId))
+      .orderBy(asc(dexRewards.claimedAt), asc(dexRewards.rewardId));
+    return rows.map((r) => r.rewardId);
   },
 
   // ---- quests --------------------------------------------------------------------------------

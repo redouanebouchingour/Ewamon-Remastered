@@ -57,7 +57,7 @@ import { arenaTopic } from './arenaQueue';
 import type { PendingRanked, RankedCancel, RankedMatch } from './matchQueue';
 import { BIKE_ITEM, NO_CLEARED, NO_GATES, SURF_ITEM, isLava, onOpenWater, refillBudget, validateInput } from './movement';
 import type { RejectReason } from './movement';
-import { SpawnDirector, rollFishing, rollWild, tuningFor } from './spawnDirector';
+import { SpawnDirector, isDay, rollFishing, rollWild, tuningFor } from './spawnDirector';
 import {
   ENCOUNTER_GRACE_M,
   ENCOUNTER_REFUSED_GRACE_M,
@@ -462,6 +462,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
         if (zoneId === this.zone.id) void this.refreshCamp();
         this.presence.publish(CAMP_TOPIC, { zoneId });
       },
+      // Dex research: a sighting at night counts toward the species' night task
+      night: () => !isDay(this.state.timeOfDay),
     });
     this.trades = new TradeCoordinator({
       repos: deps.repos,

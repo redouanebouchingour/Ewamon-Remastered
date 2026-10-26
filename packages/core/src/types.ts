@@ -411,6 +411,11 @@ export interface BattleState {
    * `learnMove` / `evolveReady` events). Absent = exp as usual (state shape byte-identical to pre-D14).
    */
   readonly noExp?: true;
+  /**
+   * Dex research: a catch multiplier per wild species id (the thrower's research perk, read by `catchValue`). Present
+   * only when some species has one; absent = 1 for every species (state shape byte-identical to before).
+   */
+  readonly catchBonus?: Readonly<Record<string, number>>;
 }
 
 export interface CreateBattleOpts {
@@ -434,6 +439,8 @@ export interface CreateBattleOpts {
   readonly slots?: 1 | 2;
   /** Phase D14: true = `BattleState.noExp` (battle tower). Absent / false = byte-identical to pre-D14. */
   readonly noExp?: boolean;
+  /** Dex research: `BattleState.catchBonus`. Absent or empty = byte-identical to before. */
+  readonly catchBonus?: Readonly<Record<string, number>>;
 }
 
 // ─── §2.10 Actions ───────────────────────────────────────────────────────────

@@ -1482,3 +1482,27 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   form, the form's slot rides in `leadFlags` bits 5..7 and its types give the field powers. The setup route already
   publishes `ewa:party`, so giving or taking a relic moves `PlayerState.leadFlags` at once
   (`test/fieldPowers.test.ts`). Battles are unchanged: the relic form still opens as the battler lands.
+
+## Dex research (2026-10-26, not in the SPEC yet)
+
+- `game/research.ts` (pure apart from `withResearch`): research levels from counters, `battleResearchBumps` (a foe
+  knocked out: `defeated`; a battle form on either side: `form:<id>`; a signature move on either side: `signature`;
+  the player's own honor-split creature crossing +5 / -5: `honorHigh` / `honorLow`), `researchLevelUps`, the perks
+  (`catchBonusFor`: 1.25 at levels 3 and 4, 1.5 at 5; `SHINY_RESEARCH_LEVEL` 5).
+- Writes, next to the dex writes that existed: the battle start's sighting (`loadPlayers`: night from the new
+  `BattleDeps.night`, which ZoneRoom fills from its clock; water from the spawn's medium; the zone, never 'arena'), a
+  foe's switchIn sighting, the catch, and the bumps above, all in the turn's transaction; arena training and the daily
+  challenge write none of it, like the seen marks. Evolution (`POST /creature/:id/evolve`, every path): `evolved` on the
+  species it left, `evolvedInto` on the one it became. Egg hatches, raid catches, trades and market buys count through
+  `markCaught` / `markSeen`. A camp raid's honor toll can count `honorLow`.
+- Level-ups ride `progressionDelta.research` from battles (the start's sighting and every turn). REST paths (evolve,
+  hatch, raid) send none: the client reads `GET /dex` again.
+- Perks. Catch: a wild or static battle's state carries `catchBonus` for the species when the player is at level 3+,
+  and the start snapshot keeps it, so `replayOpts` replays it (the client's own replay builder still needs the same
+  line). Shiny: deviation from the brief, which put the 1/256 roll in the spawn director. A spawn record now keeps its
+  alpha draw's low 9 bits (`shinyRoll`, no extra draw, so every seeded sequence is unchanged), and `startWild` reads it
+  at the engaging player's odds (`shinyFor`: 1/512, or 1/256 at research level 5 for the species). That covers tall
+  grass, surfing, fishing and the overworld director alike, and a 1/512 shiny stays shiny at the better odds. A
+  nemesis, a roamer or a static keeps its own roll.
+- `GET /dex` adds `entries`, `research` and `rewards`; `POST /dex/viewed/:speciesId` sets `viewed_at`.
+- Tests: `test/research.test.ts` (9).

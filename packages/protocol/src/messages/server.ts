@@ -32,6 +32,13 @@ import type { RivalPhase, RivalView } from '../rival';
 
 // ---- companion shapes ------------------------------------------------------------------------------
 
+/** Dex research: a species whose research level went up (progressionDelta `research`). */
+export interface ResearchLevelUp {
+  readonly speciesId: string;
+  /** the new research level, 1..5 */
+  readonly level: number;
+}
+
 export interface TradeOffer {
   readonly playerId: string;
   readonly creatureIds: readonly string[];
@@ -138,6 +145,8 @@ export type ServerMessage =
       readonly dexCaught: readonly string[] | null;
       readonly flags: readonly string[] | null;
       readonly questProgress: readonly QuestProgressEntry[] | null;
+      /** Dex research: the species whose research level went up, with the new level (absent: none) */
+      readonly research?: readonly ResearchLevelUp[];
     }
   | {
       readonly type: 'handover';
@@ -330,6 +339,7 @@ export const TradeOfferSchema = z.object({
   confirmed: z.boolean(),
 });
 
+export const ResearchLevelUpSchema = z.object({ speciesId: z.string().min(1).max(32), level: z.number().int().min(1).max(5) });
 export const QuestProgressEntrySchema = z.object({
   questId: z.string().min(1),
   objectiveId: z.string().min(1),
@@ -393,6 +403,7 @@ export const ProgressionDeltaMsg = z.object({
   dexCaught: z.array(z.string()).nullable(),
   flags: z.array(z.string()).nullable(),
   questProgress: z.array(QuestProgressEntrySchema).nullable(),
+  research: z.array(ResearchLevelUpSchema).optional(),
 });
 /** §4.6 — the one message the client MUST validate before acting. */
 export const HandoverMsg = z.object({

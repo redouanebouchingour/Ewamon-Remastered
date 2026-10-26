@@ -21,6 +21,7 @@ export function replayOpts(id: string, format: CreateBattleOpts['format'], seed:
     ...(start.weather !== undefined ? { weather: start.weather as NonNullable<CreateBattleOpts['weather']> } : {}),
     ...(start.slots !== undefined ? { slots: start.slots } : {}),
     ...(start.noExp !== undefined ? { noExp: start.noExp } : {}),
+    ...(start.catchBonus !== undefined ? { catchBonus: start.catchBonus } : {}),
   };
 }
 

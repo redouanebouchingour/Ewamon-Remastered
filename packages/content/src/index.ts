@@ -155,6 +155,24 @@ export { STORY } from './data/story';
 export { DAILY_SWARMS, RAID_HOTSPOTS, SEASONAL_EVENTS, VARIANT_PALETTES, WEEKDAY_VARIANT } from './data/liveops';
 export { BATTLE_PASS } from './data/battlePass';
 export { MARKET, SHOP_STOCK_DEFAULT } from './data/shop';
+export {
+  FORM_COUNTER_PREFIX,
+  RESEARCH_COUNTERS,
+  RESEARCH_HONOR_LINE,
+  RESEARCH_LEVEL_POINTS,
+  RESEARCH_MAX_LEVEL,
+  formCounter,
+  isResearchCounter,
+  isResearchRare,
+  researchLevel,
+  researchLevelOf,
+  researchMaxPoints,
+  researchProgressOf,
+  researchTasksFor,
+  researchTasksOf,
+  signatureMovesOf,
+} from './data/research';
+export type { ResearchCounter, ResearchInputs, ResearchProgress, ResearchTask, ResearchTaskKind, ResearchTaskProgress } from './data/research';
 export { BODIES, LOOKS, TITLES } from './data/bodies';
 export { BADGE_FLAGS, FLAG_IDS, FLAG_REGISTRY, VISITED_FLAGS, VISITED_PREFIX, badgeFlag, isKnownFlag, visitedFlag } from './flags';
 export type { FlagEntry } from './flags';

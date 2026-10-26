@@ -121,6 +121,7 @@ export function createBattle(o: CreateBattleOpts, content: ContentIndex): TurnRe
     ended: null,
     zoneId: o.zoneId,
     ...(o.noExp === true ? { noExp: true as const } : {}),
+    ...(o.catchBonus !== undefined && Object.keys(o.catchBonus).length > 0 ? { catchBonus: { ...o.catchBonus } } : {}),
   };
   const ctx = makeCtx(state, content);
   // Phase D7: ambient zone weather (turns 0 = no countdown); announced before the leads' switch-in hooks
@@ -789,7 +790,7 @@ export function resolveTurn(
     const target = activeRef(ctx, 1);
     emit(ctx, { t: 'catchThrow', orb: orb.id, target });
     st.sides[0].consumedItems.push(orb.id);
-    const roll = resolveCatch(wild, content.species(wild.creature.speciesId), orb, ctx.rng);
+    const roll = resolveCatch(wild, content.species(wild.creature.speciesId), orb, ctx.rng, st.catchBonus?.[wild.creature.speciesId] ?? 1);
     const shown = Math.min(3, roll.shakes);
     for (let n = 1; n <= shown; n++) emit(ctx, { t: 'catchShake', n: n as 1 | 2 | 3 });
     emit(ctx, { t: 'catchResult', caught: roll.caught, target, shakes: roll.shakes });

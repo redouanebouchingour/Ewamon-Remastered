@@ -14,6 +14,8 @@ import {
   BattlePassStateSchema,
   CreaturesAddedRes,
   DexRes,
+  DexSpeciesParams,
+  DexViewedRes,
   InventoryMoneyRes,
   LeaderboardQuery,
   LeaderboardRes,
@@ -32,6 +34,7 @@ import {
 import type { ArenaKind } from '@ewa/protocol';
 import type { FastifyInstance } from 'fastify';
 import { newCreature } from '../../game/creatures';
+import { researchLevels } from '../../game/research';
 import { toInstance } from '../../rooms/battleSession';
 import { CHAMPION_SPLIT, RUN_START_SPLIT } from '../../game/speedrun';
 import { dayKey } from '../../liveops/schedule';
@@ -88,9 +91,24 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
   const bearer = { onRequest: requireAuth(deps), preHandler: rateLimit(deps) };
   const haggleOn = npcToolsOn(deps);
 
+  // Dex research: every entry's counters and timestamps, its research level and the claimed completion rewards ride along
   app.get('/dex', bearer, async (req) => {
-    const dex = await repos.db.transaction((tx) => repos.progress.dex(tx, req.user.sub));
-    return out(deps, DexRes, dex);
+    const { dex, rewards } = await repos.db.transaction(async (tx) => ({ dex: await repos.progress.dex(tx, req.user.sub), rewards: await repos.progress.claimedRewards(tx, req.user.sub) }));
+    const entries: Record<string, { seenAt: string; caughtAt: string | null; counters: Record<string, number>; firstSeenZone: string | null; viewedAt: string | null }> = {};
+    for (const sp of Object.keys(dex.entries).sort()) {
+      const e = dex.entries[sp]!;
+      entries[sp] = { seenAt: iso(e.seenAt), caughtAt: e.caughtAt === null ? null : iso(e.caughtAt), counters: e.counters, firstSeenZone: e.firstSeenZone, viewedAt: e.viewedAt === null ? null : iso(e.viewedAt) };
+    }
+    return out(deps, DexRes, { seen: dex.seen, caught: dex.caught, variants: dex.variants, alpha: dex.alpha, shiny: dex.shiny, entries, research: researchLevels(dex.entries), rewards });
+  });
+
+  // Dex research: the player opened an entry (the client's "new" marker); 404 when the species is not in their dex
+  app.post('/dex/viewed/:speciesId', bearer, async (req) => {
+    const { speciesId } = DexSpeciesParams.parse(req.params);
+    const now = new Date(clock());
+    const ok = await repos.db.transaction((tx) => repos.progress.markViewed(tx, req.user.sub, speciesId, now));
+    if (!ok) throw new HttpError(404, 'NotFound');
+    return out(deps, DexViewedRes, { speciesId, viewedAt: iso(now) });
   });
 
   // ---- shop -----------------------------------------------------------------------------------------------------

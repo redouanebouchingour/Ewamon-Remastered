@@ -239,6 +239,9 @@ export function registerPartyRoutes(app: FastifyInstance, deps: RestDeps): void 
       await repos.creatures.update(tx, next);
       await repos.progress.markSeen(tx, id, next.speciesId, now);
       await repos.progress.markCaught(tx, id, next.speciesId, next.variantKey, next.isAlpha, now, next.isShiny === true);
+      // Dex research: an evolution counts on the species it left and on the one it became
+      await repos.progress.bumpCounter(tx, id, rec.speciesId, 'evolved');
+      await repos.progress.bumpCounter(tx, id, next.speciesId, 'evolvedInto');
       await repos.audit.write(tx, { actorId: id, action: 'creature.evolve', subject: cid, detail: { from: rec.speciesId, into: next.speciesId, via } }, now);
       await repos.creatures.addEvent(tx, [cid], { kind: 'evolved', from: rec.speciesId, into: next.speciesId }, now);
       return { next, items };

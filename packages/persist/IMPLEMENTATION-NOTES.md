@@ -367,3 +367,21 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
   actions), `badges`, `splits` (run splits) and `memories` (every NPC's memory of the player; the deeds carry times).
   Every read is capped (`JOURNAL_READ_MAX` 400) and fully ordered.
 - Tests: `test/journal.test.ts`; `migrations.test.ts` lists the table.
+
+## Dex research (2026-10-26, not in the SPEC yet)
+
+- Migration `0025_dex_research` (drizzle-kit generated, renamed to `0025_dex_research` in the file and the journal):
+  `dex_entries.counters` jsonb NOT NULL DEFAULT `{}` (counter id to count), `first_seen_zone` varchar(32) and
+  `viewed_at` timestamptz, both nullable; a `dex_rewards` table (player, `reward_id` varchar 64, `claimed_at`), primary
+  key (player, reward), cascade with the player. A hand-written UPDATE at the end of the migration backfills existing
+  entries: seen 1, caught 1 when caught, alpha 1 when `alpha_seen`, variant = the non-normal variants on record, and
+  `viewed_at` = `COALESCE(caught_at, seen_at)` so an old collection shows no "new" markers.
+- `progressRepo.markSeen(tx, player, species, now, { zone?, also? })` is an upsert (`RETURNING xmax = 0` tells a new
+  row) that counts every sighting in `counters.seen` plus `also` (`seenNight`, `seenWater`) and keeps the first zone.
+  `markCaught` counts `caught`, `variant` for a non-normal variant and `alpha`; a row it creates also counts seen 1.
+  `bumpCounter` / `bumpCounters` add to an existing entry only (one atomic `counters || jsonb_build_object(...)`
+  statement; nothing is created, so a counter never makes a species seen); every counter is capped at
+  `DEX_COUNTER_MAX` (1,000,000). `counters(tx, player, speciesIds)`, `markViewed`, `claimReward` (idempotent, true on
+  the first claim) and `claimedRewards`. `dex()` / `DexSummary` gained `entries` (seenAt, caughtAt, counters,
+  firstSeenZone, viewedAt per species).
+- Tests: `test/dex-research.test.ts` (6, incl. the backfill statement); `migrations.test.ts` lists `dex_rewards`.

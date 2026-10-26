@@ -67,6 +67,7 @@ export function planReplay(data: ReplaySource, content: ContentIndex, live = fal
       : {}),
     ...(s.slots !== undefined ? { slots: s.slots } : {}),
     ...(s.noExp !== undefined ? { noExp: s.noExp } : {}),
+    ...(s.catchBonus !== undefined ? { catchBonus: s.catchBonus } : {}),
   };
   let run: ReturnType<typeof replayBattle>;
   try {

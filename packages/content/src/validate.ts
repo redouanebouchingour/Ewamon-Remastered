@@ -56,6 +56,7 @@ import { QUESTS } from './data/quests';
 import { STORY } from './data/story';
 import { DAILY_SWARMS, RAID_HOTSPOTS, SEASONAL_EVENTS } from './data/liveops';
 import { BATTLE_PASS } from './data/battlePass';
+import { FORM_COUNTER_PREFIX, RESEARCH_LEVEL_POINTS, RESEARCH_MAX_LEVEL, isResearchCounter, researchTasksFor, signatureMovesOf } from './data/research';
 import { BODIES, LOOKS, TITLES } from './data/bodies';
 import { SHOP_STOCK_DEFAULT } from './data/shop';
 import { FLAG_REGISTRY, VISITED_FLAGS, badgeFlag, isKnownFlag } from './flags';
@@ -925,6 +926,76 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
         for (const m of n.tutor) if (!moveIds.has(m)) err(`npc ${n.id}: tutor move '${m}' not in MOVES`);
       }
     }
+  }
+
+  // ── Dex research: every species has tasks, and level 5 is reachable from the tasks it can actually complete ──
+  {
+    const slots = ENCOUNTER_TABLES.flatMap((t) => t.slots);
+    const isWild = (id: string): boolean => slots.some((s) => s.species === id);
+    const lineWild = (s: (typeof species)[number]): boolean => {
+      for (let cur: (typeof species)[number] | undefined = s, n = 0; cur !== undefined && n < 8; cur = cur.evolvesFrom === null ? undefined : speciesById.get(cur.evolvesFrom), n++) {
+        if (isWild(cur.id)) return true;
+      }
+      return false;
+    };
+    const formIds = (s: (typeof species)[number]): string[] => [...(s.battleForm !== undefined ? [s.battleForm] : []), ...(s.battleForms ?? [])].map((f) => f.id);
+    const evolvesInto = (from: (typeof species)[number], to: string): boolean => evolutionChildren(from.evolution).includes(to);
+    const completable = (s: (typeof species)[number], counter: string): boolean => {
+      if (counter.startsWith(FORM_COUNTER_PREFIX)) return formIds(s).includes(counter.slice(FORM_COUNTER_PREFIX.length));
+      switch (counter) {
+        case 'seen':
+        case 'caught':
+        case 'defeated':
+          return true;
+        case 'seenNight':
+          return slots.some((x) => x.species === s.id && x.timeOfDay === 'night');
+        case 'seenWater':
+          return slots.some((x) => x.species === s.id && x.medium === 'water');
+        case 'evolved':
+          return evolutionChildren(s.evolution).some((id) => speciesById.has(id));
+        case 'evolvedInto': {
+          const from = s.evolvesFrom === null ? undefined : speciesById.get(s.evolvesFrom);
+          return from !== undefined && evolvesInto(from, s.id);
+        }
+        case 'variant':
+        case 'alpha':
+          return lineWild(s);
+        case 'signature': {
+          const sigs = signatureMovesOf(s, species);
+          return sigs.length > 0 && sigs.every((m) => moveIds.has(m));
+        }
+        case 'honorHigh':
+        case 'honorLow':
+          return s.evolution !== null && s.evolution.kind === 'split' && s.evolution.branches.some((b) => b.condition?.kind === 'honor');
+        default:
+          return false;
+      }
+    };
+    const inputs = { species, tables: ENCOUNTER_TABLES };
+    const needed = RESEARCH_LEVEL_POINTS[RESEARCH_LEVEL_POINTS.length - 1]!;
+    for (const s of species) {
+      const tasks = researchTasksFor(s, inputs);
+      if (tasks.length === 0) {
+        err(`research ${s.id}: no tasks`);
+        continue;
+      }
+      const ids = new Set<string>();
+      let reachable = 0;
+      for (const t of tasks) {
+        if (ids.has(t.id)) err(`research ${s.id}: duplicate task '${t.id}'`);
+        ids.add(t.id);
+        if (!isResearchCounter(t.counter)) err(`research ${s.id}.${t.id}: counter '${t.counter}' is not one the server writes`);
+        if (t.tiers.length === 0 || t.tiers.some((n, i) => !Number.isInteger(n) || n < 1 || (i > 0 && n <= t.tiers[i - 1]!))) err(`research ${s.id}.${t.id}: tiers must be ascending positive integers`);
+        if (!Number.isInteger(t.points) || t.points < 1) err(`research ${s.id}.${t.id}: points must be a positive integer`);
+        if (!completable(s, t.counter)) err(`research ${s.id}.${t.id}: the species can never complete it`);
+        else reachable += t.tiers.length * t.points;
+      }
+      if (reachable < needed) err(`research ${s.id}: level ${RESEARCH_MAX_LEVEL} needs ${needed} points, its completable tasks give ${reachable}`);
+    }
+    for (let i = 1; i < RESEARCH_LEVEL_POINTS.length; i++) {
+      if (RESEARCH_LEVEL_POINTS[i]! <= RESEARCH_LEVEL_POINTS[i - 1]!) err('RESEARCH_LEVEL_POINTS must ascend');
+    }
+    if (RESEARCH_LEVEL_POINTS.length !== RESEARCH_MAX_LEVEL) err(`RESEARCH_LEVEL_POINTS needs ${RESEARCH_MAX_LEVEL} entries`);
   }
 
   const stats: ValidationStats = {
