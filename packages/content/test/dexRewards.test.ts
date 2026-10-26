@@ -34,6 +34,8 @@ describe('DEX_REWARDS', () => {
   it('pays only items that exist, and every title is unique', () => {
     for (const r of DEX_REWARDS) for (const id of Object.keys(r.items)) expect(ITEM_IDS.has(id), `${r.id}: ${id}`).toBe(true);
     expect(new Set(DEX_TITLES).size).toBe(DEX_TITLES.length);
+    // POST /profile takes a title of at most 40 characters
+    for (const t of DEX_TITLES) expect(t.length, t).toBeLessThanOrEqual(40);
   });
 });
 

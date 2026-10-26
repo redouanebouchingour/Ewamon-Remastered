@@ -38,6 +38,8 @@ export interface DexRewardDef {
 }
 
 const zoneName = (id: ZoneId): string => ZONES.find((z) => z.id === id)?.name ?? id;
+/** "Solenne, the Sun-City" -> "Solenne": a title has to fit the profile's 40 characters */
+const zoneShort = (id: ZoneId): string => zoneName(id).split(',')[0]!.trim();
 
 /** The zones with a wild roster, in story order, each with the species that have a non-alpha slot there. */
 function habitatSets(): { readonly zoneId: ZoneId; readonly species: string[] }[] {
@@ -54,12 +56,12 @@ function habitatSets(): { readonly zoneId: ZoneId; readonly species: string[] }[
 const ZONE_REWARDS: DexRewardDef[] = habitatSets().map((h, i): DexRewardDef => ({
   id: `dex_zone_${h.zoneId}`,
   kind: 'zone',
-  title: `${zoneName(h.zoneId)} Survey`,
+  title: `${zoneShort(h.zoneId)} Survey`,
   summary: `Record every species living wild in ${zoneName(h.zoneId)}.`,
   need: { kind: 'zone', zoneId: h.zoneId, species: h.species },
   money: 1000 + 500 * i,
   items: i < 5 ? { prism_orb: 3 } : ({ hyper_potion: 2, rarecandy: 1 } as Readonly<Record<string, number>>),
-  trainerTitle: `${zoneName(h.zoneId)} Naturalist`,
+  trainerTitle: `${zoneShort(h.zoneId)} Naturalist`,
 }));
 
 const TYPE_REWARDS: DexRewardDef[] = TYPE_NAMES.map((t) => ({ t, species: SPECIES.filter((s) => (s.types as readonly string[]).includes(t)).map((s) => s.id).sort() }))
