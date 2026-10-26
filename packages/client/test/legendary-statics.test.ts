@@ -4,7 +4,7 @@
  * "Challenge" interactable and despawns it when its flag arrives; the SceneDirector syncs it on load / flags / unload.
  */
 import { describe, expect, it } from 'vitest';
-import { getHeightfield, nearestWalkable, statics, staticsFor } from '@ewa/content';
+import { getHeightfield, nearestWalkable, statics, staticsFor, SUNKEN_CRYPT, interiorsFor } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
 import type { CreatureBillboard, Renderer, SpriteDescriptor, ZoneHandle, ZoneSpec } from '@ewa/render';
 import { createAudioDirector } from '../src/audio/AudioDirector';
@@ -20,6 +20,7 @@ const RAI = staticsFor('galvan_route').find((s) => s.species === 'raikitsune')!;
 
 function fakeViews() {
   const live = new Set<string>();
+  const objects = new Map<string, { visible: boolean }>();
   const disposed: string[] = [];
   const prompts: (HudPrompt | null)[] = [];
   const targets = new InteractionTargets((p) => prompts.push(p));
@@ -27,8 +28,10 @@ function fakeViews() {
     parent: { add: () => undefined } as unknown as LegendaryViewDeps['parent'],
     acquire: (d: SpriteDescriptor) => {
       live.add(d.key);
+      const object = { removeFromParent: () => live.delete(d.key), visible: true };
+      objects.set(d.key, object);
       return {
-        object: { removeFromParent: () => live.delete(d.key), visible: true },
+        object,
         setFacing: () => undefined,
         setFlipbook: () => undefined,
         setPosition: () => undefined,
@@ -41,7 +44,7 @@ function fakeViews() {
     targets,
     interactKey: () => 'E',
   };
-  return { views: new LegendaryViews(deps), live, disposed, prompts, targets };
+  return { views: new LegendaryViews(deps), live, objects, disposed, prompts, targets };
 }
 
 describe('legendary statics (Phase B1)', () => {
@@ -85,6 +88,30 @@ describe('legendary statics (Phase B1)', () => {
     expect(targets.current).toBeNull();
     targets.step(e.x + 1, e.z, false); // the next fixed step clears the prompt
     expect(prompts.at(-1)).toBeNull();
+  });
+
+  it('a battle hides every static card until it ends; a static in a hall shows only while the player stands in it', () => {
+    const { views, objects } = fakeViews();
+    views.sync('galvan_route', new Set(['badge:circuit']));
+    const rai = objects.get(`${STATIC_PREFIX}raikitsune`)!;
+    expect(rai.visible).toBe(true);
+    views.setHidden(true);
+    expect(rai.visible).toBe(false);
+    views.setHidden(false);
+    expect(rai.visible).toBe(true);
+    // astaroth waits in the Sunken Crypt: hidden outside it, shown inside, hidden again while its battle is on
+    views.sync('vesperveil', new Set(['champion:zeon:beaten']));
+    const ast = objects.get(`${STATIC_PREFIX}astaroth`)!;
+    const crypt = interiorsFor('vesperveil').find((p) => p.def.building === SUNKEN_CRYPT)!;
+    views.setViewer(0, 0);
+    expect(ast.visible).toBe(false);
+    views.setViewer(crypt.at.x, crypt.at.z);
+    expect(ast.visible).toBe(true);
+    views.setHidden(true);
+    views.setViewer(crypt.at.x, crypt.at.z);
+    expect(ast.visible).toBe(false);
+    views.setHidden(false);
+    expect(ast.visible).toBe(true);
   });
 
   it('SceneDirector syncs the statics on load, on a flag refresh and on unload', async () => {

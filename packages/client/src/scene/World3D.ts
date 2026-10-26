@@ -1922,6 +1922,8 @@ class World implements World3D {
         this.foe.begin(foeSpecOf(s.foeId, s.foeNpc, this.ws.selfId, (id) => foeIdentity(id)));
         // Phase C1: the den's boss steps aside while its arena copy fights
         if (s.format === 'raid') this.raidDen?.setHidden(true);
+        // the legendary statics step aside too: a static's battle copy stands on the stage (in a hall, on the same spot)
+        this.legendaries?.setHidden(true);
         // arena PvP: the stadium's own floor under the ring
         void this.director.enterBattle(this.inArena ? { ...s, terrain: this.backdrop?.terrain ?? ARENA_FALLBACK.terrain } : s);
         // render §10.7.8: a wild battle bursts the tall grass (or sprays the water) round the player as the push-in starts
@@ -1938,6 +1940,7 @@ class World implements World3D {
         this.traceArena('exitBattle');
         this.foe.end();
         this.raidDen?.setHidden(false);
+        this.legendaries?.setHidden(false);
         void this.director.exitBattle();
         // the stage disposed its battlers: their sides and the teams' atlases idle (released after the grace period)
         this.battleSprites.end();

@@ -95,6 +95,8 @@ export class LegendaryViews {
   private viewerX = Number.NaN;
   private viewerZ = Number.NaN;
   private zoneId: ZoneId | null = null;
+  /** a battle is on: every static's card steps aside (its battle copy fights on the stage, in a hall on the same spot) */
+  private hidden = false;
 
   constructor(private readonly d: LegendaryViewDeps) {}
 
@@ -103,6 +105,12 @@ export class LegendaryViews {
     this.viewerX = x;
     this.viewerZ = z;
     for (const v of this.views.values()) this.applyNear(v);
+  }
+
+  /** Hides every static's card while a battle is on (World3D `enterBattle` / `exitBattle`), like the raid den's boss. */
+  setHidden(hidden: boolean): void {
+    this.hidden = hidden;
+    for (const v of this.views.values()) this.applyVisible(v);
   }
 
   /** Whether the static of `species` holds (and plays) its flipbook (tests / debug). */
@@ -162,13 +170,21 @@ export class LegendaryViews {
     this.d.targets.removeDynamic(`${STATIC_PREFIX}${species}`);
   }
 
+  /** Hidden during a battle; a static in a hall shows only while the player stands in that hall. */
+  private applyVisible(v: StaticView): void {
+    if (v.bb === null) return;
+    let shown = !this.hidden;
+    if (shown && v.interior !== null) {
+      const hall = this.zoneId === null ? null : interiorAt(this.zoneId, this.viewerX, this.viewerZ);
+      shown = hall?.def.building === v.interior;
+    }
+    v.bb.object.visible = shown;
+  }
+
   /** Near: lease the flipbook, then let the card play it. Far: back to the still frame, then let the flipbook go. */
   private applyNear(v: StaticView): void {
     if (v.bb === null) return;
-    if (v.interior !== null) {
-      const hall = this.zoneId === null ? null : interiorAt(this.zoneId, this.viewerX, this.viewerZ);
-      v.bb.object.visible = hall?.def.building === v.interior;
-    }
+    this.applyVisible(v);
     const d = Math.hypot(v.x - this.viewerX, v.z - this.viewerZ);
     const near = !(d > (v.flip !== null ? STATIC_FLIPBOOK_FAR_M : STATIC_FLIPBOOK_NEAR_M));   // NaN (no viewer yet) = near
     if (near && v.flip === null) {
