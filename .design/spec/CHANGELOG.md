@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-26 acier's Majin form. One entry. -->
+
+## 2026-10-26 · `40-pipelines.md` §40.1 species set, accounting · acier_majin
+Why: the user asked for a Majin form for Acier, the Steel/Fighting swordsman. It follows the Majin template (+28 atk / -18 def / +28 spd, clears its own drops, lowers every foe's def by 1), patched onto the legacy row in `.design/additions/patches.js`; as a wild Majin species it rages on its own when hurt (siege_route, the_rift, the siege_route raid). The art is gpt-image-2 on the user's key, keyed by `scripts/key-forms.ts`.
+Evidence: `tools/sprite-pipeline/test/{budget,zones}.test.ts` (201 entries, 102 atlases, 53.72 MB at the top rung, none duplicated, 0 actionable flags; all 101 existing atlases kept, `a-101` added); client `bond.test.tsx` (cut-in portraits); content tests; `pnpm check`.
+Affects: `.design/additions/patches.js`; `packages/content/src/data/species.ts`; `packages/client/public/{creatures/,signature/acier.webp,signature/acier_majin.webp}`; `tools/sprite-pipeline/{README.md,qa/*,test/budget.test.ts,test/zones.test.ts}`; `assets-src/forms-pending/`; `.design/majin-tenjin.md`.
+
 <!-- 2026-10-26 raidori's Tenjin form. One entry. -->
 
 ## 2026-10-26 · `40-pipelines.md` §40.1 species set, accounting · raidori_tenjin

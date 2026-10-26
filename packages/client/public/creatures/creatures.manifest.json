@@ -4344,6 +4344,48 @@
         "bytes": 8046
       },
       "normalScale": 0.5
+    },
+    {
+      "id": "a-101",
+      "species": [
+        "acier_majin"
+      ],
+      "size": 2048,
+      "slots": 2,
+      "albedo": {
+        "url": "atlases/a-101.albedo.webp",
+        "mips": [
+          "atlases/a-101.albedo.m1.webp",
+          "atlases/a-101.albedo.m2.webp",
+          "atlases/a-101.albedo.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 88,
+        "bytes": 252134
+      },
+      "normal": {
+        "url": "atlases/a-101.normal.webp",
+        "mips": [
+          "atlases/a-101.normal.m1.webp",
+          "atlases/a-101.normal.m2.webp",
+          "atlases/a-101.normal.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 92,
+        "bytes": 89168
+      },
+      "emissive": {
+        "url": "atlases/a-101.emissive.webp",
+        "mips": [
+          "atlases/a-101.emissive.m1.webp",
+          "atlases/a-101.emissive.m2.webp",
+          "atlases/a-101.emissive.m3.webp"
+        ],
+        "codec": "webp-lossless",
+        "quality": null,
+        "bytes": 6484
+      },
+      "normalScale": 0.5
     }
   ],
   "zones": {
@@ -4682,6 +4724,49 @@
       "sizeScale": 1.15,
       "home": "a-039",
       "thumb": "thumbs/acier_front.webp"
+    },
+    "acier_majin": {
+      "front": {
+        "atlas": "a-101",
+        "px": [
+          1024,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0.5,
+          0.5,
+          1,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.977802,
+        "source": "front/acier_majin(front).png"
+      },
+      "back": {
+        "atlas": "a-101",
+        "px": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0,
+          0.5,
+          0.5,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.992117,
+        "source": "back/acier_majin(back).png"
+      },
+      "sizeScale": 1.15,
+      "home": "a-101",
+      "thumb": "thumbs/acier_majin_front.webp"
     },
     "alloylark": {
       "front": {
@@ -17304,7 +17389,7 @@
       "thumb": "thumbs/zenryu_majin_front.webp"
     }
   },
-  "totalBytes": 53363368,
+  "totalBytes": 53719115,
   "animAtlases": [
     {
       "id": "anim-astaroth-back",

@@ -22,11 +22,11 @@ const REPORT_PATH = path.join(REAL_QA_DIR, 'qa-report.json');
 // cryptorb, ultraze, vysion, elemutt, katamute, ravatar, kykaiser and the 34 type-gap species #146 to #179)
 // + their battle forms under `<species>_<form>` (hollowmane_rage, castlemaw_rage, badlander_majin, lawlander_tenjin, hyoryu_majin;
 // ravatar_water, ravatar_earth, ravatar_fire, ravatar_air, ravatar_avatar)
-// + the legacy species' battle forms from .design/additions/patches.js (10: infernomorel, toxshade, necrogeist, zenryu _majin;
+// + the legacy species' battle forms from .design/additions/patches.js (11: infernomorel, toxshade, necrogeist, zenryu, acier _majin;
 // thornback, abysspark, gemknight, glimmereen, solpyre, raidori _tenjin)
-const SPECIES_COUNT = 200;
-/** Atlas cap: 101 with raidori_tenjin (2026-10-26); 100 with astaroth (2026-10-26); 99 with the 34 type-gap species (2026-10-26); 82 with the Elemutt line and ravatar's relic forms (2026-10-25); 78 with cryptorb, ultraze and vysion (2026-10-24); 76 with hyoryu and its Majin form (2026-10-13); 75 with the Majin / Tenjin forms (2026-10-11); 70 before. */
-const MAX_ATLASES = 101;
+const SPECIES_COUNT = 201;
+/** Atlas cap: 102 with acier_majin (2026-10-26); 101 with raidori_tenjin (2026-10-26); 100 with astaroth (2026-10-26); 99 with the 34 type-gap species (2026-10-26); 82 with the Elemutt line and ravatar's relic forms (2026-10-25); 78 with cryptorb, ultraze and vysion (2026-10-24); 76 with hyoryu and its Majin form (2026-10-13); 75 with the Majin / Tenjin forms (2026-10-11); 70 before. */
+const MAX_ATLASES = 102;
 
 function listFiles(dir: string, rel = ''): string[] {
   const out: string[] = [];

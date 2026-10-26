@@ -1,0 +1,6 @@
+Image 1 is Majin Acier (front view). Image 2 is regular Acier's back sprite.
+
+Draw MAJIN ACIER using exactly the pose, angle and framing of image 2 (its back sprite: the great sword carried across its back, the hilts of its other swords sticking out, seen from behind). Show every change from image 1 that is visible from this side: scorched black iron plates split by glowing crimson cracks, jagged notched swords with red-hot edges, a red-hot chain, iron spikes on the knuckles and jagged horns on the shoulder plates, the cracked dark-bronze helm. Same creature, same palette as image 1.
+
+Match the art style exactly: same pixel-art technique, chunky pixel size, outline weight and shading as image 2. Full body, centered, filling about 85% of the square canvas. Do not draw an aura, glow, flames or smoke around the creature.
+Background: one perfectly flat solid magenta #FF00FF, no gradient, no ground shadow. No magenta or hot pink in the creature. No text, no frame, no second creature. Square 1:1.

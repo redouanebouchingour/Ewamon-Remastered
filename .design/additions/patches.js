@@ -39,6 +39,10 @@ const EWAMON_SPECIES_PATCHES = {
   raidori: {
     battleForm: { id: "tenjin", name: "Tenjin Form", kind: "tenjin", hpBelowPct: 50, baseAtk: 130, baseDef: 135, baseSpd: 110, onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 }, frontSprite: "raidori_tenjin(front).png", backSprite: "raidori_tenjin(back).png" },
   },
+  // 2026-10-26: the made thing that hit back, its plates split crimson and its blades red-hot; breaks foes' guard (def)
+  acier: {
+    battleForm: { id: "majin", name: "Majin Form", kind: "majin", hpBelowPct: 50, baseAtk: 123, baseDef: 92, baseSpd: 88, onEnter: { clearNegativeStages: true, lowerFoes: { stat: "def", stages: 1 } }, frontSprite: "acier_majin(front).png", backSprite: "acier_majin(back).png" },
+  },
   // Every legendary's / mythical's signature move is its own (client battle/signatures.ts): Bankai Sever is
   // bankaiser's, so ironcarab's L39 finisher becomes Six-Blade Storm.
   ironcarab: {
