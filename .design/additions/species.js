@@ -390,6 +390,24 @@ const EWAMON_SPECIES_ADDITIONS = {
       },
     ],
   },
+
+  // Kygra's evolution (patches.js gives the legacy kygra `evolvesInto: "kykaiser"` at 45): the sea predator crowned.
+  kykaiser: {
+    id: "kykaiser", name: "Kykaiser",
+    flavor: "A Kygra that has ruled its waters long enough grows a crown of gold and arms like twin blades. It cuts through currents and steel hulls alike, and whole shoals part before it as if for an emperor.",
+    type: ["Water"],
+    baseHp: 108, baseAtk: 132, baseDef: 98, baseSpd: 122,
+    rarity: "rare", catchRate: 5,
+    sizeScale: 1.45,
+    expYield: 280,
+    moves: ["Trident Surge", "Steel Tide", "Tidal Slash", "Hydro Crush"],
+    learnableMoves: ["Aqua Blade", "Dragon Claw", "Steel Slash", "Iron Defense", "Ocean Crash"],
+    abilities: ["Swift Swim", "Intimidate"],
+    role: "Physical Attacker",
+    frontSprite: "kykaiser(front).png",
+    backSprite: "kykaiser(back).png",
+    habitat: [], evolvesInto: null, evolvesAt: null, evolvesFrom: "kygra",
+  },
 };
 
 module.exports = { EWAMON_SPECIES_ADDITIONS };

@@ -32,8 +32,8 @@ describe('Phase D5 achievements', () => {
     expect(new Set(QUESTS.map((q) => q.id)).size).toBe(QUESTS.length);
   });
 
-  it('covers dex 30/60/90/all 144, catches 10/50/200, wins 10/100/500, trades 1/10, raids 1/10, streaks 7/30', () => {
-    expect(targets('dexCaught')).toEqual(expect.arrayContaining([30, 60, 90, 144]));
+  it('covers dex 30/60/90/all 145, catches 10/50/200, wins 10/100/500, trades 1/10, raids 1/10, streaks 7/30', () => {
+    expect(targets('dexCaught')).toEqual(expect.arrayContaining([30, 60, 90, 145]));
     expect(Math.max(...targets('dexCaught'))).toBe(SPECIES.length);
     expect(targets('catchSpecies')).toEqual(expect.arrayContaining([10, 50, 200]));
     const anyWins = ACHIEVEMENTS.flatMap((a) => a.objectives.map((o) => o.objective)).filter((o) => o.kind === 'winBattles' && o.format === 'any').map((o) => (o.kind === 'winBattles' ? o.count : 0));

@@ -2,8 +2,9 @@
 //
 // `.design/legacy/ewamon.js` stays a verbatim copy of the old game (core's fuzz reads only it), so a change to a legacy
 // species' moves lives here. A patch replaces whole fields of the row (`moves`, `learnableMoves`) or pins learnable
-// moves to a level (`learnLevels`, left out of the generator's even spacing); the
-// generator throws on an unknown species or field. Post-legacy species (species.js) are edited in place instead.
+// moves to a level (`learnLevels`, left out of the generator's even spacing), or gives a legacy single stage an evolution
+// (`evolvesInto` + `evolvesAt`, kygra → kykaiser); the generator throws on an unknown species or field.
+// Post-legacy species (species.js) are edited in place instead.
 //
 // Dependency-free CommonJS, evaluated the same way as ewamon.js.
 
@@ -84,6 +85,13 @@ const EWAMON_SPECIES_PATCHES = {
   voidraxis: {
     moves: ["Eclipse Void", "Dragon Rush", "Draco Impact"],
     learnLevels: { "Rift Collapse": 39 },
+  },
+
+  // Kygra evolves into Kykaiser (species.js) at 45. Its learnset keeps the legacy levels: an evolution level would
+  // otherwise re-space them up to 45.
+  kygra: {
+    evolvesInto: "kykaiser", evolvesAt: 45,
+    learnLevels: { "Hydro Crush": 6, "Ocean Crash": 39 },
   },
 };
 

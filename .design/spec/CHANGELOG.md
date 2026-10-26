@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-26 kykaiser (#145), kygra's evolution. One entry. -->
+
+## 2026-10-26 · `00-spine.md` SpeciesDef `dexNumber`, ACHIEVEMENTS, §3 rule 3 counts; `20-client.md` §20.9.5; `40-pipelines.md` §40.1 species set, accounting, budget table, acceptance 2; `50-verification-budget.md` rule 11, content and sprite test rows, roster row · kykaiser (#145)
+Why: the user delivered front and back art for Kykaiser, Kygra's evolution, still Water, and asked for the back sprite to be mirrored. Kygra, a legacy single stage, evolves into it at 45 through a `.design/additions/patches.js` row (the generator now accepts `evolvesInto` / `evolvesAt` patches; kygra's learn levels are pinned, so they do not move). Obtainable by evolution only: no table, no new family. The sprites fit the 44 MiB creature ceiling at the top rung, so no raise.
+Evidence: content tests and `pnpm --filter @ewa/content run validate` (145/145 obtainable, 74 families); `tools/sprite-pipeline/test/{budget,zones}.test.ts` (164 entries, 82 atlases, 45 788 935 B, none duplicated); client sprite catalog and ecosystem tests.
+Affects: `.design/additions/{species,patches}.js`; `packages/content/scripts/migrate-legacy.ts`, `src/data/species.ts`, `src/{schema,validate}.ts`, `src/data/achievements.ts`; `packages/client/public/creatures/`; `.design/roster-coverage.md`.
+
 <!-- 2026-10-26 the Dex upgrade: entries, research, rewards. One entry. -->
 
 ## 2026-10-26 · `00-spine.md` BattleState (`catchBonus`), §4.7 (`GET /dex` extras, `POST /dex/viewed/:speciesId`, `POST /dex/rewards/:rewardId/claim`), §5.2 (`dex_entries` research columns, `dex_rewards`, `BattleStartSnapshot.catchBonus`); `20-client.md` route table, §20.9.5 (rewritten); `30-server-netcode.md` §30.9.4 (new) · the Dex upgrade

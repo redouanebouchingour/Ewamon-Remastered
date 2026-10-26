@@ -24,7 +24,7 @@ const REPORT_PATH = path.join(REAL_QA_DIR, 'qa-report.json');
 // ravatar_water, ravatar_earth, ravatar_fire, ravatar_air, ravatar_avatar)
 // + the legacy species' battle forms from .design/additions/patches.js (9: infernomorel, toxshade, necrogeist, zenryu _majin;
 // thornback, abysspark, gemknight, glimmereen, solpyre _tenjin)
-const SPECIES_COUNT = 163;
+const SPECIES_COUNT = 164;
 /** Atlas cap: 82 with the Elemutt line and ravatar's relic forms (2026-10-25); 78 with cryptorb, ultraze and vysion (2026-10-24); 76 with hyoryu and its Majin form (2026-10-13); 75 with the Majin / Tenjin forms (2026-10-11); 70 before. */
 const MAX_ATLASES = 82;
 

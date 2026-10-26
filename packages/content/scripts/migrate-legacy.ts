@@ -159,14 +159,14 @@ function loadLegacy(): LegacyModule {
   for (const id of Object.keys(moveAdditions)) {
     if (id in legacy.MOVES) throw new Error(`additions: move '${id}' already exists in ewamon.js`);
   }
-  // field patches to legacy species rows (ewamon.js stays verbatim): whole `moves` / `learnableMoves` replacements
-  const addPatches: { exports: { EWAMON_SPECIES_PATCHES?: Record<string, Partial<Pick<LegacySpecies, 'moves' | 'learnableMoves' | 'learnLevels' | 'battleForm'>>> } } = { exports: {} };
+  // field patches to legacy species rows (ewamon.js stays verbatim): whole `moves` / `learnableMoves` replacements, an evolution
+  const addPatches: { exports: { EWAMON_SPECIES_PATCHES?: Record<string, Partial<Pick<LegacySpecies, 'moves' | 'learnableMoves' | 'learnLevels' | 'battleForm' | 'evolvesInto' | 'evolvesAt'>>> } } = { exports: {} };
   (new Function('module', 'exports', readFileSync(PATCHES_FILE, 'utf8')) as (m: typeof addPatches, e: unknown) => void)(addPatches, addPatches.exports);
   const species: Record<string, LegacySpecies> = { ...legacy.EWAMON_SPECIES };
   for (const [id, patch] of Object.entries(addPatches.exports.EWAMON_SPECIES_PATCHES ?? {})) {
     const row = legacy.EWAMON_SPECIES[id];
     if (row === undefined) throw new Error(`patches: species '${id}' is not a legacy row`);
-    for (const k of Object.keys(patch)) if (k !== 'moves' && k !== 'learnableMoves' && k !== 'learnLevels' && k !== 'battleForm') throw new Error(`patches: ${id}.${k} cannot be patched`);
+    for (const k of Object.keys(patch)) if (!PATCHABLE.includes(k)) throw new Error(`patches: ${id}.${k} cannot be patched`);
     species[id] = { ...row, ...patch };
   }
   // post-legacy abilities (with their hooks): merged into the legacy rows; abilities.ts is emitted sorted by id
@@ -181,6 +181,9 @@ function loadLegacy(): LegacyModule {
   }
   return { ...legacy, EWAMON_SPECIES: { ...species, ...additions }, MOVES: { ...legacy.MOVES, ...moveAdditions }, ABILITIES: abilities };
 }
+
+/** The fields a .design/additions/patches.js row may replace on a legacy species. */
+const PATCHABLE: readonly string[] = ['moves', 'learnableMoves', 'learnLevels', 'battleForm', 'evolvesInto', 'evolvesAt'];
 
 /** Hooks of the .design/additions/abilities.js rows, filled by loadLegacy. */
 const ADDED_ABILITY_HOOKS = new Map<string, readonly AbilityHook[]>();
