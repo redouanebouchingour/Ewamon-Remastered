@@ -46,6 +46,7 @@ export const MOVE_STYLE: Readonly<Record<string, MoveStyle>> = {
   'Dark Lasso': 'spin',
   'Dark Pulse': 'wave',
   'Dazzling Gleam': 'wave',
+  "Demon Lord's Descent": 'slash',
   Discharge: 'bolt',
   Dive: 'tackle',
   'Double Edge': 'tackle',

@@ -7,41 +7,255 @@
     {
       "albedo": 88,
       "normal": 92,
-      "animTotalBytes": 32923815
+      "animTotalBytes": 34543735
     },
     {
       "albedo": 85,
       "normal": 92,
-      "animTotalBytes": 30266696
+      "animTotalBytes": 31747546
     },
     {
       "albedo": 82,
       "normal": 92,
-      "animTotalBytes": 28675494
+      "animTotalBytes": 30071364
     },
     {
       "albedo": 80,
       "normal": 92,
-      "animTotalBytes": 27608637
+      "animTotalBytes": 28950429
     },
     {
       "albedo": 80,
       "normal": 90,
-      "animTotalBytes": 26841163
+      "animTotalBytes": 28139489
     },
     {
       "albedo": 80,
       "normal": 85,
-      "animTotalBytes": 25379437
+      "animTotalBytes": 26583662
     },
     {
       "albedo": 80,
       "normal": 80,
-      "animTotalBytes": 24487809
+      "animTotalBytes": 25639308
     }
   ],
-  "animTotalBytes": 24487809,
+  "animTotalBytes": 25639308,
   "sides": [
+    {
+      "species": "astaroth",
+      "side": "back",
+      "source": "back/astaroth(back).webp",
+      "sourceSize": [
+        1159,
+        1159
+      ],
+      "pages": 18,
+      "staticFrame": 13,
+      "delays": [
+        125
+      ],
+      "loopMs": 2250,
+      "staticBbox": {
+        "x0": 8,
+        "y0": 530,
+        "x1": 1150,
+        "y1": 1101
+      },
+      "union": {
+        "x0": 8,
+        "y0": 507,
+        "x1": 1150,
+        "y1": 1150
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.770779,
+        "scaleY": 0.770979,
+        "left": 72,
+        "top": 483,
+        "width": 881,
+        "height": 497,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        3
+      ],
+      "atlas": [
+        3072,
+        1536
+      ],
+      "bytes": {
+        "albedo": 201094,
+        "normal": 71496,
+        "emissive": 430,
+        "total": 273020
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        475,
+        477,
+        483,
+        487,
+        488,
+        488,
+        489,
+        488,
+        485,
+        479,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        474,
+        474
+      ],
+      "emissivePixels": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "species": "astaroth",
+      "side": "front",
+      "source": "front/astaroth(front).webp",
+      "sourceSize": [
+        905,
+        905
+      ],
+      "pages": 32,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 4000,
+      "staticBbox": {
+        "x0": 66,
+        "y0": 258,
+        "x1": 851,
+        "y1": 896
+      },
+      "union": {
+        "x0": 8,
+        "y0": 247,
+        "x1": 896,
+        "y1": 896
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 1.120865,
+        "scaleY": 1.120501,
+        "left": 7,
+        "top": 214,
+        "width": 996,
+        "height": 728,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        8,
+        4
+      ],
+      "atlas": [
+        4096,
+        2048
+      ],
+      "bytes": {
+        "albedo": 681096,
+        "normal": 185818,
+        "emissive": 1746,
+        "total": 868660
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3,
+        13,
+        29,
+        54,
+        78,
+        79,
+        90,
+        93,
+        74,
+        53,
+        37,
+        17,
+        3,
+        3,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        1,
+        2
+      ]
+    },
     {
       "species": "bankaiser",
       "side": "back",

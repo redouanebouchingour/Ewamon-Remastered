@@ -2390,3 +2390,14 @@ pool; `Part3.worldFx`).
 - `zone/generators/trophies.ts` reuses the set's builders (crystal housing, brazier, lantern, crate) and composes the
   wanted board, the scar stone and the banner from `box` / `beam` / `lathe` with the set's own surfaces, all of which
   `setSurfaces` already binds, so no surface or program is new to a route. No collider footprint: walk-through.
+
+## The Sunken Crypt: `crypt` building, `abyss` hall theme, `clover_sigil` (2026-10-26)
+
+- `BuildingSpec.kind` gains `crypt`: the grand build (arched door, quoins) in bare stone (the style's plinth for every
+  wall, no timber frame, chimney, window boxes or windows) with a glowing `lava_glow` lintel and gable disc. The
+  seeded draws still run, so the build is otherwise what a landmark of that seed would be.
+- `InteriorTemplateId` gains `crypt` (treated as a big hall: hall door width, pilasters, runner to the arena) and
+  `InteriorThemeId` gains `abyss` (the cinder set: obsidian floor, wrought iron, void floor runner, eclipse stone walls,
+  crimson banner cloth, the lava glow as accent).
+- `clover_sigil`: a flat five-leaf clover (heart leaves in the accent on a dark disc, a stem, an iron ring and a
+  glowing outer ring with five studs), 5.7 m across, drawn in the floor pass a hair above the arena's runner disc.

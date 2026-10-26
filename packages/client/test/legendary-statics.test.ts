@@ -55,7 +55,7 @@ describe('legendary statics (Phase B1)', () => {
     expect(visibleStatics('galvan_route', new Set())).toEqual([]);
     const shown = visibleStatics('galvan_route', new Set(['badge:circuit']));
     const snapped = nearestWalkable(getHeightfield('galvan_route'), RAI.x, RAI.z, 8) ?? [RAI.x, RAI.z];
-    expect(shown).toEqual([{ species: 'raikitsune', level: RAI.level, flag: RAI.flag, x: snapped[0], z: snapped[1] }]);
+    expect(shown).toEqual([{ species: 'raikitsune', level: RAI.level, flag: RAI.flag, x: snapped[0], z: snapped[1], interior: null }]);
     expect(visibleStatics('galvan_route', new Set(['badge:circuit', RAI.flag]))).toEqual([]);
     // every static of the game appears once its gate is held
     for (const st of statics()) {

@@ -3135,6 +3135,107 @@
       }
     ]
   },
+  "sfx/sig_demon_lords_descent_1": {
+    "file": "mix/sig_demon_lords_descent_1.wav",
+    "licence": "CC0-1.0",
+    "author": "Kenney (kenney.nl); rubberduck; artisticdude",
+    "url": "https://kenney.nl/assets/digital-audio",
+    "title": "Premix: sig_demon_lords_descent_1",
+    "parts": [
+      {
+        "file": "kenney/kenney_digital-audio/Audio/phaserDown2.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/digital-audio",
+        "title": "Digital Audio: phaserDown2",
+        "licenceFile": "KENNEY-digital-audio-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactBell_heavy_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactBell_heavy_000",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactMetal_heavy_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactMetal_heavy_002",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/explosionCrunch_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: explosionCrunch_004",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/forceField_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: forceField_004",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/lowFrequency_explosion_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: lowFrequency_explosion_001",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/spaceEngineLow_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: spaceEngineLow_000",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/spaceEngineLow_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: spaceEngineLow_002",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/80-CC0-RPG-SFX/blade_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/node/86018",
+        "title": "80 CC0 RPG SFX: blade_01"
+      },
+      {
+        "file": "rubberduck/80-CC0-RPG-SFX/blade_03.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/node/86018",
+        "title": "80 CC0 RPG SFX: blade_03"
+      },
+      {
+        "file": "rubberduck/80-CC0-creature-sfx-2/roar_06.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+        "title": "80 CC0 creature SFX #2: roar_06"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_01.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_01"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_02"
+      },
+      {
+        "file": "subs/rpg-sound-pack/pack/battle/swing2.wav",
+        "author": "artisticdude",
+        "url": "https://opengameart.org/content/rpg-sound-pack",
+        "title": "RPG Sound Pack: swing2"
+      }
+    ]
+  },
   "sfx/sig_foxfire_voltage_1": {
     "file": "mix/sig_foxfire_voltage_1.wav",
     "licence": "CC0-1.0",

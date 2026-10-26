@@ -6,9 +6,9 @@
       "seconds": 682
     },
     "sfx": {
-      "cost": 47.6,
-      "jobs": 238,
-      "seconds": 207.7
+      "cost": 51,
+      "jobs": 255,
+      "seconds": 246.5
     },
     "stem": {
       "cost": 13.6,
@@ -24,31 +24,31 @@
   "bytes": {
     "ambience": 14967700,
     "budget": 83886080,
-    "m4a": 44380232,
+    "m4a": 44803192,
     "seconds": {
       "ambience": 660,
-      "sfx": 298.98,
+      "sfx": 337.78,
       "stems": 2287.578
     },
-    "sfx": 6197212,
+    "sfx": 6954888,
     "stems": 61372032,
-    "total": 82536944,
-    "webm": 38156712
+    "total": 83294620,
+    "webm": 38491428
   },
   "cached": 0,
   "costBasis": "Stability AI platform pricing, Stable Audio 2.5 text-to-audio: 20 credits ($0.20) per generation, flat for 1–190 s (checked 2026-09-25)",
   "counts": {
     "ambience": 11,
-    "sfxIds": 129,
-    "sfxVariants": 287,
+    "sfxIds": 146,
+    "sfxVariants": 304,
     "stems": 68,
     "themes": 17,
     "uiIds": 45,
     "zones": 21
   },
-  "estimatedCost": 73.2,
-  "estimatedSeconds": 3723.224,
-  "fullCost": 73.2,
+  "estimatedCost": 76.6,
+  "estimatedSeconds": 3762.024,
+  "fullCost": 76.6,
   "jobs": [
     {
       "attempt": 0,
@@ -175,6 +175,24 @@
       "kind": "sfx",
       "requestHash": "881a60c2c3b0a9a2e640cc360f15023812e7aa5698c8104614b85b63928cfe14",
       "seed": 2359251323
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 4,
+      "id": "sfx/bond_majin_1",
+      "kind": "sfx",
+      "requestHash": "10fe78d42eab00646e5f9036ed1db3af8691e03a245d7063ee4988dfcd58f303",
+      "seed": 3529348636
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 4,
+      "id": "sfx/bond_tenjin_1",
+      "kind": "sfx",
+      "requestHash": "39dd3d061a1151c1573fe26fc1dc4361971ec4c8db20526bbfe4d11c70f3c9ba",
+      "seed": 2310753065
     },
     {
       "attempt": 0,
@@ -1678,6 +1696,141 @@
       "kind": "sfx",
       "requestHash": "57537a8525fed687693be0d9ab8992271060ed08f63023fb478f69872f556f69",
       "seed": 2931806371
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2.2,
+      "id": "sfx/sig_aurora_requiem_1",
+      "kind": "sfx",
+      "requestHash": "241958fe62c15d8886c14d0060ae68f8686a733dd5b562543006fc3d248694af",
+      "seed": 3550192992
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2,
+      "id": "sfx/sig_bankai_sever_1",
+      "kind": "sfx",
+      "requestHash": "16a639e9894f017f2ddf8958b56e99c8621972fac33362fc31c162e819c07c7a",
+      "seed": 722551793
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2,
+      "id": "sfx/sig_cosmic_convergence_1",
+      "kind": "sfx",
+      "requestHash": "9d02d56d272559dc3fad3c4fb36a7fec6cfbc2fed6080ed54fa9f505d59a17d3",
+      "seed": 731402655
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2.4,
+      "id": "sfx/sig_cosmic_miracle_1",
+      "kind": "sfx",
+      "requestHash": "f3a9a6d1a728f57391da8bc1baed943beea91f0f08e6e2bac29cd2e7bf9832b7",
+      "seed": 2855365857
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2,
+      "id": "sfx/sig_cosmic_pyre_1",
+      "kind": "sfx",
+      "requestHash": "0d61853497dd795a2d830e63853a131f927cc6d176f5162e202d5ecbd778e702",
+      "seed": 2641751256
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2.2,
+      "id": "sfx/sig_crimson_lotus_prison_1",
+      "kind": "sfx",
+      "requestHash": "da05833dd36342d9b93788abef831bc5cba99b79d44411742fea0f02699b1aa8",
+      "seed": 586171983
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2.2,
+      "id": "sfx/sig_demon_lords_descent_1",
+      "kind": "sfx",
+      "requestHash": "f56538fd6d9f8b557eab8e717188c90c315424d6d19d6239f81a9eaebfa91b09",
+      "seed": 1364871649
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.9,
+      "id": "sfx/sig_foxfire_voltage_1",
+      "kind": "sfx",
+      "requestHash": "c0c29ad200cc01a9ffded16103b78e7a4df8b640882af2a6562670467d3f18c4",
+      "seed": 2406198869
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.8,
+      "id": "sfx/sig_hollow_crescent_1",
+      "kind": "sfx",
+      "requestHash": "76fc7f761cf0f26cbc7700a610238d988df9859eeb7f4808cc86d7c8cb3ea5f6",
+      "seed": 763272710
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2.3,
+      "id": "sfx/sig_kamehameha_1",
+      "kind": "sfx",
+      "requestHash": "7dc48779aa66202672ddb749828516e193beee23367cae66a611d7a435c035c1",
+      "seed": 3081299703
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2,
+      "id": "sfx/sig_rift_collapse_1",
+      "kind": "sfx",
+      "requestHash": "0495ccd9dde243d3266250bded7fa53de8c264168510bbdd6bd9c7fe2e36ba85",
+      "seed": 1493683934
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 1.6,
+      "id": "sfx/sig_sparking_grace_1",
+      "kind": "sfx",
+      "requestHash": "80498dcbde0b122d1a1dea8be1328ac5f6be90df45f95ce945e86c0088ca5305",
+      "seed": 2899286063
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2.2,
+      "id": "sfx/sig_stellar_devour_1",
+      "kind": "sfx",
+      "requestHash": "9a217984d2e6c844a081451961c3b60038131a09409e10ffc1f4b8f0248f9dc2",
+      "seed": 3554563690
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2,
+      "id": "sfx/sig_sunbreaker_barrage_1",
+      "kind": "sfx",
+      "requestHash": "b2a414d9fab63e13b7c5c7de449ed40ba19355da886413e3236ddbcd06e5303b",
+      "seed": 2416648934
+    },
+    {
+      "attempt": 0,
+      "cached": false,
+      "durationSec": 2,
+      "id": "sfx/sig_vendetta_volley_1",
+      "kind": "sfx",
+      "requestHash": "576b4c35fba6265f437d515ac221d478ae5f43a76a6f3da6a8f8e7c51b7538f9",
+      "seed": 24626542
     },
     {
       "attempt": 0,
@@ -3346,6 +3499,6 @@
     }
   ],
   "provider": "stable-audio",
-  "toGenerate": 366,
-  "total": 366
+  "toGenerate": 383,
+  "total": 383
 }

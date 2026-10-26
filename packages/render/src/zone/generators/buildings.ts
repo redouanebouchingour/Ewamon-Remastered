@@ -328,10 +328,14 @@ export function buildHouse(st: BuildingStyle, spec: BuildingSpec, o: HouseOpts =
 }
 
 /** `buildHouse` as resumable steps (Handover II, steps.ts): a yield after each wall, the roof and the dressing. */
-export function* houseSteps(st: BuildingStyle, spec: BuildingSpec, o: HouseOpts = {}): Steps<PropGeo> {
+export function* houseSteps(style: BuildingStyle, spec: BuildingSpec, o: HouseOpts = {}): Steps<PropGeo> {
   const p = createPrng(spec.seed);
   const drop = Math.max(0, o.drop ?? 0);
-  const grand = spec.kind === 'gym' || spec.kind === 'landmark';
+  // a crypt (content data/hideouts.ts): the grand build in bare stone, no timber, chimney, window boxes or windows,
+  // the accent glowing in its lintel and gable
+  const crypt = spec.kind === 'crypt';
+  const st: BuildingStyle = crypt ? { ...style, wall: style.plinth, upperWall: style.plinth, frame: null, chimney: null, greenery: null } : style;
+  const grand = spec.kind === 'gym' || spec.kind === 'landmark' || crypt;
   const storey = st.storey * (grand ? 1.22 : 1);
   const P = grand ? 0.6 : 0.45;
   const w = spec.w; const d = spec.d;
@@ -348,7 +352,7 @@ export function* houseSteps(st: BuildingStyle, spec: BuildingSpec, o: HouseOpts 
   const upperY = P + ground;
   const upperD = d + 2 * jetty;
   const wallTop = floors === 2 ? upperY + storey * 0.92 : P + ground;
-  const doorSpec = spec.kind === 'gym' || spec.kind === 'landmark' ? { w: 2.3, h: 3.0, kind: 'arch' as const } : spec.kind === 'shop' ? { w: 1.3, h: 2.2, kind: 'door' as const } : { w: 1.1, h: 2.1, kind: 'door' as const };
+  const doorSpec = grand ? { w: 2.3, h: 3.0, kind: 'arch' as const } : spec.kind === 'shop' ? { w: 1.3, h: 2.2, kind: 'door' as const } : { w: 1.1, h: 2.1, kind: 'door' as const };
   const windowW = grand ? 1.0 : 0.9; const windowH = grand ? 1.6 : 1.05;
   const shut = st.frame !== null && p.next() < 0.6;
 
@@ -356,11 +360,13 @@ export function* houseSteps(st: BuildingStyle, spec: BuildingSpec, o: HouseOpts 
   const addStorey = (y: number, h: number, depth: number, gable: number, upper: boolean): void => {
     const wallSurf = upper ? st.upperWall : st.wall;
     const sill = upper ? 0.75 : 0.95;
-    walls.push({ m: wallMatrix('front', hw, depth / 2, y), length: w, height: h, gable: 0, surface: wallSurf, openings: layoutOpenings(p, w, h, upper ? null : doorSpec, spec.kind === 'shop' && !upper ? 2.2 : windowW, spec.kind === 'shop' && !upper ? 1.35 : windowH, sill, shut, !upper && st.greenery !== null) });
-    walls.push({ m: wallMatrix('back', hw, depth / 2, y), length: w, height: h, gable: 0, surface: wallSurf, openings: layoutOpenings(p, w, h, null, windowW, windowH, sill, false, false) });
+    // a crypt keeps only its door (the seeded draws still run, so nothing else in the build shifts)
+    const keep = (ops: Opening[]): Opening[] => (crypt ? ops.filter((op) => op.kind === 'door' || op.kind === 'arch') : ops);
+    walls.push({ m: wallMatrix('front', hw, depth / 2, y), length: w, height: h, gable: 0, surface: wallSurf, openings: keep(layoutOpenings(p, w, h, upper ? null : doorSpec, spec.kind === 'shop' && !upper ? 2.2 : windowW, spec.kind === 'shop' && !upper ? 1.35 : windowH, sill, shut, !upper && st.greenery !== null)) });
+    walls.push({ m: wallMatrix('back', hw, depth / 2, y), length: w, height: h, gable: 0, surface: wallSurf, openings: keep(layoutOpenings(p, w, h, null, windowW, windowH, sill, false, false)) });
     for (const side of ['left', 'right'] as const) {
-      const sideOpen = gable > 0 && grand ? [{ x: 0, y: h + gable * 0.35, w: 1.1, h: 1.1, kind: 'round' as const, shutters: false, box: false }] : [];
-      const ops = [...layoutOpenings(p, depth - 2 * THICK, h, null, windowW, windowH, sill, shut && !upper, false), ...sideOpen];
+      const sideOpen = gable > 0 && grand && !crypt ? [{ x: 0, y: h + gable * 0.35, w: 1.1, h: 1.1, kind: 'round' as const, shutters: false, box: false }] : [];
+      const ops = [...keep(layoutOpenings(p, depth - 2 * THICK, h, null, windowW, windowH, sill, shut && !upper, false)), ...sideOpen];
       walls.push({ m: wallMatrix(side, hw, 0, y), length: depth - 2 * THICK, height: h, gable, surface: wallSurf, openings: ops });
     }
   };
@@ -448,7 +454,11 @@ export function* houseSteps(st: BuildingStyle, spec: BuildingSpec, o: HouseOpts 
         box(L0, st.plinth, sx * (hw - 0.12), y, sz * (hd - (big ? 0.16 : 0.22)), 0.3, 0.5, big ? 0.4 : 0.52, 0, 0.04);
       }
     }
-    if (doorOp) {
+    if (doorOp && crypt) {
+      // a glowing lintel in place of the sign board
+      box(L0, st.trim, doorOp.x, P + doorOp.h + 0.4, hd + 0.02, 3.0, 0.5, 0.1, 0, 0.02);
+      if (o.accent) box(L0, o.accent, doorOp.x, P + doorOp.h + 0.52, hd + 0.08, 2.2, 0.12, 0.04, 0, 0.008);
+    } else if (doorOp) {
       box(L0, st.door, doorOp.x, P + doorOp.h + 0.45, hd + 0.02, 3.2, 0.7, 0.12, 0, 0.03);
       box(L0, st.frame ?? st.trim, doorOp.x, P + doorOp.h + 0.4, hd + 0.02, 3.4, 0.8, 0.08, 0, 0.02);
       // stone arch surround

@@ -88,7 +88,7 @@ export interface HeightfieldData {          // structurally identical to @ewa/co
 }
 export interface Marker { readonly id: string; readonly x: number; readonly z: number }   // warps (door markers), pickups, tablets share this shape
 export interface PropPlacement { readonly kind: string; readonly x: number; readonly z: number; readonly yaw: number; readonly scale: number; readonly seed: number }   // kind = a generator prop id (§10.5.4)
-export interface BuildingSpec { readonly id: string; readonly kind: 'house' | 'gym' | 'shop' | 'healer' | 'landmark'; readonly x: number; readonly z: number; readonly yaw: number; readonly w: number; readonly d: number; readonly floors: 1 | 2; readonly roof: 'slate' | 'thatch' | 'tile' | 'plate'; readonly seed: number }
+export interface BuildingSpec { readonly id: string; readonly kind: 'house' | 'gym' | 'shop' | 'healer' | 'landmark' | 'crypt'; readonly x: number; readonly z: number; readonly yaw: number; readonly w: number; readonly d: number; readonly floors: 1 | 2; readonly roof: 'slate' | 'thatch' | 'tile' | 'plate'; readonly seed: number }
 export interface ActorSpawn { readonly id: string; readonly look: string; readonly x: number; readonly z: number; readonly kind: 'npc' | 'trainer' }
 export interface Pickup { readonly id: string; readonly x: number; readonly z: number }
 export interface Tablet { readonly id: string; readonly x: number; readonly z: number }
@@ -187,9 +187,9 @@ export interface CampsHandle {
 /** A point / rect in a pocket's LOCAL frame: origin at the floor centre, door in the middle of the local +z wall. */
 export interface InteriorLocalPoint { readonly lx: number; readonly lz: number }
 export interface InteriorLocalRect { readonly lx: number; readonly lz: number; readonly hw: number; readonly hd: number }
-export type InteriorTemplateId = 'gym_hall' | 'league_hall' | 'shop' | 'healer' | 'house_s' | 'house_m';
+export type InteriorTemplateId = 'gym_hall' | 'league_hall' | 'shop' | 'healer' | 'house_s' | 'house_m' | 'crypt';
 /** grove … sky = the 8 gym themes; league / shop / healer / house */
-export type InteriorThemeId = 'grove' | 'cinder' | 'salt' | 'storm' | 'marrow' | 'vesper' | 'forge' | 'sky' | 'league' | 'shop' | 'healer' | 'house';
+export type InteriorThemeId = 'grove' | 'cinder' | 'salt' | 'storm' | 'marrow' | 'vesper' | 'forge' | 'sky' | 'abyss' | 'league' | 'shop' | 'healer' | 'house';
 export interface InteriorSpec {
   readonly id: string;                                        // = the building id (`mirevale.gym`, `solenne.league`, `mirevale.house3`)
   readonly building: string;
@@ -213,7 +213,7 @@ export interface InteriorSpec {
   readonly rooms: readonly { readonly id: string; readonly arena: InteriorLocalPoint; readonly leaderAt: InteriorLocalPoint | null; readonly bounds: InteriorLocalRect }[];
   /** dressing: counter, shelf, cabinet, pc, bed, table, chair, bookshelf, rug, plant, lamp, bench, crate, barrel, statue,
    * pillar, banner, brazier, spectators, planter, flowerbed, lava_channel, anchor, coil, light_path, crystal, minecart,
-   * candles, mirror, forge, weapon_rack, bridge, cloud, throne — unknown kinds draw nothing */
+   * candles, mirror, forge, weapon_rack, bridge, cloud, throne, clover_sigil — unknown kinds draw nothing */
   readonly props: readonly { readonly kind: string; readonly lx: number; readonly lz: number; readonly yaw: number; readonly scale: number }[];
 }
 

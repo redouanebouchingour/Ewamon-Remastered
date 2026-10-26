@@ -30,6 +30,9 @@ const EWAMON_MOVE_ADDITIONS = {
   // The first low-power Cosmic attack (2026-10-26): Twinklit and Meteorb start with it, so a Cosmic line has STAB
   // before Starfall (90). Plain damage, no effect.
   "Comet Tap": { power: 40, type: "Cosmic", pp: 30, effect: null, accuracy: 100, contact: false },
+  // astaroth's signature move (pinned as its newest learnable move): the demon lord dissolves into smoke, a five-leaf
+  // clover sigil flares under the foe and it drops onto it with both blades. Learned by astaroth only.
+  "Demon Lord's Descent": { power: 120, type: "Dark", pp: 5, effect: "flinch", accuracy: 90 },
 };
 
 module.exports = { EWAMON_MOVE_ADDITIONS };

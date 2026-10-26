@@ -990,6 +990,29 @@ const EWAMON_SPECIES_ADDITIONS = {
     backSprite: "mesadrake(back).png",
     habitat: [], evolvesInto: null, evolvesAt: null, evolvesFrom: "dunescale",
   },
+
+  // A legendary demon lord inspired by Asta and the devils of Black Clover: anti-magic black, a cracked greatsword and a
+  // red katana. It waits in the Sunken Crypt behind Vesperveil's graveyard after the Champion (content data/hideouts.ts).
+  // The sources are two looping animations (front 32 frames, back 18, 125 ms) keyed from the user's videos.
+  astaroth: {
+    id: "astaroth", name: "Astaroth",
+    flavor: "A demon lord sealed beneath Vesperveil since before the town had a name. Its cracked greatsword breaks every spell it touches and its thin red blade cuts the soul. When its wings open, the candles burn black.",
+    type: ["Dark", "Ghost"],
+    baseHp: 118, baseAtk: 150, baseDef: 104, baseSpd: 128,
+    rarity: "legendary", catchRate: 3,
+    sizeScale: 1.5,
+    expYield: 330,
+    moves: ["Shadow Sneak", "Bite", "Night Slash"],
+    // Demon Lord's Descent is its signature move (client battle/signatures.ts): pinned as the newest move (L39) so the
+    // static (L60) knows it, beside Poltergeist, Dark Pulse and Phantom Strike
+    learnableMoves: ["Hex", "Sucker Punch", "Crunch", "Shadow Ball", "Phantom Strike", "Dark Pulse", "Poltergeist", "Demon Lord's Descent"],
+    learnLevels: { "Demon Lord's Descent": 39 },
+    abilities: ["Intimidate", "Guts"],
+    role: "Physical Attacker",
+    frontSprite: "astaroth(front).webp",
+    backSprite: "astaroth(back).webp",
+    habitat: [], evolvesInto: null, evolvesAt: null,
+  },
 };
 
 module.exports = { EWAMON_SPECIES_ADDITIONS };

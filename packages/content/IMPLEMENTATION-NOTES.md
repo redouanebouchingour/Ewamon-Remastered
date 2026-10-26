@@ -878,3 +878,26 @@ target follows (179).
   positive points, every task completable by that species (night / water slots, evolutions, a wild line, its forms,
   its signature moves existing) and level 5 reachable from those tasks alone.
 - Tests: `test/research.test.ts` (7, incl. a mutation that drops elemutt's evolution).
+
+## astaroth (#180) and the Sunken Crypt (2026-10-26)
+
+- `astaroth` (Dark/Ghost legendary, 118 / 150 / 104 / 128, Intimidate / Guts), signature move Demon Lord's Descent
+  (Dark 120, 90 %, 5 PP, flinch) pinned at L39 like the other legendaries. The tenth static: L60 after the title.
+  Counts: 180 species, 200 moves, 89 families, 99 placed directly; the dex achievement follows (180) and the statics
+  achievement becomes "Ten Old Powers".
+- Hideouts (`src/data/hideouts.ts`, a layer the spine did not have): a building of its own outside the zone plan,
+  here Vesperveil's Sunken Crypt at (-50, 35) on the graveyard plateau, door east. It never feeds the layout RNG:
+  `planInteriors` places its hall after the town's own pockets (so theirs keep their spots, checked: the seven
+  Vesperveil pockets are unchanged), clear of the building; `stampHideouts` marks the building unwalkable after the
+  obstacles (only vesperveil's heightfield digest changes); the client draws it as a `crypt` building. Its hall is a
+  14 × 22 m `crypt` template in the new `abyss` theme: a foyer with the warden, an anti-magic seal (a `rune` gate on
+  the Champion's flag), the throne chamber with one arena and a five-leaf clover sigil (`clover_sigil` prop).
+  The full 16 × 26 m first draft did not fit Vesperveil's outer band.
+- `LegendaryStatic.interior` (optional, schema too): x / z stay the building outside (dex habitat, professor facts,
+  the sprite planner's §7 table), the creature stands at (`lx`, `lz`) in the hall. `staticsFor(zoneId)` resolves it
+  to the world point in the pocket (memoised), so the server's interact check, the client's billboard and the
+  walker all use it unchanged; `heightfield` sculpt points, `arrival` and pocket placement skip interior rows.
+  `checkInterior` checks such a static is on the floor and reachable once the Champion is beaten; `validate` checks
+  the crypt's door instead of the static at zone level, and that the building overlaps no pocket or plan building.
+- The gravetender gains a `react` on the Champion's flag pointing at the crypt (data only: npc x / z alone feed the
+  layout).

@@ -16,6 +16,8 @@ import { TYPE_CHART } from './data/typechart';
 import { ZONES } from './data/zones';
 import { ENCOUNTER_TABLES } from './data/encounters';
 import { LEGENDARY_STATICS } from './data/statics';
+import { localToWorld } from './interiors';
+import { interiorsFor } from './interiorIndex';
 import { LEAGUE, LEAGUE_REMATCH } from './data/league';
 import { QUESTS } from './data/quests';
 import { STORY } from './data/story';
@@ -328,6 +330,8 @@ export {
   interiorsFor,
 } from './interiorIndex';
 export { GYM_HALL, LEAGUE_HALL, interiorTrainerFlag, switchFlag } from './data/interiors';
+export { CRYPT_HALL, CRYPT_STATIC_AT, HIDEOUTS, SUNKEN_CRYPT, hideoutBounds, hideoutBuilding, hideoutDoor, hideoutsFor } from './data/hideouts';
+export type { HideoutDef } from './data/hideouts';
 
 // ─── Phase C3 world map ──────────────────────────────────────────────────────
 export type { MapCell } from './worldMap';
@@ -372,8 +376,24 @@ export function encounterTableFor(zoneId: ZoneId): EncounterTable | null {
 export function statics(): readonly LegendaryStatic[] {
   return LEGENDARY_STATICS;
 }
+const staticsMemo = new Map<ZoneId, readonly LegendaryStatic[]>();
+/**
+ * The zone's statics where they stand: a static that waits inside a hall (`interior`, data/hideouts.ts) comes with the
+ * world point inside its pocket in `x` / `z`, the way the halls' trainers and items do.
+ */
 export function staticsFor(zoneId: ZoneId): readonly LegendaryStatic[] {
-  return LEGENDARY_STATICS.filter((s) => s.zoneId === zoneId);
+  const hit = staticsMemo.get(zoneId);
+  if (hit !== undefined) return hit;
+  const out = LEGENDARY_STATICS.filter((s) => s.zoneId === zoneId).map((s) => {
+    if (s.interior === undefined) return s;
+    const { building, lx, lz } = s.interior;
+    const p = interiorsFor(zoneId).find((q) => q.def.building === building);
+    if (p === undefined) throw new RangeError(`static ${s.species}: no hall '${building}' in ${zoneId}`);
+    const [x, z] = localToWorld(p, lx, lz);
+    return { ...s, x, z };
+  });
+  staticsMemo.set(zoneId, out);
+  return out;
 }
 export function league(id: string): LeagueTrainer {
   return must(leagueById, 'league trainer', id);

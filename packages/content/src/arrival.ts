@@ -72,7 +72,7 @@ function arrivalAvoid(zone: ZoneDef, surface: ZoneSurface): (readonly [number, n
   for (const l of zone.lore) pts.push([l.x, l.z]);
   for (const w of zone.warps) { pts.push([w.x, w.z]); pts.push([w.toX, w.toZ]); }
   for (const p of surface.interiors) for (const w of warpsOf(p)) { pts.push([w.x, w.z]); pts.push([w.toX, w.toZ]); }
-  for (const s of LEGENDARY_STATICS) if (s.zoneId === zone.id) pts.push([s.x, s.z]);
+  for (const s of LEGENDARY_STATICS) if (s.zoneId === zone.id && s.interior === undefined) pts.push([s.x, s.z]);
   for (const r of RAID_HOTSPOTS) if (r.zoneId === zone.id) pts.push([r.x, r.z]);
   for (const o of zone.obstacles ?? []) pts.push([o.x, o.z]);
   return pts;

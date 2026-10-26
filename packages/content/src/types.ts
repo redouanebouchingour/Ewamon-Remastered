@@ -149,7 +149,7 @@ export interface ObstacleDef {
 
 // ─── interiors (pockets inside the zone, reached by door warps) ──────────────
 
-export type InteriorTemplate = 'gym_hall' | 'league_hall' | 'shop' | 'healer' | 'house_s' | 'house_m';
+export type InteriorTemplate = 'gym_hall' | 'league_hall' | 'shop' | 'healer' | 'house_s' | 'house_m' | 'crypt';
 export type InteriorTheme =
   | 'grove'
   | 'cinder'
@@ -159,6 +159,7 @@ export type InteriorTheme =
   | 'vesper'
   | 'forge'
   | 'sky'
+  | 'abyss'
   | 'league'
   | 'shop'
   | 'healer'
@@ -399,6 +400,12 @@ export interface LegendaryStatic {
   /** set on win OR catch; the static never appears again for that player */
   readonly flag: string;
   readonly when: StaticGate;
+  /**
+   * A static that waits inside a hall (data/hideouts.ts): `x` / `z` are the building outside (the dex and the atlas
+   * planner name it), and the creature stands at (`lx`, `lz`) in the hall's local frame. Content `staticsFor` gives the
+   * world point inside the pocket; the zone-level layers (sculpt, arrival, pocket placement) skip such a row.
+   */
+  readonly interior?: { readonly building: string; readonly lx: number; readonly lz: number };
 }
 
 /** Spawn cadence per zone kind; 30-server-netcode.md §30.3 consumes these verbatim. */

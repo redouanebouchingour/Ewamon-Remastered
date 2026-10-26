@@ -38,19 +38,19 @@ describe('roster coverage (independent)', () => {
   for (const l of LEGENDARY_STATICS) R.add(l.species);
   for (const m of ['lumyth', 'noxmyth']) R.add(m);
 
-  it('179/179 obtainable', () => {
+  it('180/180 obtainable', () => {
     const missing = SPECIES.map((s) => s.id).filter((id) => !R.has(id));
     expect(missing).toEqual([]);
-    expect(R.size).toBe(179);
+    expect(R.size).toBe(180);
   });
 
   it('99 directly placed: roster-coverage Appendix A reports 79, plus the post-legacy hollowmane, dustcub, veilpup, castlemaw, cryptorb, elemutt (quest q13) and the 14 type-gap roots', () => {
     expect(E.size).toBe(99);
   });
 
-  it('88 roots; every non-legendary root spawns wild (RC-1); 76 families complete by level', () => {
+  it('89 roots; every non-legendary root spawns wild (RC-1); 76 families complete by level', () => {
     const roots = SPECIES.filter((s) => s.evolvesFrom === null);
-    expect(roots.length).toBe(88);
+    expect(roots.length).toBe(89);
     const legendary = new Set(SPECIES.filter((s) => s.legendary).map((s) => s.id));
     const wild = new Set(ENCOUNTER_TABLES.flatMap((t) => t.slots.map((s) => s.species)));
     const nonLeg = roots.filter((r) => !legendary.has(r.id));
@@ -64,7 +64,7 @@ describe('roster coverage (independent)', () => {
     for (const id of legendary) expect(inTables.has(id), id).toBe(false);
     for (const sw of DAILY_SWARMS) for (const s of sw.species) expect(legendary).not.toContain(s);
     for (const r of RAID_HOTSPOTS) expect(legendary).not.toContain(r.boss.species);
-    expect(new Set(LEGENDARY_STATICS.map((l) => l.species)).size).toBe(9);
+    expect(new Set(LEGENDARY_STATICS.map((l) => l.species)).size).toBe(10);
     for (const l of LEGENDARY_STATICS) expect(byId.get(l.species)?.legendary).toBe(true);
     expect(QUESTS.find((q) => q.id === 'q11_first_night')?.rewards.creature?.species).toBe('noxmyth');
     expect(QUESTS.find((q) => q.id === 'q12_first_morning')?.rewards.creature?.species).toBe('lumyth');
@@ -90,8 +90,8 @@ describe('roster coverage (independent)', () => {
     const r = validate({ skipHeightfields: true });
     expect(r.stats.roster.obtainable).toBe(R.size);
     expect(r.stats.roster.directlyPlaced).toBe(E.size);
-    expect(r.stats.roster.families).toBe(88);
-    expect(Object.keys(r.stats.roster.paths).length).toBe(179);
+    expect(r.stats.roster.families).toBe(89);
+    expect(Object.keys(r.stats.roster.paths).length).toBe(180);
     expect(r.stats.roster.paths['bramblecub']?.kind).toBe('wild');
     expect(r.stats.roster.paths['thornback']?.kind).toBe('raid');
     expect(r.stats.roster.paths['galaxion']).toEqual({ kind: 'static', zoneId: 'umbral_observatory', when: 'flag:ledger_read' });

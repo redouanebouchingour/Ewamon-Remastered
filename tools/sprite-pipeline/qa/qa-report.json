@@ -1,7 +1,7 @@
 {
-  "total": 396,
+  "total": 398,
   "actionable": 0,
-  "informational": 168,
+  "informational": 170,
   "excluded": [
     {
       "file": "back/yaschamp(back)(fighterstyle).png",
@@ -27,9 +27,9 @@
   "counts": {
     "clipped": 78,
     "coverage": 1,
-    "multiframe": 20,
+    "multiframe": 22,
     "nonsquare": 50,
-    "sidemismatch": 68
+    "sidemismatch": 70
   },
   "flagged": [
     {
@@ -89,6 +89,26 @@
         "sidemismatch"
       ],
       "source": "front/archonosis(front).png",
+      "actionable": []
+    },
+    {
+      "species": "astaroth",
+      "side": "back",
+      "flags": [
+        "multiframe",
+        "sidemismatch"
+      ],
+      "source": "back/astaroth(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "astaroth",
+      "side": "front",
+      "flags": [
+        "multiframe",
+        "sidemismatch"
+      ],
+      "source": "front/astaroth(front).webp",
       "actionable": []
     },
     {
@@ -1712,7 +1732,7 @@
       "unbound": []
     },
     "vesperveil": {
-      "atlases": 3,
+      "atlases": 4,
       "duplicated": [],
       "unbound": []
     }
@@ -1724,12 +1744,12 @@
       {
         "albedo": 88,
         "normal": 92,
-        "totalBytes": 52878152
+        "totalBytes": 53048987
       }
     ],
     "thumbs": {
-      "count": 198,
-      "bytes": 1071048,
+      "count": 199,
+      "bytes": 1076426,
       "rungs": {
         "q32/aq100/a8": 2,
         "q40/aq100/a8": 3,
@@ -1739,9 +1759,9 @@
         "q72/aq100/a8": 26,
         "q80/aq100/a16": 100,
         "q80/aq100/a8": 9,
-        "q80/aq90": 47
+        "q80/aq90": 48
       }
     }
   },
-  "totalBytes": 52878152
+  "totalBytes": 53048987
 }

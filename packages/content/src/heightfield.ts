@@ -22,6 +22,7 @@ import type { FootprintStamp, ZonePlan } from './plan';
 import { planInteriors, stampInteriors } from './interiors';
 import type { InteriorPlan, PlacedInterior } from './interiors';
 import { stampObstacles } from './obstacles';
+import { stampHideouts } from './data/hideouts';
 import { applySculpt, sampleSpline } from './sculpt';
 import type { SculptResult, ZoneSculpt } from './sculpt';
 import { SCULPTS } from './data/sculpts';
@@ -282,6 +283,8 @@ export function buildZoneSurface(zone: ZoneDef): ZoneSurface {
   stampInteriors(base, interiorPlan.interiors, MAX_SLOPE);
   // Phase D10: Cut / Strength obstacles last (a no-op without `zone.obstacles`, so other digests are unchanged)
   const obstacleCells = stampObstacles(base, zone.obstacles);
+  // hideout buildings (data/hideouts.ts) after them (a no-op in zones without one)
+  stampHideouts(base, zone.id);
   const digest = digestHeightfield(base.heights, base.walkable, base.water);
   return { heightfield: { ...base, digest }, plan, footprints, interiors: interiorPlan.interiors, interiorPlan, obstacleCells };
 }
@@ -339,7 +342,7 @@ function buildTerrainField(zone: ZoneDef): { field: Heightfield; sculpted: Sculp
   const sculpted: SculptResult = sculpt !== undefined
     ? applySculpt({ res, originX, originZ, step: HEIGHTFIELD_STEP }, raw, water, boardwalk, sculpt, (x, z) => noise2(noise, x, z), [
       ...points,
-      ...LEGENDARY_STATICS.filter((st) => st.zoneId === zone.id).map((st) => [st.x, st.z] as const),
+      ...LEGENDARY_STATICS.filter((st) => st.zoneId === zone.id && st.interior === undefined).map((st) => [st.x, st.z] as const),
       ...RAID_HOTSPOTS.filter((rh) => rh.zoneId === zone.id).map((rh) => [rh.x, rh.z] as const),
     ])
     : { roads: [], bridges: [], crags: [], structures: [] };

@@ -2862,3 +2862,14 @@ the second isolated client (the component over the landing page: the foe and own
 - Live check: the alt pair with an act3c account holding every species and an act2 account; screenshots of tiles,
   list, every entry tab (dustcub's split, hyoryu's Majin Form, ravatar's relic forms, a seen-only gated entry), the
   habitat atlas, compare, and the rewards view.
+
+## astaroth and the Sunken Crypt in the client (2026-10-26)
+
+- `zoneSpecFor` adds the zone's hideout buildings (content `hideoutsFor` → `hideoutBuilding`) after the plan's, for
+  the zone and its neighbours' skirts.
+- `LegendaryViews`: a static that waits in a hall (`LegendaryStatic.interior`) shows its card only while the player
+  stands in that hall (halls are roofless; a 1.5-scale legendary would otherwise show over the wall).
+- Demon Lord's Descent cinematic (`battle/sigfx/Descent.tsx`): Astaroth dissolves into smoke, its eyes flare, a
+  five-leaf clover sigil draws under the foe with a crimson pillar, it drops with both blades and leaves an X (stone
+  greatsword arc, red katana arc), red cracks, a black shockwave and black feathers. Lead 1100, windup 640, travel
+  300 (impact at 2040), total 3200 ms; premix `sig_demon_lords_descent`; portrait `public/signature/astaroth.webp`.

@@ -48,14 +48,14 @@ function snap(zoneId: ZoneId, x: number, z: number): { p: readonly [number, numb
 describe('LEGENDARY_STATICS (§3.2)', () => {
   it('exactly the 9 non-mythical legendaries, once each, all legendary species', () => {
     expect(LEGENDARY_STATICS.map((s) => s.species).sort()).toEqual([...LEGENDARY_IDS].sort());
-    expect(new Set(LEGENDARY_STATICS.map((s) => s.species)).size).toBe(9);
+    expect(new Set(LEGENDARY_STATICS.map((s) => s.species)).size).toBe(10);
     const byId = new Map(SPECIES.map((s) => [s.id, s]));
     for (const s of LEGENDARY_STATICS) {
       expect(byId.get(s.species)?.legendary, s.species).toBe(true);
       expect(s.level, s.species).toBeGreaterThanOrEqual(1);
       expect(s.level, s.species).toBeLessThanOrEqual(100);
     }
-    expect(new Set(LEGENDARY_STATICS.map((s) => s.flag)).size).toBe(9);
+    expect(new Set(LEGENDARY_STATICS.map((s) => s.flag)).size).toBe(10);
   });
 
   it('every `when` gate resolves: a badge id, or a flag set by a beat / quest / league row', () => {

@@ -63,10 +63,11 @@ import { FLAG_REGISTRY, VISITED_FLAGS, badgeFlag, isKnownFlag } from './flags';
 import { computeRosterReport } from './roster';
 import { getZoneSurface, isWalkable, nearestWalkable, playableBounds, reachableWithin, walkableComponent, walkableRatio, waterRatio } from './heightfield';
 import type { Heightfield, ZoneSurface } from './heightfield';
-import { TOWN_LAYOUT, solidContains } from './plan';
+import { TOWN_LAYOUT, footprintDistance, solidContains } from './plan';
 import { checkInterior, interiorDefFor, trainersOf, warpsOf } from './interiors';
 import { beatDoneFlag, BEAT_DONE_PREFIX } from './story';
-import { interiorFootprintAt } from './interiorIndex';
+import { interiorFootprintAt, interiorsFor } from './interiorIndex';
+import { hideoutBounds, hideoutDoor, hideoutsFor } from './data/hideouts';
 import { OBSTACLE_INTERACT_M } from './obstacles';
 import { arrivalPointFor } from './arrival';
 import { BRAMBLES, BRAMBLE_SOLID_HALF, DIG_LOOT, DIG_SPOTS, DIVE_LOOT, DIVE_SPOTS, FIELD_INTERACT_M, LAVA_BIOMES, bramblesFor, digSpotsFor, diveSpotsFor, diveWater } from './fieldPowers';
@@ -406,8 +407,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   for (const f of FLAG_REGISTRY) if (!f.id.includes(':') && !/^[a-z0-9_]+$/.test(f.id)) err(`flag registry: '${f.id}' is not snake_case`);
 
   // ── 3. counts ──
-  if (species.length !== 179) err(`SPECIES.length ${species.length} !== 179`);
-  if (moves.length !== 199) err(`MOVES.length ${moves.length} !== 199`); // 193 legacy + Hollow Crescent, Vendetta Volley, Aurora Requiem, Crimson Lotus Prison, Cosmic Convergence, Comet Tap (.design/additions/moves.js)
+  if (species.length !== 180) err(`SPECIES.length ${species.length} !== 180`);
+  if (moves.length !== 200) err(`MOVES.length ${moves.length} !== 200`); // 193 legacy + Hollow Crescent, Vendetta Volley, Aurora Requiem, Crimson Lotus Prison, Cosmic Convergence, Comet Tap, Demon Lord's Descent (.design/additions/moves.js)
   // Phase D6: every curated spread move exists, and only damaging or foe-targeted moves spread
   for (const [id, sp] of Object.entries(SPREAD_MOVES).sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
     const m = moves.find((x) => x.id === id);
@@ -427,7 +428,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   });
   {
     const dex = [...species.map((s) => s.dexNumber)].sort((a, b) => a - b);
-    for (let i = 0; i < dex.length; i++) if (dex[i] !== i + 1) { err(`dex numbers are not dense 1..179 (got ${dex[i]} at ${i})`); break; }
+    for (let i = 0; i < dex.length; i++) if (dex[i] !== i + 1) { err(`dex numbers are not dense 1..180 (got ${dex[i]} at ${i})`); break; }
     const ids = new Set(species.map((s) => s.id));
     if (ids.size !== species.length) err('duplicate species ids');
     if (moveIds.size !== moves.length) err('duplicate move ids');
@@ -489,9 +490,9 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
       while (cur !== undefined && cur.evolvesFrom !== null && hops < 8) { cur = speciesById.get(cur.evolvesFrom); hops++; }
       if (hops >= 8) err(`species ${s.id}: evolution chain has a cycle or exceeds depth`);
     }
-    // roster-coverage: 73 roots (57 non-legendary legacy families + hollowmane + dustcub + veilpup + castlemaw + cryptorb + the 11 legendary/mythical singles, hyoryu the post-legacy one), each a tree root
+    // roster-coverage: 73 roots (57 non-legendary legacy families + hollowmane + dustcub + veilpup + castlemaw + cryptorb + the 12 legendary/mythical singles, hyoryu and astaroth the post-legacy ones), each a tree root
     const families = species.filter((s) => s.evolvesFrom === null).length;
-    if (families !== 88) err(`evolution families (roots) ${families} !== 88`);
+    if (families !== 89) err(`evolution families (roots) ${families} !== 89`);
   }
 
   // ── 7 + 8. roster coverage and RC rules ──
@@ -789,7 +790,15 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
       for (const i of z.items) target(`item ${i.id}`, i.x, i.z, INTERACT_RANGE_M);
       for (const l of z.lore) target(`lore ${l.id}`, l.x, l.z, INTERACT_RANGE_M);
       for (const w of z.warps) { target(`warp ${w.id}`, w.x, w.z, INTERACT_RANGE_M); target(`warp ${w.id} target`, w.toX, w.toZ, INTERACT_RANGE_M); }
-      for (const s of LEGENDARY_STATICS) if (s.zoneId === z.id) target(`static ${s.species}`, s.x, s.z, INTERACT_RANGE_M);
+      // a static in a hall is checked by `checkInterior`; here its building's door must be reachable instead
+      for (const s of LEGENDARY_STATICS) if (s.zoneId === z.id && s.interior === undefined) target(`static ${s.species}`, s.x, s.z, INTERACT_RANGE_M);
+      for (const hd of hideoutsFor(z.id)) {
+        const door = hideoutDoor(hd);
+        target(`hideout ${hd.id} door`, door.x, door.z, INTERACT_RANGE_M);
+        const b = hideoutBounds(hd);
+        if (interiorsFor(z.id).some((p) => p.def.building !== hd.id && Math.abs(p.footprint.x - b.x) < p.footprint.hw + b.hw && Math.abs(p.footprint.z - b.z) < p.footprint.hd + b.hd)) err(`zone ${z.id}: hideout ${hd.id} overlaps a pocket`);
+        if (surface.plan.buildings.some((pb) => footprintDistance(pb, b.x, b.z) < Math.max(b.hw, b.hd) + 2)) err(`zone ${z.id}: hideout ${hd.id} stands on a building`);
+      }
       for (const r of RAID_HOTSPOTS) if (r.zoneId === z.id) target(`raid ${r.id}`, r.x, r.z, RAID_RANGE_M);
       // Phase D10: an obstacle stands on ground its stamp made unwalkable (no stamp = it sits on nothing walkable),
       // clear of the interiors and ≥ 6 m from every authored point, and is reachable at its interact range; the

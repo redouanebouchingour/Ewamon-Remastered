@@ -23,6 +23,7 @@ import {
   interiorTrainerFlag,
   interiorTrainers,
   interiorWarps,
+  hideoutsFor,
   interiorsFor,
   isWalkable,
   leaderSpot,
@@ -34,12 +35,12 @@ import {
 const TOWNS = ZONES.filter((z) => z.kind === 'town');
 
 describe('interiors', () => {
-  it('places one pocket per town building, inside the playable interior, disjoint, clear of linked edges', () => {
+  it('places one pocket per town building and hideout, inside the playable interior, disjoint, clear of linked edges', () => {
     expect(TOWNS).toHaveLength(9);
     for (const z of TOWNS) {
       const s = getZoneSurface(z.id);
       expect(s.interiorPlan.unplaced, z.id).toEqual([]);
-      expect(s.interiors.map((p) => p.def.building).sort(), z.id).toEqual(s.plan.buildings.map((b) => b.id).sort());
+      expect(s.interiors.map((p) => p.def.building).sort(), z.id).toEqual([...s.plan.buildings.map((b) => b.id), ...hideoutsFor(z.id).map((h) => h.id)].sort());
       const ih = ZONE_SIZE[z.kind] / 2 - ZONE_MARGIN;
       for (const [a, p] of s.interiors.entries()) {
         const f = p.footprint;
@@ -166,7 +167,9 @@ describe('interiors', () => {
             expect(isWalkable(h, x, zz), `${p.def.id} ${r.id} slot ${s}`).toBe(true);
           }
           // standing by the leader puts the battle at that room's arena, on the hall axis
-          const [lx, lz] = localToWorld(p, r.leaderAt!.lx, r.leaderAt!.lz + 2);
+          // (a room without a leader, the Sunken Crypt's: by its far slot, where the static waits)
+          const by = r.leaderAt ?? { lx: r.arena.lx, lz: r.arena.lz - ARENA_SLOT_M };
+          const [lx, lz] = localToWorld(p, by.lx, by.lz + 2);
           const a = interiorArenaFor(z.id, lx, lz)!;
           const [ax, az] = localToWorld(p, r.arena.lx, r.arena.lz);
           expect([a.x, a.z, a.yaw, a.interior]).toEqual([ax, az, p.at.yaw, p.def.id]);

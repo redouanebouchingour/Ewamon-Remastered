@@ -630,6 +630,27 @@ sfx('sig_crimson_lotus_prison_1', [
     (R5 + 'sfx100v2_glass_05.ogg', 1.24, -4, 1.0, ''),
 ], 2.2, fout=0.5)
 
+# Demon Lord's Descent (astaroth dissolves into smoke 0.00-0.20, its eyes flare 0.26, the clover sigil draws under the foe
+# 0.34-0.66, it drops 0.64-0.94, the greatsword lands on the impact at 0.94 and the katana crosses it at 0.97, ash after):
+# a reversed breath and a low rumble, a short growl, a dark falling phaser, the drop's whoosh, then a heavy metal strike
+# with a low boom, two blade cuts, a crunch and an eerie low ring
+sfx('sig_demon_lords_descent_1', [
+    (R5 + 'sfx100v2_air_01.ogg', 0.0, -16, 0.55, 'areverse,lowpass=f=900'),
+    (KS + 'spaceEngineLow_000.ogg', 0.0, -19, 0.5, 'lowpass=f=300,afade=t=in:d=0.3,afade=t=out:st=0.7:d=0.2'),
+    (R2 + 'roar_06.ogg', 0.26, -19, 0.6, 'lowpass=f=1200,afade=t=out:st=0.3:d=0.08'),
+    (KS + 'forceField_004.ogg', 0.34, -25, 0.7, 'lowpass=f=1500,afade=t=out:st=0.4:d=0.15'),
+    (KD + 'phaserDown2.ogg', 0.40, -22, 0.6, ''),
+    (AP + 'battle/swing2.wav', 0.64, -10, 0.8, ''),
+    (R5 + 'sfx100v2_air_02.ogg', 0.66, -15, 0.7, 'afade=t=out:st=0.22:d=0.06'),
+    (KX + 'impactMetal_heavy_002.ogg', 0.94, 0, 0.6, ''),
+    (KS + 'lowFrequency_explosion_001.ogg', 0.94, -3, 0.8, ''),
+    (R3 + 'blade_01.ogg', 0.94, -2, 0.9, ''),
+    (R3 + 'blade_03.ogg', 0.97, -3, 1.1, ''),
+    (KS + 'explosionCrunch_004.ogg', 0.95, -6, 1.0, ''),
+    (KX + 'impactBell_heavy_000.ogg', 0.98, -18, 0.5, 'lowpass=f=1200,aecho=0.8:0.7:200|450:0.4|0.25'),
+    (KS + 'spaceEngineLow_002.ogg', 1.02, -20, 0.6, 'lowpass=f=500,afade=t=in:d=0.1,afade=t=out:st=0.3:d=0.3'),
+], 2.2, fout=0.5)
+
 
 
 # ─── bond cinematics (client battle/bond.ts) ─────────────────────────────────────────────────────────────────────────

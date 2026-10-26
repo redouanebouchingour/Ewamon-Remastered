@@ -60,9 +60,9 @@ fail under machine load and pass alone).
 | progression | Acts I–III + all 12 league fights headless, 0 desyncs, final `GET /me` has 8 badges + Wardens + Champion + 33 beats + 8 legendaries (full walk re-run and re-recorded 2026-10-20 on the sculpted terrain: 6/6 files in 2583 s, act1 563 s, act2 803 s, act3a 282 s, act3b 472 s, act3c 220 s, halls 9/9, 0 desyncs; `packages/server/test/fixtures/progression/PROGRESS.md`) | `pnpm test:progression` (~41 min) |
 | client | every server system has UI. The **Broadcast UI** (2026-10-11): carbon panels, paper white, one hot orange for selected / press / focus, type colour as the hero, Barlow Condensed over Barlow, 19 type icons instead of letter codes, canvas HUD in the same language, battle command deck, five top-bar links + More, Party as a card row. Signature-move cinematics, the Majin / Tenjin bond cinematic + transform toggle + band tutorial, the honor meter | `npx vitest run packages/client`; Playwright `client-e2e` |
 | render | interiors, doubles stage, shiny glow, surf ripple, weather, art pass, density dressing, neighbour skirt, fixed light layout + off-scene zone prepare, device-lost recovery; 14 move motion styles (63 → 64 VFX ids with `form_tenjin`); battle-form auras (flames / light, sigil ring, rim); M3 town art for Saltmourn, Skyrend, Cinderhold, Stormrook (`albedoCal`, `Palette.grassTone`, `lava_glow` emissive, plaza clutter) | `npx vitest run packages/render`; `.design/audits/M3-render-audit.md` |
-| sprites | 198 sprite keys (179 species + battle forms), 99 atlases, creature byte ceiling 54,525,952 (52 MiB, raised 2026-10-26 for the type-gap lines; 44 MiB from 2026-10-25, 41 MiB from 2026-10-24) | `pnpm --filter @ewa/sprite-pipeline` tests |
+| sprites | 199 sprite keys (180 species + battle forms), 100 atlases, creature byte ceiling 54,525,952 (52 MiB, raised 2026-10-26 for the type-gap lines; 44 MiB from 2026-10-25, 41 MiB from 2026-10-24); 11 animated legendaries, 22 flipbook sides, anim ceiling 25 MiB (raised 2026-10-26 for astaroth) | `pnpm --filter @ewa/sprite-pipeline` tests |
 | arena PvP | out-of-world battles: Standard, Level 50, Ranked (Lv 50, the only rated kind), Weekly Cup, friend invites, AI Training; healed copies (no hp / exp); a dedicated `arena` room + stadium; the in-world challenge and Mirevale ranked queue unchanged | `npx vitest run packages/server/test/arena.test.ts packages/client/test/arena.test.tsx`; SPEC §30.4.10, §20.9.9d |
-| audio | 380 jobs (188 sfx ids) from the 58 user-approved CC0 downloads, no new downloads since; 73.33 MiB of 80; credits + licences shipped; 13 signature-move premixes (`sig_*`, `sig_cosmic_convergence` since 2026-10-25) and 2 bond sounds | `npx vitest run tools/audio-pipeline`; `IMPLEMENTATION-NOTES.md` "Phase E4 downloads" |
+| audio | 380 jobs (188 sfx ids) from the 58 user-approved CC0 downloads, no new downloads since; 73.33 MiB of 80; credits + licences shipped; 14 signature-move premixes (`sig_*`, `sig_demon_lords_descent` since 2026-10-26) and 2 bond sounds | `npx vitest run tools/audio-pipeline`; `IMPLEMENTATION-NOTES.md` "Phase E4 downloads" |
 
 ## Since 2026-10-06 (post-plan additions)
 
@@ -104,6 +104,14 @@ fail under machine load and pass alone).
   enlarged 8x nearest into `assets-src/creatures/`, copies of the 128 px files in `.design/imagegen/concepts/`.
   52.88 MB at the top rung: the creature ceiling went to 52 MiB (the user's call), and acceptance test 4 gives these
   34 pixel-art species an edge-share bound of 90 %. Existing moves and abilities otherwise; no signature moves.
+- **astaroth #180** (2026-10-26, inspired by Asta and the devils of Black Clover): a Dark/Ghost legendary, the tenth
+  static (L60 after the title), animated front and back from the user's two videos (keyed loops, 32 and 18 pages).
+  It waits in the **Sunken Crypt**, a hidden building of its own at the back of Vesperveil's graveyard (content
+  `data/hideouts.ts`: a layer outside the zone plan, so nothing reshuffles; `LegendaryStatic.interior` puts the static
+  in the crypt's hall). Inside: the warden Morwen, an anti-magic seal that opens on the Champion, the throne chamber
+  in the new `abyss` theme with a five-leaf clover sigil under the arena. The gravetender points at it after the
+  Champion. Signature move Demon Lord's Descent (Dark 120, flinch) with its cinematic, portrait and premix. The anim
+  ceiling went to 25 MiB (the user's call). Progression act3b wins it.
 - **The Dex upgrade** (2026-10-26): tabbed entries (Overview, Research, Moves, Matchups, Habitat, Evolution, Forms) with a
   form / variant / shiny / alpha viewer and split evolutions as branches with their conditions; sorting, a list view,
   more filters and arrow keys; a habitat atlas, compare, rewards; Listen (type cry + the entry read aloud); deep links

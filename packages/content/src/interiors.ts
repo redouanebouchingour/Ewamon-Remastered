@@ -35,6 +35,7 @@ import { gymHall, healerHall, houseHall, leagueHall, shopHall } from './data/int
 import { withDaycare } from './data/daycare';
 import { withBountyBoard } from './data/bounties';
 import { withShrine } from './data/shrines';
+import { hideoutBounds, hideoutDoor, hideoutHall, hideoutsFor } from './data/hideouts';
 import { withTownCrier } from './data/rumours';
 
 // ─── constants ───────────────────────────────────────────────────────────────
@@ -177,7 +178,7 @@ function blockedGrid(zone: ZoneDef, plan: ZonePlan, base: Heightfield, avoidGras
     ] === 1;
   const roads = [...plan.roads, ...plan.doorPaths];
   const points: Vec2[] = [...plan.points, [zone.spawn.x, zone.spawn.z]];
-  for (const s of LEGENDARY_STATICS) if (s.zoneId === zone.id) points.push([s.x, s.z]);
+  for (const s of LEGENDARY_STATICS) if (s.zoneId === zone.id && s.interior === undefined) points.push([s.x, s.z]);
   for (const r of RAID_HOTSPOTS) if (r.zoneId === zone.id) points.push([r.x, r.z]);
   const small: { x: number; z: number; r: number }[] = [];
   for (const p of plan.props) small.push({ x: p.x, z: p.z, r: 2 });
@@ -295,8 +296,14 @@ export function planInteriors(zone: ZoneDef, plan: ZonePlan, base: Heightfield):
     const d = interiorDefFor(zone, b);
     if (d !== null) defs.push(d);
   }
+  // hideouts (data/hideouts.ts): their halls go last, so the town's own pockets keep the spots they always had
+  const hideouts = hideoutsFor(zone.id);
+  for (const h of hideouts) {
+    const d = hideoutHall(h);
+    if (d !== null) defs.push(d);
+  }
   const rank = (d: InteriorDef): number =>
-    ({ league_hall: 0, gym_hall: 1, healer: 2, shop: 3, house_m: 4, house_s: 5 })[d.template];
+    ({ league_hall: 0, gym_hall: 1, healer: 2, shop: 3, house_m: 4, house_s: 5, crypt: 6 })[d.template];
   const order = defs.map((d, i) => ({ d, i })).sort((a, b) => rank(a.d) - rank(b.d) || a.i - b.i);
   // level ground and no tall grass when possible; a hall that fits nowhere else may cover a slope or part of a patch
   const grids: (() => Grid)[] = [];
@@ -341,13 +348,25 @@ export function planInteriors(zone: ZoneDef, plan: ZonePlan, base: Heightfield):
             )
           )
             continue;
+          // a hideout's hall keeps clear of the hideout buildings themselves (the town's pockets never test this)
+          if (
+            def.template === 'crypt' &&
+            hideouts.some((h) => {
+              const b = hideoutBounds(h);
+              return Math.abs(b.x - c.x) < b.hw + hx + GAP + 2 && Math.abs(b.z - c.z) < b.hd + hz + GAP + 2;
+            })
+          )
+            continue;
           // door (local +z) toward the town centre
           const yaw = alongX ? (c.x > 0 ? -Math.PI / 2 : Math.PI / 2) : c.z > 0 ? Math.PI : 0;
           const approach = plan.doors.find((dd) => dd.building === def.building);
+          const hideout = hideouts.find((h) => h.id === def.building);
           const door =
-            approach === undefined
-              ? { x: 0, z: 0 }
-              : { x: approach.approach.x, z: approach.approach.z };
+            hideout !== undefined
+              ? hideoutDoor(hideout)
+              : approach === undefined
+                ? { x: 0, z: 0 }
+                : { x: approach.approach.x, z: approach.approach.z };
           found = {
             def,
             at: { x: c.x, z: c.z, yaw, floorY: 0 },
@@ -879,6 +898,13 @@ export function checkInterior(h: Heightfield, p: PlacedInterior): string[] {
   for (const it of itemsOf(p))
     if (!reachNear(h, full.reach, it.x, it.z, INTERACT_M))
       errs.push(`${id}: item ${it.id} not reachable`);
+  // a legendary that waits in this hall (data/hideouts.ts): on the floor and reachable once the Champion is beaten
+  for (const s of LEGENDARY_STATICS) {
+    if (s.zoneId !== p.def.zoneId || s.interior?.building !== p.def.building) continue;
+    const [sx, sz] = localToWorld(p, s.interior.lx, s.interior.lz);
+    if (!onFloor(p, sx, sz)) errs.push(`${id}: static ${s.species} is not on the floor`);
+    else if (!reachNear(h, full.reach, sx, sz, INTERACT_M)) errs.push(`${id}: static ${s.species} not reachable`);
+  }
   // with every gate closed, no flags and no switches, no leader past the first room is reachable
   const shut = walkInterior(h, p, new Set(), {
     useSwitches: false,

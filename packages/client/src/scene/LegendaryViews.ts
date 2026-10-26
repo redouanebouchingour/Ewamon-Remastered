@@ -13,7 +13,7 @@
  * (false)`) and its flipbook can leave the GPU. galvan_route's two statics stand 222 m apart: one flipbook at a time.
  */
 import type { Group } from 'three/webgpu';
-import { getHeightfield, nearestWalkable, staticsFor } from '@ewa/content';
+import { getHeightfield, interiorAt, nearestWalkable, staticsFor } from '@ewa/content';
 import type { LegendaryStatic, ZoneId } from '@ewa/content';
 import type { CreatureBillboard, SpriteDescriptor } from '@ewa/render';
 import { speciesName } from '../data/content';
@@ -44,6 +44,8 @@ export interface PlacedStatic {
   readonly flag: string;
   readonly x: number;
   readonly z: number;
+  /** the hall it waits in (content `LegendaryStatic.interior`), else null */
+  readonly interior: string | null;
 }
 
 /** The statics of `zoneId` that stand for these flags, at the server's snapped position. */
@@ -56,7 +58,7 @@ export function visibleStatics(zoneId: ZoneId, flags: ReadonlySet<string>): Plac
     if (!flags.has(staticGateFlag(st)) || flags.has(st.flag)) continue;
     const p = nearestWalkable(h, st.x, st.z, 8);
     const [x, z] = p ?? [st.x, st.z];
-    out.push({ species: st.species, level: st.level, flag: st.flag, x, z });
+    out.push({ species: st.species, level: st.level, flag: st.flag, x, z, interior: st.interior?.building ?? null });
   }
   return out;
 }
@@ -79,6 +81,8 @@ interface StaticView {
   readonly bb: CreatureBillboard | null;
   readonly x: number;
   readonly z: number;
+  /** the hall it waits in: its card shows only while the player stands in that hall (halls are roofless) */
+  readonly interior: string | null;
   /** the front's static atlas, while it stands */
   readonly still: SpriteLease;
   /** the front's flipbook, while the player is near (null = far: the still frame plays) */
@@ -90,6 +94,7 @@ export class LegendaryViews {
   /** the player's position (NaN until known: every static counts as near) */
   private viewerX = Number.NaN;
   private viewerZ = Number.NaN;
+  private zoneId: ZoneId | null = null;
 
   constructor(private readonly d: LegendaryViewDeps) {}
 
@@ -115,6 +120,7 @@ export class LegendaryViews {
 
   /** Spawns the statics that should stand for these flags and despawns the rest (null zone = clear). */
   sync(zoneId: ZoneId | null, flags: ReadonlySet<string>): void {
+    this.zoneId = zoneId;
     const want = zoneId === null ? [] : visibleStatics(zoneId, flags);
     const keep = new Set(want.map((w) => w.species));
     for (const id of [...this.views.keys()]) if (!keep.has(id)) this.remove(id);
@@ -138,7 +144,7 @@ export class LegendaryViews {
       bb.setPosition(w.x, this.d.height(w.x, w.z), w.z);
       this.d.parent.add(bb.object);
     }
-    const v: StaticView = { species: w.species, bb, x: w.x, z: w.z, still, flip: null };
+    const v: StaticView = { species: w.species, bb, x: w.x, z: w.z, interior: w.interior, still, flip: null };
     this.views.set(w.species, v);
     this.applyNear(v);
     this.d.targets.addDynamic(makeInteractable(`${STATIC_PREFIX}${w.species}`, 'static', w.x, w.z, 'Challenge', `${speciesName(w.species)} Lv ${w.level}`, this.d.interactKey()));
@@ -159,6 +165,10 @@ export class LegendaryViews {
   /** Near: lease the flipbook, then let the card play it. Far: back to the still frame, then let the flipbook go. */
   private applyNear(v: StaticView): void {
     if (v.bb === null) return;
+    if (v.interior !== null) {
+      const hall = this.zoneId === null ? null : interiorAt(this.zoneId, this.viewerX, this.viewerZ);
+      v.bb.object.visible = hall?.def.building === v.interior;
+    }
     const d = Math.hypot(v.x - this.viewerX, v.z - this.viewerZ);
     const near = !(d > (v.flip !== null ? STATIC_FLIPBOOK_FAR_M : STATIC_FLIPBOOK_NEAR_M));   // NaN (no viewer yet) = near
     if (near && v.flip === null) {

@@ -24,14 +24,14 @@ import {
 } from '../src/index';
 
 describe('counts', () => {
-  it('179 species with dense dex numbers', () => {
-    expect(SPECIES.length).toBe(179);
+  it('180 species with dense dex numbers', () => {
+    expect(SPECIES.length).toBe(180);
     const dex = SPECIES.map((s) => s.dexNumber).sort((a, b) => a - b);
-    expect(dex).toEqual(Array.from({ length: 179 }, (_, i) => i + 1));
-    expect(SPECIES.filter((s) => s.legendary).length).toBe(14);
+    expect(dex).toEqual(Array.from({ length: 180 }, (_, i) => i + 1));
+    expect(SPECIES.filter((s) => s.legendary).length).toBe(15);
   });
-  it('199 moves (193 legacy + Hollow Crescent, Vendetta Volley, Aurora Requiem, Crimson Lotus Prison, Cosmic Convergence, Comet Tap), 25 abilities, 17 items, 10 orbs, 23 consumables', () => {
-    expect(MOVES.length).toBe(199);
+  it('200 moves (193 legacy + Hollow Crescent, Vendetta Volley, Aurora Requiem, Crimson Lotus Prison, Cosmic Convergence, Comet Tap, Demon Lord\'s Descent), 25 abilities, 17 items, 10 orbs, 23 consumables', () => {
+    expect(MOVES.length).toBe(200);
     expect(ABILITIES.length).toBe(28);
     expect(ITEMS.length).toBe(17);
     expect(ORBS.length).toBe(10);
@@ -47,7 +47,7 @@ describe('counts', () => {
   });
   it('15 encounter tables, 9 statics, 12 league, 12 story quests + 30 achievements (Phase D5), ≥ 24 beats (33), live-ops 4/7/8, 100 battle-pass levels', () => {
     expect(ENCOUNTER_TABLES.length).toBe(15);
-    expect(LEGENDARY_STATICS.length).toBe(9);
+    expect(LEGENDARY_STATICS.length).toBe(10);
     expect(LEAGUE.length).toBe(12);
     expect(QUESTS.filter((q) => q.kind !== 'achievement').length).toBe(14);
     expect(QUESTS.filter((q) => q.kind === 'achievement').length).toBe(30);

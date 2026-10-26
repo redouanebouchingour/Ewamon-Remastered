@@ -11,7 +11,7 @@
  */
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { Texture } from 'three/webgpu';
-import { allZones, getZoneSurface, inFootprint, isWalkable, zonePlan } from '@ewa/content';
+import { allZones, getZoneSurface, hideoutBounds, hideoutsFor, inFootprint, isWalkable, zonePlan } from '@ewa/content';
 import { createRng } from '@ewa/core';
 import { buildZone, createMaterialLibraryWith, SURFACE_IDS } from '@ewa/render';
 import type { MaterialLibrary } from '@ewa/render';
@@ -47,8 +47,10 @@ describe('R1: the builder draws exactly the footprints content stamps', () => {
       const surface = getZoneSurface(z.id);
       const dropped = new Set(surface.interiorPlan.droppedSolids);
       const inPocket = (x: number, zz: number): boolean => surface.interiors.some((p) => inFootprint(p, x, zz));
+      // a hideout building (content data/hideouts.ts) is drawn and collides too, but content stamps it outside the plan
+      const inHideout = (x: number, zz: number): boolean => hideoutsFor(z.id).some((h) => { const b = hideoutBounds(h); return Math.abs(x - b.x) <= b.hw && Math.abs(zz - b.z) <= b.hd; });
       const shapes = c.footprintShapes();
-      expect(shapes.filter((s) => !inPocket(s.x, s.z)), `${z.id}: builder footprints vs content solids`).toEqual(plan.solids.filter((_, i) => !dropped.has(i)).map((s) => s.shape));
+      expect(shapes.filter((s) => !inPocket(s.x, s.z) && !inHideout(s.x, s.z)), `${z.id}: builder footprints vs content solids`).toEqual(plan.solids.filter((_, i) => !dropped.has(i)).map((s) => s.shape));
       for (const p of surface.interiors) {
         const walls = shapes.filter((s) => inFootprint(p, s.x, s.z)).length;
         expect(walls, `${z.id}: ${p.def.id} wall footprints`).toBeGreaterThanOrEqual(4);   // the 4 outer walls (low walls such as water channels need no occluder shape)

@@ -304,3 +304,15 @@ Then run `pnpm --filter @ewa/audio-pipeline ingest` and `pnpm --filter @ewa/audi
   Built only from already-approved CC0 downloads; nothing new fetched. Not auditioned by ear.
 - Rebuild: `python _tools/mix.py sig_crimson_lotus_prison_1` (from `assets-src/audio/cc0/`), `node _tools/gen-sources.mjs`,
   then `ingest`, `credits` and `process -- --provider cc0`. Only the 2 new files, the manifest and the credits change.
+
+## astaroth's signature sound (2026-10-26)
+
+- 1 new sfx id `sig_demon_lords_descent` (383 jobs; 73.45 MiB of 80) for Demon Lord's Descent, timed from the
+  cinematic's charge (impact at windup 640 + travel 300 = 0.94 s): a reversed breath and a low rumble as it dissolves
+  into smoke, a short low-passed growl when its eyes flare (0.26 s), a dark falling phaser under the sigil (0.40 s),
+  the drop's whoosh (0.64 s), then the greatsword's heavy metal strike with a low boom on the impact at 0.94 s, the
+  katana's cut crossing it at 0.97 s, a crunch and an eerie low ring. The charge layers sit 10 to 25 dB down; after the
+  `_sig_loud` stage the impact is a 9 dB jump over the 25 ms before it and the loudest moment is the body just after
+  it. Built only from already-approved CC0 downloads; nothing new fetched. Not auditioned by ear.
+- Rebuild: `python _tools/mix.py sig_demon_lords_descent_1` (from `assets-src/audio/cc0/`), `node _tools/gen-sources.mjs`,
+  then `ingest`, `credits` and `process -- --provider cc0`. Only the 2 new files, the manifest and the credits change.

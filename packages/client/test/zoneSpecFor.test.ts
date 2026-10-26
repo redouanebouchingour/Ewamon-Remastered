@@ -8,7 +8,7 @@
  * output (the retired `r1-pre-move.json`) is gone; the snapshot pins the sculpted specs.
  */
 import { describe, expect, it } from 'vitest';
-import { LEAGUE, allZones, getHeightfield, interiorWarps, interiorsFor, isWalkable, zonePlan, type HarvestState } from '@ewa/content';
+import { LEAGUE, allZones, getHeightfield, hideoutBuilding, hideoutsFor, interiorWarps, interiorsFor, isWalkable, zonePlan, type HarvestState } from '@ewa/content';
 import { INTERIOR_SIZE, LIGHT_BUDGET, SET_PIECE_EXTENT, doorOf, footprintDistance, layoutOf, type ZoneSpec } from '@ewa/render';
 import { SET_PIECE_BY_ZONE, zoneSpecFor } from '../src/scene/zoneSpecFor';
 
@@ -51,7 +51,8 @@ describe('§20.4.4 zoneSpecFor', () => {
         clearings: p.clearings, setPiece: p.setPiece, points: p.points, warpPairs: p.warpPairs, bridges: p.bridges, crags: p.crags, structures: p.structures,
       });
       expect(s.plan.setPiece.id).toBe(s.setPiece);
-      expect(s.buildings).toEqual(p.buildings);
+      // then the zone's hideout buildings (content data/hideouts.ts), a layer the plan never lays out
+      expect(s.buildings).toEqual([...p.buildings, ...hideoutsFor(z.id).map(hideoutBuilding)]);
       expect(s.props).toEqual(p.props);
       expect(s.lights.map((l) => [l.id, l.position[0], l.position[2], l.castShadow])).toEqual(p.lights.map((l) => [l.id, l.x, l.z, l.castShadow]));
       // the builder's view: water bodies from the stamped field equal the plan's (footprints never touch water)

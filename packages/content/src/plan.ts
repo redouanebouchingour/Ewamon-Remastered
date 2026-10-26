@@ -62,7 +62,7 @@ export interface WaterBody {
   readonly boardwalk: { readonly x0: number; readonly x1: number; readonly z0: number; readonly z1: number; readonly y: number } | null;
 }
 
-export type BuildingKind = 'house' | 'gym' | 'shop' | 'healer' | 'landmark';
+export type BuildingKind = 'house' | 'gym' | 'shop' | 'healer' | 'landmark' | 'crypt';
 export type RoofKind = 'slate' | 'thatch' | 'tile' | 'plate';
 /** A building (field for field render's `BuildingSpec`): centre, yaw (door = local +z), footprint w × d. */
 export interface PlanBuilding {

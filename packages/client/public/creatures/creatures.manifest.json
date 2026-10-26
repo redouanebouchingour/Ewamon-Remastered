@@ -4260,6 +4260,48 @@
         "bytes": 11672
       },
       "normalScale": 0.5
+    },
+    {
+      "id": "a-099",
+      "species": [
+        "astaroth"
+      ],
+      "size": 2048,
+      "slots": 2,
+      "albedo": {
+        "url": "atlases/a-099.albedo.webp",
+        "mips": [
+          "atlases/a-099.albedo.m1.webp",
+          "atlases/a-099.albedo.m2.webp",
+          "atlases/a-099.albedo.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 88,
+        "bytes": 107828
+      },
+      "normal": {
+        "url": "atlases/a-099.normal.webp",
+        "mips": [
+          "atlases/a-099.normal.m1.webp",
+          "atlases/a-099.normal.m2.webp",
+          "atlases/a-099.normal.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 92,
+        "bytes": 55354
+      },
+      "emissive": {
+        "url": "atlases/a-099.emissive.webp",
+        "mips": [
+          "atlases/a-099.emissive.m1.webp",
+          "atlases/a-099.emissive.m2.webp",
+          "atlases/a-099.emissive.m3.webp"
+        ],
+        "codec": "webp-lossless",
+        "quality": null,
+        "bytes": 398
+      },
+      "normalScale": 0.5
     }
   ],
   "zones": {
@@ -4422,7 +4464,8 @@
     "vesperveil": [
       "a-001",
       "a-034",
-      "a-035"
+      "a-035",
+      "a-099"
     ]
   },
   "sprites": {
@@ -4769,6 +4812,425 @@
       "sizeScale": 1.2,
       "home": "a-050",
       "thumb": "thumbs/archonosis_front.webp"
+    },
+    "astaroth": {
+      "front": {
+        "atlas": "a-099",
+        "px": [
+          1024,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0.5,
+          0.5,
+          1,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 1.120865,
+        "source": "front/astaroth(front).webp"
+      },
+      "back": {
+        "atlas": "a-099",
+        "px": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0,
+          0.5,
+          0.5,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.770779,
+        "source": "back/astaroth(back).webp"
+      },
+      "sizeScale": 1.5,
+      "home": "a-099",
+      "thumb": "thumbs/astaroth_front.webp",
+      "anim": {
+        "front": {
+          "atlas": "anim-astaroth-front",
+          "frames": [
+            [
+              0,
+              0.75,
+              0.125,
+              1
+            ],
+            [
+              0.125,
+              0.75,
+              0.25,
+              1
+            ],
+            [
+              0.25,
+              0.75,
+              0.375,
+              1
+            ],
+            [
+              0.375,
+              0.75,
+              0.5,
+              1
+            ],
+            [
+              0.5,
+              0.75,
+              0.625,
+              1
+            ],
+            [
+              0.625,
+              0.75,
+              0.75,
+              1
+            ],
+            [
+              0.75,
+              0.75,
+              0.875,
+              1
+            ],
+            [
+              0.875,
+              0.75,
+              1,
+              1
+            ],
+            [
+              0,
+              0.5,
+              0.125,
+              0.75
+            ],
+            [
+              0.125,
+              0.5,
+              0.25,
+              0.75
+            ],
+            [
+              0.25,
+              0.5,
+              0.375,
+              0.75
+            ],
+            [
+              0.375,
+              0.5,
+              0.5,
+              0.75
+            ],
+            [
+              0.5,
+              0.5,
+              0.625,
+              0.75
+            ],
+            [
+              0.625,
+              0.5,
+              0.75,
+              0.75
+            ],
+            [
+              0.75,
+              0.5,
+              0.875,
+              0.75
+            ],
+            [
+              0.875,
+              0.5,
+              1,
+              0.75
+            ],
+            [
+              0,
+              0.25,
+              0.125,
+              0.5
+            ],
+            [
+              0.125,
+              0.25,
+              0.25,
+              0.5
+            ],
+            [
+              0.25,
+              0.25,
+              0.375,
+              0.5
+            ],
+            [
+              0.375,
+              0.25,
+              0.5,
+              0.5
+            ],
+            [
+              0.5,
+              0.25,
+              0.625,
+              0.5
+            ],
+            [
+              0.625,
+              0.25,
+              0.75,
+              0.5
+            ],
+            [
+              0.75,
+              0.25,
+              0.875,
+              0.5
+            ],
+            [
+              0.875,
+              0.25,
+              1,
+              0.5
+            ],
+            [
+              0,
+              0,
+              0.125,
+              0.25
+            ],
+            [
+              0.125,
+              0,
+              0.25,
+              0.25
+            ],
+            [
+              0.25,
+              0,
+              0.375,
+              0.25
+            ],
+            [
+              0.375,
+              0,
+              0.5,
+              0.25
+            ],
+            [
+              0.5,
+              0,
+              0.625,
+              0.25
+            ],
+            [
+              0.625,
+              0,
+              0.75,
+              0.25
+            ],
+            [
+              0.75,
+              0,
+              0.875,
+              0.25
+            ],
+            [
+              0.875,
+              0,
+              1,
+              0.25
+            ]
+          ],
+          "delays": [
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125
+          ],
+          "staticFrame": 0,
+          "footV": 0.08,
+          "aspect": 1,
+          "pixelScale": 0.560433,
+          "source": "front/astaroth(front).webp"
+        },
+        "back": {
+          "atlas": "anim-astaroth-back",
+          "frames": [
+            [
+              0,
+              0.6666666666666667,
+              0.16666666666666666,
+              1
+            ],
+            [
+              0.16666666666666666,
+              0.6666666666666667,
+              0.3333333333333333,
+              1
+            ],
+            [
+              0.3333333333333333,
+              0.6666666666666667,
+              0.5,
+              1
+            ],
+            [
+              0.5,
+              0.6666666666666667,
+              0.6666666666666666,
+              1
+            ],
+            [
+              0.6666666666666666,
+              0.6666666666666667,
+              0.8333333333333334,
+              1
+            ],
+            [
+              0.8333333333333334,
+              0.6666666666666667,
+              1,
+              1
+            ],
+            [
+              0,
+              0.33333333333333337,
+              0.16666666666666666,
+              0.6666666666666667
+            ],
+            [
+              0.16666666666666666,
+              0.33333333333333337,
+              0.3333333333333333,
+              0.6666666666666667
+            ],
+            [
+              0.3333333333333333,
+              0.33333333333333337,
+              0.5,
+              0.6666666666666667
+            ],
+            [
+              0.5,
+              0.33333333333333337,
+              0.6666666666666666,
+              0.6666666666666667
+            ],
+            [
+              0.6666666666666666,
+              0.33333333333333337,
+              0.8333333333333334,
+              0.6666666666666667
+            ],
+            [
+              0.8333333333333334,
+              0.33333333333333337,
+              1,
+              0.6666666666666667
+            ],
+            [
+              0,
+              0,
+              0.16666666666666666,
+              0.33333333333333337
+            ],
+            [
+              0.16666666666666666,
+              0,
+              0.3333333333333333,
+              0.33333333333333337
+            ],
+            [
+              0.3333333333333333,
+              0,
+              0.5,
+              0.33333333333333337
+            ],
+            [
+              0.5,
+              0,
+              0.6666666666666666,
+              0.33333333333333337
+            ],
+            [
+              0.6666666666666666,
+              0,
+              0.8333333333333334,
+              0.33333333333333337
+            ],
+            [
+              0.8333333333333334,
+              0,
+              1,
+              0.33333333333333337
+            ]
+          ],
+          "delays": [
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125,
+            125
+          ],
+          "staticFrame": 13,
+          "footV": 0.08,
+          "aspect": 1,
+          "pixelScale": 0.385389,
+          "source": "back/astaroth(back).webp"
+        }
+      }
     },
     "augurvane": {
       "front": {
@@ -16757,8 +17219,94 @@
       "thumb": "thumbs/zenryu_majin_front.webp"
     }
   },
-  "totalBytes": 52878152,
+  "totalBytes": 53048987,
   "animAtlases": [
+    {
+      "id": "anim-astaroth-back",
+      "species": "astaroth",
+      "side": "back",
+      "width": 3072,
+      "height": 1536,
+      "cell": 512,
+      "slots": 18,
+      "albedo": {
+        "url": "anim/astaroth-back.albedo.webp",
+        "mips": [
+          "anim/astaroth-back.albedo.m1.webp",
+          "anim/astaroth-back.albedo.m2.webp",
+          "anim/astaroth-back.albedo.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 80,
+        "bytes": 201094
+      },
+      "normal": {
+        "url": "anim/astaroth-back.normal.webp",
+        "mips": [
+          "anim/astaroth-back.normal.m1.webp",
+          "anim/astaroth-back.normal.m2.webp",
+          "anim/astaroth-back.normal.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 80,
+        "bytes": 71496
+      },
+      "emissive": {
+        "url": "anim/astaroth-back.emissive.webp",
+        "mips": [
+          "anim/astaroth-back.emissive.m1.webp",
+          "anim/astaroth-back.emissive.m2.webp",
+          "anim/astaroth-back.emissive.m3.webp"
+        ],
+        "codec": "webp-lossless",
+        "quality": null,
+        "bytes": 430
+      },
+      "normalScale": 0.5
+    },
+    {
+      "id": "anim-astaroth-front",
+      "species": "astaroth",
+      "side": "front",
+      "width": 4096,
+      "height": 2048,
+      "cell": 512,
+      "slots": 32,
+      "albedo": {
+        "url": "anim/astaroth-front.albedo.webp",
+        "mips": [
+          "anim/astaroth-front.albedo.m1.webp",
+          "anim/astaroth-front.albedo.m2.webp",
+          "anim/astaroth-front.albedo.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 80,
+        "bytes": 681096
+      },
+      "normal": {
+        "url": "anim/astaroth-front.normal.webp",
+        "mips": [
+          "anim/astaroth-front.normal.m1.webp",
+          "anim/astaroth-front.normal.m2.webp",
+          "anim/astaroth-front.normal.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 80,
+        "bytes": 185818
+      },
+      "emissive": {
+        "url": "anim/astaroth-front.emissive.webp",
+        "mips": [
+          "anim/astaroth-front.emissive.m1.webp",
+          "anim/astaroth-front.emissive.m2.webp",
+          "anim/astaroth-front.emissive.m3.webp"
+        ],
+        "codec": "webp-lossless",
+        "quality": null,
+        "bytes": 1746
+      },
+      "normalScale": 0.5
+    },
     {
       "id": "anim-bankaiser-back",
       "species": "bankaiser",
@@ -17620,5 +18168,5 @@
       "normalScale": 0.5
     }
   ],
-  "animTotalBytes": 24487809
+  "animTotalBytes": 25639308
 }

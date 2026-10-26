@@ -252,7 +252,9 @@ function* zoneSteps(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonly Surf
   const propsRng = prng.fork('props');
   prng.fork('lights');
   const plan = layoutOf(spec);                           // content's zone plan (spec.plan): the builder plans no layout of its own
-  const splat = createSplatContext(plan, spec.buildings, spec.seed, spec.interiors);
+  // a crypt (content data/hideouts.ts) stands outside the zone plan: the scatter content stamps never made way for it, so
+  // neither does the drawn scatter (else a rock would vanish and leave its collider)
+  const splat = createSplatContext(plan, spec.buildings.filter((b) => b.kind !== 'crypt'), spec.seed, spec.interiors);
   const fieldCells = Math.ceil(FIELD_SIZE[spec.layout] / CHUNK_SIZE);
   const grid: ChunkGrid = chunkGrid((fieldCells + 4) * CHUNK_SIZE);
   const chunks = new ChunkSet(grid);
@@ -298,7 +300,8 @@ function* zoneSteps(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonly Surf
   // 4. buildings (THREE.LOD each)
   for (const b of spec.buildings) {
     const fh = footprintHeights(h, b);
-    const geo = yield* houseSteps(set.building, b, { drop: fh.max - fh.min, accent: b.kind === 'gym' ? set.accent : null });
+    // a crypt's lintel and gable glow in lava red (content data/hideouts.ts; its hall's theme binds the surface)
+    const geo = yield* houseSteps(set.building, b, { drop: fh.max - fh.min, accent: b.kind === 'gym' ? set.accent : b.kind === 'crypt' ? 'lava_glow' : null });
     yield 'building:geometry';
     const lod = new LOD();
     lod.name = `ewa:building:${b.id}`;

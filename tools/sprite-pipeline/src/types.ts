@@ -95,8 +95,11 @@ export const CONCURRENCY = 3;
 export const ANIM_CELL_DIVISOR = 2;
 /** Folded into every anim cache key (per-side frames and anim atlas files). Bump when `anim.ts` changes behaviour. */
 export const ANIM_STAGE_VERSION = '1';
-/** Hard ceiling for every file under `public/creatures/anim/` plus the manifest's anim share (24 MiB, spec §40.6). */
-export const ANIM_BUDGET_BYTES = 25_165_824;
+/**
+ * Hard ceiling for every file under `public/creatures/anim/` plus the manifest's anim share (25 MiB since 2026-10-26, for
+ * astaroth's two flipbooks, the user's call over dropping every flipbook a rung; 24 MiB before; spec §40.6).
+ */
+export const ANIM_BUDGET_BYTES = 26_214_400;
 /** Largest anim atlas edge: the 8192 `maxTextureSize` every renderer must have (render §10.1.1; WebP itself allows 16383). */
 export const ANIM_MAX_EDGE = 8192;
 /** Anim atlases live under this subdirectory of the output, outside the static creatures line. */

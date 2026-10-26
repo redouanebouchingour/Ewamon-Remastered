@@ -123,7 +123,7 @@ describe.skipIf(!existsSync(REAL))('sprite catalog on the shipped manifest', () 
     }
   });
 
-  it('the 10 legacy legendaries / mythicals animate on both sides; nothing else does (hyoryu and the Elemutt line came as stills)', () => {
+  it('the 10 legacy legendaries / mythicals and astaroth animate on both sides; nothing else does (hyoryu and the Elemutt line came as stills)', () => {
     const animated = Object.keys(m.sprites).filter((id) => cat.animAtlasesOf(id).length > 0).sort();
     // hyoryu (#138, post-legacy) was delivered as still sprites: it ships static until animated art exists
     // the Elemutt line (#142 to #144, mythical) likewise came as stills
@@ -135,8 +135,9 @@ describe.skipIf(!existsSync(REAL))('sprite catalog on the shipped manifest', () 
         const a = d[side].anim!;
         const set = cat.animAtlas(a.atlas)!;
         expect(a.rects.length, `${id}/${side}`).toBe(a.delaysMs.length);
-        expect(a.rects.length, `${id}/${side}`).toBeGreaterThanOrEqual(24);
-        expect(a.staticFrame).toBe(0);
+        // astaroth's back loop (from the user's video) is 18 pages, its static frame the widest pose (frame-select.json)
+        expect(a.rects.length, `${id}/${side}`).toBeGreaterThanOrEqual(18);
+        expect(a.staticFrame).toBe(id === 'astaroth' && side === 'back' ? 13 : 0);
         expect(set.cell).toBe(512);
         expect(Math.max(set.width, set.height)).toBeLessThanOrEqual(8192);
         for (const r of a.rects) {

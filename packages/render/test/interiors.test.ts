@@ -101,7 +101,7 @@ describe('Phase A: every pocket of every town builds', () => {
       }
     }
     expect(pockets).toBeGreaterThan(30);
-    expect([...themes].sort()).toEqual(['cinder', 'forge', 'grove', 'healer', 'house', 'league', 'marrow', 'salt', 'shop', 'sky', 'storm', 'vesper']);
+    expect([...themes].sort()).toEqual(['abyss', 'cinder', 'forge', 'grove', 'healer', 'house', 'league', 'marrow', 'salt', 'shop', 'sky', 'storm', 'vesper']);
     lib.disposeAll();
   }, 120_000);
 });

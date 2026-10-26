@@ -62,8 +62,8 @@ exports[`§20.4.4 zoneSpecFor > is deterministic for all 21 zones × 3 harvest s
   "umbral_observatory:harvested": "f7fea6e8",
   "umbral_observatory:intact": "019f7a3a",
   "umbral_observatory:thinning": "f402bc75",
-  "vesperveil:harvested": "9ee2eca5",
-  "vesperveil:intact": "90b6d9e7",
-  "vesperveil:thinning": "c00de766",
+  "vesperveil:harvested": "dcfb8f32",
+  "vesperveil:intact": "3eda67c0",
+  "vesperveil:thinning": "70b6a987",
 }
 `;

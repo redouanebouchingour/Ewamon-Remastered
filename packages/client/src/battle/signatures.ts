@@ -20,7 +20,7 @@ import type { MoveAnimDef } from './moveAnims';
 /** The bespoke effect layer each cinematic draws (sigfx/index.ts). */
 export type SignatureFx =
   | 'crescent' | 'volley' | 'pyre' | 'grace' | 'sunbreaker' | 'foxfire' | 'kamehameha' | 'miracle' | 'devour' | 'bankai' | 'rift' | 'aurora' | 'lotus'
-  | 'convergence';
+  | 'convergence' | 'descent';
 
 export interface SignatureCinematic {
   readonly fx: SignatureFx;
@@ -162,6 +162,15 @@ export const SIGNATURE_CINEMATICS: Readonly<Record<string, SignatureCinematic>> 
     palette: { accent: '#9aeaff', deep: '#061a2e', hot: '#ff4a62' },
     leadMs: 1100, windupMs: 460, travelMs: 340, totalMs: 3000, sfx: ['wind_gust', 'cry_dragon'], aimSfx: 'sig_crimson_lotus_prison',
     anim: { recoverMs: 380, attackerPose: 'windup' },
+  },
+  // astaroth: it dissolves into black smoke and vanishes, the screen darkens, a five-leaf clover sigil of black
+  // anti-magic flares under the foe, then it drops from above with both blades: an X of greatsword and katana cuts, a
+  // crack of red light, a black shockwave, drifting feathers and ash
+  "Demon Lord's Descent": {
+    fx: 'descent', species: 'astaroth', portrait: 'astaroth', glint: [47, 46], lines: ["Demon Lord's", 'Descent'], kicker: LEGENDARY,
+    palette: { accent: '#e0142c', deep: '#1a0306', hot: '#ff3b4f' },
+    leadMs: 1100, windupMs: 640, travelMs: 300, totalMs: 3200, sfx: ['wind_gust', 'cry_dark'], aimSfx: 'sig_demon_lords_descent',
+    anim: { recoverMs: 380, attackerPose: 'lunge' },
   },
   // ravatar (the Elemutt line's final stage): water, earth, fire and air wheel in and fuse into one sphere that bursts
   // on the foe in the four elements' rings. One cinematic for every relic form; the move's type follows the relic.

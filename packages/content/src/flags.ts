@@ -68,6 +68,7 @@ export const FLAG_REGISTRY: readonly FlagEntry[] = [
   { id: 'leg_zenryu', setBy: 'zenryu' },
   { id: 'leg_voidraxis', setBy: 'voidraxis' },
   { id: 'leg_hyoryu', setBy: 'hyoryu' },
+  { id: 'leg_astaroth', setBy: 'astaroth' },
   // the relic shrines' guardians (data/shrines.ts): quest q14 counts the four wins
   { id: 'trainer:saltmourn.house4.guardian:beaten', setBy: 'server' },
   { id: 'trainer:marrowdig.house4.guardian:beaten', setBy: 'server' },

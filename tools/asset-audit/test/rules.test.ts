@@ -289,10 +289,10 @@ describe('§40.6 --bytes roll-up', () => {
     expect(failing(fakePublic({ misc: CEILINGS.misc + 1 }))).toEqual(['basis/ + icons/ + fonts/ + keyart/']);
     const full = fakePublic({ creatures: CEILINGS.creatures, creaturesAnim: CEILINGS.creaturesAnim, models: CEILINGS.models, materials: CEILINGS.materials, audio: CEILINGS.audio, misc: 1024, stray: CEILINGS.misc });
     expect(failing(full)).toEqual(['total public/']);
-    expect(CEILINGS).toEqual({ creatures: 52 * MiB, creaturesAnim: 24 * MiB, models: 12 * MiB, materials: 90 * MiB, audio: 80 * MiB, misc: 2 * MiB, total: 243 * MiB });
+    expect(CEILINGS).toEqual({ creatures: 52 * MiB, creaturesAnim: 25 * MiB, models: 12 * MiB, materials: 90 * MiB, audio: 80 * MiB, misc: 2 * MiB, total: 243 * MiB });
   });
 
-  it('creatures/anim/ is its own 24 MiB line: anim files + the manifest bytes its anim fields add, charged away from creatures/', () => {
+  it('creatures/anim/ is its own 25 MiB line: anim files + the manifest bytes its anim fields add, charged away from creatures/', () => {
     const dir = fakePublic();
     const staticM = { totalBytes: 1000, sprites: { a: { thumb: 't' }, b: { thumb: 'u' } } };
     const withAnim = { totalBytes: 1000, sprites: { a: { thumb: 't', anim: { front: { atlas: 'anim-a-front', delays: [125, 125] } } }, b: { thumb: 'u' } }, animAtlases: [{ id: 'anim-a-front' }], animTotalBytes: 0 };

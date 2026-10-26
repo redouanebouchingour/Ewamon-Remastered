@@ -186,6 +186,7 @@
     "sfx/raid_roar_1",
     "sfx/sig_aurora_requiem_1",
     "sfx/sig_bankai_sever_1",
+    "sfx/sig_cosmic_convergence_1",
     "sfx/sig_cosmic_miracle_1",
     "sfx/sig_cosmic_pyre_1",
     "sfx/sig_crimson_lotus_prison_1",
@@ -393,8 +394,8 @@
       },
       "sfx": {
         "derived": 17,
-        "direct": 237,
-        "total": 254,
+        "direct": 238,
+        "total": 255,
         "unmapped": 0
       },
       "stem": {
@@ -410,14 +411,14 @@
         "unmapped": 0
       }
     },
-    "covered": 382,
+    "covered": 383,
     "fraction": 1,
-    "total": 382
+    "total": 383
   },
-  "entries": 314,
+  "entries": 315,
   "failed": [],
   "ingested": [
-    "sfx/sig_cosmic_convergence_1"
+    "sfx/sig_demon_lords_descent_1"
   ],
   "missing": [],
   "ok": true,

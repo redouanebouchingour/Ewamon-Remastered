@@ -69,16 +69,16 @@ describe('zone sets', () => {
   });
 
   describe.skipIf(!existsSync(ROSTER_PATH) || !existsSync(LEGACY_DIR))('the real roster + legacy data', () => {
-    it('has 15 spawn tables, 9 legendary statics, and every field zone set stays within 16 species', async () => {
+    it('has 15 spawn tables, 10 legendary statics, and every field zone set stays within 16 species', async () => {
       const roster = loadRosterTables(ROSTER_PATH);
       expect(roster.encounters.size).toBe(15);
-      expect(roster.statics.length).toBe(9);
+      expect(roster.statics.length).toBe(10);
       expect(roster.encounters.get('hollow_route')!.length).toBe(14);
       const legacy = await loadLegacyData(LEGACY_DIR);
       // 130 legacy + hollowmane, dustcub, badlander, veilpup, hollowolf, castlemaw, lawlander, hyoryu, cryptorb, ultraze, vysion
       // (.design/additions) + the hollowmane_rage and castlemaw_rage form sprites + the 12 Majin / Tenjin form sprites (3 from
       // species.js, 9 from patches.js)
-      expect(legacy.species.size).toBe(198);
+      expect(legacy.species.size).toBe(199);
       const forms = [...legacy.species.keys()].filter((id) => /_(majin|tenjin)$/.test(id)).sort();
       expect(forms).toEqual([
         'abysspark_tenjin', 'badlander_majin', 'gemknight_tenjin', 'glimmereen_tenjin', 'hyoryu_majin', 'infernomorel_majin', 'lawlander_tenjin',

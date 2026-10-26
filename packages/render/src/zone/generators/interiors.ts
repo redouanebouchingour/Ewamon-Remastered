@@ -105,6 +105,8 @@ const THEME_ROWS: Readonly<Partial<Record<InteriorThemeId, ThemeRow>>> = {
   marrow: { set: 'marrow', floor: 'marrow_sandstone', border: 'bone_chalk', runner: 'mine_timber', wall: 'marrow_sandstone', trim: 'mine_timber', cloth: 'bone_chalk', hedgeCore: 'canyon_dust', cloud: 'bone_chalk' },
   vesper: { set: 'vesper', floor: 'lichen_stone', border: 'wrought_iron', runner: 'grave_moss', wall: 'lichen_stone', trim: 'wrought_iron', cloth: 'vesper_bark_black', hedgeCore: 'grave_moss', cloud: 'mist_glass' },
   forge: { set: 'forge', floor: 'castle_granite', border: 'rivet_iron', runner: 'forge_steel_plate', wall: 'castle_granite', trim: 'forge_steel_plate', cloth: 'banner_cloth', hedgeCore: 'castle_granite', cloud: 'castle_granite', rug: 'charred_timber' },
+  // the Sunken Crypt (content data/hideouts.ts): black glass and iron under the cinder set's red glow, crimson banners
+  abyss: { set: 'cinder', floor: 'obsidian', border: 'wrought_iron', runner: 'void_floor', wall: 'eclipse_stone', trim: 'wrought_iron', cloth: 'banner_cloth', hedgeCore: 'cinder_ash_soil', cloud: 'cinder_ash_soil', rug: 'charred_timber' },
   sky: { set: 'sky', floor: 'sky_marble', border: 'gold_leaf', runner: 'cloud_stone', wall: 'cloud_stone', trim: 'gold_leaf', cloth: 'prayer_silk', hedgeCore: 'snow', cloud: 'snow', rug: 'dragon_scale_tile' },
   league: { set: 'capital', floor: 'plaza_pale_stone', border: 'gilt_bronze', runner: 'sun_marble', wall: 'sun_marble', trim: 'gilt_bronze', cloth: 'banner_cloth', hedgeCore: 'laurel_leaf', cloud: 'sun_marble', rug: 'grove_moss' },
 };
@@ -268,7 +270,7 @@ function floorAndBorder(F: Parts, spec: InteriorSpec, kit: Kit): void {
     box(F, kit.border, x, top - 0.1, z, w, 0.112, d, 0, 0.012);
   }
   // runner from the door into the hall (gyms and the league hall: to the arena), a mat inside small rooms
-  const big = spec.template === 'gym_hall' || spec.template === 'league_hall';
+  const big = spec.template === 'gym_hall' || spec.template === 'league_hall' || spec.template === 'crypt';
   const runnerEnd = big ? (spec.rooms[0]?.arena.lz ?? 0) + 4 : hd - 2.2;
   const len = hd - 0.42 - runnerEnd;
   if (len > 0.5) box(F, kit.runner, 0, top - 0.1, hd - 0.42 - len / 2, big ? 2.2 : 1.3, 0.115, len, 0, 0.012);
@@ -283,7 +285,7 @@ function floorAndBorder(F: Parts, spec: InteriorSpec, kit: Kit): void {
 function outerWalls(spec: InteriorSpec, kit: Kit): Record<WallSide, Parts> {
   const T = INTERIOR.wallT; const H = INTERIOR.wallH;
   const hw = spec.w / 2; const hd = spec.d / 2;
-  const big = spec.template === 'gym_hall' || spec.template === 'league_hall';
+  const big = spec.template === 'gym_hall' || spec.template === 'league_hall' || spec.template === 'crypt';
   const door = big ? INTERIOR.doorW.hall : INTERIOR.doorW.room;
   const out: Record<WallSide, Parts> = { back: new Parts(), front: new Parts(), left: new Parts(), right: new Parts() };
   const run = (p: Parts, x: number, z: number, len: number, yaw: number, inX: number, inZ: number): void => {
@@ -698,6 +700,33 @@ function propInto(t: Parts, kind: string, kit: Kit, size: readonly [number, numb
       for (let k = 0; k < 3; k++) puff(t, kit.cloud, trs((p.next() - 0.5) * 2.4, -0.2 + p.next() * 0.3, (p.next() - 0.5) * 2.4, p.next() * TAU, 0.8 + p.next() * 0.6), seed + k * 7);
       return true;
     }
+    case 'clover_sigil': {
+      // a five-leaf clover inlaid round an arena (the Sunken Crypt): five heart-shaped leaves in the glow on a dark
+      // disc, each with a dark midrib, a stem, an iron ring and a glowing outer ring with five rune studs; 5.7 m
+      // across, a hair above the arena's runner disc
+      const disc = (s: SurfaceId, r: number, y: number, m: Matrix4): void => lathe(t, s, [[0.001, y], [r, y], [r, y - 0.012], [0.001, y - 0.012]], { segments: 20, smooth: false }, m);
+      const ring = (s: SurfaceId, r0: number, r1: number, y: number): void => lathe(t, s, [[r1, y - 0.012], [r1, y], [r0, y], [r0, y - 0.012]], { segments: 64, smooth: false });
+      disc(kit.dark, 2.2, 0.006, new Matrix4());
+      for (let k = 0; k < 5; k++) {
+        const a = (k / 5) * TAU;
+        const ca = Math.cos(a); const sa = Math.sin(a);
+        // two lobes side by side at the tip and a narrowing toward the centre make the heart
+        for (const side of [-1, 1]) disc(kit.accent, 0.33, 0.012, trs(ca * 1.38 - sa * side * 0.25, 0, sa * 1.38 + ca * side * 0.25));
+        disc(kit.accent, 0.27, 0.012, trs(ca * 1.0, 0, sa * 1.0));
+        disc(kit.accent, 0.17, 0.012, trs(ca * 0.72, 0, sa * 0.72));
+        box(t, kit.dark, ca * 1.15, 0.008, sa * 1.15, 0.05, 0.008, 0.9, Math.PI / 2 - a, 0.002);
+      }
+      disc(kit.trim, 0.42, 0.014, new Matrix4());
+      // the stem between two leaves
+      box(t, kit.accent, Math.cos(TAU * 0.1) * 1.3, 0.0, Math.sin(TAU * 0.1) * 1.3, 0.1, 0.012, 1.0, Math.PI / 2 - TAU * 0.1, 0.004);
+      ring(kit.trim, 2.2, 2.32, 0.01);
+      ring(kit.accent, 2.72, 2.82, 0.012);
+      for (let k = 0; k < 5; k++) {
+        const a = (k / 5) * TAU + TAU / 10;
+        box(t, kit.accent, Math.cos(a) * 2.52, 0.0, Math.sin(a) * 2.52, 0.2, 0.012, 0.2, a + Math.PI / 4, 0.004);
+      }
+      return true;
+    }
     case 'throne': {
       box(t, kit.trim, 0, -0.05, 0, 3.2, 0.32, 2.2, 0, 0.04);
       box(t, kit.stone, 0, 0.27, -0.1, 2.6, 0.22, 1.8, 0, 0.04);
@@ -962,7 +991,7 @@ export function* interiorSteps(spec: InteriorSpec, d: InteriorBuildDeps): Steps<
     const quarter = Math.abs(Math.sin(pp.yaw)) > 0.7;
     const size: [number, number] | null = solid ? (quarter ? [solid.hd, solid.hw] : [solid.hw, solid.hd]) : null;
     if (!propInto(t, pp.kind, kit, size, seed + 7919 * (k + 1))) continue;
-    const flat = pp.kind === 'rug' || pp.kind === 'light_path' || pp.kind === 'lava_channel';
+    const flat = pp.kind === 'rug' || pp.kind === 'light_path' || pp.kind === 'lava_channel' || pp.kind === 'clover_sigil';
     (flat ? F : CASTING_PROPS.has(pp.kind) ? S : P).addParts(t, trs(pp.lx, top, pp.lz, pp.yaw, pp.scale > 0 ? pp.scale : 1));
     props++;
     yield 'pocket:prop';

@@ -1607,6 +1607,20 @@
     {
       "bus": "sfx",
       "gainDb": 6,
+      "id": "sig_demon_lords_descent",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2.2,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 1364871649,
+        "text": "A reversed breath and a low rumble, a short demonic growl, a dark falling whoosh, then a heavy metal strike with a deep boom, two blade cuts crossing and an eerie low ring."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": 6,
       "id": "sig_foxfire_voltage",
       "maxConcurrent": 1,
       "prompt": {

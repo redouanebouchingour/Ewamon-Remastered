@@ -24,9 +24,9 @@ const REPORT_PATH = path.join(REAL_QA_DIR, 'qa-report.json');
 // ravatar_water, ravatar_earth, ravatar_fire, ravatar_air, ravatar_avatar)
 // + the legacy species' battle forms from .design/additions/patches.js (9: infernomorel, toxshade, necrogeist, zenryu _majin;
 // thornback, abysspark, gemknight, glimmereen, solpyre _tenjin)
-const SPECIES_COUNT = 198;
-/** Atlas cap: 99 with the 34 type-gap species (2026-10-26); 82 with the Elemutt line and ravatar's relic forms (2026-10-25); 78 with cryptorb, ultraze and vysion (2026-10-24); 76 with hyoryu and its Majin form (2026-10-13); 75 with the Majin / Tenjin forms (2026-10-11); 70 before. */
-const MAX_ATLASES = 99;
+const SPECIES_COUNT = 199;
+/** Atlas cap: 100 with astaroth (2026-10-26); 99 with the 34 type-gap species (2026-10-26); 82 with the Elemutt line and ravatar's relic forms (2026-10-25); 78 with cryptorb, ultraze and vysion (2026-10-24); 76 with hyoryu and its Majin form (2026-10-13); 75 with the Majin / Tenjin forms (2026-10-11); 70 before. */
+const MAX_ATLASES = 100;
 
 function listFiles(dir: string, rel = ''): string[] {
   const out: string[] = [];
@@ -52,7 +52,7 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
     expect(dirBytes(REAL_OUT_DIR)).toBe(manifest.totalBytes + (manifest.animTotalBytes ?? 0));
   });
 
-  it(`anim/: animTotalBytes ≤ ${ANIM_BUDGET_BYTES} (24 MiB) = the anim files + the manifest's anim share`, () => {
+  it(`anim/: animTotalBytes ≤ ${ANIM_BUDGET_BYTES} (25 MiB) = the anim files + the manifest's anim share`, () => {
     expect(manifest.animTotalBytes).toBeDefined();
     expect(manifest.animTotalBytes!).toBeLessThanOrEqual(ANIM_BUDGET_BYTES);
     const share = Buffer.byteLength(serializeManifest(manifest)) - Buffer.byteLength(serializeManifest(staticManifest(manifest)));
@@ -180,7 +180,7 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
       ]);
       for (const e of report.excluded) expect(e.reason).toBe('alternate-style');
       for (const flag of ['fallback-source', 'missing-side', 'leak', 'empty']) expect(report.counts[flag], flag).toBeUndefined();
-      expect(report.counts.multiframe).toBe(20);
+      expect(report.counts.multiframe).toBe(22);
       expect(report.accepted.map((a) => `${a.species}/${a.flag}`)).toEqual(['malice/coverage']);
     });
 

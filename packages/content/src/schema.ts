@@ -175,7 +175,7 @@ const BattleFormDefSchema = z.object({
 export const SpeciesDefSchema: z.ZodType<SpeciesDef> = z.object({
   id: SnakeId,
   name: z.string().min(1),
-  dexNumber: Int.min(1).max(179),
+  dexNumber: Int.min(1).max(180),
   flavor: z.string(),
   types: z.union([z.tuple([TypeNameSchema]), z.tuple([TypeNameSchema, TypeNameSchema])]),
   baseHp: PosInt,
@@ -576,6 +576,7 @@ export const LegendaryStaticSchema: z.ZodType<LegendaryStatic> = z.object({
   z: Coord,
   flag: Flag,
   when: StaticGateSchema,
+  interior: z.object({ building: z.string().min(1), lx: z.number(), lz: z.number() }).optional(),
 });
 
 export const SpawnTuningSchema: z.ZodType<SpawnTuning> = z.object({

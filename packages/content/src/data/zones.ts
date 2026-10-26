@@ -715,7 +715,14 @@ const BASE_ZONES: readonly ZoneDef[] = [
       npc('vesperveil.gravetender', 'the gravetender', -30, 30, 'old_classy_male', [
         "Nothing's buried here. There's nothing to bury — this is where things that never were come to be almost.",
       ], {
-        react: [{ when: 'grove_harvested', lines: ["Your road came through last night. Went past the graves like a draught. Didn't stop. Nothing to stop for."] }],
+        react: [
+          // the Sunken Crypt (data/hideouts.ts) at the back of his graveyard opens to a Champion
+          { when: 'champion:zeon:beaten', lines: [
+            "Champion, is it. Then you should know: the old crypt at the back of the graves has its stair open again.",
+            "Sealed before my time, and my master's. Whatever stands down there carries two blades and answers to no name I know.",
+          ] },
+          { when: 'grove_harvested', lines: ["Your road came through last night. Went past the graves like a draught. Didn't stop. Nothing to stop for."] },
+        ],
       }),
     ],
     trainers: [],

@@ -24,10 +24,10 @@
  * Camp bases: `spec.camps` is a route's travellers' camp (content `campOf`: its banner pole and trophy slots round the
  * fire), present only on routes; what it shows is the zone room's (`CampsHandle.set`).
  */
-import { SET_PIECE_BY_ZONE, bramblesFor, campOf, getHeightfield, interiorsFor, zone as zoneDef, zonePlan } from '@ewa/content';
+import { SET_PIECE_BY_ZONE, bramblesFor, campOf, getHeightfield, hideoutBuilding, hideoutsFor, interiorsFor, zone as zoneDef, zonePlan } from '@ewa/content';
 import type { HarvestState, LinkDir, ZoneDef, ZoneId } from '@ewa/content';
 import { INTERIOR_SIZE, edgePoint, lightsFromPlan, waterBodies } from '@ewa/render';
-import type { Dir, Edge, HarvestLevel, InteriorSpec, Marker, NeighbourSpec, ObstacleSpec, WaterSpec, ZonePlanData, ZoneSpec } from '@ewa/render';
+import type { BuildingSpec, Dir, Edge, HarvestLevel, InteriorSpec, Marker, NeighbourSpec, ObstacleSpec, WaterSpec, ZonePlanData, ZoneSpec } from '@ewa/render';
 
 /** SPEC §10.5.1 `SetPieceId`, one per zone, in ZONE_ORDER order (content's table). */
 export { SET_PIECE_BY_ZONE };
@@ -80,7 +80,7 @@ export function zoneSpecFor(zone: ZoneDef, harvest: HarvestState): ZoneSpec {
   const tallGrass = zone.encounterTable !== null;
   const seed = zone.layoutSeed >>> 0;
 
-  const buildings = plan.buildings.map((b) => ({ id: b.id, kind: b.kind, x: b.x, z: b.z, yaw: b.yaw, w: b.w, d: b.d, floors: b.floors, roof: b.roof, seed: b.seed }));
+  const buildings = buildingsOf(zone.id, plan.buildings);
   const props = plan.props.map((p) => ({ kind: p.kind, x: p.x, z: p.z, yaw: p.yaw, scale: p.scale, seed: p.seed }));
   const lights = lightsFromPlan(plan.lights, zone.biome, setPiece, zone.type);
   const specPlan: ZonePlanData = {
@@ -157,7 +157,7 @@ export function neighbourSpecsFor(zone: ZoneDef): Partial<Record<Dir, NeighbourS
         plaza: plan.plaza, roads: plan.roads, doorPaths: plan.doorPaths, roadMeander: plan.roadMeander, grassPatches: plan.grassPatches,
         clearings: plan.clearings, setPiece: plan.setPiece, points: plan.points, warpPairs: plan.warpPairs, bridges: plan.bridges, crags: plan.crags, structures: plan.structures,
       },
-      buildings: plan.buildings.map((b) => ({ id: b.id, kind: b.kind, x: b.x, z: b.z, yaw: b.yaw, w: b.w, d: b.d, floors: b.floors, roof: b.roof, seed: b.seed })),
+      buildings: buildingsOf(nb.id, plan.buildings),
       interiors: interiorSpecsFor(nb.id),
       edge: { x: ex, z: ez },
     };
@@ -169,6 +169,11 @@ export function neighbourSpecsFor(zone: ZoneDef): Partial<Record<Dir, NeighbourS
 export function withNeighbours(spec: ZoneSpec, zone: ZoneDef): ZoneSpec {
   const neighbours = neighbourSpecsFor(zone);
   return Object.keys(neighbours).length > 0 ? { ...spec, neighbours } : spec;
+}
+
+/** The plan's buildings, then the zone's hideout buildings (content data/hideouts.ts: a layer the plan never lays out). */
+function buildingsOf(zoneId: ZoneId, planBuildings: ReturnType<typeof zonePlan>['buildings']): BuildingSpec[] {
+  return [...planBuildings, ...hideoutsFor(zoneId).map(hideoutBuilding)].map((b) => ({ id: b.id, kind: b.kind, x: b.x, z: b.z, yaw: b.yaw, w: b.w, d: b.d, floors: b.floors, roof: b.roof, seed: b.seed }));
 }
 
 /** Content's placed pockets → render `InteriorSpec` (local frames kept; league ids and flags stay client-side). Pure. */
