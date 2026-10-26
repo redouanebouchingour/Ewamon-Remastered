@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Group, LinearFilter, LinearMipmapLinearFilter, Mesh, MeshStandardNodeMaterial, PlaneGeometry, RepeatWrapping, SRGBColorSpace, NoColorSpace, Texture } from 'three/webgpu';
+import { Group, LinearFilter, LinearMipmapLinearFilter, Mesh, MeshPhysicalNodeMaterial, MeshStandardNodeMaterial, PlaneGeometry, RepeatWrapping, SRGBColorSpace, NoColorSpace, Texture } from 'three/webgpu';
 import { LAYERS } from '../src/descriptors.js';
 import { MaterialBudget, countMaterials, createMaterialLibraryWith, paintSurfaceColor, refreshCachedTextureBindings, type MaterialLibrary } from '../src/materials/library.js';
 import type { MaterialsManifest } from '../src/materials/manifest.js';
-import { structureKey, surfaceStructure } from '../src/materials/graph.js';
+import { COAT_GLOSS, structureKey, surfaceStructure } from '../src/materials/graph.js';
 import { SURFACE_IDS, SURFACES } from '../src/materials/surfaces.js';
 
 /** A mock texture source: every url gets a fresh three `Texture` whose `dispose` is spied. */
@@ -63,6 +63,22 @@ describe('MaterialLibrary: shared instances and the surface table', () => {
     expect(keys.size).toBeLessThanOrEqual(8);
     expect(keys.has('card')).toBe(true);
     expect(keys.has('water')).toBe(true);
+    // no clearcoat lobe (graph.ts deviation 7): the physical structures are gone, the coat folds into the roughness
+    expect([...keys].some((k) => k.startsWith('physical'))).toBe(false);
+  });
+
+  it('renders the clearcoat surfaces on the standard graph (deviation 7); water stays physical', async () => {
+    const { source } = mockSource();
+    const lib = createMaterialLibraryWith({ baseUrl: '/materials/', source, fetchJson: async () => manifestFor([]) });
+    await lib.ready;
+    for (const id of ['cobble', 'slate_roof', 'obsidian', 'wet_rock', 'wet_flagstone'] as const) {
+      const m = lib.get(id);
+      expect(m).toBeInstanceOf(MeshStandardNodeMaterial);
+      expect(m).not.toBeInstanceOf(MeshPhysicalNodeMaterial);
+    }
+    expect(lib.get('water_pond')).toBeInstanceOf(MeshPhysicalNodeMaterial);
+    expect(COAT_GLOSS).toBeGreaterThan(1);
+    lib.disposeAll();
   });
 });
 

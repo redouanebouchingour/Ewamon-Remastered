@@ -68,7 +68,7 @@ export function registerHaggleRoutes(app: FastifyInstance, deps: RestDeps, on: b
       return { next: d.next, granted: d.granted, feeling: body.kind === 'markup' ? await feelingOf(repos, tx, id, zone.id, keeper.id) : feeling };
     });
     // the book moves only once the transaction committed
-    book.set(id, keeper.id, res.next);
+    book.set(id, keeper.id, res.next, t);
     return out(deps, HaggleRes, { deal: book.dealView(id, zone.id, t), granted: res.granted, keeper: book.keeperView(id, keeper, res.feeling, t) });
   });
 }

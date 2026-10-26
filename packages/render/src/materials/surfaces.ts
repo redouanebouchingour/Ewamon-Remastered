@@ -20,7 +20,7 @@ export type BiomeName = Biome;
  * verbatim `SurfaceDef` (kept verbatim for the bake's JSON contract, §40.3.1).
  */
 export interface SurfaceExtras {
-  /** `MeshPhysicalNodeMaterial.transmission` for class 'water' (§10.2.2: water_pond 0.6, sea_water 0.7). */
+  /** Class 'water': how much of the backdrop shows through (§10.2.2's transmission: water_pond 0.6, sea_water 0.7; `waterBackdrop.ts`). */
   readonly transmission?: number;
   /** `unmade_stone`: always renders at harvest level 2 (the Rift is the origin of the flat look). */
   readonly alwaysHarvested?: boolean;

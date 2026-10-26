@@ -10,7 +10,7 @@ import type { HarvestLevel, LightSource } from '../descriptors.js';
 import type { PunctualHandle } from '../lighting/rig.js';
 import type { SurfaceId } from '../materials/surfaces.js';
 import type { FrameHook, HostContext } from '../renderer.js';
-import { createSliceStats, nextFrame, type SliceStats } from '../steps.js';
+import { createSliceStats, nextFrame, nextSlice, type SliceStats } from '../steps.js';
 import { loadZone, zoneSurfaces, type ZoneHandleImpl } from './builder.js';
 
 /**
@@ -19,6 +19,11 @@ import { loadZone, zoneSurfaces, type ZoneHandleImpl } from './builder.js';
  * take 15–35 ms on the dev iGPU, inside the main thread's idle time of a GPU-bound frame.
  */
 export const PREPARE_SLICE_MS = 8;
+/**
+ * An eager prepare (a zone prepared during the renderer's boot compile, no game frames to protect): slices of this
+ * many ms, each followed by a task (`nextSlice`), not a frame — the compile's own continuations still run in between.
+ */
+export const PREPARE_EAGER_SLICE_MS = 32;
 import { gradeOf, lightingPaletteOf } from './palettes.js';
 
 /** The zone palette's sky / fog / grade, and its grass re-tone (M3 review fixes: `Palette.grassTone`). */
@@ -87,9 +92,10 @@ export class ZoneSystem implements FrameHook {
    * Handover II: the build runs in `PREPARE_SLICE_MS` slices between frames (`opts.sliced`, default on), so preparing
    * never holds a frame for the whole build; `opts.cancelled` stops it between slices (the promise rejects with
    * `STEPS_CANCELLED`); once `opts.urgent` returns true the rest of the build runs without waits. `opts.stats` receives
-   * the slice counts.
+   * the slice counts. `opts.eager` (load time, 2026-10-25): `PREPARE_EAGER_SLICE_MS` slices, each followed by a task
+   * instead of a frame (the boot compile's prepare).
    */
-  async prepare(spec: ZoneSpec, opts: { readonly sliced?: boolean; readonly cancelled?: () => boolean; readonly urgent?: () => boolean; readonly stats?: SliceStats } = {}): Promise<PreparedZone> {
+  async prepare(spec: ZoneSpec, opts: { readonly sliced?: boolean; readonly eager?: boolean; readonly cancelled?: () => boolean; readonly urgent?: () => boolean; readonly stats?: SliceStats } = {}): Promise<PreparedZone> {
     const ctx = this.ctx;
     const lights = deferredLights(ctx.lighting);
     let openHero!: () => void;
@@ -109,7 +115,11 @@ export class ZoneSystem implements FrameHook {
         nextKeep: () => { const cur = this.zone(); return cur !== null && cur !== handle ? [...new Set([...this.keep(), ...cur.surfaces])] : this.keep(); },
         releaseGpu: (root) => releaseZoneAttributes(ctx, root),
         heroGate,
-        ...(opts.sliced !== false ? { sliceMs: PREPARE_SLICE_MS, sliceWait: () => nextFrame(), sliceStats: opts.stats ?? createSliceStats() } : {}),
+        ...(opts.sliced !== false
+          ? opts.eager === true
+            ? { sliceMs: PREPARE_EAGER_SLICE_MS, sliceWait: nextSlice, sliceStats: opts.stats ?? createSliceStats() }
+            : { sliceMs: PREPARE_SLICE_MS, sliceWait: () => nextFrame(), sliceStats: opts.stats ?? createSliceStats() }
+          : {}),
         ...(opts.cancelled ? { cancelled: opts.cancelled } : {}),
         ...(opts.urgent ? { urgent: opts.urgent } : {}),
       }, this.clock ?? undefined);

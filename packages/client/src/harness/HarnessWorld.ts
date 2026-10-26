@@ -190,6 +190,8 @@ export class HarnessWorld {
 
   /** E3: `?bg=1` — the zone's background compile on (the client's default; the shot / budget harness measures fully compiled zones). */
   backgroundCompile = false;
+  /** `?bootprep=1` — prepare the zone during the boot compile, as World3D does (load-time A/B, 2026-10-25). */
+  bootPrepare = false;
 
   async boot(zoneId: ZoneId, extraSpecies: readonly string[]): Promise<void> {
     const t0 = performance.now();
@@ -204,6 +206,13 @@ export class HarnessWorld {
       onCompileProgress: (p) => {
         if (p.done) this.log(`compile ${p.phase}${p.zone ? ` ${p.zone}` : ''}: ${p.total} objects in ${p.ms === null ? '?' : Math.round(p.ms)} ms`);
       },
+      ...(this.bootPrepare ? {
+        // the spec SceneDirector.doLoad builds below (focus: the spawn, doLoad's fallback), so loadZone adopts it
+        beforeWarmUp: (rr: Renderer) => {
+          const z = zoneDef(zoneId);
+          void rr.prepareZone?.(withNeighbours(zoneSpecFor(z, harvestStateFor(zoneId, this.flags)), z), { focus: { x: z.spawn.x, z: z.spawn.z }, eager: true });
+        },
+      } : {}),
     });
     this.renderer = r;
     this.log(`renderer ready in ${Math.round(performance.now() - t0)} ms (backend ${r.backend}, adapter ${r.caps.adapter ?? '?'}, timestamp-query ${r.caps.timestampQuery})`);

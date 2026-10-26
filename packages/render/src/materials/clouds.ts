@@ -3,9 +3,11 @@
  * darkened under a slow noise field that drifts with the wind, so shadows of clouds sweep over the sculpted ground and
  * the cliffs and terraces read by their light. One shared uniform (`SharedUniforms.clouds`: strength, coverage,
  * scale, drift); strength 0 leaves the colour exactly as it was (night, the harvested look, an interior).
+ * 2026-10-25 (performance): the two noise octaves run only while the strength is above 0 (`If` on the uniform), so a
+ * night, an overcast sky or an interior pays nothing for them.
  */
 import type { Node, UniformNode, Vector4 } from 'three/webgpu';
-import { float, mx_noise_float, oneMinus, positionWorld, smoothstep, vec2, vec3 } from 'three/tsl';
+import { Fn, If, float, mx_noise_float, oneMinus, positionWorld, smoothstep, vec2, vec3 } from 'three/tsl';
 import type { SharedUniforms } from './harvest.js';
 
 /** Cloud field defaults: a 1 / scale m feature size, the drift speed (m/s) along the wind. */
@@ -22,12 +24,18 @@ export function cloudShade(u: SharedUniforms, h: Node<'float'>): Node<'float'> {
   const cv = c as unknown as Node<'vec4'>;
   const drift = vec2(u.windDir.x, u.windDir.y).mul(u.windTime.mul(cv.w));
   const p = positionWorld.xz.sub(drift).mul(cv.z);
-  const n = mx_noise_float(vec3(p, u.windTime.mul(0.004))).mul(0.65)
-    .add(mx_noise_float(vec3(p.mul(2.7), u.windTime.mul(0.009).add(5.1))).mul(0.35))
-    .mul(0.5).add(0.5);
-  // coverage 0.35 (the clear default) shades about a third of the ground
-  const t = oneMinus(cv.y);
-  const cover = smoothstep(t.sub(CLOUDS.edge), t.add(CLOUDS.edge), n);
+  const cover = Fn(() => {
+    const v = float(0).toVar();
+    If(cv.x.greaterThan(0), () => {
+      const n = mx_noise_float(vec3(p, u.windTime.mul(0.004))).mul(0.65)
+        .add(mx_noise_float(vec3(p.mul(2.7), u.windTime.mul(0.009).add(5.1))).mul(0.35))
+        .mul(0.5).add(0.5);
+      // coverage 0.35 (the clear default) shades about a third of the ground
+      const t = oneMinus(cv.y);
+      v.assign(smoothstep(t.sub(CLOUDS.edge), t.add(CLOUDS.edge), n));
+    });
+    return v;
+  })();
   return float(1).sub(cv.x.mul(cover).mul(oneMinus(h)));
 }
 

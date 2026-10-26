@@ -553,43 +553,165 @@ export interface SplatContext {
 
 export function createSplatContext(plan: ZoneLayoutPlan, buildings: readonly BuildingSpec[], seed: number, interiors?: readonly InteriorSpec[]): SplatContext {
   const field = plan.field;
-  const wet = field === undefined || !plan.water.some((w) => !roundBody(w)) ? null : (x: number, z: number, d: number): boolean => {
-    for (const [ox, oz] of [[0, 0], [d, 0], [-d, 0], [0, d], [0, -d]] as const) {
-      const col = Math.round((x + ox - field.originX) / field.step); const row = Math.round((z + oz - field.originZ) / field.step);
-      if (col >= 0 && row >= 0 && col < field.res && row < field.res && field.water[row * field.res + col] === 1) return true;
-    }
-    return false;
+  // the sample and its four `d` m neighbours (in that order), without allocating the offset list per call
+  const wetAt = (f: HeightfieldData, x: number, z: number, ox: number, oz: number): boolean => {
+    const col = Math.round((x + ox - f.originX) / f.step); const row = Math.round((z + oz - f.originZ) / f.step);
+    return col >= 0 && row >= 0 && col < f.res && row < f.res && f.water[row * f.res + col] === 1;
   };
+  const wet = field === undefined || !plan.water.some((w) => !roundBody(w)) ? null : (x: number, z: number, d: number): boolean =>
+    wetAt(field, x, z, 0, 0) || wetAt(field, x, z, d, 0) || wetAt(field, x, z, -d, 0) || wetAt(field, x, z, 0, d) || wetAt(field, x, z, 0, -d);
   return { plan, roads: [...plan.roads, ...plan.doorPaths], buildings, salt: seed & 0xffff, pockets: pocketRects(interiors), wet };
+}
+
+/**
+ * `splatAt`'s per-context index, built lazily on the first call (a context is immutable): the yaw cos / sin of every
+ * pocket, building and grass patch, and a uniform grid whose cells list, in the original order, the road segments
+ * that can hold the nearest road / path at some point of the cell and the buildings that can come within 3 m of it.
+ *
+ * Exactness: the distance to a segment, to a road's polyline and to a footprint is 1-Lipschitz, so over a cell with
+ * half-diagonal `h` each value lies within `h` of its value at the centre. A segment whose centre value exceeds the
+ * best centre value of its group (roads or paths) by more than `2h` can never be the minimum anywhere in the cell, and
+ * a building whose centre distance exceeds `3 + h` can never pass `fd < 3`. Both tests carry a 1e-3 m slack (far above
+ * float error), so the skipped terms provably never decide a min / max; the terms kept run the same float expressions
+ * in the same order, and the result is bit-identical to the full loops. Points outside the grid take the full loops.
+ */
+interface SplatCell { readonly segs: Int32Array; readonly blds: Int32Array }
+interface SplatIndex {
+  readonly x0: number; readonly z0: number; readonly n: number;
+  readonly cells: (SplatCell | undefined)[];
+  /** flat road segments (road order, then point order) */
+  readonly ax: Float64Array; readonly az: Float64Array; readonly bx: Float64Array; readonly bz: Float64Array;
+  readonly segRoad: Int32Array;
+  /** per road: half width (`width / 2`) and whether it is a path */
+  readonly roadHalfW: Float64Array; readonly roadPath: Uint8Array;
+  /** per building / pocket / patch: cos and sin of the yaw */
+  readonly bCos: Float64Array; readonly bSin: Float64Array;
+  readonly pCos: Float64Array; readonly pSin: Float64Array;
+  readonly eCos: Float64Array; readonly eSin: Float64Array;
+}
+
+const SPLAT_CELL = 4;
+const SPLAT_SLACK = 1e-3;
+/** The grid reaches this far past the field half (skirt samples of a neighbour's splat land a little outside). */
+const SPLAT_GRID_PAD = 72;
+const splatIndexes = new WeakMap<SplatContext, SplatIndex>();
+
+function splatIndexOf(c: SplatContext): SplatIndex {
+  let ix = splatIndexes.get(c);
+  if (ix !== undefined) return ix;
+  let segCount = 0;
+  for (const r of c.roads) segCount += Math.max(0, r.points.length - 1);
+  const ax = new Float64Array(segCount); const az = new Float64Array(segCount); const bx = new Float64Array(segCount); const bz = new Float64Array(segCount);
+  const segRoad = new Int32Array(segCount);
+  const roadHalfW = new Float64Array(c.roads.length); const roadPath = new Uint8Array(c.roads.length);
+  let k = 0;
+  c.roads.forEach((r, ri) => {
+    roadHalfW[ri] = r.width / 2; roadPath[ri] = r.kind === 'path' ? 1 : 0;
+    for (let i = 0; i + 1 < r.points.length; i++) {
+      const a = r.points[i]!; const b = r.points[i + 1]!;
+      ax[k] = a[0]; az[k] = a[1]; bx[k] = b[0]; bz[k] = b[1]; segRoad[k] = ri; k++;
+    }
+  });
+  const yaws = (list: readonly { readonly yaw: number }[]): [Float64Array, Float64Array] =>
+    [Float64Array.from(list, (o) => Math.cos(o.yaw)), Float64Array.from(list, (o) => Math.sin(o.yaw))];
+  const [bCos, bSin] = yaws(c.buildings); const [pCos, pSin] = yaws(c.pockets); const [eCos, eSin] = yaws(c.plan.grassPatches);
+  const ext = c.plan.half + SPLAT_GRID_PAD;
+  const n = Math.ceil((2 * ext) / SPLAT_CELL);
+  ix = { x0: -ext, z0: -ext, n, cells: new Array<SplatCell | undefined>(n * n), ax, az, bx, bz, segRoad, roadHalfW, roadPath, bCos, bSin, pCos, pSin, eCos, eSin };
+  splatIndexes.set(c, ix);
+  return ix;
+}
+
+function splatCell(c: SplatContext, ix: SplatIndex, col: number, row: number): SplatCell {
+  const key = row * ix.n + col;
+  const hit = ix.cells[key];
+  if (hit !== undefined) return hit;
+  const cx = ix.x0 + (col + 0.5) * SPLAT_CELL; const cz = ix.z0 + (row + 0.5) * SPLAT_CELL;
+  const h = SPLAT_CELL * Math.SQRT1_2 + SPLAT_SLACK;          // half-diagonal, padded for points floored into the cell
+  const m = ix.segRoad.length;
+  const v = new Float64Array(m);
+  let bestRoad = Infinity; let bestPath = Infinity;
+  for (let s = 0; s < m; s++) {
+    const r = ix.segRoad[s]!;
+    const d = distToSegment(cx, cz, ix.ax[s]!, ix.az[s]!, ix.bx[s]!, ix.bz[s]!) - ix.roadHalfW[r]!;
+    v[s] = d;
+    if (ix.roadPath[r] === 1) { if (d < bestPath) bestPath = d; } else if (d < bestRoad) bestRoad = d;
+  }
+  const segs: number[] = [];
+  for (let s = 0; s < m; s++) {
+    const best = ix.roadPath[ix.segRoad[s]!] === 1 ? bestPath : bestRoad;
+    // keep unless provably above the group's minimum everywhere in the cell (NaN fails the skip test: kept)
+    if (!(v[s]! - h > best + h + SPLAT_SLACK)) segs.push(s);
+  }
+  const blds: number[] = [];
+  c.buildings.forEach((b, bi) => { if (!(footprintDistance(b, cx, cz) - h >= 3 + SPLAT_SLACK)) blds.push(bi); });
+  const cell = { segs: Int32Array.from(segs), blds: Int32Array.from(blds) };
+  ix.cells[key] = cell;
+  return cell;
 }
 
 /**
  * Plaza: inside the paved circle (crisp edge; a curb is built on it). Path: roads with a noisy 0.25 m edge.
  * Detail (dirt / fringe): a 0.8 m fringe along roads, aprons round buildings, pond banks, noise patches, and the
- * margin's worn ground. Ground everywhere else.
+ * margin's worn ground. Ground everywhere else. Bit-identical to the plain loops over every road, building and
+ * pocket (`splatIndexOf` says why); the test `splat-index.test.ts` holds it to a frozen copy of them.
  */
 export function splatAt(c: SplatContext, x: number, z: number, out: SplatFields): SplatFields {
   const plan = c.plan;
+  const ix = splatIndexOf(c);
   const n1 = valueNoise(x * 0.9, z * 0.9, c.salt);
   const n2 = valueNoise(x * 0.23, z * 0.23, c.salt + 7);
   out.plaza = plan.plaza ? plan.plaza.r - Math.hypot(x - plan.plaza.x, z - plan.plaza.z) : -1e3;
   // Phase A: pocket floors (+ walls) are paved with a crisp edge (the hall's themed floor and the arena sit on it)
-  for (const p of c.pockets) {
-    const [lx, lz] = toLocal(p, x, z);
+  const pockets = c.pockets;
+  for (let i = 0; i < pockets.length; i++) {
+    const p = pockets[i]!;
+    const dx = x - p.x; const dz = z - p.z;                                // toLocal, with the yaw's cos / sin precomputed
+    const cs = ix.pCos[i]!; const sn = ix.pSin[i]!;
+    const lx = cs * dx - sn * dz; const lz = sn * dx + cs * dz;
     const inside = Math.min(p.hw - Math.abs(lx), p.hd - Math.abs(lz));
     if (inside > out.plaza) out.plaza = inside;
   }
   let rd = Infinity; let pathRd = Infinity;
-  for (const r of c.roads) {
-    const d = distToPolyline(r.points, x, z) - r.width / 2;
-    if (r.kind === 'path') { if (d < pathRd) pathRd = d; } else if (d < rd) rd = d;
+  const col = Math.floor((x - ix.x0) / SPLAT_CELL); const row = Math.floor((z - ix.z0) / SPLAT_CELL);
+  const cell = col >= 0 && row >= 0 && col < ix.n && row < ix.n ? splatCell(c, ix, col, row) : null;
+  if (cell === null) {
+    for (const r of c.roads) {
+      const d = distToPolyline(r.points, x, z) - r.width / 2;
+      if (r.kind === 'path') { if (d < pathRd) pathRd = d; } else if (d < rd) rd = d;
+    }
+  } else {
+    const segs = cell.segs;
+    let cur = -1; let best = Infinity;
+    for (let k = 0; k <= segs.length; k++) {
+      const s = k < segs.length ? segs[k]! : -1;
+      const r = s < 0 ? -1 : ix.segRoad[s]!;
+      if (r !== cur) {
+        if (cur >= 0) {                                                    // the road's distToPolyline over its kept segments
+          const d = best - ix.roadHalfW[cur]!;
+          if (ix.roadPath[cur] === 1) { if (d < pathRd) pathRd = d; } else if (d < rd) rd = d;
+        }
+        cur = r; best = Infinity;
+      }
+      if (s < 0) break;
+      const d = distToSegment(x, z, ix.ax[s]!, ix.az[s]!, ix.bx[s]!, ix.bz[s]!);
+      if (d < best) best = d;
+    }
   }
   out.path = Math.max(-rd + n1 * 0.22, -pathRd + n1 * 0.15 - 0.05);
   const n3 = valueNoise(x * 0.35, z * 0.35, c.salt + 13);
   let detail = -rd + 0.02 + n1 * 0.22 + n3 * 0.6;                          // road fringe: broken, irregular
   detail = Math.max(detail, -pathRd + 0.35 + n1 * 0.2);
-  for (const b of c.buildings) {
-    const fd = footprintDistance(b, x, z);
+  const buildings = c.buildings;
+  const nb = cell === null ? buildings.length : cell.blds.length;
+  for (let k = 0; k < nb; k++) {
+    const bi = cell === null ? k : cell.blds[k]!;
+    const b = buildings[bi]!;
+    const dx = x - b.x; const dz = z - b.z;                                // footprintDistance, cos / sin precomputed
+    const cs = ix.bCos[bi]!; const sn = ix.bSin[bi]!;
+    const lx = cs * dx - sn * dz; const lz = sn * dx + cs * dz;
+    const qx = Math.max(0, Math.abs(lx) - b.w / 2); const qz = Math.max(0, Math.abs(lz) - b.d / 2);
+    const fd = Math.sqrt(qx * qx + qz * qz);
     if (fd < 3) detail = Math.max(detail, 0.3 - fd + n1 * 0.25 + n3 * 0.45);
   }
   for (const w of plan.water) {
@@ -599,7 +721,15 @@ export function splatAt(c: SplatContext, x: number, z: number, out: SplatFields)
   }
   // rivers, lakes and seas: a broken shore band from the water mask (wet within 1 m / 2 m)
   if (c.wet !== null && c.wet(x, z, 2.2)) detail = Math.max(detail, (c.wet(x, z, 1.1) ? 0.55 : 0.12) + n1 * 0.35 + n3 * 0.3);
-  for (const e of plan.grassPatches) if (inEllipse(e, x, z, 1.2)) detail = Math.max(detail, -0.2);   // keep patches green
+  const patches = plan.grassPatches;
+  for (let i = 0; i < patches.length; i++) {                               // inEllipse(e, x, z, 1.2), cos / sin precomputed
+    const e = patches[i]!;
+    const dx = x - e.x; const dz = z - e.z;
+    const cs = ix.eCos[i]!; const sn = ix.eSin[i]!;
+    const lx = cs * dx - sn * dz; const lz = sn * dx + cs * dz;
+    const rx = e.rx + 1.2; const rz = e.rz + 1.2;
+    if ((lx * lx) / (rx * rx) + (lz * lz) / (rz * rz) <= 1) detail = Math.max(detail, -0.2);   // keep patches green
+  }
   detail = Math.max(detail, (n2 - 0.86) * 3 + n1 * 0.2);                    // rare worn patches
   const edge = Math.max(Math.abs(x), Math.abs(z)) - (plan.half - FIELD_MARGIN);
   if (edge > 2) detail = Math.max(detail, (edge - 6) * 0.25 + n2 * 0.8);   // the margin's rougher ground

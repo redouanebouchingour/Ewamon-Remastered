@@ -77,8 +77,11 @@ export default defineConfig({
     // EWA_NO_HMR=1 (the second isolated dev pair, scripts/dev-alt.mjs `client 2`): no file watching and no HMR, so a
     // live check is not reloaded by edits other sessions make in the same checkout (restart it to pick up changes)
     ...(process.env['EWA_NO_HMR'] === '1' ? { hmr: false, watch: null } : {}),
-    // EWA_WATCH_POLL=1 (docker-compose.yml): poll the bind-mounted sources, file events may not cross the mount
-    ...(process.env['EWA_WATCH_POLL'] === '1' ? { watch: { usePolling: true, interval: 300 } } : {}),
+    // EWA_WATCH_POLL=1 (docker-compose.yml): poll the bind-mounted sources, file events may not cross the mount. Every
+    // poll stats every watched file across the Docker Desktop mount (~650 sources + ~2,600 public assets): at 300 ms this
+    // watcher alone held ~40 % of a core while idle. Sources once a second; public/ is not polled (its files are served
+    // from disk as they are, so an edited asset needs a page reload and a new one `docker compose restart client`).
+    ...(process.env['EWA_WATCH_POLL'] === '1' ? { watch: { usePolling: true, interval: 1000, ignored: ['**/public/**'] } } : {}),
     proxy: {
       '/api': { target: API_TARGET, changeOrigin: true, rewrite: (p) => p.replace(/^\/api/, '') },
       '/colyseus': { target: WS_TARGET, ws: true, changeOrigin: true, rewrite: (p) => p.replace(/^\/colyseus/, '') },

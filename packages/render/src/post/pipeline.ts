@@ -77,14 +77,15 @@ export const ALL_PASSES_ON: PassSwitches = Object.freeze({
  * - GTAO iff `passes.gtao`; anti-aliasing: none iff `!passes.traa`, TRAA iff `f.taa && webgpu`, else SMAA;
  * - bloom iff `passes.bloom && f.bloom`; DOF iff `passes.dof && f.dof`; chroma iff `f.chroma`;
  * - ACES / grade / vignette iff `passes.grade`; grain iff `passes.grade && f.grain`.
- * `quality` (addition, `quality.ts`) can drop GTAO, DOF and bloom and lowers the GTAO samples; `high` is the SPEC graph.
+ * `quality` (addition, `quality.ts`) can drop GTAO, DOF and bloom and sets the GTAO samples and resolution; `high` is the
+ * SPEC graph with GTAO at 8 spp and quarter resolution (IMPLEMENTATION-NOTES "Cheaper shadows and reflections").
  */
 export function planPostGraph(f: EffectsFlags, backend: Backend, passes: PassSwitches = ALL_PASSES_ON, quality: GraphicsQuality = 'high'): PostStage[] {
   const out: PostStage[] = [{ id: 'scene', params: { targets: 4, type: 'HalfFloat', depth: true } }];
   const p = POST_PARAMS;
   const q = QUALITY_PROFILES[quality];
   const useTraa = passes.traa && f.taa && backend === 'webgpu';
-  if (passes.gtao && q.gtao) out.push({ id: 'gtao', params: { ...p.gtao, samples: q.gtaoSamples, temporal: useTraa, maskChannel: 'x' } });
+  if (passes.gtao && q.gtao) out.push({ id: 'gtao', params: { ...p.gtao, samples: q.gtaoSamples, resolutionScale: q.gtaoScale, temporal: useTraa, maskChannel: 'x' } });
   if (passes.traa) out.push(useTraa ? { id: 'traa', params: { msaa: false } } : { id: 'smaa', params: {} });
   if (passes.bloom && f.bloom && q.bloom) out.push({ id: 'bloom', params: { ...p.bloom } });
   if (passes.dof && f.dof && q.dof) out.push({ id: 'dof', params: { ...p.dof, maskChannel: 'y' } });
@@ -212,13 +213,13 @@ export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: 
   const hazeOff = vec2(sin(hq.y.add(ht.mul(2.3)).add(sin(hq.x.mul(0.6).add(ht.mul(0.9))))), cos(hq.x.mul(0.8).add(ht.mul(1.6))))
     .mul(u.haze).mul(oneMinus(maskT.y));
   const hazed = beauty.sample(screenUV.add(hazeOff)) as unknown as Node<'vec4'>;
-  // GTAO — half resolution, 16 spp; sprites/decals (mask.x = 1) keep their own contact gradient.
+  // GTAO — the preset's resolution and samples (§10.8.3: half, 16 spp); sprites/decals (mask.x = 1) keep their own contact gradient.
   let lit: Node<'vec4'> = hazed;
   const gtao = plan.find((s) => s.id === 'gtao');
   if (gtao) {
     const g = POST_PARAMS.gtao;
     const aoNode = ao(depthT, normalT, camera);
-    aoNode.resolutionScale = g.resolutionScale;
+    aoNode.resolutionScale = typeof gtao.params.resolutionScale === 'number' ? gtao.params.resolutionScale : g.resolutionScale;
     aoNode.samples.value = typeof gtao.params.samples === 'number' ? gtao.params.samples : g.samples;
     aoNode.radius.value = g.radius;
     aoNode.thickness.value = g.thickness;

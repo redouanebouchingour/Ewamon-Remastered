@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { PerspectiveCamera, Vector3 } from 'three/webgpu';
 import { ALL_EFFECTS } from '../src/descriptors.js';
+import { occlusionStrength } from '../src/materials/occlusion.js';
 import { DioramaRig, FOV_V, FP_EYE_FORWARD_M, FP_EYE_HEIGHT_M, FP_FOV_V, FP_NEAR_M } from '../src/camera/rig.js';
 
 function makeRig() {
@@ -50,5 +51,38 @@ describe('first-person view', () => {
     r.pushIn({ x: 10, z: -4 }, 0);
     r.update(16);
     expect(cam.fov).toBe(FOV_V);
+  });
+
+  it('turns the occluder fade off in the same update that poses the eye, and back on when it leaves', () => {
+    const { r } = makeRig();
+    const strength = () => occlusionStrength(r.shotBlend, r.firstPersonActive);
+    expect(r.firstPersonActive).toBe(false);
+    expect(strength()).toBe(1);   // the diorama: unchanged
+    r.setFirstPerson({ yaw: 0, pitch: 0 });
+    expect(strength()).toBe(1);   // not posed yet: the renderer reads it after the camera update
+    r.update(16);
+    expect(r.firstPersonActive).toBe(true);
+    expect(strength()).toBe(0);
+    r.update(16);
+    expect(strength()).toBe(0);
+    r.setFirstPerson(null);
+    r.update(16);
+    expect(r.firstPersonActive).toBe(false);
+    expect(strength()).toBe(1);
+    // a battle shot ignores first person: the fade follows the shot blend as before
+    r.setFirstPerson({ yaw: 0, pitch: 0 });
+    r.pushIn({ x: 10, z: -4 }, 0);
+    r.update(16);
+    expect(r.firstPersonActive).toBe(false);
+    expect(strength()).toBeCloseTo(1 - r.shotBlend, 9);
+  });
+});
+
+describe('occlusionStrength', () => {
+  it('is 1 − shotBlend in the diorama and 0 in first person', () => {
+    expect(occlusionStrength(0, false)).toBe(1);
+    expect(occlusionStrength(0.25, false)).toBe(0.75);
+    expect(occlusionStrength(1, false)).toBe(0);
+    expect(occlusionStrength(0, true)).toBe(0);
   });
 });

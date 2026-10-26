@@ -96,6 +96,8 @@ describe('M2-spawn-noon-9 occluder fade', () => {
     setOcclusion(o, new Vector3(0, 20, 16), new Vector3(0, 0, 0), Number.NaN);
     expect(o.strength.value).toBe(0);
     expect(OCCLUSION.keep).toBeLessThanOrEqual(0.2);                        // the audit's "≤ 20 % coverage"
+    expect(OCCLUSION.fgSideM).toBeGreaterThan(OCCLUSION.innerM);            // the foreground fade is bounded sideways and below
+    expect(OCCLUSION.fgBelowM).toBeGreaterThan(0);
   });
 });
 

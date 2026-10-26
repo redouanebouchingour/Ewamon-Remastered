@@ -236,7 +236,6 @@ function warmupObjects(ctx: HostContext): Object3D[] {
   character.position.set(-1, 0, -2);
   const housing = p.stage.warmupHousing();                     // the beacon housing material
   housing.position.set(2, 0, -2);
-  p.stage.armWarmupShadows();                                  // the beacons' spot-shadow pass programs (battles, evolutions)
   const aura = p.stage.aura.warmupObjects();                   // the battle-form aura's flames + floor sigil materials
   aura.forEach((o, i) => o.position.set(3 + i, 0.5, -2));
   const world = p.worldFx.warmupObjects();                   // the world effects' particle + footprint materials

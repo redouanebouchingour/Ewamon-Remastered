@@ -4,11 +4,12 @@
  * `dress(at, terrain, participants)` raises an arena out of the ground at (x, z) — no screen transition, no scene
  * unload: a 7 m plinth ring in the biome's stone (library surface, metre UVs, a stone curb), eight lathed rope posts
  * with sagging ropes, two lathed beacon pylons whose emissive housings take the zone's accent type colour and carry
- * the two RESERVED shadow-casting spot lights, and ≤ 6 spectators (procedural characters from the actor pool)
+ * the two RESERVED spot lights, and ≤ 6 spectators (procedural characters from the actor pool)
  * on the far half. The arena root is a child of the scene, never of the zone root, so the zone's light list and
  * graph are identical before and during a battle (Pillar 7 test, §50.4.6). The two beacon lights exist from
- * `createRenderer` on (warm-up light set, C13: a light appearing mid-battle would recompile every lit program);
- * undressed they sit at intensity 0 with `shadow.autoUpdate = false` (no shadow-map cost).
+ * `createRenderer` on (warm-up light set, C13: a light appearing mid-battle would recompile every lit program) and sit
+ * at intensity 0 while undressed. Since 2026-10-25 they cast no shadow map: they are local lights in the layout's
+ * uniform loop (`lighting/layout.ts`), so they add no code to any lit program.
  *
  * Battlers are `CreatureBillboard`s from the shared `SpritePool`: side 0 (the player's) on the near half showing its
  * back sprite, side 1 on the far half showing its front, 5.5 m apart along the heading's view axis (§10.7.4
@@ -49,8 +50,7 @@ export const STAGE = Object.freeze({
   curbInner: 3.5, curbOuter: 3.85, curbHeight: 0.16,
   postRadius: 4.35, postCount: 8, postHeight: 0.85, ropeSag: 0.14, ropeRadius: 0.022, ropeHeights: [0.42, 0.74] as const,
   beaconRadius: 4.7, beaconHeight: 2.3, beaconAzimuthDeg: 40, beaconWhiteMix: 0.55,
-  beaconIntensity: 90, beaconRange: 18, beaconAngle: 0.8, beaconPenumbra: 0.6, beaconDecay: 2, beaconShadowMap: 512,
-  beaconBias: -0.0006, beaconNormalBias: 0.03,
+  beaconIntensity: 90, beaconRange: 18, beaconAngle: 0.8, beaconPenumbra: 0.6, beaconDecay: 2,
   housingEmissive: 3.2,
   pulseMs: 260, pulseGain: 0.9,
   spectatorRadius: 5.9, spectatorAnglesDeg: [28, -28, 58, -58, 88, -88] as const,
@@ -78,8 +78,6 @@ export const STAGE = Object.freeze({
    * (back by 2.3 m), small props inside 1.6 m, merged static props within 1.9 m of a point 1 m toward the camera.
    */
   evoCoverInnerM: 1.3, evoCoverOuterM: 2.3, evoPropHideM: 1.6, evoCutM: 1.9,
-  /** Warm-up: the beacons render their shadow maps for the first N frames (the boot frame and the warm-group frame), from here. */
-  warmShadowFrames: 2, warmShadowHeightM: 4, warmShadowBackM: 4,
   /**
    * Phase A halls (`dress(…, hall)`): the trainers stand this far from the centre (camera/battle.ts `trainerSlot`:
    * `TRAINER_SIDE_DEG` off the battle axis since the M3 review R-all-1; content `ARENA_SLOT_M`); everything keeps `hallMarginM`
@@ -347,8 +345,6 @@ export class Stage implements BattleStage {
   private beaconFadeMs: number = STAGE.dressMs;
   private pulse = 0;
   private evo: EvolutionSequence | null = null;
-  /** Frames the beacons still render their shadow maps for the step-8 warm-up (`armWarmupShadows`). */
-  private warmShadowFrames = 0;
   private disposed = false;
 
   constructor(private readonly d: StageDeps) {
@@ -382,11 +378,7 @@ export class Stage implements BattleStage {
     const lights: SpotLight[] = []; const targets: Object3D[] = [];
     for (let i = 0; i < 2; i++) {
       const L = new SpotLight(0xffffff, 0, STAGE.beaconRange, STAGE.beaconAngle, STAGE.beaconPenumbra, STAGE.beaconDecay);
-      L.castShadow = true;
-      L.shadow.mapSize.set(STAGE.beaconShadowMap, STAGE.beaconShadowMap);
-      L.shadow.bias = STAGE.beaconBias;
-      L.shadow.normalBias = STAGE.beaconNormalBias;
-      L.shadow.autoUpdate = false;
+      L.castShadow = false;   // a local light (the layout's loop): no per-light code in the lit programs
       L.name = `ewa:arena-beacon-light:${i}`;
       L.userData = { ewaLightId: `arena_beacon_${i}`, ewaLightKind: 'beacon', ewaReserved: true };
       const t = new Object3D();
@@ -441,7 +433,6 @@ export class Stage implements BattleStage {
       const p = this.main.pylons.children[i * 3]!.position;
       L.position.set(c.x + p.x, c.y + STAGE.beaconHeight, c.z + p.z);
       this.beaconTargets[i]!.position.copy(c);
-      L.shadow.autoUpdate = true;
     }
     this.beaconTarget = 1;
     this.beaconFadeMs = STAGE.dressMs;
@@ -742,12 +733,7 @@ export class Stage implements BattleStage {
     const harvest = this.d.harvestLevel();
     const on = harvest < 2 ? 1 : 0;
     const I = STAGE.beaconIntensity * this.beaconLevel * (1 + this.pulse * STAGE.pulseGain) * on;
-    for (let i = 0; i < this.beaconLights.length; i++) {
-      const L = this.beaconLights[i]!;
-      L.intensity = I;
-      if (this.beaconLevel <= 0 && this.beaconTarget === 0) L.shadow.autoUpdate = this.warmShadowFrames > 0;
-    }
-    if (this.warmShadowFrames > 0) this.warmShadowFrames--;
+    for (let i = 0; i < this.beaconLights.length; i++) this.beaconLights[i]!.intensity = I;
     this.aura.update(dtScaledMs, dtRealMs, this.d.camera);
     (this.housingMaterial.userData.harvest as UniformNode<'float', number>).value = harvest;
     // the evolution sequence borrows beacon 0 (written after the arena's own beacon values) and restores it at its end
@@ -769,19 +755,6 @@ export class Stage implements BattleStage {
     return true;
   }
 
-  /**
-   * §10.1.2 step 8: the two reserved beacons render their shadow maps (at intensity 0) during the warm-up frames,
-   * aimed at the warm-up group, so the spot-shadow pass programs (the generic shadow material, the billboard's
-   * positionNode / alpha-mask variant, skinned bodies) exist before the first battle or evolution needs them.
-   */
-  armWarmupShadows(): void {
-    this.warmShadowFrames = STAGE.warmShadowFrames;
-    for (let i = 0; i < this.beaconLights.length; i++) {
-      this.beaconLights[i]!.position.set(0, STAGE.warmShadowHeightM, STAGE.warmShadowBackM);
-      this.beaconTargets[i]!.position.set(0, 0, -1);
-    }
-  }
-
   /** A housing mesh for the renderer's warm-up frame (compiles the beacon housing material). */
   warmupHousing(): Mesh {
     const m = new Mesh(this.geo.housing, this.housingMaterial);
@@ -798,8 +771,6 @@ export class Stage implements BattleStage {
   get spectatorIds(): readonly string[] { return this.spectators; }
   get spectatorArenaCount(): number { return this.spectatorArenas.filter((a) => a.dressed).length; }
   get beaconIntensity(): number { return this.beaconLights[0]?.intensity ?? 0; }
-  /** Whether the beacon shadow maps are being rendered (false when undressed). */
-  get beaconShadowsLive(): boolean { return this.beaconLights[0]?.shadow.autoUpdate ?? false; }
 
   // ---- internals ---------------------------------------------------------------------------------------------------
 

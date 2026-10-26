@@ -39,8 +39,10 @@ services:
       PUBLIC_WEB_URL: http://localhost:${EWA_PORT:-8080}
       TRUST_PROXY: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16  # nginx in the compose network
       NPC_TOOLS: "on"
-      # Docker Desktop's bind mounts do not always deliver file events: `tsx watch` polls instead
+      # Docker Desktop's bind mounts do not always deliver file events: `tsx watch` polls instead. Once a second: at
+      # chokidar's default 100 ms the poll alone held ~55 % of a core while the game server itself idled at 0 %
       CHOKIDAR_USEPOLLING: "1"
+      CHOKIDAR_INTERVAL: "1000"
     volumes:
       - ewa-data:/data
       - ./packages/core/src:/app/packages/core/src:ro

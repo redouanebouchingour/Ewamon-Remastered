@@ -134,6 +134,12 @@ describe('Phase A: live controls (mirevale)', () => {
     sys.setView(gym.yaw + (-35 * Math.PI) / 180);
     sys.settle();
     expect(b.walls.filter((w) => w.object.scale.y < 0.5).map((w) => w.side).sort()).toEqual(['front', 'left']);   // camera on local (sin −35°, cos −35°): −x and +z
+    // first person (null): the eye is inside the hall, every wall stands again
+    sys.setView(null);
+    sys.settle();
+    for (const w of b.walls) expect(w.object.scale.y, w.side).toBeCloseTo(1, 9);
+    sys.setView(gym.yaw + (-35 * Math.PI) / 180);
+    sys.settle();
 
     // gates: open moves them away (down or aside) and hides them; closing brings them back
     for (const g of b.gates) {

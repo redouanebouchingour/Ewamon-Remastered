@@ -6,7 +6,8 @@
  * - `setActive(id)`: that pocket's hall shows and its canopy hides; every other pocket shows its canopy (a thicket
  *   from outside) and hides its hall; walls of a pocket that stops being active stand up again at once.
  * - `setView(yaw)`: walls of the ACTIVE pocket whose outward normal faces the camera (normal · (sin yaw, cos yaw) >
- *   `INTERIOR.facingDot`) ease down to the 0.5 m kerb (`scale.y`), the others back up to 2.4 m.
+ *   `INTERIOR.facingDot`) ease down to the 0.5 m kerb (`scale.y`), the others back up to 2.4 m; `setView(null)` (first
+ *   person) eases every wall back up.
  * - `setGateOpen(id, open)`: the gate eases down into the floor (or aside, hedges / boulders) and is hidden once fully
  *   open; closing shows it and eases it back.
  * - `setSwitchOn(id, on)`: the emissive part shows (a library emissive surface) and the moving part eases to its "on"
@@ -58,8 +59,8 @@ export class InteriorSystem implements InteriorsHandle {
     this.retargetWalls();
   }
 
-  setView(yaw: number): void {
-    if (!Number.isFinite(yaw)) return;
+  setView(yaw: number | null): void {
+    if (yaw !== null && !Number.isFinite(yaw)) return;
     this.viewYaw = yaw;
     this.retargetWalls();
   }

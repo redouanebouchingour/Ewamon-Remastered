@@ -154,4 +154,41 @@ describe('the zone build as resumable steps', () => {
     h.dispose(); ref.dispose(); viaLoad.dispose();
     rig.dispose(); lib.disposeAll();
   }, 300_000);
+
+  it('an eager prepare (the boot compile\'s) slices on tasks, never on frames, and builds the same zone', async () => {
+    const { ZoneSystem, PREPARE_EAGER_SLICE_MS, PREPARE_SLICE_MS } = await import('../src/zone/system.js');
+    expect(PREPARE_EAGER_SLICE_MS).toBeGreaterThan(PREPARE_SLICE_MS);
+    const lib = await mockLibrary();
+    const scene = new Scene();
+    const rig = new LightRig(scene);
+    const spec = realSpec('mire_route');
+    await lib.preload(zoneSurfaces(spec));
+    const ref = buildZone(spec, { materials: lib, lighting: null, scene: null });
+    const ctx = {
+      materials: lib, lighting: rig, scene, statsRecord: createRenderStats(), gpu: {},
+      setLightingPalette: () => undefined, setGrade: () => undefined,
+    } as unknown as ConstructorParameters<typeof ZoneSystem>[0];
+    const sys = new ZoneSystem(ctx);
+    // a frame source that answers at once: the normal prepare waits on it, the eager one must not
+    const raf = vi.fn((cb: (t: number) => void) => { setTimeout(() => cb(0), 0); return 1; });
+    vi.stubGlobal('requestAnimationFrame', raf);
+    try {
+      const framed = await sys.prepare(spec, {});
+      expect(raf).toHaveBeenCalled();
+      framed.drop();
+      raf.mockClear();
+      const stats = createSliceStats();
+      const pz = await sys.prepare(spec, { eager: true, stats });
+      expect(raf).not.toHaveBeenCalled();
+      expect(stats.slices).toBeGreaterThan(1);   // it waited between slices (on tasks)
+      expect(pz.handle.geometryDigest).toBe(ref.geometryDigest);
+      let k = 0;
+      pz.drop();
+      await expect(sys.prepare(spec, { eager: true, cancelled: () => ++k > 0 })).rejects.toBe(STEPS_CANCELLED);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    ref.dispose();
+    rig.dispose(); lib.disposeAll();
+  }, 300_000);
 });

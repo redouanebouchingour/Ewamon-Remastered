@@ -18,6 +18,18 @@
  * horizontally toward the camera) and higher than `fgHeightM` above the followed feet, each edge eased over `fgRampM`.
  * Ground-level dressing, fences, bushes and lamp posts (≤ 3.2 m) in front of the focus stay; what is tall and in front
  * goes see-through. Everything behind the focus (the subject of every overworld shot) is untouched.
+ *
+ * 2026-10-25 (player report: "houses are see-through, their insides show"): the foreground volume had no bound beside or
+ * below the sight line, so in a town every roof and upper wall between the camera and the player went see-through and
+ * showed the hollow building and its floor, though it covered only the ground in front of the player on screen. It now
+ * fades only what rises into the line of sight: no lower than `fgBelowM` under the camera → chest line at that point,
+ * and within `fgSideM` of it sideways (horizontal), each eased over `fgRampM`. A crown or roof that stands over the
+ * player or a creature beside them still fades.
+ *
+ * 2026-10-25 (player report: a dithered hole in the roofs and upper walls straight ahead in first person): the capsule and
+ * the foreground volume are a third-person tool (the eye at the player's head has nothing between it and the player),
+ * so the host passes strength 0 while the rig poses the eye in first person (`occlusionStrength`). Uniform only: the
+ * same programs, no recompile on the toggle.
  */
 import { Vector3 } from 'three/webgpu';
 import type { Camera, Node, UniformNode } from 'three/webgpu';
@@ -35,6 +47,10 @@ export const OCCLUSION = Object.freeze({
   fgNearM: 2.0,
   /** … and this high above the followed feet (m) … */
   fgHeightM: 3.2,
+  /** … and within this of the camera → chest line sideways (m, horizontal; 2026-10-25, see the header) … */
+  fgSideM: 3.5,
+  /** … and no lower than this under that line (m; a creature beside the player stands lower than the chest) … */
+  fgBelowM: 1.0,
   /** … each edge eased over this (m). */
   fgRampM: 1.0,
   /** The segment ends this far above the followed feet (the chest). */
@@ -79,6 +95,14 @@ export function setOcclusion(u: OcclusionUniforms, camera: Vector3, feet: Vector
   u.strength.value = Number.isFinite(strength) ? Math.min(1, Math.max(0, strength)) : 0;
 }
 
+/**
+ * The fade strength the host writes per frame: 1 in the diorama, eased out as a battle / inspector shot blends in
+ * (`shotBlend` 0 … 1), and 0 while the eye is in first person (nothing stands between it and the player).
+ */
+export function occlusionStrength(shotBlend: number, firstPerson: boolean): number {
+  return firstPerson ? 0 : 1 - shotBlend;
+}
+
 /** The mask node: true keeps the fragment. */
 export function occlusionKeep(u: OcclusionUniforms): Node<'bool'> {
   const ab = u.to.sub(u.from);
@@ -90,10 +114,16 @@ export function occlusionKeep(u: OcclusionUniforms): Node<'bool'> {
   // M3 review R-all-9: the foreground volume — in front of the focus (horizontally toward the camera) and tall
   const toCam = vec2(u.from.x.sub(u.to.x), u.from.z.sub(u.to.z));
   const dirC = toCam.div(max(length(toCam), float(1e-3)));
-  const along = dot(vec2(positionWorld.x.sub(u.to.x), positionWorld.z.sub(u.to.z)), dirC);
+  const flat = vec2(positionWorld.x.sub(u.to.x), positionWorld.z.sub(u.to.z));
+  const along = dot(flat, dirC);
+  const side = flat.x.mul(dirC.y).sub(flat.y.mul(dirC.x)).abs(); // horizontal distance off the line
+  const lineY = u.to.y.add(u.from.y.sub(u.to.y).mul(clamp(along.div(max(length(toCam), float(1e-3))), 0, 1)));
   const height = positionWorld.y.sub(u.to.y.sub(OCCLUSION.chestM));
-  const fg = smoothstep(float(OCCLUSION.fgNearM), float(OCCLUSION.fgNearM + OCCLUSION.fgRampM), along)
-    .mul(smoothstep(float(OCCLUSION.fgHeightM), float(OCCLUSION.fgHeightM + OCCLUSION.fgRampM), height));
+  const ramp = float(OCCLUSION.fgRampM);
+  const fg = smoothstep(float(OCCLUSION.fgNearM), float(OCCLUSION.fgNearM).add(ramp), along)
+    .mul(smoothstep(float(OCCLUSION.fgHeightM), float(OCCLUSION.fgHeightM).add(ramp), height))
+    .mul(float(1).sub(smoothstep(float(OCCLUSION.fgSideM), float(OCCLUSION.fgSideM).add(ramp), side)))
+    .mul(float(1).sub(smoothstep(float(OCCLUSION.fgBelowM), float(OCCLUSION.fgBelowM).add(ramp), lineY.sub(positionWorld.y))));
   const amount = max(inside.mul(before), fg).mul(u.strength).mul(u.pass);
   const ign = fract(float(52.9829189).mul(fract(dot(screenCoordinate.xy, vec2(0.06711056, 0.00583715)))));
   return ign.greaterThanEqual(amount.mul(1 - OCCLUSION.keep)) as unknown as Node<'bool'>;
