@@ -70,7 +70,6 @@
 .closeRow {
   display: flex;
   justify-content: flex-end;
-  margin-block-start: calc(var(--s-4) * -1);
 }
 
 .stats {
