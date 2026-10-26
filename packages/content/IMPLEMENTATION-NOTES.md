@@ -568,6 +568,7 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   lawlander (tenjin) in species.js; infernomorel, toxshade, necrogeist, zenryu (majin) and thornback, abysspark,
   gemknight, glimmereen, solpyre (tenjin) in patches.js. Majin: base atk +28 / def −18 / spd +28 and one foe stat −1;
   Tenjin: +10 / +30 / +10, clears its negative stages, cures its status, heals a fifth.
+  2026-10-26: raidori (tenjin) joins them in patches.js, 120/105/100 to 130/135/110.
 - Items: `MAJIN_BAND` / `TENJIN_BAND` key items (`slot: 'key'`, `price: null`), granted by story beats `sables_turn`
   and `the_requisition` (`grant`), with new after-lines (Sable hands over the field lens; Wynn's letter) and one Reeve line
   in `escorted_out`. Never a gate: nothing needs the bands.

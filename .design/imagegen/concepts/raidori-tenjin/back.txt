@@ -1,0 +1,6 @@
+Image 1 is Tenjin Raidori (front view). Image 2 is regular Raidori's back sprite.
+
+Draw TENJIN RAIDORI from behind, using exactly the pose, rear angle and framing of image 2: we see its back and hindquarters, not its face, the head turned away to the right as in image 2. Show every change from image 1 visible from the back: the smooth flowing gold and ivory mane rays drifting upward, the thin gold halo ring with its small lens-circle floating behind the head (seen from behind), the pale pearl-grey body crossed by gold kintsugi seams, polished ivory paws with gold-tipped claws, the long tail ending in a radiant white-gold star, a few floating gold-white light motes. Same creature, same palette as image 1.
+
+Match the art style exactly: same pixel-art technique, chunky pixel size, outline weight and shading as image 2. Full body, centered, filling about 85% of the square canvas. Do not draw an aura, glow or flames around the creature.
+Background: one perfectly flat solid magenta #FF00FF, no gradient, no ground shadow. No magenta or hot pink in the creature. No text, no frame, no second creature. Square 1:1.

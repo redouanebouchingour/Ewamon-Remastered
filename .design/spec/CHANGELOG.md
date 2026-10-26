@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-26 raidori's Tenjin form. One entry. -->
+
+## 2026-10-26 · `40-pipelines.md` §40.1 species set, accounting · raidori_tenjin
+Why: the user asked for a Tenjin form for Raidori, the Electric storm lion. It follows the Tenjin template (+10 atk / +30 def / +10 spd, cures its status, heals a fifth), patched onto the legacy row in `.design/additions/patches.js` like the other legacy forms; the art is gpt-image-2 on the user's key, keyed by `scripts/key-forms.ts`.
+Evidence: `tools/sprite-pipeline/test/{budget,zones}.test.ts` (200 entries, 101 atlases, 53.36 MB at the top rung, none duplicated, 0 actionable flags; the stable planner kept all 100 existing atlases and added `a-100`); content tests; `pnpm check`.
+Affects: `.design/additions/patches.js`; `packages/content/src/data/species.ts`; `packages/client/public/{creatures/,signature/raidori.webp,signature/raidori_tenjin.webp}` (the Heartsync cut-in portraits, client `bond.test.tsx`); `tools/sprite-pipeline/{README.md,qa/*,test/budget.test.ts,test/zones.test.ts}`; `assets-src/forms-pending/`; `.design/majin-tenjin.md`.
+
 <!-- 2026-10-26 stable atlas planning. One entry. -->
 
 ## 2026-10-26 · `40-pipelines.md` §40.1.4 Stability (new paragraph), §40.1 stage 5 row · the atlas planner keeps the previous build's atlases

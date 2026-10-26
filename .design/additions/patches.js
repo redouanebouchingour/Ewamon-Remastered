@@ -35,6 +35,10 @@ const EWAMON_SPECIES_PATCHES = {
   solpyre: {
     battleForm: { id: "tenjin", name: "Tenjin Form", kind: "tenjin", hpBelowPct: 50, baseAtk: 120, baseDef: 105, baseSpd: 115, onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 }, frontSprite: "solpyre_tenjin(front).png", backSprite: "solpyre_tenjin(back).png" },
   },
+  // 2026-10-26: the storm lion as the calm at the centre of the storm (gpt-image art, .design/imagegen/concepts/raidori-tenjin/)
+  raidori: {
+    battleForm: { id: "tenjin", name: "Tenjin Form", kind: "tenjin", hpBelowPct: 50, baseAtk: 130, baseDef: 135, baseSpd: 110, onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 }, frontSprite: "raidori_tenjin(front).png", backSprite: "raidori_tenjin(back).png" },
+  },
   // Every legendary's / mythical's signature move is its own (client battle/signatures.ts): Bankai Sever is
   // bankaiser's, so ironcarab's L39 finisher becomes Six-Blade Storm.
   ironcarab: {

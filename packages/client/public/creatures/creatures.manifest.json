@@ -4302,6 +4302,48 @@
         "bytes": 398
       },
       "normalScale": 0.5
+    },
+    {
+      "id": "a-100",
+      "species": [
+        "raidori_tenjin"
+      ],
+      "size": 2048,
+      "slots": 2,
+      "albedo": {
+        "url": "atlases/a-100.albedo.webp",
+        "mips": [
+          "atlases/a-100.albedo.m1.webp",
+          "atlases/a-100.albedo.m2.webp",
+          "atlases/a-100.albedo.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 88,
+        "bytes": 212792
+      },
+      "normal": {
+        "url": "atlases/a-100.normal.webp",
+        "mips": [
+          "atlases/a-100.normal.m1.webp",
+          "atlases/a-100.normal.m2.webp",
+          "atlases/a-100.normal.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 92,
+        "bytes": 85568
+      },
+      "emissive": {
+        "url": "atlases/a-100.emissive.webp",
+        "mips": [
+          "atlases/a-100.emissive.m1.webp",
+          "atlases/a-100.emissive.m2.webp",
+          "atlases/a-100.emissive.m3.webp"
+        ],
+        "codec": "webp-lossless",
+        "quality": null,
+        "bytes": 8046
+      },
+      "normalScale": 0.5
     }
   ],
   "zones": {
@@ -12341,6 +12383,49 @@
       "home": "a-022",
       "thumb": "thumbs/raidori_front.webp"
     },
+    "raidori_tenjin": {
+      "front": {
+        "atlas": "a-100",
+        "px": [
+          1024,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0.5,
+          0.5,
+          1,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.957609,
+        "source": "front/raidori_tenjin(front).png"
+      },
+      "back": {
+        "atlas": "a-100",
+        "px": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0,
+          0.5,
+          0.5,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.970264,
+        "source": "back/raidori_tenjin(back).png"
+      },
+      "sizeScale": 1.4,
+      "home": "a-100",
+      "thumb": "thumbs/raidori_tenjin_front.webp"
+    },
     "raikitsune": {
       "front": {
         "atlas": "a-027",
@@ -17219,7 +17304,7 @@
       "thumb": "thumbs/zenryu_majin_front.webp"
     }
   },
-  "totalBytes": 53048987,
+  "totalBytes": 53363368,
   "animAtlases": [
     {
       "id": "anim-astaroth-back",

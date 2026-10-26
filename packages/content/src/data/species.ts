@@ -3747,6 +3747,17 @@ export const SPECIES: readonly SpeciesDef[] = [
     evolvesFrom: null,
     sprite: { front: 'raidori_front', back: 'raidori_back' },
     legendary: false,
+    battleForm: {
+      id: 'tenjin',
+      name: 'Tenjin Form',
+      kind: 'tenjin',
+      hpBelowPct: 50,
+      baseAtk: 130,
+      baseDef: 135,
+      baseSpd: 110,
+      onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 },
+      sprite: { front: 'raidori_tenjin_front', back: 'raidori_tenjin_back' },
+    },
   },
   {
     id: 'malice',
