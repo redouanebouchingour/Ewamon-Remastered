@@ -1706,16 +1706,16 @@
       {
         "albedo": 88,
         "normal": 92,
-        "totalBytes": 45788935
+        "totalBytes": 45787235
       }
     ],
     "thumbs": {
       "count": 164,
-      "bytes": 892604,
+      "bytes": 892678,
       "rungs": {
         "q32/aq100/a8": 2,
-        "q40/aq100/a8": 2,
-        "q48/aq100/a8": 5,
+        "q40/aq100/a8": 3,
+        "q48/aq100/a8": 4,
         "q56/aq100/a8": 3,
         "q64/aq100/a8": 4,
         "q72/aq100/a8": 26,
@@ -1725,5 +1725,5 @@
       }
     }
   },
-  "totalBytes": 45788935
+  "totalBytes": 45787235
 }

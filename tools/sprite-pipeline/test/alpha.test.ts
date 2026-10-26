@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   TRANSPARENT_RGB_BAND,
   alphaBbox,
+  clearEnclosedWhite,
   cleanTransparentRgb,
   defringe,
   floodBackground,
@@ -60,6 +61,39 @@ describe('alpha recovery', () => {
     const res = recoverAlpha(src);
     expect(res.recovered).toBe(false);
     for (let i = 3; i < src.data.length; i += 4) expect(res.image.data[i]).toBe(src.data[i]);
+  });
+
+  it('`holes` clears an outlined enclosed white hole, keeping pale-ringed white and eye glints', () => {
+    const size = 128;
+    const img = createRgba(size, size);
+    const put = (x: number, y: number, c: number[]): void => img.data.set(c, (y * size + x) * 4);
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const r = Math.hypot(x - 64, y - 64);
+        if (r >= 50) continue;
+        const hole = Math.hypot(x - 50, y - 64);
+        const shine = Math.hypot(x - 80, y - 64);
+        if (hole < 10) put(x, y, [255, 255, 255, 255]);
+        else if (hole < 12) put(x, y, [20, 30, 40, 255]);
+        else if (shine < 8) put(x, y, [250, 252, 255, 255]);
+        else if (shine < 10) put(x, y, [190, 215, 235, 255]);
+        else put(x, y, [40, 140, 150, 255]);
+      }
+    }
+    // A 2 x 2 eye glint in a dark pupil: under the size floor.
+    for (let y = 30; y < 36; y++) for (let x = 60; x < 66; x++) put(x, y, [15, 15, 20, 255]);
+    for (let y = 32; y < 34; y++) for (let x = 62; x < 64; x++) put(x, y, [255, 255, 255, 255]);
+    const out = { width: size, height: size, data: img.data.slice() };
+    expect(clearEnclosedWhite(out)).toBeGreaterThan(250);
+    expect(alphaAt(out, 50, 64)).toBe(0);
+    expect(alphaAt(out, 80, 64)).toBe(255);
+    expect(alphaAt(out, 62, 32)).toBe(255);
+    expect(alphaAt(out, 30, 64)).toBe(255);
+    // Through recoverAlpha only when asked, and never as a `leak`.
+    expect(alphaAt(recoverAlpha(img).image, 50, 64)).toBe(255);
+    const res = recoverAlpha(img, { holes: true });
+    expect(alphaAt(res.image, 50, 64)).toBe(0);
+    expect(res.flags).not.toContain('leak');
   });
 
   it('flags `leak` when the flood reaches the centre of the bbox', () => {

@@ -1,1 +1,9 @@
-{}
+{
+  "scalewisp": { "holes": true },
+  "rexaloft": { "holes": true },
+  "tidalfang": { "holes": true },
+  "abyssrake": { "holes": true },
+  "glacifang": { "holes": true },
+  "blizzraak": { "holes": true },
+  "verdatide/back": { "holes": true }
+}

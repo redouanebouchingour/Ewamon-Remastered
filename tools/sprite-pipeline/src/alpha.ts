@@ -49,7 +49,25 @@ export interface AlphaOptions {
   keyMagenta?: boolean;
   /** Also key near-white pixels connected to the border (default true). */
   keyWhite?: boolean;
+  /** Clear enclosed near-white background holes (between legs, under wings): see `clearEnclosedWhite`. */
+  holes?: boolean | HoleOptions;
 }
+
+/**
+ * An enclosed hole is a 4-connected region of near-white that touches neither the canvas edge nor a
+ * transparent pixel, covers at least `minFraction` of the canvas and is ringed by the outline: the
+ * mean luma of the pixels around it is at most `maxRimLuma` and at least `minDarkShare` of them are
+ * darker than luma 90. Eye glints are too small, pale fur and ice are ringed by pale shading.
+ */
+export interface HoleOptions {
+  minFraction?: number;
+  maxRimLuma?: number;
+  minDarkShare?: number;
+}
+
+export const HOLE_DEFAULTS: Required<HoleOptions> = { minFraction: 0.0003, maxRimLuma: 175, minDarkShare: 0.15 };
+/** Pale low-chroma pixels around a cleared hole (its anti-aliased rim) go too, up to this many px. */
+export const HOLE_RIM_GROW = 3;
 
 export interface AlphaResult {
   image: RgbaImage;
@@ -172,6 +190,87 @@ export function floodBackground(img: RgbaImage, opts: AlphaOptions = {}): Uint8A
   return removed;
 }
 
+const luma = (data: Uint8Array, p: number): number => 0.299 * data[p * 4]! + 0.587 * data[p * 4 + 1]! + 0.114 * data[p * 4 + 2]!;
+
+/**
+ * Clears the enclosed near-white background holes a border flood cannot reach (`HoleOptions`), then
+ * grows each cleared hole by up to `HOLE_RIM_GROW` px into pale (min channel >= 200), low-chroma
+ * (max - min <= 24) pixels, its blended rim. Sets their alpha to 0 and returns the count cleared.
+ * Not part of the flood's `removed` mask: a hole may sit in the bbox centre without being a leak.
+ */
+export function clearEnclosedWhite(img: RgbaImage, opts: HoleOptions = {}): number {
+  const { width, height, data } = img;
+  const n = width * height;
+  const { minFraction, maxRimLuma, minDarkShare } = { ...HOLE_DEFAULTS, ...opts };
+  const minPx = Math.max(1, Math.round(n * minFraction));
+  const isWhite = (p: number): boolean => data[p * 4 + 3]! > 0 && isNearWhite(data[p * 4]!, data[p * 4 + 1]!, data[p * 4 + 2]!);
+  const seen = new Uint8Array(n);
+  const rimMark = new Int32Array(n).fill(-1);
+  const clear = new Uint8Array(n);
+  const queue = new Int32Array(n);
+  let label = 0;
+  for (let s = 0; s < n; s++) {
+    if (seen[s] || !isWhite(s)) continue;
+    label++;
+    let head = 0;
+    let tail = 0;
+    queue[tail++] = s;
+    seen[s] = 1;
+    let open = false;
+    let rim = 0;
+    let rimLuma = 0;
+    let dark = 0;
+    while (head < tail) {
+      const p = queue[head++]!;
+      const x = p % width;
+      const y = (p - x) / width;
+      if (x === 0 || y === 0 || x === width - 1 || y === height - 1) open = true;
+      for (const q of [x > 0 ? p - 1 : -1, x < width - 1 ? p + 1 : -1, y > 0 ? p - width : -1, y < height - 1 ? p + width : -1]) {
+        if (q < 0) continue;
+        if (data[q * 4 + 3] === 0) open = true;
+        else if (isWhite(q)) {
+          if (!seen[q]) {
+            seen[q] = 1;
+            queue[tail++] = q;
+          }
+        } else if (rimMark[q] !== label) {
+          rimMark[q] = label;
+          const l = luma(data, q);
+          rim++;
+          rimLuma += l;
+          if (l < 90) dark++;
+        }
+      }
+    }
+    if (open || tail < minPx || rim === 0) continue;
+    if (rimLuma / rim > maxRimLuma || dark / rim < minDarkShare) continue;
+    for (let i = 0; i < tail; i++) clear[queue[i]!] = 1;
+  }
+  // Grow into the pale rim, one ring per pass.
+  for (let pass = 0; pass < HOLE_RIM_GROW; pass++) {
+    const ring: number[] = [];
+    for (let p = 0; p < n; p++) {
+      if (clear[p] || data[p * 4 + 3] === 0) continue;
+      const r = data[p * 4]!;
+      const g = data[p * 4 + 1]!;
+      const b = data[p * 4 + 2]!;
+      if (Math.min(r, g, b) < 200 || Math.max(r, g, b) - Math.min(r, g, b) > 24) continue;
+      const x = p % width;
+      const y = (p - x) / width;
+      if ((x > 0 && clear[p - 1]) || (x < width - 1 && clear[p + 1]) || (y > 0 && clear[p - width]) || (y < height - 1 && clear[p + width])) ring.push(p);
+    }
+    if (ring.length === 0) break;
+    for (const p of ring) clear[p] = 1;
+  }
+  let count = 0;
+  for (let p = 0; p < n; p++) {
+    if (!clear[p]) continue;
+    data[p * 4 + 3] = 0;
+    count++;
+  }
+  return count;
+}
+
 /** Index of the nearest pixel with alpha >= `minAlpha` within `maxRadius` (Chebyshev rings, Euclidean tie-break), or -1. */
 function nearestWithAlpha(src: Uint8Array, width: number, height: number, x: number, y: number, maxRadius: number, minAlpha: number): number {
   let found = -1;
@@ -289,6 +388,9 @@ export function recoverAlpha(input: RgbaImage, opts: AlphaOptions = {}): AlphaRe
       recovered = false;
       flags.push('empty');
     }
+  }
+  if (opts.holes && !flags.includes('empty')) {
+    if (clearEnclosedWhite(image, opts.holes === true ? {} : opts.holes) > 0) recovered = true;
   }
   defringe(image);
   cleanTransparentRgb(image);
