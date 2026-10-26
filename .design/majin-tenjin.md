@@ -72,7 +72,7 @@ offensive spike: it's a stabiliser you use while you're still healthy.
 Picked so every starter has a form, both bands have a species the player can own **by the time the band arrives**, and
 the Provision's and the Wardens' teams can show each form off.
 
-### Majin (7, plus acier since 2026-10-26)
+### Majin (7, plus acier since 2026-10-26 and clementar since 2026-10-27)
 
 | Species | Types | Base atk/def/spd → Majin | Lowers foes' | Has it by Act II? | NPCs who use it |
 |---|---|---|---|---|---|
@@ -84,6 +84,7 @@ the Provision's and the Wardens' teams can show each form off.
 | **castlemaw** | Dark/Steel | shipped Rage Form **160/86/104** | def | yes (umbral_observatory, night) | — |
 | **zenryu** (legendary) | Dragon/Fighting | 148/112/130 → **176/94/158** | def | post-league (legendary static) | **Champion Zeon** (his ace's rage) |
 | **acier** (added 2026-10-26) | Steel/Fighting | 95/110/60 → **123/92/88** | def | wild on siege_route (rare, L33 to 35), the_rift; raid boss on siege_route | - |
+| **clementar** (added 2026-10-27) | Ground/Grass | 132/112/82 → **160/94/110** | spd | yes (fennorange on ash_route / deepcut_route, Berkest + Moon Stone) | - |
 
 **Zenryu's Majin form is its Super Saiyan** (added 2026-10-11, the user's call). Zenryu is the Ultra Instinct dragon: a silver mane, an orange gi, silver dragon rings. Its rage form is the golden one: the mane stands up into golden spikes, the eyes go teal-green, the muscles bulk and lightning crackles across the body. It keeps the Majin mark (the crimson cracked-ring sigil, on its forehead) so it still reads as part of the system. This replaces the earlier "Zenryu, the one with both" idea in §Later: Zenryu is Majin only. Its live aura is a question to settle: Majin's aura is crimson flames, Super Saiyan's is gold flames (see §8). Zenryu is a legendary, so its base sprite is a 24-frame flipbook; the Majin sprite is a still until a flipbook is made for it.
 

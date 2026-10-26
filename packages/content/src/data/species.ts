@@ -568,6 +568,17 @@ export const SPECIES: readonly SpeciesDef[] = [
     evolvesFrom: 'berkest',
     sprite: { front: 'clementar_front', back: 'clementar_back' },
     legendary: false,
+    battleForm: {
+      id: 'majin',
+      name: 'Majin Form',
+      kind: 'majin',
+      hpBelowPct: 50,
+      baseAtk: 160,
+      baseDef: 94,
+      baseSpd: 110,
+      onEnter: { clearNegativeStages: true, lowerFoes: { stat: 'spd', stages: 1 } },
+      sprite: { front: 'clementar_majin_front', back: 'clementar_majin_back' },
+    },
   },
   {
     id: 'glimp',

@@ -13,6 +13,13 @@ Why: the user asked for the Ewadex to start with the starters, like the original
 Evidence: content `index.test.ts` (starters lead, legendaries then mythicals trail), `harmonic.test.ts` (the Elemutt line is #178 to #180); `pnpm check`.
 Affects: `packages/content/scripts/migrate-legacy.ts`; `packages/content/src/data/species.ts` (regenerated); `packages/content/test/{index,harmonic}.test.ts`; `packages/client/test/spriteCatalog.test.ts` (comment).
 
+<!-- 2026-10-27 clementar's Majin form. One entry. -->
+
+## 2026-10-27 · `40-pipelines.md` §40.1 species set, accounting · clementar_majin
+Why: the user asked for a Majin form for Clementar, the Ground/Grass fennec guardian of the orchards. It follows the Majin template (+28 atk / -18 def / +28 spd, clears its own drops, lowers every foe's spd by 1: the roots bind them), patched onto the legacy row in `.design/additions/patches.js`. Clementar is never wild (Berkest + Moon Stone), so only a trainer's band opens it. The art is gpt-image-2 on the user's key, keyed by `scripts/key-forms.ts`.
+Evidence: `tools/sprite-pipeline/test/{budget,zones}.test.ts` (202 entries, 103 atlases, 54.13 MB at the top rung, none duplicated, 0 actionable flags; all 102 existing atlases kept, `a-102` added); client `bond.test.tsx` (cut-in portraits); content tests; `pnpm check`.
+Affects: `.design/additions/patches.js`; `packages/content/src/data/species.ts`; `packages/client/public/{creatures/,signature/clementar.webp,signature/clementar_majin.webp}`; `tools/sprite-pipeline/{README.md,qa/*,test/budget.test.ts,test/zones.test.ts}`; `assets-src/forms-pending/`; `.design/majin-tenjin.md`.
+
 <!-- 2026-10-26 acier's Majin form. One entry. -->
 
 ## 2026-10-26 · `40-pipelines.md` §40.1 species set, accounting · acier_majin

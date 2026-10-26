@@ -43,6 +43,10 @@ const EWAMON_SPECIES_PATCHES = {
   acier: {
     battleForm: { id: "majin", name: "Majin Form", kind: "majin", hpBelowPct: 50, baseAtk: 123, baseDef: 92, baseSpd: 88, onEnter: { clearNegativeStages: true, lowerFoes: { stat: "def", stages: 1 } }, frontSprite: "acier_majin(front).png", backSprite: "acier_majin(back).png" },
   },
+  // 2026-10-27: the orchard guardian gone feral, thorn roots up its legs and blood oranges split crimson; roots bind foes (spd)
+  clementar: {
+    battleForm: { id: "majin", name: "Majin Form", kind: "majin", hpBelowPct: 50, baseAtk: 160, baseDef: 94, baseSpd: 110, onEnter: { clearNegativeStages: true, lowerFoes: { stat: "spd", stages: 1 } }, frontSprite: "clementar_majin(front).png", backSprite: "clementar_majin(back).png" },
+  },
   // Every legendary's / mythical's signature move is its own (client battle/signatures.ts): Bankai Sever is
   // bankaiser's, so ironcarab's L39 finisher becomes Six-Blade Storm.
   ironcarab: {

@@ -1,0 +1,6 @@
+Image 1 is Majin Clementar (front view). Image 2 is regular Clementar's back sprite.
+
+Draw MAJIN CLEMENTAR using exactly the pose, angle and framing of image 2 (its back sprite: seen from behind, the hood and the back of the djellaba, the big tail sweeping to the left, a cluster of fruit held out in each hand). Show every change from image 1 that is visible from this side: scorched burnt-umber fur with bristling hackles, flared ears glowing crimson inside, the torn deep moss-green djellaba split by glowing crimson cracks, thick thorny dark roots coiling around its legs, arms and tail, cracked blood oranges with glowing crimson pulp, the scorched cracked fez. Same creature, same palette as image 1.
+
+Match the art style exactly: same pixel-art technique, chunky pixel size, outline weight and shading as image 2. Full body, centered, filling about 85% of the square canvas. Do not draw an aura, glow, flames or smoke around the creature.
+Background: one perfectly flat solid magenta #FF00FF, no gradient, no ground shadow. No magenta or hot pink in the creature. No text, no frame, no second creature. Square 1:1.

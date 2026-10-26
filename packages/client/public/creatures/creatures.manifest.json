@@ -4386,6 +4386,48 @@
         "bytes": 6484
       },
       "normalScale": 0.5
+    },
+    {
+      "id": "a-102",
+      "species": [
+        "clementar_majin"
+      ],
+      "size": 2048,
+      "slots": 2,
+      "albedo": {
+        "url": "atlases/a-102.albedo.webp",
+        "mips": [
+          "atlases/a-102.albedo.m1.webp",
+          "atlases/a-102.albedo.m2.webp",
+          "atlases/a-102.albedo.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 88,
+        "bytes": 295126
+      },
+      "normal": {
+        "url": "atlases/a-102.normal.webp",
+        "mips": [
+          "atlases/a-102.normal.m1.webp",
+          "atlases/a-102.normal.m2.webp",
+          "atlases/a-102.normal.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 92,
+        "bytes": 102888
+      },
+      "emissive": {
+        "url": "atlases/a-102.emissive.webp",
+        "mips": [
+          "atlases/a-102.emissive.m1.webp",
+          "atlases/a-102.emissive.m2.webp",
+          "atlases/a-102.emissive.m3.webp"
+        ],
+        "codec": "webp-lossless",
+        "quality": null,
+        "bytes": 4212
+      },
+      "normalScale": 0.5
     }
   ],
   "zones": {
@@ -6881,6 +6923,49 @@
       "sizeScale": 1.3,
       "home": "a-070",
       "thumb": "thumbs/clementar_front.webp"
+    },
+    "clementar_majin": {
+      "front": {
+        "atlas": "a-102",
+        "px": [
+          1024,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0.5,
+          0.5,
+          1,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 0.9158,
+        "source": "front/clementar_majin(front).png"
+      },
+      "back": {
+        "atlas": "a-102",
+        "px": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0,
+          0.5,
+          0.5,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "pixelScale": 1.008009,
+        "source": "back/clementar_majin(back).png"
+      },
+      "sizeScale": 1.3,
+      "home": "a-102",
+      "thumb": "thumbs/clementar_majin_front.webp"
     },
     "coalette": {
       "front": {
@@ -17389,7 +17474,7 @@
       "thumb": "thumbs/zenryu_majin_front.webp"
     }
   },
-  "totalBytes": 53719115,
+  "totalBytes": 54129320,
   "animAtlases": [
     {
       "id": "anim-astaroth-back",

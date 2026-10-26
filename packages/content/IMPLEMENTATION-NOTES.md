@@ -570,6 +570,7 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
   Tenjin: +10 / +30 / +10, clears its negative stages, cures its status, heals a fifth.
   2026-10-26: raidori (tenjin) joins them in patches.js, 120/105/100 to 130/135/110; acier (majin, lowers def), 95/110/60
   to 123/92/88. Both are wild species: a wild acier (siege_route, the_rift, the siege_route raid) rages on its own.
+  2026-10-27: clementar (majin, lowers spd), 132/112/82 to 160/94/110. Never wild (Berkest + Moon Stone).
 - Items: `MAJIN_BAND` / `TENJIN_BAND` key items (`slot: 'key'`, `price: null`), granted by story beats `sables_turn`
   and `the_requisition` (`grant`), with new after-lines (Sable hands over the field lens; Wynn's letter) and one Reeve line
   in `escorted_out`. Never a gate: nothing needs the bands.
