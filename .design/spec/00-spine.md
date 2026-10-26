@@ -608,6 +608,7 @@ export interface BattleState {
   readonly zoneId: string;
   readonly slots?: 2;             // Phase D6: present only in a doubles battle; absent = singles (state byte-identical to pre-D6)
   readonly noExp?: true;          // Phase D14: present only in a battle tower fight — no battler gains exp (CreateBattleOpts.noExp); absent = byte-identical to pre-D14
+  readonly catchBonus?: Readonly<Record<string, number>>; // Dex research (§30.9.4): catch multiplier per wild species id, present only when one applies; absent = 1 (byte-identical)
 }
 
 export interface CreateBattleOpts {
@@ -1916,7 +1917,9 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /creature/:id/flags` | `{ favorite?: boolean; locked?: boolean }` | `CreatureInstance` | bearer |
 | `POST /item/use` | `{ item: string; target: string | null; qty: 1..99 }` | `{ inventory, creaturesUpdated, events }` (server-validated effect) | bearer |
 | `POST /heal` | — | `{ party }` (must be in a `healer: true` zone) | bearer |
-| `GET /dex` | — | `{ seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[]; shiny?: string[] }` (Phase D4 `shiny`: species with a shiny catch) | bearer |
+| `GET /dex` | - | `{ seen: string[]; caught: string[]; variants: Record<string, VariantKey[]>; alpha: string[]; shiny?: string[]; entries?: Record<string, { seenAt; caughtAt; counters; firstSeenZone; viewedAt }>; research?: Record<string, 0..5>; rewards?: string[] }` (Phase D4 `shiny`: species with a shiny catch; Dex research §30.9.4) <!-- amended 2026-10-26: Dex research --> | bearer |
+| `POST /dex/viewed/:speciesId` | - | `{ speciesId; viewedAt }` (404 when not in the dex) | bearer |
+| `POST /dex/rewards/:rewardId/claim` | - | `{ rewardId; rewards: string[]; inventory; money }` (404, 409 `rewardIncomplete` / `AlreadyClaimed`) | bearer |
 | `GET /shop/:zoneId` | — | `{ stock: string[]; prices: Record<string, number> }` | bearer |
 | `POST /shop/buy` / `POST /shop/sell` | `{ item: string; qty: 1..99 }` | `{ inventory, money }` | bearer |
 | `GET /marketplace` | query `search, variant, isAlpha, isShiny (Phase D4), levelMin, levelMax, sort, page, pageSize<=50` | `{ listings: ListingView[]; total }` (`ListingView.isShiny?` present when true) | bearer |
@@ -2092,7 +2095,16 @@ export const dexEntries = pgTable('dex_entries', {
   variants: jsonb('variants').$type<VariantKey[]>().notNull().default([]),
   alphaSeen: boolean('alpha_seen').notNull().default(false),
   shinyCaught: boolean('shiny_caught').notNull().default(false),   // migration 0003_shiny (Phase D4)
+  counters: jsonb('counters').$type<Record<string, number>>().notNull().default({}), // migration 0025_dex_research (§30.9.4)
+  firstSeenZone: varchar('first_seen_zone', { length: 32 }),
+  viewedAt: timestamp('viewed_at', { withTimezone: true }),
 }, (t) => [primaryKey({ columns: [t.playerId, t.speciesId] })]);
+
+export const dexRewards = pgTable('dex_rewards', {   // migration 0025_dex_research: a Dex completion reward claimed, once each
+  playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  rewardId: varchar('reward_id', { length: 64 }).notNull(),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.playerId, t.rewardId] })]);
 
 export const questProgress = pgTable('quest_progress', {
   playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
@@ -2231,7 +2243,7 @@ export const auditLog = pgTable('audit_log', {
 }, (t) => [index('audit_log_actor_idx').on(t.actorId, t.at), index('audit_log_action_idx').on(t.action, t.at)]);
 ```
 
-`players.x/z` use `real`; `real` is imported from `drizzle-orm/pg-core` alongside the others. `bigserial` likewise. `BattleStartSnapshot` is `{ readonly zoneId: string; readonly terrain: string; readonly sides: readonly [unknown, unknown]; readonly weather?: string; readonly slots?: 2; readonly noExp?: true }` (`slots` — Phase D6: a doubles battle; `noExp` — Phase D14: a battle tower fight) (the two `createBattle` sides, deep-copied before the call); with it a battle replays from the row alone — `createBattle({ id, format, seed, ...start })` then `resolveTurn` over `actions` reproduces `final_digest`. The original table (seed + actions only) could not replay without the starting parties. <!-- amended 2026-09-25: migration 0001_battle_replay, packages/server IMPLEMENTATION-NOTES S10/P6, packages/persist IMPLEMENTATION-NOTES "Server part 2 additions" --> There is no `party_slots`/`box_slots` table: the `(owner_id, slot_kind, slot_index)` unique index on `creature_instances` *is* the slot model, and a reorder is one transaction that rewrites `slot_index` for the affected rows.
+`players.x/z` use `real`; `real` is imported from `drizzle-orm/pg-core` alongside the others. `bigserial` likewise. `BattleStartSnapshot` is `{ readonly zoneId: string; readonly terrain: string; readonly sides: readonly [unknown, unknown]; readonly weather?: string; readonly slots?: 2; readonly noExp?: true; readonly catchBonus?: Readonly<Record<string, number>> }` (`slots` — Phase D6: a doubles battle; `noExp` — Phase D14: a battle tower fight) (the two `createBattle` sides, deep-copied before the call); with it a battle replays from the row alone — `createBattle({ id, format, seed, ...start })` then `resolveTurn` over `actions` reproduces `final_digest`. The original table (seed + actions only) could not replay without the starting parties. <!-- amended 2026-09-25: migration 0001_battle_replay, packages/server IMPLEMENTATION-NOTES S10/P6, packages/persist IMPLEMENTATION-NOTES "Server part 2 additions" --> There is no `party_slots`/`box_slots` table: the `(owner_id, slot_kind, slot_index)` unique index on `creature_instances` *is* the slot model, and a reorder is one transaction that rewrites `slot_index` for the affected rows.
 
 ### 5.2 Repository interfaces
 

@@ -89,6 +89,13 @@ fail under machine load and pass alone).
   because the interact range reaches past a gate; the fight forms at the door approach). Quest q14 (the Champion + the
   four guardians) gives the Vial. Stills only; the ravatar sources are git-ignored like all art, the keyed PNGs and
   the keying script are also in the user's `Downloads/avatar-postgame/keyed`.
+- **The Dex upgrade** (2026-10-26): tabbed entries (Overview, Research, Moves, Matchups, Habitat, Evolution, Forms) with a
+  form / variant / shiny / alpha viewer and split evolutions as branches with their conditions; sorting, a list view,
+  more filters and arrow keys; a habitat atlas, compare, rewards; Listen (type cry + the entry read aloud); deep links
+  from battle results, the professor, creature details and hatches. Research per species (content `data/research.ts`,
+  server `game/research.ts`, migration 0025) gates moves at level 2 and matchups / compare at 3, gives a catch bonus
+  from 3 and 1/256 shiny odds at 5; completion rewards (content `data/dexRewards.ts`) pay money, items, earned titles
+  and stamp looks. SPEC §20.9.5, §30.9.4.
 - **cryptorb #139 → ultraze #140 / vysion #141** (2026-10-24, inspired by Ultron and Vision, Marvel): an Electric/Ghost
   orb of unknown code (ash_route night rare L9–11) that splits by honor at 34 like dustcub: vysion (Steel/Psychic,
   High Honor) or ultraze (Steel/Dark, Low Honor). Existing moves and abilities only; still sprites.

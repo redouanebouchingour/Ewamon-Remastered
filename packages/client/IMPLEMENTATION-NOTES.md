@@ -2838,3 +2838,27 @@ the second isolated client (the component over the landing page: the foe and own
   in the held form. Battles are unchanged.
 - Tests: `test/relics.test.tsx` (worn form, types, stats, the card), `test/followers.test.tsx` (follower sprite and
   descriptor types, the strip, the chip lead's form and powers).
+
+## The Dex upgrade (2026-10-26)
+
+- `data/dexInfo.ts` holds what an entry shows, from content alone: habitats per zone (merged slots: level range,
+  day / night, land / water, tier, alpha), the other ways to get a species, the evolution tree with a condition per edge
+  (`evoLabel`, `evoSentence`), defensive matchups, level-up / TM / tutor learnsets and `dexAccess` (what a seen,
+  recorded or researched entry opens). The professor's matchup lookups moved here.
+- Deviation from §20.9.5 before this change: an open entry folds the 6-column grid into a 280 px rail of rows beside
+  a wide entry (a 380 px aside had no room for tabs); the header shrinks to one line while an entry is open, and the
+  ecosystem board hides then.
+- Filters, sort, density, view, tab and compare all live in the URL (`screens/dex/dexList.ts` reads them); the stamp
+  look is a per-device choice in localStorage (`state/dexPrefs.ts`). Research data is optional: without `research`
+  from GET /dex a recorded entry shows everything but the gold frame, and the Research tab, research sort / filter and
+  the Rewards view hide.
+- Listen (`audio/dexVoice.ts`) plays the first type's cry through a plain audio element (the AudioDirector is private
+  to World3D) and reads the entry with its own speaker; it ignores the NPC-voices toggle (a press is the player asking)
+  but not master / voices at 0.
+- Reveal moments read `entries[id].viewedAt` against `seenAt` / `caughtAt` (`screens/dex/reveal.ts`) and post
+  `/dex/viewed` once per opening.
+- jsdom: a test that navigates with `setSearchParams` needs the `Request` patch the other router tests use (jsdom's
+  AbortSignal is not undici's); without it the navigation is dropped silently.
+- Live check: the alt pair with an act3c account holding every species and an act2 account; screenshots of tiles,
+  list, every entry tab (dustcub's split, hyoryu's Majin Form, ravatar's relic forms, a seen-only gated entry), the
+  habitat atlas, compare, and the rewards view.
