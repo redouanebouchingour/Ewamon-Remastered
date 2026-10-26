@@ -38,8 +38,8 @@ import { blit, normalizeSprite } from './normalize.js';
 import { DEFAULT_NORMAL_OPTIONS, deriveNormalMap } from './normalmap.js';
 import type { Rect } from './pack.js';
 import { packSquares } from './pack.js';
-import type { ZonePlan } from './plan.js';
-import { planAtlases } from './plan.js';
+import type { PlanBaseline, ZonePlan } from './plan.js';
+import { baselineFromManifest, planAtlases } from './plan.js';
 import type { QaAcceptance, QaEncodingSummary, QaEntry, QaReport } from './qa.js';
 import { buildQaReport, renderAnimSheet, renderContactSheet, serializeQaReport } from './qa.js';
 import type { ExcludedFile, SpriteSource } from './sources.js';
@@ -92,6 +92,11 @@ export interface BuildOptions {
   limit?: number;
   /** Ignore the sprite cache (atlas and thumb caches are content-keyed and always valid). */
   force?: boolean;
+  /**
+   * The manifest whose atlases the plan keeps (spec §40.1.4 stability): undefined reads the one
+   * already in `outDir`, null (`--replan`) plans from scratch.
+   */
+  baselinePath?: string | null;
   spriteSize?: number;
   atlasSize?: number;
   /** Only refresh the QA artifacts (sprites still go through the cached stages). */
@@ -262,7 +267,10 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
   const roster = rosterPath && existsSync(rosterPath) ? loadRosterTables(rosterPath) : null;
   const known = new Set(legacy ? legacy.species.keys() : ids);
   const zoneInputs = buildZoneInputs({ roster, legacy }, known);
-  const plan = planAtlases(ids, zoneInputs.sets, MAX_ATLASES_PER_ZONE, zoneInputs.league);
+  const baselinePath = opts.baselinePath === undefined ? path.join(opts.outDir, MANIFEST_FILE) : opts.baselinePath;
+  const baseline = readBaseline(baselinePath);
+  const plan = planAtlases(ids, zoneInputs.sets, MAX_ATLASES_PER_ZONE, zoneInputs.league, baseline);
+  logStability(plan, baseline, baselinePath, log);
   const writeReport = (encoding: QaEncodingSummary | null, totalBytes: number): QaReport => {
     const report = buildQaReport({ entries: qaEntries, excluded, accepted, bindStats: plan.bindStats, encoding, totalBytes });
     writeFileSync(path.join(opts.qaDir, 'qa-report.json'), serializeQaReport(report));
@@ -311,7 +319,8 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
     memberKey: string[];
   }
   const jobs: AtlasJob[] = plan.atlases.map((a) => {
-    const members = a.species.flatMap((id) => bySpecies.get(id) ?? []).sort((x, y) => compareSources(x.source, y.source));
+    // Cells in plan order (a pinned atlas keeps its baseline order), back before front per species.
+    const members = a.species.flatMap((id) => [...(bySpecies.get(id) ?? [])].sort((x, y) => compareSources(x.source, y.source)));
     const placed = packSquares(members.length, spriteSize, atlasSize);
     return { id: a.id, species: a.species, dupFor: a.dupFor, members, placed, memberKey: members.map((m, i) => `${m.hash}@${placed[i]!.x},${placed[i]!.y}`) };
   });
@@ -447,6 +456,47 @@ export async function runBuild(opts: BuildOptions): Promise<BuildResult> {
     outFiles,
     anim: anim ? { sides: anim.sides, rung: anim.rung, totalBytes: finalManifest.animTotalBytes ?? 0, rungsTried: anim.rungsTried, cacheHits: anim.cacheHits } : null,
   };
+}
+
+/**
+ * The plan a build would make, logged against its baseline, without any image work: the species are
+ * the legacy ids with both source files (`build` additionally requires every one of them).
+ */
+export async function previewPlan(opts: Pick<BuildOptions, 'assetsDir' | 'outDir' | 'legacyDir' | 'rosterPath' | 'baselinePath' | 'log'>): Promise<ZonePlan> {
+  const log = opts.log ?? noop;
+  if (!opts.legacyDir) throw new Error('plan needs legacyDir');
+  const legacy = await loadLegacyData(opts.legacyDir);
+  const sides = new Map<string, Set<string>>();
+  for (const src of resolveSources(opts.assetsDir, legacy.species).sources) sides.set(src.id, (sides.get(src.id) ?? new Set()).add(src.side));
+  const ids = [...sides].filter(([, s]) => s.size === 2).map(([id]) => id).sort(compareStrings);
+  const roster = opts.rosterPath && existsSync(opts.rosterPath) ? loadRosterTables(opts.rosterPath) : null;
+  const zoneInputs = buildZoneInputs({ roster, legacy }, new Set(legacy.species.keys()));
+  const baselinePath = opts.baselinePath === undefined ? path.join(opts.outDir, MANIFEST_FILE) : opts.baselinePath;
+  const baseline = readBaseline(baselinePath);
+  const plan = planAtlases(ids, zoneInputs.sets, MAX_ATLASES_PER_ZONE, zoneInputs.league, baseline);
+  logStability(plan, baseline, baselinePath, log);
+  log(`${ids.length} species, ${plan.atlases.length} atlases, ${plan.duplicated.length} duplicated; most bound zone ${Math.max(...[...plan.zones.values()].map((l) => l.length))} of ${MAX_ATLASES_PER_ZONE}`);
+  return plan;
+}
+
+function readBaseline(file: string | null): PlanBaseline | null {
+  if (!file || !existsSync(file)) return null;
+  return baselineFromManifest(JSON.parse(readFileSync(file, 'utf8')) as SpriteManifestV2);
+}
+
+function logStability(plan: ZonePlan, baseline: PlanBaseline | null, file: string | null, log: (m: string) => void): void {
+  const s = plan.stability;
+  if (!baseline) {
+    log(`plan: from scratch (${file ? `no baseline at ${file}` : '--replan'}), ${s.added.length} atlases`);
+    return;
+  }
+  log(`plan: ${s.kept.length} of ${baseline.atlases.length} atlases kept as they were, ${s.changed.length} changed, ${s.added.length} added, ${s.dropped.length} dropped (baseline ${file})`);
+  if (s.changed.length) log(`  changed: ${s.changed.join(', ')}`);
+  if (s.added.length) log(`  added: ${s.added.join(', ')}`);
+  if (s.dropped.length) log(`  dropped: ${s.dropped.join(', ')}`);
+  if (s.released.length) {
+    log(`  cap: released ${s.released.length} pinned atlases to keep ${s.releasedFor.join(', ')} within ${MAX_ATLASES_PER_ZONE} binds: ${s.released.join(', ')}`);
+  }
 }
 
 /** Every static file under the output: `outDir` without its `anim/` subdirectory (the §40.6 static creatures line). */

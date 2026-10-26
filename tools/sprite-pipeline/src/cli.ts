@@ -1,7 +1,8 @@
 /**
- * `tsx src/cli.ts <build|qa|frames|bench> [flags]`
+ * `tsx src/cli.ts <build|plan|qa|frames|bench> [flags]`
  *
  *   build   run every stage and write atlases + thumbs + manifest + QA artifacts
+ *   plan    print which atlases a build would keep, change, add or drop (no image work, writes nothing)
  *   qa      refresh contact-sheet.png / qa-report.json only (uses the sprite cache)
  *   frames  write qa/frames/<id>-<side>.png (every page of a multiframe source in a row) so
  *           frame-select.json can be filled; `--only a,b` or `--all`
@@ -10,6 +11,8 @@
  *
  * Flags: --only a,b,c   --limit N   --force   --jobs N   --no-anim   --all (frames)   --count N (bench)
  *        --assets DIR   --out DIR   --cache DIR   --qa DIR   --legacy DIR   --roster FILE
+ *        --baseline FILE (the manifest whose atlases the plan keeps; default <out>/creatures.manifest.json)
+ *        --replan (plan every atlas from scratch: rewrites most atlas files, spec §40.1.4)
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -18,7 +21,7 @@ import { SpriteCache } from './cache.js';
 import { WEBP_EFFORT, decodeToRgba, encodeKtx2Rgba, encodeRgbaWebp, pageCount, probeKtx2, transcodeKtx2ToRgba } from './encode.js';
 import { loadLegacyData } from './legacy.js';
 import { errorStats } from './metrics.js';
-import { processSprite, resolveAlphaOverride, runBuild } from './pipeline.js';
+import { previewPlan, processSprite, resolveAlphaOverride, runBuild } from './pipeline.js';
 import type { AlphaOverrides, FrameSelect } from './pipeline.js';
 import { renderFrameStrip } from './qa.js';
 import { resolveSources } from './sources.js';
@@ -82,10 +85,15 @@ async function main(): Promise<void> {
   const limit = str(flags.limit) ? Number(flags.limit) : undefined;
   const jobs = str(flags.jobs) ? Number(flags.jobs) : undefined;
   const log = (m: string): void => console.log(m);
+  const baselinePath = flags.replan === true ? null : str(flags.baseline);
 
+  if (command === 'plan') {
+    await previewPlan({ ...paths, baselinePath, log });
+    return;
+  }
   if (command === 'build' || command === 'qa') {
     const t0 = Date.now();
-    const res = await runBuild({ ...paths, only, limit, jobs, force: flags.force === true, qaOnly: command === 'qa', anim: flags['no-anim'] !== true, log });
+    const res = await runBuild({ ...paths, only, limit, jobs, force: flags.force === true, qaOnly: command === 'qa', anim: flags['no-anim'] !== true, baselinePath, log });
     const rung = res.rung ? `albedo q${res.rung.albedo} / normal q${res.rung.normal}` : 'n/a';
     log(
       `done in ${((Date.now() - t0) / 1000).toFixed(1)} s: ${res.sprites.length} sprites, ${res.atlasCount} atlases, ${(res.totalBytes / 1e6).toFixed(2)} MB, ${rung}, ` +
@@ -109,7 +117,7 @@ async function main(): Promise<void> {
     await bench(paths, Number(str(flags.count) ?? 6), log);
     return;
   }
-  throw new Error(`unknown command "${command}" (expected build | qa | frames | bench)`);
+  throw new Error(`unknown command "${command}" (expected build | plan | qa | frames | bench)`);
 }
 
 /** Per-source contact strips for every multiframe source (or the given species). */

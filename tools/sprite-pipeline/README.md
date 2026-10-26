@@ -7,6 +7,7 @@ Turns the 263 raw creature illustrations in `assets-src/creatures/` (398 MB, 256
 ```bash
 pnpm --filter @ewa/sprite-pipeline run build     # every stage, writes public/creatures + qa/
 pnpm --filter @ewa/sprite-pipeline run qa        # refresh qa/contact-sheet.png + qa/qa-report.json from the cache
+pnpm exec tsx tools/sprite-pipeline/src/cli.ts plan   # which atlases a build would keep / change / add (no image work, writes nothing)
 pnpm exec tsx tools/sprite-pipeline/src/cli.ts frames --only lumyth   # page strips for frame-select.json
 pnpm exec tsx tools/sprite-pipeline/src/cli.ts bench --count 4        # KTX2 vs WebP measurement
 pnpm exec vitest run tools/sprite-pipeline                            # tests (budget + encoding read the real output)
@@ -16,7 +17,7 @@ pnpm --filter @ewa/sprite-pipeline shiny --no-write --sheet DIR --only a,b   # c
 
 Shiny palettes (spine §3.7a, 2026-10-26): re-run `shiny` after adding a species or a family (content `shiny.test.ts` fails until its root is derived), then look at its sheet; hand-tuning goes in content `data/shiny.ts` `SHINY_TUNING`, never in the generated file.
 
-Flags: `--only a,b` restricts to species, `--limit N`, `--force` ignores the sprite cache, `--jobs N` sets stage workers (output-neutral), `--no-anim` skips the flipbooks. A build exits with code 3 when `qa-report.json` has an actionable flag, and fails outright when a source is missing, a multiframe source has no `frame-select.json` entry, or the output would exceed the budget.
+Flags: `--only a,b` restricts to species, `--limit N`, `--force` ignores the sprite cache, `--jobs N` sets stage workers (output-neutral), `--no-anim` skips the flipbooks, `--baseline FILE` plans against another manifest than the one in `--out`, `--replan` plans from scratch (see Stable atlas planning). A build exits with code 3 when `qa-report.json` has an actionable flag, and fails outright when a source is missing, a multiframe source has no `frame-select.json` entry, or the output would exceed the budget.
 
 ## The species set
 
@@ -32,11 +33,31 @@ Enclosed background holes (2026-10-26): the legacy dragons #041 to #046 (`scalew
 | 2 | Normalize | `normalize.ts` | Trims to the alpha bbox, scales the longest side to 881 px (0.86 × 1024), centres horizontally, puts the feet at y = 942 (manifest `footV` 0.08 from the bottom). Nearest-neighbour on integer factors, lanczos3 otherwise. |
 | 3 | Normal map | `normalmap.ts` | Luminance height, Gaussian σ 1.2, Sobel strength 0.55, plus a 6 px outward alpha-edge bevel (strength 0.85) so silhouettes catch a rim light. OpenGL +Y. |
 | 4 | Emissive mask | `emissive.ts` | Bright and vivid: HSV value ≥ 0.92 and chroma ≥ 0.4, capped at the most vivid 8 % of opaque texels, eroded 1 px, per-species overrides in `emissive-overrides.ts`. Two-valued. Pale fur never glows; flame creatures glow at accents only. |
-| 5 | Plan + pack | `plan.ts`, `pack.ts`, `zones.ts` | Every species stored once. A global sequence walks the zones in `ZONE_ORDER` (encounter tables, legendary statics, trainers, league), then the species in no zone. Consecutive pairs form 2048² atlases of four 1024² cells (front + back of two species). Each zone binds at most 8 atlases; the planner duplicates species only when a zone would exceed that. |
+| 5 | Plan + pack | `plan.ts`, `pack.ts`, `zones.ts` | Every species stored once. A global sequence walks the zones in `ZONE_ORDER` (encounter tables, legendary statics, trainers, league), then the species in no zone. Consecutive pairs form 2048² atlases of four 1024² cells (front + back of two species). Each zone binds at most 8 atlases; the planner duplicates species only when a zone would exceed that. Atlases already in the previous manifest stay where they are (below). |
 | 6 | Rasters + encode | `pipeline.ts`, `mips.ts`, `encode.ts` | Composites the atlas maps, forces binary alpha, builds mips 1–3 (premultiplied box filter, coverage-preserving, normals renormalised, mask stays two-valued), encodes WebP under the budget ladder, writes thumbnails, the manifest and QA artifacts. |
 | 7 | Flipbooks | `anim.ts` | Every page of the 20 multiframe sides (spec §40.1.8): stage 1 per page, the union crop resampled with the **static frame's own transform** onto the 1024² master (one crop, one size, one offset for every page: no jitter, and the static page lands where the static cell has it), stages 3–4 there, then a 2× reduction to the 512² anim cell. One atlas per side (6 × 4, 5 × 5 or 6 × 6 cells in page order), stage 6 as above, its own ladder (`ANIM_EXTRA_RUNGS`) under the 24 MiB anim budget. |
 
 Every per-sprite result is cached under `.cache/sprites/<hash>/` keyed by the source bytes, `SPRITE_STAGE_VERSION`, sprite size, normal and emissive options, the frame-select entry and the alpha override. The stage rasters are stored as lossless true-colour PNG (`cache.ts` `losslessPng`: RGBA8 albedo and normal, 8-bit grey emissive), so a read returns exactly what the stages produced (`test/cache.test.ts`); the atlases are composed from those reads. Bump `SPRITE_STAGE_VERSION` when stages 1–4 or the stored form of their output change, and `PIPELINE_VERSION` when the atlas files change. Encoded atlas files are cached under `.cache/atlases/<hash>.webp` keyed by `PIPELINE_VERSION`, the encoder settings, the level and the member hashes with placements. A rerun over unchanged inputs does no image work. The cache is gitignored; the output is committed.
+
+## Stable atlas planning
+
+A build plans against the manifest already in the output (`public/creatures/creatures.manifest.json`, or `--baseline FILE`), so adding species does not re-encode the atlases that are already committed (spec §40.1.4, 2026-10-26). Before this, every build re-paired from scratch: one new species early in `ZONE_ORDER` shifted every later pairing, and the 34 type-gap species re-encoded about 690 existing atlas files (`a-014` went from scalewisp + voltide to shiveruff + wickling), about 50 MB of git history for 9 MB of new art.
+
+The rule (`plan.ts`):
+
+1. Every `a-NNN` atlas of the baseline is pinned: same id, the members still in the roster, each in the cell it had (`AtlasPlan.species` is in cell order; `baselineFromManifest` reads it from the home rects).
+2. Species without a pinned home are matched by the same co-occurrence weight as a fresh plan: with each other, or into the free cell of a pinned single-species atlas when they share a zone with its occupant (a fill re-encodes that atlas, so a zoneless one opens a new atlas instead). The newcomer takes the cell after the occupant.
+3. New atlases take the ids of emptied baseline atlases first, then the next index after the highest.
+4. Cap conflict: when a zone would bind more than 8 atlases, the pinned atlases that zone binds are released and re-matched with the new species, repeated while a zone is over. A released pair that re-forms keeps its id, cells and bytes. If the result still needs duplicates and releasing every atlas would need fewer, the full re-plan wins.
+5. Planner duplicates (`a-<zone>-dup-N`) are re-derived every build, never pinned.
+
+The build log prints the outcome (`plan: 99 of 99 atlases kept as they were, 0 changed, 1 added, 0 dropped`), with a `cap: released …` line naming the zones that forced a move; `cli.ts plan` prints the same without touching an image. Kept atlases come out byte-identical because the encoded-atlas cache keys on members and cells (`atlasFileKey`), as long as the ladder rung stays the same: a build that has to step down the budget ladder re-encodes everything anyway, which is why a ceiling raise is the usual answer to a new species.
+
+Measured on the 2026-10-26 roster: a fresh plan reproduces the shipped atlases exactly; against the type-gap manifest, `astaroth` adds `a-099` and keeps the other 99; one more species in any zone adds one atlas, except in the three zones already at 8 binds (`galvan_route`, `ascent_route`, `the_rift`), where 8 atlases are released and 1 or 2 of them re-pair, and in `vesperveil`, where it fills `a-099`'s free cell beside `astaroth`.
+
+`--replan` ignores the baseline. Use it only to compact a roster that has drifted (many single-species atlases, or a zone kept at the cap by released atlases); expect most atlas files to change.
+
+Before a write build, check that no other session is rebuilding `public/creatures/`, and that the manifest there is the committed one (`git checkout HEAD -- packages/client/public/creatures` if an earlier uncommitted build re-paired it), because that manifest is the baseline.
 
 ## Binary alpha
 

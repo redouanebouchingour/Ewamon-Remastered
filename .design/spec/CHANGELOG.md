@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-26 stable atlas planning. One entry. -->
+
+## 2026-10-26 · `40-pipelines.md` §40.1.4 Stability (new paragraph), §40.1 stage 5 row · the atlas planner keeps the previous build's atlases
+Why: every build re-paired the atlases from scratch, so one new species early in `ZONE_ORDER` shifted every later pairing. The 34 type-gap species (commit ba2f90f) re-encoded ≈ 690 existing atlas files (`a-014` went from scalewisp + voltide to shiveruff + wickling), ≈ 50 MB of git history for ≈ 9 MB of new art, on top of 174 MB of creature atlas blobs over 17 commits; the user asked to stop the repo growing with re-encoded copies. The planner now pins every atlas of the previous manifest (id, members, cells) and matches only species without a home; a zone that would break the 8-bind cap releases just the pinned atlases it binds, and a full re-plan wins only when it needs fewer duplicates.
+Evidence: `tools/sprite-pipeline/test/plan-stability.test.ts` (adding, removing, filling a free cell, a cap release, the full re-plan fallback, and a fixture rebuild whose existing atlas files are byte-identical); with no baseline the planner reproduces the shipped 100 atlases and 21 bind lists exactly; a rebuild of the current tree against the committed manifest keeps its 99 atlases byte-identical (1 188 of 1 188 files: 3 maps × 4 levels each) and adds `a-099` (12 new files) for astaroth; one fake species added to each of the 21 zones in turn adds one atlas and changes at most 2 existing ones (only in the zones at 8 binds, or by filling `a-099`'s free cell in vesperveil).
+Affects: `tools/sprite-pipeline/src/{plan,pipeline,cli}.ts`, `test/plan-stability.test.ts`, `README.md`.
+
 <!-- 2026-10-26 the type-gap lines (#146–179). One entry. -->
 
 ## 2026-10-26 · `00-spine.md` SpeciesDef `dexNumber`, ACHIEVEMENTS, §3 rule 3 counts; `20-client.md` §20.9.5; `40-pipelines.md` §40.1 species set, accounting, budget table (`creatures/` ≤ 52 MiB), acceptance 2 and 4; `50-verification-budget.md` rule 11, content and sprite test rows, roster row · the type-gap lines (#146–179)
