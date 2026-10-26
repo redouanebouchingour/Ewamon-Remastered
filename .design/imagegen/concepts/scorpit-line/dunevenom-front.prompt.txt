@@ -1,0 +1,11 @@
+Image 1 is a battle sprite from an indie creature-collecting RPG called Ewamon. Draw ONE new original creature in exactly the same pixel art style as image 1, but do not copy its design.
+
+Pixel art style (most important): a true low-resolution pixel art sprite drawn on a grid of about 100 by 100 pixels, then enlarged with nearest-neighbour scaling so every art pixel is a big, crisp square block, exactly like image 1. Thick dark outline around the whole silhouette. Flat cel shading with only 2 or 3 tones per colour, hard edges between tones. Big simple shapes, a clean readable silhouette, large expressive eyes. No fine fur or feather texture, no gradients, no soft airbrush shading, no anti-aliasing, no blur, no painterly detail.
+
+Creature: Dunevenom, an original Poison/Ground creature, the final stage of its line. An armoured desert scorpion whose plates are layered like sandstone strata. Its venom bulb glows purple and drips onto the sand, and its pincers are wide as shovels. It belongs to a line whose earlier stage is Scorpit: A tiny sand-coloured scorpion with a stinger far too big for its body that it drags behind it. Keep the same family colours and features.
+
+Pose and framing: front battle sprite, 3/4 view facing slightly to the left, full body, centered, with clear empty space on every side, the same scale as image 1. Keep wings, limbs and tails close to the body so the body and face stay large and readable.
+
+Colours: sandstone #d6b36a, strata brown #8a6a3c, venom purple #9a5bb0, venom glow #c8f05a, dark outline #2a2d3c.
+
+Background: perfectly flat solid magenta #ff00ff, no shadow, no scenery. No magenta or pink on the creature. No text, no border, no watermark, only one creature.

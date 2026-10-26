@@ -1,0 +1,11 @@
+Image 1 is a battle sprite from an indie creature-collecting RPG called Ewamon. Draw ONE new original creature in exactly the same pixel art style as image 1, but do not copy its design.
+
+Pixel art style (most important): a true low-resolution pixel art sprite drawn on a grid of about 100 by 100 pixels, then enlarged with nearest-neighbour scaling so every art pixel is a big, crisp square block, exactly like image 1. Thick dark outline around the whole silhouette. Flat cel shading with only 2 or 3 tones per colour, hard edges between tones. Big simple shapes, a clean readable silhouette, large expressive eyes. No fine fur or feather texture, no gradients, no soft airbrush shading, no anti-aliasing, no blur, no painterly detail.
+
+Creature: Petraptor, an original Rock/Flying creature, the final stage of its line. A large pterosaur whose wings are layered slate plates, with ridges of fossil bone along its back and a polished amber gem set into its long crest. It belongs to a line whose earlier stage is Shalewing: A hatchling pterosaur still half inside a cracked shale egg, wearing the top half of the shell like a helmet. Keep the same family colours and features.
+
+Pose and framing: front battle sprite, 3/4 view facing slightly to the left, full body, centered, with clear empty space on every side, the same scale as image 1. Keep wings, limbs and tails close to the body so the body and face stay large and readable.
+
+Colours: slate #6b6e78, fossil bone #b09a6f, amber crest #e8a23a, dark outline #3a3c44, dark outline #2a2d3c.
+
+Background: perfectly flat solid magenta #ff00ff, no shadow, no scenery. No magenta or pink on the creature. No text, no border, no watermark, only one creature.

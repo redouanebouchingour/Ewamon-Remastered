@@ -7,7 +7,8 @@
    colour edges fall on grid lines. The range stops at 13 so a double-size grid (twice the real block) never wins.
 2. If both axes agree on a clean grid (score >= 2.2, sizes within 0.3), sample one output pixel per art pixel.
    Otherwise the image has no single grid (gpt-image sometimes mixes pixel sizes): pick the cell size that makes the
-   creature 122 px tall or wide and sample by majority colour per cell.
+   creature 122 px tall or wide and sample by majority colour per cell. A grid result bigger than 128 also falls
+   back to this.
 3. Magenta and magenta-tinted fringe become transparent; the sprite sits bottom-centred, 3 px above the bottom edge.
 """
 import sys
@@ -40,11 +41,11 @@ def find_grid(im):
     return found
 
 
-def main(src, dst):
+def main(src, dst, force_fit=False):
     im = np.asarray(Image.open(src).convert("RGB")).astype(int)
     H, W, _ = im.shape
     (sx, bx, px), (sy, by, py) = find_grid(im)
-    if min(sx, sy) >= 2.2 and abs(bx - by) <= 0.3:
+    if not force_fit and min(sx, sy) >= 2.2 and abs(bx - by) <= 0.3:
         block, mode = (bx + by) / 2, "grid"
     else:
         mask = ~((im[..., 0] > 170) & (im[..., 2] > 170) & (im[..., 1] < 110))
@@ -72,6 +73,8 @@ def main(src, dst):
     img = img.crop(img.getchannel("A").getbbox())
     w, h = img.size
     if max(w, h) > SIZE - 4:
+        if mode == "grid":  # the grid read too fine (the art is bigger than 128 art pixels): fit it instead
+            return main(src, dst, force_fit=True)
         sys.exit(f"{src}: snapped sprite is {w}x{h}, larger than {SIZE}; regenerate with more empty space around it")
     canvas = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
     canvas.alpha_composite(img, ((SIZE - w) // 2, SIZE - h - 3))

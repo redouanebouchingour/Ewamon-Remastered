@@ -1,0 +1,1789 @@
+[
+ {
+  "key": "puffinch",
+  "fills": [
+   "Normal",
+   "Flying"
+  ],
+  "why": "Normal is paired with only Grass and Ice (16 of 18 combos missing), and Normal/Flying, the classic first-route bird, does not exist. As a three-stage line it grows with the player from the first route to the league.",
+  "habitat": "Mire Route, early grass",
+  "anchors": [
+   "stormchick",
+   "alloylark"
+  ],
+  "stages": [
+   {
+    "id": "puffinch",
+    "name": "Puffinch",
+    "types": [
+     "Normal",
+     "Flying"
+    ],
+    "evolve": "Evolves at 14",
+    "look": "A plump, round field-finch chick with cream and tan feathers, a big fluffy chest puff, stubby wings and a long two-strand ribbon tail it trips over. Wide cheerful eyes, little orange feet.",
+    "palette": [
+     [
+      "#efe2c4",
+      "cream"
+     ],
+     [
+      "#c49a64",
+      "tan"
+     ],
+     [
+      "#e0874a",
+      "orange feet"
+     ],
+     [
+      "#3a3f52",
+      "slate outline"
+     ]
+    ],
+    "stats": [
+     58,
+     56,
+     46,
+     78
+    ],
+    "role": "Speed",
+    "rarity": "common",
+    "abilities": [
+     "Keen Eye",
+     "Hustle"
+    ],
+    "moves": [
+     "Peck",
+     "Quick Attack",
+     "Wing Gust",
+     "Feather Dance"
+    ]
+   },
+   {
+    "id": "gustling",
+    "name": "Gustling",
+    "types": [
+     "Normal",
+     "Flying"
+    ],
+    "evolve": "Evolves at 34",
+    "look": "A lean, scrappy young finch that has outgrown its fluff, with a short spiky crest, wings a size too big and the first rust-red feathers coming in at the neck. Its ribbon tail is now long enough to whip.",
+    "palette": [
+     [
+      "#e6d6b4",
+      "dusty cream"
+     ],
+     [
+      "#c49a64",
+      "tan"
+     ],
+     [
+      "#b4482c",
+      "rust"
+     ],
+     [
+      "#3a3f52",
+      "slate outline"
+     ]
+    ],
+    "stats": [
+     72,
+     76,
+     60,
+     96
+    ],
+    "role": "Speed",
+    "rarity": "uncommon",
+    "abilities": [
+     "Keen Eye",
+     "Hustle"
+    ],
+    "moves": [
+     "Quick Attack",
+     "Wing Gust",
+     "Aerial Ace",
+     "Slash"
+    ]
+   },
+   {
+    "id": "galeforth",
+    "name": "Galeforth",
+    "types": [
+     "Normal",
+     "Flying"
+    ],
+    "evolve": "Final",
+    "look": "A proud, swift hawk with a swept-back windblown crest, tan and white plumage and a rust-red neck ruff that flows like a scarf. Wings half spread, the forked ribbon tail streaming behind it.",
+    "palette": [
+     [
+      "#f2ead8",
+      "white"
+     ],
+     [
+      "#c49a64",
+      "tan"
+     ],
+     [
+      "#b4482c",
+      "rust scarf"
+     ],
+     [
+      "#3a3f52",
+      "slate outline"
+     ]
+    ],
+    "stats": [
+     92,
+     104,
+     78,
+     124
+    ],
+    "role": "Physical Attacker",
+    "rarity": "rare",
+    "abilities": [
+     "Keen Eye",
+     "Hustle"
+    ],
+    "moves": [
+     "Aerial Ace",
+     "Brave Bird",
+     "Double Edge",
+     "Roost"
+    ]
+   }
+  ],
+  "dex": "It rides the first warm wind of the morning over the fields and never lands until dusk. Riders tie ribbons to its tail for luck before a long journey."
+ },
+ {
+  "key": "corvlet",
+  "fills": [
+   "Dark",
+   "Flying",
+   "Psychic"
+  ],
+  "why": "Dark and Flying have never been paired, and Psychic/Flying is missing too. Corvlet uses the honor ledger (like Dustcub): a trainer who fights fair raises an oracle, one who fights dirty raises a thief.",
+  "habitat": "Vesperveil, at dusk",
+  "anchors": [
+   "umbrit",
+   "alloylark"
+  ],
+  "stages": [
+   {
+    "id": "corvlet",
+    "name": "Corvlet",
+    "types": [
+     "Dark",
+     "Flying"
+    ],
+    "evolve": "Splits at 30 by honor",
+    "look": "A scruffy crow chick under an oversized hood of black feathers that hides everything but one bright eye. It always carries a stolen shiny trinket in its beak.",
+    "palette": [
+     [
+      "#1d1a24",
+      "ink black"
+     ],
+     [
+      "#3b3450",
+      "night purple"
+     ],
+     [
+      "#8a5cc8",
+      "violet glint"
+     ],
+     [
+      "#d9b45a",
+      "gold trinket"
+     ]
+    ],
+    "stats": [
+     55,
+     68,
+     48,
+     74
+    ],
+    "role": "Speed",
+    "rarity": "common",
+    "abilities": [
+     "Keen Eye",
+     "Intimidate"
+    ],
+    "moves": [
+     "Peck",
+     "Bite",
+     "Snarl",
+     "Wing Gust"
+    ]
+   },
+   {
+    "id": "ravenmourne",
+    "name": "Ravenmourne",
+    "types": [
+     "Dark",
+     "Flying"
+    ],
+    "evolve": "Final",
+    "look": "A tall, tattered raven wrapped in a cloak of black feathers, its long beak shaped like a plague-doctor mask. A ring of stolen trinkets hangs around its neck and its eyes glint violet.",
+    "palette": [
+     [
+      "#1d1a24",
+      "ink black"
+     ],
+     [
+      "#3b3450",
+      "night purple"
+     ],
+     [
+      "#8a5cc8",
+      "violet eyes"
+     ],
+     [
+      "#d9b45a",
+      "gold trinkets"
+     ]
+    ],
+    "stats": [
+     84,
+     112,
+     72,
+     112
+    ],
+    "role": "Physical Attacker",
+    "rarity": "uncommon",
+    "abilities": [
+     "Keen Eye",
+     "Intimidate"
+    ],
+    "moves": [
+     "Night Slash",
+     "Sucker Punch",
+     "Sky Pierce",
+     "Brave Bird"
+    ],
+    "label": "Low honor"
+   },
+   {
+    "id": "augurvane",
+    "name": "Augurvane",
+    "types": [
+     "Psychic",
+     "Flying"
+    ],
+    "evolve": "Final",
+    "label": "High honor",
+    "look": "A sleek raven whose black feathers fade to bone-white at the tips, each inscribed with a faint rune. A violet gem glows on its brow like a third eye, and it carries a small lit lantern in its talons.",
+    "palette": [
+     [
+      "#1d1a24",
+      "ink black"
+     ],
+     [
+      "#f2ead8",
+      "bone white"
+     ],
+     [
+      "#e06fa0",
+      "psychic glow"
+     ],
+     [
+      "#d9b45a",
+      "lantern gold"
+     ]
+    ],
+    "stats": [
+     92,
+     80,
+     94,
+     114
+    ],
+    "role": "Special Attacker",
+    "rarity": "uncommon",
+    "abilities": [
+     "Keen Eye",
+     "Competitive"
+    ],
+    "moves": [
+     "Extrasensory",
+     "Brain Pulse",
+     "Hurricane Wing",
+     "Calm Mind"
+    ]
+   }
+  ],
+  "dex": "Every Corvlet steals. What it becomes depends on what it learns from its trainer: the honest ones grow into Augurvanes that return what they took, the rest into Ravenmournes that never give anything back.",
+  "split": true,
+  "dexOf": "Corvlet line"
+ },
+ {
+  "key": "sproutgrub",
+  "fills": [
+   "Bug",
+   "Grass"
+  ],
+  "why": "Bug has only 4 families and no pure Bug at all. A fast-evolving three-stage bug (larva, cocoon, mantis) adds a pure Bug first stage and the missing Bug/Grass combo, the natural forest bug.",
+  "habitat": "Mirevale woods, Mire Route",
+  "anchors": [
+   "hexroach",
+   "bramblecub"
+  ],
+  "stages": [
+   {
+    "id": "sproutgrub",
+    "name": "Sproutgrub",
+    "types": [
+     "Bug"
+    ],
+    "evolve": "Evolves at 10",
+    "look": "A soft green-brown caterpillar curled up in a rolled leaf like a sleeping bag, only its sleepy face and tiny stubby legs poking out. A single sprout grows from its head.",
+    "palette": [
+     [
+      "#6e9a3a",
+      "leaf green"
+     ],
+     [
+      "#b8c95a",
+      "pale shoot"
+     ],
+     [
+      "#5b3d2a",
+      "bark brown"
+     ],
+     [
+      "#e8d36a",
+      "yellow spots"
+     ]
+    ],
+    "stats": [
+     60,
+     52,
+     62,
+     44
+    ],
+    "role": "Physical Defender",
+    "rarity": "common",
+    "abilities": [
+     "Speed Boost",
+     "Chlorophyll"
+    ],
+    "moves": [
+     "Tackle",
+     "String Shot",
+     "Bug Bite",
+     "Vine Whip"
+    ]
+   },
+   {
+    "id": "leafcoon",
+    "name": "Leafcoon",
+    "types": [
+     "Bug",
+     "Grass"
+    ],
+    "evolve": "Evolves at 24",
+    "look": "A cocoon of tightly wound leaves stitched with silk, hanging from a twig. Two narrow eyes peer out of a gap, and blade-shaped leaf tips already poke through the wrapping, a hint of what is inside.",
+    "palette": [
+     [
+      "#5f8a34",
+      "wound leaf"
+     ],
+     [
+      "#c9d6a0",
+      "silk"
+     ],
+     [
+      "#5b3d2a",
+      "twig brown"
+     ],
+     [
+      "#e8d36a",
+      "eye glow"
+     ]
+    ],
+    "stats": [
+     66,
+     40,
+     104,
+     30
+    ],
+    "role": "Physical Defender",
+    "rarity": "uncommon",
+    "abilities": [
+     "Chlorophyll"
+    ],
+    "moves": [
+     "String Shot",
+     "Synthesis",
+     "Protect",
+     "Vine Whip"
+    ]
+   },
+   {
+    "id": "mantleaf",
+    "name": "Mantleaf",
+    "types": [
+     "Bug",
+     "Grass"
+    ],
+    "evolve": "Final",
+    "look": "A poised praying mantis whose forearms are serrated leaf blades. A petal crest frames its head and its folded wings carry a moss pattern. Stance low and ready to strike.",
+    "palette": [
+     [
+      "#6e9a3a",
+      "leaf green"
+     ],
+     [
+      "#3f6a2a",
+      "deep moss"
+     ],
+     [
+      "#e86f8a",
+      "petal crest"
+     ],
+     [
+      "#e8d36a",
+      "yellow eyes"
+     ]
+    ],
+    "stats": [
+     80,
+     118,
+     78,
+     112
+    ],
+    "role": "Physical Attacker",
+    "rarity": "uncommon",
+    "abilities": [
+     "Speed Boost",
+     "Chlorophyll"
+    ],
+    "moves": [
+     "X-Scissor",
+     "Leaf Blade",
+     "Power Whip",
+     "Signal Beam"
+    ]
+   }
+  ],
+  "dex": "It stands so still among the ferns that birds land on it. The leaf on its arm is sharper than any blade a smith could hammer."
+ },
+ {
+  "key": "snowlet",
+  "fills": [
+   "Ice",
+   "Flying"
+  ],
+  "why": "Ice has only 4 catchable families and has never been paired with Flying. A snowy owl gives Ice a special attacker that does not depend on Water or Dragon.",
+  "habitat": "Skyrend Peak, snowfields",
+  "anchors": [
+   "shiveruff",
+   "alloylark"
+  ],
+  "stages": [
+   {
+    "id": "snowlet",
+    "name": "Snowlet",
+    "types": [
+     "Ice",
+     "Flying"
+    ],
+    "evolve": "Evolves at 32",
+    "look": "A perfectly round snowball of frost fluff with only big amber eyes and a tiny beak showing. Two little wing tips stick out of the sides.",
+    "palette": [
+     [
+      "#f4f8fb",
+      "snow white"
+     ],
+     [
+      "#a9d8ec",
+      "frost blue"
+     ],
+     [
+      "#3b5c86",
+      "navy outline"
+     ],
+     [
+      "#f2c24a",
+      "amber eyes"
+     ]
+    ],
+    "stats": [
+     62,
+     48,
+     58,
+     66
+    ],
+    "role": "Special Defender",
+    "rarity": "uncommon",
+    "abilities": [
+     "Keen Eye",
+     "Thick Fat"
+    ],
+    "moves": [
+     "Powder Snow",
+     "Peck",
+     "Wing Gust",
+     "Growl"
+    ]
+   },
+   {
+    "id": "hoarfrowl",
+    "name": "Hoarfrowl",
+    "types": [
+     "Ice",
+     "Flying"
+    ],
+    "evolve": "Final",
+    "look": "A large snowy owl whose wing tips are long icicle feathers. A ring of frost circles one eye like a monocle and its breath hangs as fog. Calm, scholarly stare.",
+    "palette": [
+     [
+      "#f4f8fb",
+      "snow white"
+     ],
+     [
+      "#a9d8ec",
+      "frost blue"
+     ],
+     [
+      "#3b5c86",
+      "navy outline"
+     ],
+     [
+      "#f2c24a",
+      "amber eyes"
+     ]
+    ],
+    "stats": [
+     94,
+     78,
+     92,
+     106
+    ],
+    "role": "Special Attacker",
+    "rarity": "rare",
+    "abilities": [
+     "Keen Eye",
+     "Thick Fat"
+    ],
+    "moves": [
+     "Ice Beam",
+     "Blizzard",
+     "Hurricane Wing",
+     "Roost"
+    ]
+   }
+  ],
+  "dex": "A single beat of its wings frosts a whole valley overnight. Climbers on Skyrend say it watches every rope team and only leaves once they are safe."
+ },
+ {
+  "key": "tuskling",
+  "fills": [
+   "Ice",
+   "Ground"
+  ],
+  "why": "Pure Ice does not exist yet and Ice/Ground is missing. The calf is pure Ice and picks up Ground when it evolves, a type change across stages the roster rarely uses. It gives Ice the physical tank it lacks.",
+  "habitat": "Skyrend Peak, The Ascent",
+  "anchors": [
+   "shiveruff",
+   "scraphog"
+  ],
+  "stages": [
+   {
+    "id": "tuskling",
+    "name": "Tuskling",
+    "types": [
+     "Ice"
+    ],
+    "evolve": "Evolves at 24",
+    "look": "A woolly calf with shaggy brown fur, a cap of fresh snow on its head and two tiny frosted tusk nubs. Short sturdy legs and a curious, trunk-up pose.",
+    "palette": [
+     [
+      "#7a5a44",
+      "woolly brown"
+     ],
+     [
+      "#cfe8f2",
+      "snow cap"
+     ],
+     [
+      "#8fb8cc",
+      "frost tusks"
+     ],
+     [
+      "#4a3a30",
+      "dark outline"
+     ]
+    ],
+    "stats": [
+     78,
+     66,
+     68,
+     34
+    ],
+    "role": "Tank",
+    "rarity": "uncommon",
+    "abilities": [
+     "Thick Fat",
+     "Solid Rock"
+    ],
+    "moves": [
+     "Tackle",
+     "Powder Snow",
+     "Ice Shard",
+     "Mud-Slap"
+    ]
+   },
+   {
+    "id": "shagtusk",
+    "name": "Shagtusk",
+    "types": [
+     "Ice",
+     "Ground"
+    ],
+    "evolve": "Evolves at 44",
+    "look": "A stocky young mammoth with a thick shaggy coat caked in frozen mud, short straight tusks capped in ice and a stubborn lowered head, ready to charge. Thin sheets of frost are forming along its spine.",
+    "palette": [
+     [
+      "#7a5a44",
+      "woolly brown"
+     ],
+     [
+      "#5e4636",
+      "frozen mud"
+     ],
+     [
+      "#cfe8f2",
+      "frost"
+     ],
+     [
+      "#4a3a30",
+      "dark outline"
+     ]
+    ],
+    "stats": [
+     96,
+     92,
+     88,
+     42
+    ],
+    "role": "Tank",
+    "rarity": "uncommon",
+    "abilities": [
+     "Thick Fat",
+     "Solid Rock"
+    ],
+    "moves": [
+     "Ice Shard",
+     "Bulldoze",
+     "Frost Bite",
+     "Body Slam"
+    ]
+   },
+   {
+    "id": "rimetusk",
+    "name": "Rimetusk",
+    "types": [
+     "Ice",
+     "Ground"
+    ],
+    "evolve": "Final",
+    "look": "A towering mammoth with slabs of permafrost grown onto its back like a small glacier, huge curled tusks rimmed with ice and frozen clods of earth tangled in its fur.",
+    "palette": [
+     [
+      "#7a5a44",
+      "woolly brown"
+     ],
+     [
+      "#cfe8f2",
+      "glacier white"
+     ],
+     [
+      "#8fb8cc",
+      "ice blue"
+     ],
+     [
+      "#4a3a30",
+      "frozen earth"
+     ]
+    ],
+    "stats": [
+     124,
+     126,
+     116,
+     54
+    ],
+    "role": "Tank",
+    "rarity": "rare",
+    "abilities": [
+     "Thick Fat",
+     "Solid Rock"
+    ],
+    "moves": [
+     "Glacier Crash",
+     "Earthquake",
+     "Frost Bite",
+     "Iron Defense"
+    ]
+   }
+  ],
+  "dex": "Herds migrate along the same path every winter and leave a road of packed ice behind them. The glacier on an old bull's back is older than any town on the mountain."
+ },
+ {
+  "key": "scorpit",
+  "fills": [
+   "Poison",
+   "Ground"
+  ],
+  "why": "Poison and Ground each sit at 6 families and have never been combined. A desert scorpion is a natural fit and gives Poison a sturdy physical line.",
+  "habitat": "Deepcut, Marrowdig badlands",
+  "anchors": [
+   "dustcub",
+   "hexroach"
+  ],
+  "stages": [
+   {
+    "id": "scorpit",
+    "name": "Scorpit",
+    "types": [
+     "Poison",
+     "Ground"
+    ],
+    "evolve": "Evolves at 28",
+    "look": "A tiny sand-coloured scorpion with a stinger far too big for its body that it drags behind it. Little pincers held up proudly.",
+    "palette": [
+     [
+      "#d6b36a",
+      "sand"
+     ],
+     [
+      "#8a6a3c",
+      "dune brown"
+     ],
+     [
+      "#9a5bb0",
+      "venom purple"
+     ],
+     [
+      "#c8f05a",
+      "venom glow"
+     ]
+    ],
+    "stats": [
+     56,
+     66,
+     70,
+     50
+    ],
+    "role": "Physical Defender",
+    "rarity": "common",
+    "abilities": [
+     "Poison Spores",
+     "Sand Veil"
+    ],
+    "moves": [
+     "Acid",
+     "Sand Attack",
+     "Mud-Slap",
+     "Bite"
+    ]
+   },
+   {
+    "id": "dunevenom",
+    "name": "Dunevenom",
+    "types": [
+     "Poison",
+     "Ground"
+    ],
+    "evolve": "Final",
+    "look": "An armoured desert scorpion whose plates are layered like sandstone strata. Its venom bulb glows purple and drips onto the sand, and its pincers are wide as shovels.",
+    "palette": [
+     [
+      "#d6b36a",
+      "sandstone"
+     ],
+     [
+      "#8a6a3c",
+      "strata brown"
+     ],
+     [
+      "#9a5bb0",
+      "venom purple"
+     ],
+     [
+      "#c8f05a",
+      "venom glow"
+     ]
+    ],
+    "stats": [
+     86,
+     108,
+     104,
+     84
+    ],
+    "role": "Physical Attacker",
+    "rarity": "uncommon",
+    "abilities": [
+     "Poison Spores",
+     "Sand Veil"
+    ],
+    "moves": [
+     "Cross Poison",
+     "Venom Fang",
+     "Sand Tomb",
+     "Earthquake"
+    ]
+   }
+  ],
+  "dex": "It burrows under the dunes and leaves a faint purple trail that kills every weed it crosses. Miners in Marrowdig shake out their boots twice."
+ },
+ {
+  "key": "shalewing",
+  "fills": [
+   "Rock",
+   "Flying"
+  ],
+  "why": "Rock has 6 families and has never been paired with Flying. A revived fossil pterosaur is a strong fantasy and can be a dig-site gift, so it needs no spawn zone.",
+  "habitat": "Marrowdig dig site (fossil revival gift)",
+  "anchors": [
+   "pebblit",
+   "scalewisp"
+  ],
+  "stages": [
+   {
+    "id": "shalewing",
+    "name": "Shalewing",
+    "types": [
+     "Rock",
+     "Flying"
+    ],
+    "evolve": "Evolves at 36",
+    "look": "A hatchling pterosaur still half inside a cracked shale egg, wearing the top half of the shell like a helmet. Thin membrane wings and a big curious beak.",
+    "palette": [
+     [
+      "#6b6e78",
+      "slate"
+     ],
+     [
+      "#b09a6f",
+      "shale tan"
+     ],
+     [
+      "#e8a23a",
+      "amber"
+     ],
+     [
+      "#3a3c44",
+      "dark outline"
+     ]
+    ],
+    "stats": [
+     64,
+     72,
+     70,
+     62
+    ],
+    "role": "Physical Attacker",
+    "rarity": "rare",
+    "abilities": [
+     "Solid Rock",
+     "Rough Skin"
+    ],
+    "moves": [
+     "Rock Throw",
+     "Wing Gust",
+     "Bite",
+     "Ancient Power"
+    ]
+   },
+   {
+    "id": "petraptor",
+    "name": "Petraptor",
+    "types": [
+     "Rock",
+     "Flying"
+    ],
+    "evolve": "Final",
+    "look": "A large pterosaur whose wings are layered slate plates, with ridges of fossil bone along its back and a polished amber gem set into its long crest.",
+    "palette": [
+     [
+      "#6b6e78",
+      "slate"
+     ],
+     [
+      "#b09a6f",
+      "fossil bone"
+     ],
+     [
+      "#e8a23a",
+      "amber crest"
+     ],
+     [
+      "#3a3c44",
+      "dark outline"
+     ]
+    ],
+    "stats": [
+     92,
+     118,
+     96,
+     106
+    ],
+    "role": "Physical Attacker",
+    "rarity": "rare",
+    "abilities": [
+     "Solid Rock",
+     "Rough Skin"
+    ],
+    "moves": [
+     "Stone Edge",
+     "Rock Slide",
+     "Sky Pierce",
+     "Brave Bird"
+    ]
+   }
+  ],
+  "dex": "It ruled the skies before the mountains were this tall. The amber in its crest still holds a mosquito from that age."
+ },
+ {
+  "key": "twinklit",
+  "fills": [
+   "Cosmic",
+   "Fairy"
+  ],
+  "why": "Cosmic is almost legendary-only: one catchable family (Hollowolf) and no pure Cosmic. Two pure Cosmic stages, then Fairy at the last stage, make Cosmic a type a player can raise from the start.",
+  "habitat": "Umbral Observatory, at night",
+  "anchors": [
+   "glimp",
+   "nebucloak"
+  ],
+  "stages": [
+   {
+    "id": "twinklit",
+    "name": "Twinklit",
+    "types": [
+     "Cosmic"
+    ],
+    "evolve": "Evolves at 20",
+    "look": "A small five-pointed star creature with a sleepy smiling face and stubby star-point limbs, trailing a thin line of glitter wherever it floats.",
+    "palette": [
+     [
+      "#7be0d0",
+      "cosmic teal"
+     ],
+     [
+      "#fff3c4",
+      "starlight"
+     ],
+     [
+      "#1f2350",
+      "night blue"
+     ],
+     [
+      "#f0a6d0",
+      "pink sparkle"
+     ]
+    ],
+    "stats": [
+     58,
+     44,
+     56,
+     72
+    ],
+    "role": "Special Defender",
+    "rarity": "uncommon",
+    "abilities": [
+     "Levitate",
+     "Natural Cure"
+    ],
+    "moves": [
+     "Fairy Wind",
+     "Confusion",
+     "Charm",
+     "Light Screen"
+    ]
+   },
+   {
+    "id": "lumistar",
+    "name": "Lumistar",
+    "types": [
+     "Cosmic"
+    ],
+    "evolve": "Evolves at 38",
+    "look": "A small floating star child: its head is a soft five-pointed star with a calm glowing face, and below it hangs a short little body wrapped in a cape of deep night sky dotted with tiny stars. Two small mitten hands, no legs, it floats above a short comet trail. A faint ring of light circles its head like a halo.",
+    "palette": [
+     [
+      "#7be0d0",
+      "cosmic teal"
+     ],
+     [
+      "#fff3c4",
+      "starlight"
+     ],
+     [
+      "#1f2350",
+      "night blue"
+     ],
+     [
+      "#b8a6f0",
+      "ring violet"
+     ]
+    ],
+    "stats": [
+     74,
+     60,
+     72,
+     92
+    ],
+    "role": "Special Attacker",
+    "rarity": "uncommon",
+    "abilities": [
+     "Levitate",
+     "Natural Cure"
+    ],
+    "moves": [
+     "Confusion",
+     "Fairy Wind",
+     "Starfall",
+     "Light Screen"
+    ]
+   },
+   {
+    "id": "stellaria",
+    "name": "Stellaria",
+    "types": [
+     "Cosmic",
+     "Fairy"
+    ],
+    "evolve": "Final",
+    "look": "A graceful floating dancer whose flowing gown is a nebula veil dotted with a constellation. A crown of small stars circles its head and its feet never touch the ground.",
+    "palette": [
+     [
+      "#7be0d0",
+      "cosmic teal"
+     ],
+     [
+      "#1f2350",
+      "nebula blue"
+     ],
+     [
+      "#f0a6d0",
+      "fairy pink"
+     ],
+     [
+      "#fff3c4",
+      "starlight"
+     ]
+    ],
+    "stats": [
+     96,
+     84,
+     94,
+     120
+    ],
+    "role": "Special Attacker",
+    "rarity": "rare",
+    "abilities": [
+     "Levitate",
+     "Natural Cure"
+    ],
+    "moves": [
+     "Starfall",
+     "Moonblast",
+     "Dazzling Gleam",
+     "Calm Mind"
+    ]
+   }
+  ],
+  "dex": "Astronomers at the Umbral Observatory have charted one new constellation for every Stellaria they have met. It dances them into the sky and they stay there."
+ },
+ {
+  "key": "meteorb",
+  "fills": [
+   "Cosmic",
+   "Rock"
+  ],
+  "why": "A second catchable Cosmic family, built as the physical counterpart to Stellaria. Cosmic/Rock is missing and makes Cosmic feel like a real type outside the legendaries.",
+  "habitat": "Skyrend Peak impact crater",
+  "anchors": [
+   "pebblit",
+   "lithokrysm"
+  ],
+  "stages": [
+   {
+    "id": "meteorb",
+    "name": "Meteorb",
+    "types": [
+     "Cosmic",
+     "Rock"
+    ],
+    "evolve": "Evolves at 38",
+    "look": "A small cratered meteorite that hovers a little off the ground, a teal glow leaking from the cracks in its surface and two pebble eyes peering out.",
+    "palette": [
+     [
+      "#4a4650",
+      "meteor grey"
+     ],
+     [
+      "#6b6670",
+      "crater stone"
+     ],
+     [
+      "#7be0d0",
+      "core glow"
+     ],
+     [
+      "#ff7a45",
+      "hot rim"
+     ]
+    ],
+    "stats": [
+     70,
+     72,
+     84,
+     30
+    ],
+    "role": "Physical Defender",
+    "rarity": "uncommon",
+    "abilities": [
+     "Solid Rock",
+     "Guts"
+    ],
+    "moves": [
+     "Tackle",
+     "Rock Throw",
+     "Stealth Rock",
+     "Ancient Power"
+    ]
+   },
+   {
+    "id": "craterhulk",
+    "name": "Craterhulk",
+    "types": [
+     "Cosmic",
+     "Rock"
+    ],
+    "evolve": "Final",
+    "look": "A hulking golem of meteor rock. Its chest is a crater with a glowing star core inside, its knuckles still glow red-hot from entry, and small debris orbits its shoulders.",
+    "palette": [
+     [
+      "#4a4650",
+      "meteor grey"
+     ],
+     [
+      "#6b6670",
+      "crater stone"
+     ],
+     [
+      "#7be0d0",
+      "star core"
+     ],
+     [
+      "#ff7a45",
+      "red-hot rim"
+     ]
+    ],
+    "stats": [
+     108,
+     124,
+     122,
+     46
+    ],
+    "role": "Tank",
+    "rarity": "rare",
+    "abilities": [
+     "Solid Rock",
+     "Guts"
+    ],
+    "moves": [
+     "Starfall",
+     "Eclipse Void",
+     "Boulder Crash",
+     "Iron Defense"
+    ]
+   }
+  ],
+  "dex": "The crater on Skyrend is where the first one landed. It climbed out, looked at the stars and has been trying to punch its way back ever since."
+ },
+ {
+  "key": "gravelwisp",
+  "fills": [
+   "Ghost",
+   "Ground"
+  ],
+  "why": "There is no pure Ghost and Ghost has never met Ground. A desert grave spirit fits the badlands zones and gives Ghost a defensive line.",
+  "habitat": "Marrowdig ruins, Deepcut",
+  "anchors": [
+   "umbrit",
+   "nerohat"
+  ],
+  "stages": [
+   {
+    "id": "gravelwisp",
+    "name": "Gravelwisp",
+    "types": [
+     "Ghost"
+    ],
+    "evolve": "Evolves at 33",
+    "look": "A little wisp wrapped in a loose burial cloth, two glowing eyes in the dark under the hood and a thin stream of sand trickling from its hem as it drifts.",
+    "palette": [
+     [
+      "#d9c08a",
+      "linen sand"
+     ],
+     [
+      "#6a5b9a",
+      "ghost violet"
+     ],
+     [
+      "#2e2a3a",
+      "shadow"
+     ],
+     [
+      "#f2c24a",
+      "gold eyes"
+     ]
+    ],
+    "stats": [
+     52,
+     50,
+     66,
+     62
+    ],
+    "role": "Speed",
+    "rarity": "uncommon",
+    "abilities": [
+     "Levitate",
+     "Sand Veil"
+    ],
+    "moves": [
+     "Lick",
+     "Shadow Sneak",
+     "Sand Attack",
+     "Hex"
+    ]
+   },
+   {
+    "id": "tombdune",
+    "name": "Tombdune",
+    "types": [
+     "Ghost",
+     "Ground"
+    ],
+    "evolve": "Final",
+    "look": "A walking sandstone sarcophagus. The lid is cracked open and a sand-ghost spills out of it, with glowing eyes behind a carved mask and arms of pouring sand.",
+    "palette": [
+     [
+      "#d9c08a",
+      "sandstone"
+     ],
+     [
+      "#6a5b9a",
+      "ghost violet"
+     ],
+     [
+      "#2e2a3a",
+      "shadow"
+     ],
+     [
+      "#f2c24a",
+      "gold glyphs"
+     ]
+    ],
+    "stats": [
+     88,
+     96,
+     110,
+     76
+    ],
+    "role": "Physical Defender",
+    "rarity": "rare",
+    "abilities": [
+     "Sand Veil",
+     "Levitate"
+    ],
+    "moves": [
+     "Poltergeist",
+     "Shadow Ball",
+     "Sand Tomb",
+     "Shore Up"
+    ]
+   }
+  ],
+  "dex": "It guards a tomb that no map shows. Anyone who digs near it hears sand pouring, even when the air is perfectly still."
+ },
+ {
+  "key": "gnashfin",
+  "fills": [
+   "Water",
+   "Dark"
+  ],
+  "why": "Water/Dark, the classic shark, is missing. Dark has 11 missing combos and this gives Saltmourn's coast a mean, fast physical threat.",
+  "habitat": "Tide Route, Saltmourn harbour",
+  "anchors": [
+   "tidalfang",
+   "kykaiser"
+  ],
+  "stages": [
+   {
+    "id": "gnashfin",
+    "name": "Gnashfin",
+    "types": [
+     "Water",
+     "Dark"
+    ],
+    "evolve": "Evolves at 30",
+    "look": "A shark pup with a jaw much too big for its head, a scar across one eye and fins as ragged as torn sails. Always grinning.",
+    "palette": [
+     [
+      "#2a3550",
+      "deep navy"
+     ],
+     [
+      "#4aa3d6",
+      "sea blue"
+     ],
+     [
+      "#5b4b66",
+      "dark scales"
+     ],
+     [
+      "#e8e4d8",
+      "white teeth"
+     ]
+    ],
+    "stats": [
+     62,
+     74,
+     50,
+     70
+    ],
+    "role": "Physical Attacker",
+    "rarity": "common",
+    "abilities": [
+     "Rough Skin",
+     "Swift Swim"
+    ],
+    "moves": [
+     "Tackle",
+     "Bite",
+     "Water Pulse",
+     "Snarl"
+    ]
+   },
+   {
+    "id": "dreadmaw",
+    "name": "Dreadmaw",
+    "types": [
+     "Water",
+     "Dark"
+    ],
+    "evolve": "Final",
+    "look": "A big pirate-themed shark with ink-black hide, a jagged dorsal fin like a broken hull plank and a rusted anchor chain wrapped around its tail. Rows of white teeth in a wide grin.",
+    "palette": [
+     [
+      "#2a3550",
+      "deep navy"
+     ],
+     [
+      "#1d1a24",
+      "ink hide"
+     ],
+     [
+      "#a0653a",
+      "rust chain"
+     ],
+     [
+      "#e8e4d8",
+      "white teeth"
+     ]
+    ],
+    "stats": [
+     92,
+     124,
+     80,
+     112
+    ],
+    "role": "Physical Attacker",
+    "rarity": "uncommon",
+    "abilities": [
+     "Rough Skin",
+     "Swift Swim"
+    ],
+    "moves": [
+     "Crunch",
+     "Aqua Blade",
+     "Sucker Punch",
+     "Tidal Slash"
+    ]
+   }
+  ],
+  "dex": "Sailors out of Saltmourn count the chains on a Dreadmaw's tail: one for every ship that tried to drag it in. None of them came home with it."
+ },
+ {
+  "key": "kindlegrub",
+  "fills": [
+   "Fire",
+   "Bug"
+  ],
+  "why": "Fire and Bug have never been paired. A flame moth is a classic fantasy and gives Bug its second new family in this set.",
+  "habitat": "Ash Route, Cinderhold",
+  "anchors": [
+   "flampling",
+   "ampmite"
+  ],
+  "stages": [
+   {
+    "id": "kindlegrub",
+    "name": "Kindlegrub",
+    "types": [
+     "Fire",
+     "Bug"
+    ],
+    "evolve": "Evolves at 26",
+    "look": "A soot-black grub with glowing ember stripes between its segments, carrying a smouldering coal on its back like a backpack.",
+    "palette": [
+     [
+      "#2b2224",
+      "soot black"
+     ],
+     [
+      "#ee6f4a",
+      "ember"
+     ],
+     [
+      "#ffb020",
+      "flame yellow"
+     ],
+     [
+      "#a8a290",
+      "ash grey"
+     ]
+    ],
+    "stats": [
+     58,
+     52,
+     60,
+     52
+    ],
+    "role": "Special Defender",
+    "rarity": "common",
+    "abilities": [
+     "Flame Body",
+     "Speed Boost"
+    ],
+    "moves": [
+     "Ember",
+     "String Shot",
+     "Bug Bite",
+     "Tackle"
+    ]
+   },
+   {
+    "id": "pyremoth",
+    "name": "Pyremoth",
+    "types": [
+     "Fire",
+     "Bug"
+    ],
+    "evolve": "Final",
+    "look": "A moth whose wings are living flame with eye-spots like glowing embers. Its body is fuzzy and ash-grey, and it sheds a drift of glowing scales as it flies.",
+    "palette": [
+     [
+      "#a8a290",
+      "ash fuzz"
+     ],
+     [
+      "#ee6f4a",
+      "flame wings"
+     ],
+     [
+      "#ffb020",
+      "ember spots"
+     ],
+     [
+      "#2b2224",
+      "soot outline"
+     ]
+    ],
+    "stats": [
+     86,
+     76,
+     84,
+     124
+    ],
+    "role": "Special Attacker",
+    "rarity": "uncommon",
+    "abilities": [
+     "Flame Body",
+     "Speed Boost"
+    ],
+    "moves": [
+     "Heat Wave",
+     "Silver Wind",
+     "Signal Beam",
+     "Will-O-Wisp"
+    ]
+   }
+  ],
+  "dex": "Swarms gather over Cinderhold's forges on cold nights. The townsfolk leave the furnace doors open for them, and the town has never once frozen."
+ },
+ {
+  "key": "joeyjab",
+  "fills": [
+   "Normal",
+   "Fighting"
+  ],
+  "why": "Normal has only 3 catchable families. A boxing kangaroo is instantly readable, adds Normal/Fighting and suits Forgewall's arena culture.",
+  "habitat": "Forgewall, Siege Road",
+  "anchors": [
+   "pebfist",
+   "dustcub"
+  ],
+  "stages": [
+   {
+    "id": "joeyjab",
+    "name": "Joeyjab",
+    "types": [
+     "Normal",
+     "Fighting"
+    ],
+    "evolve": "Evolves at 30",
+    "look": "A young kangaroo with oversized red boxing-glove paws and a sweatband on its head, bouncing on its toes in a fighter's stance.",
+    "palette": [
+     [
+      "#c98a52",
+      "tan fur"
+     ],
+     [
+      "#f0dcc0",
+      "cream belly"
+     ],
+     [
+      "#c0492f",
+      "glove red"
+     ],
+     [
+      "#ffffff",
+      "sweatband"
+     ]
+    ],
+    "stats": [
+     70,
+     72,
+     56,
+     62
+    ],
+    "role": "Physical Attacker",
+    "rarity": "common",
+    "abilities": [
+     "Guts",
+     "Inner Chi"
+    ],
+    "moves": [
+     "Tackle",
+     "Quick Attack",
+     "Mach Punch",
+     "Growl"
+    ]
+   },
+   {
+    "id": "roobrawler",
+    "name": "Roobrawler",
+    "types": [
+     "Normal",
+     "Fighting"
+    ],
+    "evolve": "Final",
+    "look": "A muscular kangaroo boxer with a gold champion belt and a taped tail. A tiny joey with miniature gloves peeks out of its pouch, copying every move.",
+    "palette": [
+     [
+      "#c98a52",
+      "tan fur"
+     ],
+     [
+      "#f0dcc0",
+      "cream belly"
+     ],
+     [
+      "#c0492f",
+      "glove red"
+     ],
+     [
+      "#f4cf3f",
+      "belt gold"
+     ]
+    ],
+    "stats": [
+     102,
+     122,
+     84,
+     96
+    ],
+    "role": "Physical Attacker",
+    "rarity": "uncommon",
+    "abilities": [
+     "Guts",
+     "Inner Chi"
+    ],
+    "moves": [
+     "Power Jab",
+     "Iron Fist",
+     "Body Slam",
+     "Close Combat"
+    ]
+   }
+  ],
+  "dex": "It trains its joey from the pouch, one jab at a time. Forgewall's arena keeps a belt that only a Roobrawler has ever held."
+ },
+ {
+  "key": "burrowyrm",
+  "fills": [
+   "Dragon",
+   "Ground"
+  ],
+  "why": "Dragon has only 5 catchable families and has never been paired with Ground. This is the set's pseudo-legendary: three stages, a slow climb to 52 and the highest total in the set as the reward.",
+  "habitat": "Deepcut canyon floor",
+  "anchors": [
+   "scalewisp",
+   "scraphog"
+  ],
+  "stages": [
+   {
+    "id": "burrowyrm",
+    "name": "Burrowyrm",
+    "types": [
+     "Dragon",
+     "Ground"
+    ],
+    "evolve": "Evolves at 32",
+    "look": "A legless young sand-wyrm peeking out of its burrow, with a spade-shaped snout for digging, small horn nubs and bright curious eyes.",
+    "palette": [
+     [
+      "#c46a3c",
+      "canyon red"
+     ],
+     [
+      "#e8b46a",
+      "sand"
+     ],
+     [
+      "#6a52d0",
+      "dragon violet"
+     ],
+     [
+      "#4a2e24",
+      "dark outline"
+     ]
+    ],
+    "stats": [
+     66,
+     76,
+     68,
+     58
+    ],
+    "role": "Physical Attacker",
+    "rarity": "rare",
+    "abilities": [
+     "Sand Veil",
+     "Rough Skin"
+    ],
+    "moves": [
+     "Dragon Breath",
+     "Mud-Slap",
+     "Bite",
+     "Sand Attack"
+    ]
+   },
+   {
+    "id": "dunescale",
+    "name": "Dunescale",
+    "types": [
+     "Dragon",
+     "Ground"
+    ],
+    "evolve": "Evolves at 52",
+    "look": "A young sand-dragon that has grown short, powerful legs. Its back is covered in thick sandstone plates, its spade snout has hardened into a digging horn, and stubby frills flare when it is angry.",
+    "palette": [
+     [
+      "#c46a3c",
+      "canyon red"
+     ],
+     [
+      "#e8b46a",
+      "sand"
+     ],
+     [
+      "#6a52d0",
+      "dragon violet"
+     ],
+     [
+      "#4a2e24",
+      "dark outline"
+     ]
+    ],
+    "stats": [
+     86,
+     100,
+     90,
+     74
+    ],
+    "role": "Physical Attacker",
+    "rarity": "rare",
+    "abilities": [
+     "Sand Veil",
+     "Rough Skin"
+    ],
+    "moves": [
+     "Dragon Claw",
+     "Bulldoze",
+     "Sand Tomb",
+     "Crunch"
+    ]
+   },
+   {
+    "id": "mesadrake",
+    "name": "Mesadrake",
+    "types": [
+     "Dragon",
+     "Ground"
+    ],
+    "evolve": "Final",
+    "look": "A heavy, low four-legged desert dragon built like a giant monitor lizard, wide and long rather than tall. Its back carries three flat-topped red rock plateaus like a row of mesas, with violet scales showing between them. A broad spade-shaped head with two short horns, a thick dragging tail and a small swirl of sand around its claws. Calm, ancient expression.",
+    "palette": [
+     [
+      "#c46a3c",
+      "mesa red"
+     ],
+     [
+      "#e8b46a",
+      "sand"
+     ],
+     [
+      "#6a52d0",
+      "violet scales"
+     ],
+     [
+      "#4a2e24",
+      "dark outline"
+     ]
+    ],
+    "stats": [
+     112,
+     140,
+     112,
+     104
+    ],
+    "role": "Physical Attacker",
+    "rarity": "rare",
+    "abilities": [
+     "Sand Veil",
+     "Rough Skin"
+    ],
+    "moves": [
+     "Dragon Claw",
+     "Earthquake",
+     "Outrage",
+     "Rock Slide"
+    ]
+   }
+  ],
+  "dex": "The red mesas of Deepcut are said to be the backs of sleeping Mesadrakes. When one stretches, a new canyon opens."
+ }
+]

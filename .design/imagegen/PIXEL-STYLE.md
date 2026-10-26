@@ -1,9 +1,10 @@
 # Ewamon pixel-art sprites with gpt-image
 
 How to make new Ewamon battle sprites (front and back) in the style the user chose on 2026-10-26, with the
-gpt-image-2 API. The first full line made this way is the Puffinch line in `concepts/puffinch-line/` (front and back for
-Puffinch, Gustling and Galeforth, each 128x128, plus the prompts that made them and `puffinch-line-preview.png`).
-Concepts for further lines are in `../type-gap-concepts.pdf` and `type-gap-concepts.jsonl`.
+gpt-image-2 API. All 14 type-gap lines (34 species) exist as concept sprites in `concepts/<key>-line/`: front and back,
+each 128x128, the prompt behind each and a `<key>-line-preview.png`. The Puffinch line was made by hand first; the
+other 13 by `pixel-tools/batch.py` from `concepts/lines.json`. Only Roobrawler's back is missing (see Moderation).
+The concept writeups are in `../type-gap-concepts.pdf`.
 
 ## The look
 
@@ -37,6 +38,14 @@ Tools are in `pixel-tools/`. The key lives in `~/.env` as `OPENAI_API_KEY` (neve
    pixel per art pixel by majority colour, so the drawn pixels survive. When gpt-image mixes pixel sizes (Galeforth),
    it falls back to majority colour per cell at a size that fits 122 px. It never blends colours.
 5. **Review** front and back together at 3x or 4x nearest before anything goes into `assets-src/creatures/`.
+
+For many lines at once, `python pixel-tools/batch.py --quality low --cap <dollars>` does steps 2 to 4 for every line in
+`concepts/lines.json`, line by line (front, then back), logs the estimated cost of every call and stops at the cap. It
+is resumable, skips blocked sprites and prints them as `BLOCKED`. Raw images, refs and the log live in
+`assets-src/imagegen/` (gitignored); run `python pixel-tools/refs.py nebucloak assets-src/imagegen/refs` first.
+
+**Use `--quality low`.** For this blocky style, low looks as good as medium after snapping and costs about a quarter:
+196 output tokens instead of 1,756. Medium only made sense for the smooth first round.
 
 ## Prompt templates
 
@@ -76,7 +85,10 @@ Tips that worked:
 - For a large final stage, ask for wings or limbs held close to the body ("half open, not fully spread") so the body
   and face stay big at 128 px. Spread wings shrink the face to a few pixels.
 - Give the first stage less detail than the last; size difference reads as evolution (Puffinch snaps to about 78 px,
-  Galeforth fills 122).
+  Galeforth fills 122). Low-quality images rarely keep one clean pixel grid, so `snap.py` mostly fits them to 122 px;
+  the in-game size then comes from the species' `sizeScale`, not from the sprite canvas.
+- Dark creatures (Corvlet, Ravenmourne) have near-black outlines on near-black bodies and read darker on the dark
+  review background than they will on a lit battle stage.
 
 ## Moderation
 
@@ -87,15 +99,25 @@ fixed it was a different concept, not different wording: Gustling as an egg-shap
 it like a cloak, a feather ruff and a question-mark crest. Passing the smooth Puffinch image as a reference also got
 blocked, which is why later stages are described in text instead.
 
+The batch run hit the same check on 6 of 62 sprites:
+
+- Lumistar's front (a bigger star with a planet ring) passed once reworked into a star child with a night-sky cape.
+- Mesadrake's front (an upright desert dragon) passed once reworked into a low four-legged lizard with mesa plateaus.
+- Petraptor's and Joeyjab's backs passed on a retry with `--short-back` (shorter text, front as the only reference).
+- Roobrawler's back failed four times: the batch prompt, `--short-back`, a hand-written prompt without the joey in
+  its pouch, and text-only generation with `moderation: "low"`. The front itself passed. It needs a design change
+  (for example wrapped fists instead of boxing gloves) or a hand-drawn back.
+
 If a design is blocked twice, change its silhouette or concept rather than retrying the same prompt. Blocked calls
 are normally not billed.
 
 ## Cost
 
-Each 1024x1024 medium image returns 1,756 output image tokens. Every reference image adds about 1,024 input image
-tokens (a 768x512 one about 704). At gpt-image-1's published rates that is roughly $0.08 to $0.10 per image; the OpenAI
-usage page has the exact figure. The whole Puffinch line (6 final sprites, plus 4 smooth images from the rejected first
-round) came to about $0.83 by that estimate.
+A 1024x1024 image returns 196 output image tokens at low quality and 1,756 at medium. Every reference image adds
+about 1,024 input image tokens (a 768x512 one about 704). At gpt-image-1's published rates that is roughly $0.02 (front)
+to $0.03 (back, two references) per low image and $0.08 to $0.10 per medium one; the OpenAI usage page has the exact
+figure. By that estimate the Puffinch line (medium, plus 4 rejected smooth images) cost about $0.83 and the other 13
+lines (59 sprites at low, including retries) about $1.50, so about $2.33 in all.
 
 ## Before a sprite ships
 

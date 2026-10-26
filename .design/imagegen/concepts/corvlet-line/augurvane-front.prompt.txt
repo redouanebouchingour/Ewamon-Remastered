@@ -1,0 +1,11 @@
+Image 1 is a battle sprite from an indie creature-collecting RPG called Ewamon. Draw ONE new original creature in exactly the same pixel art style as image 1, but do not copy its design.
+
+Pixel art style (most important): a true low-resolution pixel art sprite drawn on a grid of about 100 by 100 pixels, then enlarged with nearest-neighbour scaling so every art pixel is a big, crisp square block, exactly like image 1. Thick dark outline around the whole silhouette. Flat cel shading with only 2 or 3 tones per colour, hard edges between tones. Big simple shapes, a clean readable silhouette, large expressive eyes. No fine fur or feather texture, no gradients, no soft airbrush shading, no anti-aliasing, no blur, no painterly detail.
+
+Creature: Augurvane, an original Psychic/Flying creature, one of two possible final forms of its line. A sleek raven whose black feathers fade to bone-white at the tips, each inscribed with a faint rune. A violet gem glows on its brow like a third eye, and it carries a small lit lantern in its talons. It belongs to a line whose earlier stage is Corvlet: A scruffy crow chick under an oversized hood of black feathers that hides everything but one bright eye. Keep the same family colours and features.
+
+Pose and framing: front battle sprite, 3/4 view facing slightly to the left, full body, centered, with clear empty space on every side, the same scale as image 1. Keep wings, limbs and tails close to the body so the body and face stay large and readable.
+
+Colours: ink black #1d1a24, bone white #f2ead8, psychic glow #e06fa0, lantern gold #d9b45a, dark outline #2a2d3c.
+
+Background: perfectly flat solid magenta #ff00ff, no shadow, no scenery. No magenta or pink on the creature. No text, no border, no watermark, only one creature.

@@ -1,0 +1,9 @@
+Image 1 is the front battle sprite of Snowlet, an original creature from an indie creature-collecting RPG called Ewamon. Image 2 is the back sprite of a different creature from the same game; it only shows how a back sprite is framed and drawn.
+
+Draw the BACK battle sprite of the creature in image 1: the view the player sees of their own creature in battle, from behind in a 3/4 rear view, the creature facing away from the viewer toward the upper right, framed like image 2. Keep everything identical to image 1: the same true low-resolution pixel art style with big crisp square pixels, the same thick dark outline, the same flat 2 to 3 tone cel shading, the same colours, proportions and size. Show from behind every feature of its design that is visible from the back: A perfectly round snowball of frost fluff with only big amber eyes and a tiny beak showing. Two little wing tips stick out of the sides. The face is turned away; at most the edge of one cheek shows.
+
+No gradients, no soft shading, no anti-aliasing, no blur.
+
+Framing: full body, centered, the same scale as image 1, nothing touching the canvas edges.
+
+Background: perfectly flat solid magenta #ff00ff, no shadow, no scenery. No magenta or pink on the creature. No text, no border, no watermark, only one creature.

@@ -1,0 +1,11 @@
+Image 1 is a battle sprite from an indie creature-collecting RPG called Ewamon. Draw ONE new original creature in exactly the same pixel art style as image 1, but do not copy its design.
+
+Pixel art style (most important): a true low-resolution pixel art sprite drawn on a grid of about 100 by 100 pixels, then enlarged with nearest-neighbour scaling so every art pixel is a big, crisp square block, exactly like image 1. Thick dark outline around the whole silhouette. Flat cel shading with only 2 or 3 tones per colour, hard edges between tones. Big simple shapes, a clean readable silhouette, large expressive eyes. No fine fur or feather texture, no gradients, no soft airbrush shading, no anti-aliasing, no blur, no painterly detail.
+
+Creature: Rimetusk, an original Ice/Ground creature, the final stage of its line. A towering mammoth with slabs of permafrost grown onto its back like a small glacier, huge curled tusks rimmed with ice and frozen clods of earth tangled in its fur. It belongs to a line whose earlier stages are Tuskling: A woolly calf with shaggy brown fur, a cap of fresh snow on its head and two tiny frosted tusk nubs.; Shagtusk: A stocky young mammoth with a thick shaggy coat caked in frozen mud, short straight tusks capped in ice and a stubborn lowered head, ready to charge. Keep the same family colours and features.
+
+Pose and framing: front battle sprite, 3/4 view facing slightly to the left, full body, centered, with clear empty space on every side, the same scale as image 1. Keep wings, limbs and tails close to the body so the body and face stay large and readable.
+
+Colours: woolly brown #7a5a44, glacier white #cfe8f2, ice blue #8fb8cc, frozen earth #4a3a30, dark outline #2a2d3c.
+
+Background: perfectly flat solid magenta #ff00ff, no shadow, no scenery. No magenta or pink on the creature. No text, no border, no watermark, only one creature.

@@ -25,6 +25,8 @@ Thumbs.db
 # Raw art sources (398 MB of creature illustrations + GLBs). Not tracked; see assets-src/README.md.
 assets-src/creatures/
 assets-src/models/
+# gpt-image raw 1024 px images, refs and the spend log (.design/imagegen/pixel-tools)
+assets-src/imagegen/
 # CC0 audio packs (Phase E4): downloaded on approval, re-fetchable from the URLs in .design/audio/sources.json
 assets-src/audio/cc0/
 # Pipeline scratch
