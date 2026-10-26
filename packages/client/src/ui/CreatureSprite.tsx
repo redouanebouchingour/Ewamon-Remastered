@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { shinyPaletteOf } from '@ewa/content';
 import { formsOf } from '@ewa/core';
 import type { VariantKey } from '@ewa/core';
 import { primaryType, species, speciesName } from '../data/content';
 import { thumbUrl, useThumbSet } from '../data/thumbs';
 import s from './CreatureSprite.module.css';
+import { cssVars } from './cssVars';
 import { cx } from './cx';
 
 export interface CreatureSpriteProps {
@@ -13,7 +15,7 @@ export interface CreatureSpriteProps {
   readonly variantKey?: VariantKey;
   /** 40 / 56 / 72 / 120 / 176 px (xxl: the Dex entry's hero) */
   readonly size?: 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
-  /** a shiny: a gold glint sweeps over the thumbnail (the world draws the real sparkle) */
+  /** a shiny: its species' shiny palette (content `shinyPaletteOf`, the world billboard's triple) and a gold glint sweeping over the thumbnail */
   readonly shiny?: boolean;
   /** unknown dex entry: dark silhouette, no name */
   readonly silhouette?: boolean;
@@ -36,11 +38,13 @@ export function CreatureSprite({ speciesId, form = null, variantKey = 'normal', 
   const showImg = thumbs.has(key) && failedKey !== key;
   const sp = form === null ? undefined : species(speciesId);
   const formType = sp === undefined ? undefined : formsOf(sp).find((f) => f.id === form)?.types?.[0];
+  const pal = shiny && !silhouette ? shinyPaletteOf(speciesId) : null;
   return (
     <span
       data-type={formType ?? primaryType(speciesId)}
       data-form={form ?? undefined}
       className={cx(s.sprite, s[size], silhouette && s.silhouette, desaturate && s.desaturate, s[variantKey], shiny && !silhouette && s.shiny, className)}
+      style={cssVars({ '--shiny-pal-hue': pal === null ? undefined : `${pal.hue}deg`, '--shiny-pal-sat': pal?.saturation, '--shiny-pal-lit': pal?.lightness })}
       aria-hidden
     >
       {showImg ? (

@@ -9,6 +9,7 @@
  * `animAtlasesOf(species)`). `sideAtlases(species, side)` names the static atlas and the flipbook ONE side is drawn
  * from: `creatureTextures.ts` binds the side a view shows, never both (client IMPLEMENTATION-NOTES "Creature textures").
  */
+import { shinyPaletteOf } from '@ewa/content';
 import { formsOf } from '@ewa/core';
 import type { SpeciesDef, TypeName as CoreTypeName, VariantKey } from '@ewa/core';
 import type { AnimAtlasSet, AtlasSet, AuraKind, SpriteAnim, SpriteDescriptor, SpriteFrame, SpritePool, TypeName } from '@ewa/render';
@@ -174,7 +175,7 @@ export function createSpriteCatalog(m: CreatureManifest, species: (id: string) =
       const aura = auraOfSprite(speciesId, spriteId);
       return {
         id: key, front: frame(sp.front, anim('front')), back: frame(sp.back, anim('back')), sizeScale: def?.sizeScale ?? sp.sizeScale, types, variant, isAlpha,
-        ...(isShiny ? { isShiny: true } : {}), ...(aura !== undefined ? { aura } : {}),
+        ...(isShiny ? { isShiny: true, shinyPalette: shinyPaletteOf(speciesId) } : {}), ...(aura !== undefined ? { aura } : {}),
       };
     },
     get speciesCount() {

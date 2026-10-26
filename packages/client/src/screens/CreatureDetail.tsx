@@ -422,7 +422,7 @@ export function CreatureDetail({ creature: c, fetcher, extraActions, isLastInPar
   return (
     <aside className={l.detail} data-type={types[0] ?? 'Normal'} aria-label={`${name} details`}>
       <div className={l.detailHead}>
-        <CreatureSprite speciesId={c.speciesId} form={form?.id ?? null} variantKey={c.variantKey} size="xl" />
+        <CreatureSprite speciesId={c.speciesId} form={form?.id ?? null} variantKey={c.variantKey} shiny={c.isShiny === true} size="xl" />
         <div className={l.detailTitle}>
           <h3 className={l.h2}>{name}</h3>
           <p className={l.muted}>

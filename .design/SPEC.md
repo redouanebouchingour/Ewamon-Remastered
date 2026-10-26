@@ -76,6 +76,7 @@ Companion documents (inputs, not binding): `.design/PLAN.md`, `.design/story-bib
     - [3.5 Story beats](#3.5-story-beats)
     - [3.6 Live-ops](#3.6-live-ops)
     - [3.7 Variant palettes](#3.7-variant-palettes)
+    - [3.7a Shiny palettes](#3.7a-shiny-palettes)
     - [3.8 Shop and marketplace constants](#3.8-shop-and-marketplace-constants)
     - [3.9 Battle Pass](#3.9-battle-pass)
     - [3.10 validate.ts — the build gate](#3.10-validate.ts-the-build-gate)
@@ -1670,6 +1671,17 @@ export const VARIANT_PALETTES: Readonly<Record<VariantKey, { readonly hue: numbe
 ```
 
 These four triples become the sprite material's uniforms (`10-render.md`); no pixel is re-baked.
+
+### 3.7a Shiny palettes <!-- added 2026-10-26: per-species shiny colours -->
+
+```ts
+export const SHINY_DERIVED: Readonly<Record<string, VariantPalette>>;   // one per evolution family root, generated
+export const SHINY_TUNING: Readonly<Record<string, VariantPalette>>;    // hand-tuned, by family root or species id
+export const SHINY_FALLBACK: VariantPalette;                            // { 160, 1.10, 1.00 }: a family not derived yet
+export function shinyPaletteOf(speciesId: string): VariantPalette;      // TUNING[id] ?? TUNING[root] ?? DERIVED[root] ?? FALLBACK
+```
+
+A shiny wears its family's triple **in place of** its variant's (a shiny dusk creature looks like every other shiny of its species; the variant stays on the record, the dex and the market). Same shape and units as §3.7: hue in degrees (the `hue()` rotation about the grey axis), saturation and lightness multipliers; the billboard writes it through the same three per-object values, so a shiny adds no uniform, material or pixel. `pnpm --filter @ewa/sprite-pipeline shiny` derives `SHINY_DERIVED` from the committed thumbnails: the chroma-weighted dominant hue of the family's members is carried onto one of eight target hues (gold, lime, jade, cyan, azure, violet, magenta, rose), chosen by a hash of the root among those whose shift keeps ≥ 30° from every §3.7 hue (0, ±18, 110, 204); a family with mean chroma under 0.10 also gets saturation 1.6 and lightness 1.3 (dark) or 0.85 (light). Content `shiny.test.ts`: every family root derived, every resolved hue ≥ 30° from every variant hue, saturation 0.5..2.5, lightness 0.6..1.6. Battle, catch and stats are untouched (§2.8 `isShiny` keeps no battle effect).
 
 ### 3.8 Shop and marketplace constants
 
@@ -3543,8 +3555,10 @@ export interface SpriteDescriptor {
   readonly variant: VariantKey;
   readonly isAlpha: boolean;
   readonly isShiny?: boolean;              // Phase D4 (additive): the sparkle; encoded as alphaGlow + 2 (no new per-object field)
+  readonly shinyPalette?: ShinyPalette;    // <!-- added 2026-10-26 --> spine §3.7a `shinyPaletteOf`, worn in place of the variant's triple while isShiny; absent = the variant's
   readonly aura?: AuraKind;                // <!-- amended 2026-10-11: battle-form auras --> a battle form's live aura on the stage (§10.7.5); absent = none
 }
+export interface ShinyPalette { readonly hue: number; readonly saturation: number; readonly lightness: number }   // degrees, multipliers (spine §3.7a)
 export type AuraKind = 'majin' | 'tenjin' | 'majin_gold';
 /** One map of an atlas: WebP level 0 plus pipeline-built levels 1..3 (40-pipelines.md §40.1.6.3). Never KTX2 — see the note below. */
 export interface AtlasMap { readonly url: string; readonly mips: readonly string[] }
@@ -3678,6 +3692,8 @@ Per-object parameters through `userData(name, type)` (verified `UserDataNode.js`
 | `dusk` | 204 → 3.56047 | 1.10 | 0.95 |
 | `verdant` | 110 → 1.91986 | 1.12 | 1.05 |
 | `ember` | −18 → −0.31416 | 1.15 | 1.02 |
+
+A shiny whose descriptor carries `shinyPalette` (spine §3.7a, added 2026-10-26) writes that triple (hue → radians) into `hueShift` / `satMul` / `lightMul` instead of its variant's; `alphaGlow` keeps its +2 sparkle. `setVariant(v, isAlpha, isShiny?, shinyPalette?)` keeps the current shiny state and palette when the last two are omitted. The client's 2D thumbnails (`CreatureSprite shiny`) apply the same triple as `hue-rotate() saturate() brightness()`.
 
 `lightMul` is a scene-linear multiply (the legacy applied an HSL lightness multiply on sRGB pixels; the difference at ±5 % is below the audit's tolerance and is accepted). `isAlpha`: `alphaGlow 1`, quad scale ×1.12, contact decal ×1.12.
 

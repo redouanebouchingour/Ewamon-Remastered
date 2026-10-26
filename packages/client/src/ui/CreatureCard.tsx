@@ -93,7 +93,7 @@ export function CreatureCard({
   if (variant === 'tile') {
     return (
       <div {...common} className={cx(s.card, s.tile, interactive && s.interactive, selected && s.selected, draggable && s.draggable, className)} title={`${name} · Lv ${creature.level}`}>
-        <CreatureSprite speciesId={creature.speciesId} form={form} variantKey={creature.variantKey} size="lg" className={s.tileSprite} />
+        <CreatureSprite speciesId={creature.speciesId} form={form} variantKey={creature.variantKey} shiny={creature.isShiny === true} size="lg" className={s.tileSprite} />
         <span className={s.tileLevel}>{creature.level}</span>
         <Badges list={list} />
         <FormMark speciesId={creature.speciesId} className={s.tileForm} />
@@ -105,7 +105,7 @@ export function CreatureCard({
     return (
       <div {...common} className={cx(s.card, s.showcase, interactive && s.interactive, selected && s.selected, className)}>
         <span className={s.showcaseGlow} aria-hidden />
-        <CreatureSprite speciesId={creature.speciesId} form={form} variantKey={creature.variantKey} size="xl" />
+        <CreatureSprite speciesId={creature.speciesId} form={form} variantKey={creature.variantKey} shiny={creature.isShiny === true} size="xl" />
         <div className={s.showcaseText}>
           <h3 className={s.showcaseName}>{name}</h3>
           <div className={s.types}>{types.map((t) => <TypeBadge key={t} type={t} size="sm" />)}</div>
@@ -123,7 +123,7 @@ export function CreatureCard({
   const held = creature.heldItem === null ? null : itemInfo(creature.heldItem);
   return (
     <div {...common} className={cx(s.card, s.row, interactive && s.interactive, selected && s.selected, draggable && s.draggable, className)}>
-      <CreatureSprite speciesId={creature.speciesId} form={form} variantKey={creature.variantKey} size="md" />
+      <CreatureSprite speciesId={creature.speciesId} form={form} variantKey={creature.variantKey} shiny={creature.isShiny === true} size="md" />
       <div className={s.rowMain}>
         <div className={s.rowTop}>
           <span className={s.name}>{name}</span>

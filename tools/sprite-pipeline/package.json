@@ -13,9 +13,11 @@
     "build": "tsx src/cli.ts build",
     "qa": "tsx src/cli.ts qa",
     "import-legacy": "tsx src/import-legacy.ts",
-    "portraits": "tsx src/portraits.ts"
+    "portraits": "tsx src/portraits.ts",
+    "shiny": "tsx src/shiny.ts"
   },
   "dependencies": {
+    "@ewa/content": "workspace:*",
     "sharp": "^0.34.3",
     "ktx2-encoder": "^0.6.0"
   },

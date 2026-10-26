@@ -105,7 +105,7 @@ export type { BiomeGenerators, GeoLod, Palette, PropGeo, TreeKind } from './zone
 export type {
   ActorDescriptor, ActorPool, BattlerPose, BattlerRef, BattleStage, Biome, BuildingSpec, CameraRig, Dir, Edge, EvolutionHandle, EvolutionPhase,
   EvolutionRequest, GeneratorSet, HeightfieldData,
-  HudLayer, HudModel, Layout, Marker, Pickup, PropPlacement, SetPieceId, SpriteAnim, SpriteDescriptor, AuraKind, SpriteFrame, Tablet, Terrain, TerrainColliderLike,
+  HudLayer, HudModel, Layout, Marker, Pickup, PropPlacement, SetPieceId, ShinyPalette, SpriteAnim, SpriteDescriptor, AuraKind, SpriteFrame, Tablet, Terrain, TerrainColliderLike,
   TypeName, VariantKey, VfxId, WaterSpec, ZoneHandle, ZoneSpec, ActorSpawn, PlanRoadData, ZonePlanData,
   HallBounds, InteriorLocalPoint, InteriorLocalRect, InteriorSpec, InteriorTemplateId, InteriorThemeId, InteriorsHandle,
   ObstacleSpec, ObstaclesHandle, NeighbourSpec, CampSlotSpec, CampSpec, CampTrophyKind, CampsHandle,

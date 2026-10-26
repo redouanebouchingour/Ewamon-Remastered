@@ -1291,6 +1291,17 @@ export const VARIANT_PALETTES: Readonly<Record<VariantKey, { readonly hue: numbe
 
 These four triples become the sprite material's uniforms (`10-render.md`); no pixel is re-baked.
 
+### 3.7a Shiny palettes <!-- added 2026-10-26: per-species shiny colours -->
+
+```ts
+export const SHINY_DERIVED: Readonly<Record<string, VariantPalette>>;   // one per evolution family root, generated
+export const SHINY_TUNING: Readonly<Record<string, VariantPalette>>;    // hand-tuned, by family root or species id
+export const SHINY_FALLBACK: VariantPalette;                            // { 160, 1.10, 1.00 }: a family not derived yet
+export function shinyPaletteOf(speciesId: string): VariantPalette;      // TUNING[id] ?? TUNING[root] ?? DERIVED[root] ?? FALLBACK
+```
+
+A shiny wears its family's triple **in place of** its variant's (a shiny dusk creature looks like every other shiny of its species; the variant stays on the record, the dex and the market). Same shape and units as §3.7: hue in degrees (the `hue()` rotation about the grey axis), saturation and lightness multipliers; the billboard writes it through the same three per-object values, so a shiny adds no uniform, material or pixel. `pnpm --filter @ewa/sprite-pipeline shiny` derives `SHINY_DERIVED` from the committed thumbnails: the chroma-weighted dominant hue of the family's members is carried onto one of eight target hues (gold, lime, jade, cyan, azure, violet, magenta, rose), chosen by a hash of the root among those whose shift keeps ≥ 30° from every §3.7 hue (0, ±18, 110, 204); a family with mean chroma under 0.10 also gets saturation 1.6 and lightness 1.3 (dark) or 0.85 (light). Content `shiny.test.ts`: every family root derived, every resolved hue ≥ 30° from every variant hue, saturation 0.5..2.5, lightness 0.6..1.6. Battle, catch and stats are untouched (§2.8 `isShiny` keeps no battle effect).
+
 ### 3.8 Shop and marketplace constants
 
 ```ts

@@ -75,7 +75,7 @@ function PickerModal({ picker, onClose, fetcher }: { readonly picker: Picker; re
               const name = displayName(c);
               return (
                 <li key={c.id} className={s.target}>
-                  <CreatureSprite speciesId={c.speciesId} form={wornForm(c)?.id ?? null} variantKey={c.variantKey} size="sm" />
+                  <CreatureSprite speciesId={c.speciesId} form={wornForm(c)?.id ?? null} variantKey={c.variantKey} shiny={c.isShiny === true} size="sm" />
                   <span className={s.targetText}>
                     <span className={s.targetName}>
                       {name} <span className={l.caption}>Lv {c.level}</span>

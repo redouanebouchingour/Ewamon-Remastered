@@ -58,7 +58,7 @@ export function ListingDetail() {
         </button>
       </div>
       <div className={l.detailHead}>
-        <CreatureSprite speciesId={data.speciesId} variantKey={data.variantKey} size="lg" />
+        <CreatureSprite speciesId={data.speciesId} variantKey={data.variantKey} shiny={data.isShiny === true} size="lg" />
         <div className={l.detailTitle}>
           <h3 className={l.h3}>{speciesName(data.speciesId)}</h3>
           <div className={l.row}>

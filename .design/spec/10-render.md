@@ -537,8 +537,10 @@ export interface SpriteDescriptor {
   readonly variant: VariantKey;
   readonly isAlpha: boolean;
   readonly isShiny?: boolean;              // Phase D4 (additive): the sparkle; encoded as alphaGlow + 2 (no new per-object field)
+  readonly shinyPalette?: ShinyPalette;    // <!-- added 2026-10-26 --> spine §3.7a `shinyPaletteOf`, worn in place of the variant's triple while isShiny; absent = the variant's
   readonly aura?: AuraKind;                // <!-- amended 2026-10-11: battle-form auras --> a battle form's live aura on the stage (§10.7.5); absent = none
 }
+export interface ShinyPalette { readonly hue: number; readonly saturation: number; readonly lightness: number }   // degrees, multipliers (spine §3.7a)
 export type AuraKind = 'majin' | 'tenjin' | 'majin_gold';
 /** One map of an atlas: WebP level 0 plus pipeline-built levels 1..3 (40-pipelines.md §40.1.6.3). Never KTX2 — see the note below. */
 export interface AtlasMap { readonly url: string; readonly mips: readonly string[] }
@@ -672,6 +674,8 @@ Per-object parameters through `userData(name, type)` (verified `UserDataNode.js`
 | `dusk` | 204 → 3.56047 | 1.10 | 0.95 |
 | `verdant` | 110 → 1.91986 | 1.12 | 1.05 |
 | `ember` | −18 → −0.31416 | 1.15 | 1.02 |
+
+A shiny whose descriptor carries `shinyPalette` (spine §3.7a, added 2026-10-26) writes that triple (hue → radians) into `hueShift` / `satMul` / `lightMul` instead of its variant's; `alphaGlow` keeps its +2 sparkle. `setVariant(v, isAlpha, isShiny?, shinyPalette?)` keeps the current shiny state and palette when the last two are omitted. The client's 2D thumbnails (`CreatureSprite shiny`) apply the same triple as `hue-rotate() saturate() brightness()`.
 
 `lightMul` is a scene-linear multiply (the legacy applied an HSL lightness multiply on sRGB pixels; the difference at ±5 % is below the audit's tolerance and is accepted). `isAlpha`: `alphaGlow 1`, quad scale ×1.12, contact decal ×1.12.
 

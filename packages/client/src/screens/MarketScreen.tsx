@@ -45,7 +45,7 @@ export const listingColumns = (): TableColumn<ListingView>[] => [
     header: 'Creature',
     render: (r) => (
       <span className={s.creature}>
-        <CreatureSprite speciesId={r.speciesId} variantKey={r.variantKey} size="sm" />
+        <CreatureSprite speciesId={r.speciesId} variantKey={r.variantKey} shiny={r.isShiny === true} size="sm" />
         <span className={s.creatureText}>
           <span className={s.creatureName}>{speciesName(r.speciesId)}</span>
           <span className={s.chips}>

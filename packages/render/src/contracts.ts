@@ -41,6 +41,8 @@ export interface SpriteAnim {
   readonly delaysMs: readonly number[];                                     // display time per page (the source's own delays)
   readonly staticFrame: number;                                             // the page `rect` shows
 }
+/** A shiny's hue (degrees, the `hue()` rotation), saturation and lightness multipliers: the shape of spine §3.7a. */
+export interface ShinyPalette { readonly hue: number; readonly saturation: number; readonly lightness: number }
 export interface SpriteDescriptor {
   readonly id: string;                     // creature/spawn/battler id (render-side key)
   readonly front: SpriteFrame; readonly back: SpriteFrame;
@@ -50,6 +52,11 @@ export interface SpriteDescriptor {
   readonly isAlpha: boolean;
   /** Phase D4 (additive): a shiny sparkles — encoded in the same `alphaGlow` per-object value (+2), no new uniform */
   readonly isShiny?: boolean;
+  /**
+   * Added 2026-10-26 (§10.4.6): the species' shiny palette (content `shinyPaletteOf`), worn in place of the variant's
+   * while `isShiny`, through the same `hueShift` / `satMul` / `lightMul`; absent = a shiny keeps its variant's colours.
+   */
+  readonly shinyPalette?: ShinyPalette;
   /** A battle form's live aura on the battle stage (stage/aura.ts); absent = none. Ignored outside `BattleStage.setBattler`. */
   readonly aura?: AuraKind;
 }

@@ -67,7 +67,7 @@ export function BuddyTalk() {
       </div>
       <div className={`${d.slab} ${s.slab}`}>
         <figure className={s.portrait} aria-hidden="true">
-          <CreatureSprite speciesId={creature.speciesId} variantKey={creature.variantKey as VariantKey} size="lg" className={s.sprite} />
+          <CreatureSprite speciesId={creature.speciesId} variantKey={creature.variantKey as VariantKey} shiny={creature.isShiny === true} size="lg" className={s.sprite} />
           <span className={s.types}>
             {profile.types.map((t) => (
               <TypeBadge key={t} type={t as TypeName} size="sm" compact />

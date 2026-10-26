@@ -41,6 +41,11 @@ describe('§10.4.6 uniform tables', () => {
     expect(paletteFor('dusk', false, p, true)).toMatchObject({ alphaGlow: 2, scale: 1 });
     expect(paletteFor('dusk', true, p, true)).toMatchObject({ alphaGlow: 3, scale: 1.12 });
     expect(BILLBOARD.shinyGlow).toBe(2);
+    // 2026-10-26: a shiny with a palette wears it in place of the variant's; a non-shiny ignores it
+    const pal = { hue: 90, saturation: 1.5, lightness: 0.8 };
+    expect(paletteFor('dusk', true, p, true, pal)).toMatchObject({ satMul: 1.5, lightMul: 0.8, alphaGlow: 3, scale: 1.12 });
+    expect(p.hueShift).toBeCloseTo(Math.PI / 2, 9);
+    expect(paletteFor('dusk', false, p, false, pal)).toMatchObject({ satMul: 1.1, lightMul: 0.95, alphaGlow: 0 });
   });
 
   it('type colours: the legacy TYPE_COLORS verbatim, all 19 types', () => {
@@ -260,6 +265,16 @@ describe('§10.4.2 BillboardPool / CreatureBillboard', () => {
     sh.setVariant('dawn', false, false);
     expect(qs.userData.alphaGlow).toBe(0);
     sh.dispose();
+    // 2026-10-26: the descriptor's shiny palette replaces the variant's three values and survives setVariant
+    const sp = pool.acquire(desc('w', 'a-001', { variant: 'dusk', isShiny: true, shinyPalette: { hue: -60, saturation: 1.4, lightness: 1.2 } }));
+    const qp = sp.object.children[0] as unknown as { userData: Record<string, number> };
+    expect(qp.userData.hueShift).toBeCloseTo(-Math.PI / 3, 9);
+    expect(qp.userData).toMatchObject({ satMul: 1.4, lightMul: 1.2, alphaGlow: 2 });
+    sp.setVariant('ember', false);
+    expect(qp.userData).toMatchObject({ satMul: 1.4, lightMul: 1.2 });
+    sp.setVariant('ember', false, false);
+    expect(qp.userData.satMul).toBe(1.15);
+    sp.dispose();
     expect((qb.userData.size as { y: number }).y).toBeCloseTo(1.6 * 1.12, 9);
     b.setFacing('back');
     expect(qb.userData.rect).toMatchObject({ x: 0, y: 0.5, z: 0.5, w: 1 });

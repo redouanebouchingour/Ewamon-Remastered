@@ -153,6 +153,8 @@ export { ACHIEVEMENTS, ACHIEVEMENT_IDS, isAchievement } from './data/achievement
 export const STORY_QUESTS: readonly QuestDef[] = QUESTS.filter((q) => q.kind !== 'achievement');
 export { STORY } from './data/story';
 export { DAILY_SWARMS, RAID_HOTSPOTS, SEASONAL_EVENTS, VARIANT_PALETTES, WEEKDAY_VARIANT } from './data/liveops';
+export { SHINY_FALLBACK, SHINY_TUNING, shinyPaletteOf } from './data/shiny';
+export { SHINY_DERIVED } from './data/shinyDerived';
 export { BATTLE_PASS } from './data/battlePass';
 export { MARKET, SHOP_STOCK_DEFAULT } from './data/shop';
 export {

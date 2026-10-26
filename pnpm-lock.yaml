@@ -284,6 +284,9 @@ importers:
 
   tools/sprite-pipeline:
     dependencies:
+      '@ewa/content':
+        specifier: workspace:*
+        version: link:../../packages/content
       ktx2-encoder:
         specifier: ^0.6.0
         version: 0.6.0

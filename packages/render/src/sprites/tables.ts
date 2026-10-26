@@ -2,7 +2,7 @@
  * SPEC §10.4.3 / §10.4.6 / §10.4.7 numbers and the pure pose/animation math of `CreatureBillboard`.
  * No `three` import: node tests read these tables directly (`billboard.test.ts`).
  */
-import type { BattlerPose, SpriteFrame, VariantKey } from '../contracts.js';
+import type { BattlerPose, ShinyPalette, SpriteFrame, VariantKey } from '../contracts.js';
 
 const DEG = Math.PI / 180;
 
@@ -102,11 +102,21 @@ export const VARIANT_KEYS: readonly VariantKey[] = Object.freeze(['normal', 'daw
 /** The four per-object palette values (`hueShift`, `satMul`, `lightMul`, `alphaGlow`) plus the quad scale. */
 export interface PaletteValues { hueShift: number; satMul: number; lightMul: number; alphaGlow: number; scale: number }
 
-export function paletteFor(variant: VariantKey, isAlpha: boolean, out: PaletteValues, isShiny = false): PaletteValues {
-  const p = VARIANT_UNIFORMS[variant] ?? VARIANT_UNIFORMS.normal;
-  out.hueShift = p.hueShift;
-  out.satMul = p.satMul;
-  out.lightMul = p.lightMul;
+/**
+ * A shiny with a `shiny` palette (2026-10-26) wears it in place of the variant's: same three values, so a shiny never
+ * adds a material, a uniform or a pixel; without one it keeps the variant's colours (the Phase D4 sparkle only).
+ */
+export function paletteFor(variant: VariantKey, isAlpha: boolean, out: PaletteValues, isShiny = false, shiny: ShinyPalette | null = null): PaletteValues {
+  if (isShiny && shiny !== null) {
+    out.hueShift = shiny.hue * DEG;
+    out.satMul = shiny.saturation;
+    out.lightMul = shiny.lightness;
+  } else {
+    const p = VARIANT_UNIFORMS[variant] ?? VARIANT_UNIFORMS.normal;
+    out.hueShift = p.hueShift;
+    out.satMul = p.satMul;
+    out.lightMul = p.lightMul;
+  }
   out.alphaGlow = (isAlpha ? 1 : 0) + (isShiny ? BILLBOARD.shinyGlow : 0);
   out.scale = isAlpha ? BILLBOARD.alphaScale : 1;
   return out;

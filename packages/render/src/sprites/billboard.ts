@@ -39,7 +39,7 @@ import {
   Fn, abs, cameraPosition, cos, dot, float, floor, hash, hue, length, mix, mrt, normalLocal, normalMap, normalView, normalWorld, oneMinus,
   positionLocal, positionWorld, pow, saturation, select, sin, smoothstep, step, tangentLocal, texture, uniform, userData, uv, vec2, vec3, vec4,
 } from 'three/tsl';
-import type { BattlerPose, SpriteAnim, SpriteDescriptor, SpriteFrame, TypeName, VariantKey } from '../contracts.js';
+import type { BattlerPose, ShinyPalette, SpriteAnim, SpriteDescriptor, SpriteFrame, TypeName, VariantKey } from '../contracts.js';
 import type { HarvestLevel } from '../descriptors.js';
 import { LAYERS } from '../descriptors.js';
 import {
@@ -562,6 +562,7 @@ export class CreatureBillboard {
   private isAlpha: boolean;
   private sizeMul = 1;
   private isShiny: boolean;
+  private shinyPalette: ShinyPalette | null;
   private disposed = false;
   /** The bound side's flipbook (null: static rect, or its anim atlas is not bound yet). */
   private anim: SpriteAnim | null = null;
@@ -585,6 +586,7 @@ export class CreatureBillboard {
     this.variant = d.variant;
     this.isAlpha = d.isAlpha;
     this.isShiny = d.isShiny === true;
+    this.shinyPalette = d.shinyPalette ?? null;
     this.rig = pool.takeRig();
     this.object = this.rig.group;
     this.object.name = `ewa:creature:${d.id}`;
@@ -634,12 +636,13 @@ export class CreatureBillboard {
     this.applyPose();
   }
 
-  /** `isShiny` (Phase D4, optional) keeps the current shiny state when omitted. */
-  setVariant(v: VariantKey, isAlpha: boolean, isShiny: boolean = this.isShiny): void {
+  /** `isShiny` (Phase D4, optional) and `shinyPalette` (2026-10-26, optional) keep the current ones when omitted. */
+  setVariant(v: VariantKey, isAlpha: boolean, isShiny: boolean = this.isShiny, shinyPalette: ShinyPalette | null = this.shinyPalette): void {
     this.variant = v;
     this.isAlpha = isAlpha;
     this.isShiny = isShiny;
-    paletteFor(v, isAlpha, _pal, isShiny);
+    this.shinyPalette = shinyPalette;
+    paletteFor(v, isAlpha, _pal, isShiny, shinyPalette);
     const ud = this.rig.ud;
     ud.hueShift = _pal.hueShift; ud.satMul = _pal.satMul; ud.lightMul = _pal.lightMul; ud.alphaGlow = _pal.alphaGlow;
     this.applyDims();

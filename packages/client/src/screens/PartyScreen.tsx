@@ -77,7 +77,7 @@ function LineupCard({ creature: c, slot, selected, leads, onSelect }: { readonly
         <span className={s.slotNo} aria-hidden>
           {String(slot).padStart(2, '0')}
         </span>
-        <CreatureSprite speciesId={c.speciesId} form={form?.id ?? null} variantKey={c.variantKey} size="xl" className={s.sprite} />
+        <CreatureSprite speciesId={c.speciesId} form={form?.id ?? null} variantKey={c.variantKey} shiny={c.isShiny === true} size="xl" className={s.sprite} />
         {(marks.length > 0 || formKind !== null) && (
           <span className={s.marks} aria-hidden>
             {marks.map((b) => (

@@ -99,7 +99,7 @@ export function DaycareScreen() {
                 ) : (
                   <li key={c.id} className={s.parent}>
                     <span className={s.slotNo}>{String(i + 1).padStart(2, '0')}</span>
-                    <CreatureSprite speciesId={c.speciesId} variantKey={c.variantKey} size="lg" />
+                    <CreatureSprite speciesId={c.speciesId} variantKey={c.variantKey} shiny={c.isShiny === true} size="lg" />
                     <span className={s.who}>
                       <span className={s.name}>{displayName(c)}</span>
                       <span className={l.caption}>
@@ -144,7 +144,7 @@ export function DaycareScreen() {
               <ul className={s.pick}>
                 {candidates.map(({ c, where }) => (
                   <li key={c.id} className={s.option}>
-                    <CreatureSprite speciesId={c.speciesId} variantKey={c.variantKey} size="sm" />
+                    <CreatureSprite speciesId={c.speciesId} variantKey={c.variantKey} shiny={c.isShiny === true} size="sm" />
                     <span className={s.who}>
                       <span className={s.name}>{displayName(c)}</span>
                       <span className={l.caption}>

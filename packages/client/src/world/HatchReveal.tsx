@@ -92,7 +92,7 @@ export function HatchReveal() {
       <div className={s.stage} aria-hidden>
         <span className={s.rays} />
         {phase === 'reveal' ? (
-          <CreatureSprite speciesId={c.speciesId} variantKey={c.variantKey} size="xl" className={s.sprite} />
+          <CreatureSprite speciesId={c.speciesId} variantKey={c.variantKey} shiny={c.isShiny === true} size="xl" className={s.sprite} />
         ) : (
           <Egg size="xl" bandborn={c.bandborn === true} stage={phase === 'crack' ? 'crack' : 'wobble'} />
         )}

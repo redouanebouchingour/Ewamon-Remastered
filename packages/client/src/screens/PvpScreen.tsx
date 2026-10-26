@@ -201,7 +201,7 @@ function PvpBody({ friends, onClose }: { readonly friends: readonly FriendView[]
               <dt className={l.caption}>Party</dt>
               <dd className={s.partyRow}>
                 {party.map((c) => (
-                  <CreatureSprite key={c.id} speciesId={c.speciesId} variantKey={c.variantKey} size="sm" />
+                  <CreatureSprite key={c.id} speciesId={c.speciesId} variantKey={c.variantKey} shiny={c.isShiny === true} size="sm" />
                 ))}
               </dd>
             </div>
