@@ -22,8 +22,8 @@ import { itemsOf, reachNear, walkInterior } from '../src/interiors';
 const sp = (id: string) => SPECIES.find((s) => s.id === id)!;
 
 describe('the Elemutt line', () => {
-  it('three mythical Normal species, dex 142..144, evolving at 16 and 36, one ability each', () => {
-    expect(['elemutt', 'katamute', 'ravatar'].map((id) => sp(id).dexNumber)).toEqual([142, 143, 144]);
+  it('three mythical Normal species, dex 178..180, evolving at 16 and 36, one ability each', () => {
+    expect(['elemutt', 'katamute', 'ravatar'].map((id) => sp(id).dexNumber)).toEqual([178, 179, 180]);
     for (const id of ['elemutt', 'katamute', 'ravatar']) {
       expect(sp(id).rarity).toBe('mythical');
       expect(sp(id).legendary).toBe(true);

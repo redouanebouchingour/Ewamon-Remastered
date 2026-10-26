@@ -160,7 +160,7 @@ export type Evolution =
 export interface SpeciesDef {
   readonly id: string;                 // snake_case, e.g. 'bramblecub'
   readonly name: string;               // display, e.g. 'Bramblecub'
-  readonly dexNumber: number;          // 1..180 <!-- amended 2026-10-26: astaroth (#180) --> <!-- amended 2026-10-13: hyoryu (#138) --> <!-- amended 2026-10-24: cryptorb, ultraze, vysion (#139–141) --> <!-- amended 2026-10-25: the Elemutt line (#142–144) --> <!-- amended 2026-10-26: kykaiser (#145) --> <!-- amended 2026-10-26: the type-gap lines (#146–179) -->, unique, dense (1..130 legacy, 131.. `.design/additions/species.js`)
+  readonly dexNumber: number;          // 1..180 <!-- amended 2026-10-26: astaroth (#180) --> <!-- amended 2026-10-13: hyoryu (#138) --> <!-- amended 2026-10-24: cryptorb, ultraze, vysion (#139–141) --> <!-- amended 2026-10-25: the Elemutt line (#142–144) --> <!-- amended 2026-10-26: kykaiser (#145) --> <!-- amended 2026-10-26: the type-gap lines (#146–179) --> <!-- amended 2026-10-26: dex order -->, unique, dense; order: the starter lines (Grass, Fire, Water) first, then every other evolution line kept together in source order (legacy, then `.design/additions/species.js`), then the legendaries, then the mythicals (content `migrate-legacy.ts` `dexOrder`)
   readonly flavor: string;
   readonly types: readonly [TypeName] | readonly [TypeName, TypeName];
   readonly baseHp: number; readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number;

@@ -3,8 +3,9 @@
  * abilities,items,orbs,consumables,typechart}.ts. Run with `pnpm --filter @ewa/content run migrate`.
  *
  * Rules applied (spine §2.3–§2.6; each is restated in the generated header):
- *  - species dexNumber = legacy object insertion order (1..130), then .design/additions/species.js in its
- *    insertion order (131..); rows emitted in that order.
+ *  - species dexNumber: the starter lines (Grass, Fire, Water) first, then every other evolution line kept together in
+ *    source order (legacy insertion order, then .design/additions/species.js), then the legendaries, then the
+ *    mythicals (`dexOrder`); rows emitted in that order.
  *  - learnableMoves: the default `moves` at level 1; every other legacy learnable move gets a level spaced
  *    evenly between 5 and min(evolution.atLevel ?? 40, 60) in legacy list order, rounded to a multiple of 3
  *    (§2.3 migration rule); duplicates and moves that name no MOVES row are dropped and listed in the header.
@@ -404,6 +405,31 @@ function buildParentOf(all: Readonly<Record<string, LegacySpecies>>): Map<string
   return parentOf;
 }
 
+/** The starter roots in dex order (Grass, Fire, Water, as the original games open theirs); the same set as content `STARTER_ROOTS`. */
+const DEX_STARTERS: readonly string[] = ['bramblecub', 'cindercap', 'glimfin'];
+
+/**
+ * The dex order: the three starter lines first, then every other species with each evolution line kept together (lines in
+ * the order their roots appear in the sources), then the legendaries and last the mythicals. A new addition therefore
+ * lands before the legendaries without renumbering anything by hand. Returns the rows renumbered 1..n.
+ */
+function dexOrder(species: readonly SpeciesDef[]): SpeciesDef[] {
+  const byId = new Map(species.map((s) => [s.id, s]));
+  const at = new Map(species.map((s, i) => [s.id, i]));
+  const rootOf = (s: SpeciesDef): string => (s.evolvesFrom === null ? s.id : rootOf(byId.get(s.evolvesFrom)!));
+  const key = (s: SpeciesDef): [number, number, number] => {
+    const root = rootOf(s);
+    if (s.rarity === 'mythical') return [3, at.get(root)!, at.get(s.id)!];
+    if (s.rarity === 'legendary' || s.legendary) return [2, at.get(root)!, at.get(s.id)!];
+    const starter = DEX_STARTERS.indexOf(root);
+    return starter >= 0 ? [0, starter, at.get(s.id)!] : [1, at.get(root)!, at.get(s.id)!];
+  };
+  for (const id of DEX_STARTERS) if (!byId.has(id)) throw new Error(`dex order: starter '${id}' is not a species`);
+  const keyed = species.map((s) => ({ s, k: key(s) }));
+  keyed.sort((a, b) => a.k[0] - b.k[0] || a.k[1] - b.k[1] || a.k[2] - b.k[2]);
+  return keyed.map(({ s }, i) => ({ ...s, dexNumber: i + 1 }));
+}
+
 function clamp(id: string, field: string, v: number, lo: number, hi: number): number {
   const c = Math.min(hi, Math.max(lo, v));
   if (c !== v) notes.push(`species '${id}': ${field} ${v} clamped to ${c} (schema range ${lo}..${hi})`);
@@ -733,10 +759,10 @@ function main(): void {
   const moves: MoveDef[] = moveIds.map((id) => migrateMove(id, legacy.MOVES[id]!));
   const moveSet = new Set(moveIds);
 
-  // species (legacy insertion order = dex order)
+  // species (migrated in legacy insertion order, then numbered and emitted in dex order)
   const speciesIds = Object.keys(legacy.EWAMON_SPECIES);
   const parentOf = buildParentOf(legacy.EWAMON_SPECIES);
-  const species: SpeciesDef[] = speciesIds.map((id, i) => migrateSpecies(legacy.EWAMON_SPECIES[id]!, i + 1, moveSet, parentOf));
+  const species: SpeciesDef[] = dexOrder(speciesIds.map((id, i) => migrateSpecies(legacy.EWAMON_SPECIES[id]!, i + 1, moveSet, parentOf)));
 
   // abilities
   const abilityIds = Object.keys(legacy.ABILITIES).sort();
@@ -828,7 +854,7 @@ function main(): void {
   emit(
     'species.ts',
     header('species', [
-      'dexNumber = legacy insertion order. learnableMoves: defaults at 1, the rest evenly spaced 5..min(evolvesAt ?? 40, 60), ×3-rounded (§2.3).',
+      'dexNumber: the starter lines first, then each other evolution line together in source order, then legendaries, then mythicals. learnableMoves: defaults at 1, the rest evenly spaced 5..min(evolvesAt ?? 40, 60), ×3-rounded (§2.3).',
       ...speciesNotes,
     ]) +
       `import type { SpeciesDef } from '@ewa/core';\n\nexport const SPECIES: readonly SpeciesDef[] = ${ser(species, '')};\n`,

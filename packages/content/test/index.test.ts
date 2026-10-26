@@ -6,10 +6,12 @@ import {
   MOVES,
   ORBS,
   SPECIES,
+  STARTER_ROOTS,
   TYPE_CHART,
   createContentIndex,
   encounterTable,
   encounterTableFor,
+  evolutionRoot,
   league,
   quest,
   storyBeat,
@@ -33,7 +35,17 @@ describe('createContentIndex()', () => {
     const all = idx.allSpecies();
     expect(all.length).toBe(180);
     for (let i = 1; i < all.length; i++) expect(all[i]!.dexNumber).toBeGreaterThan(all[i - 1]!.dexNumber);
-    expect(all[0]!.id).toBe('smellduck');
+    expect(all[0]!.id).toBe('bramblecub');
+  });
+
+  it('the dex opens with the three starter lines and closes with the legendaries, then the mythicals', () => {
+    const all = idx.allSpecies();
+    const starters = all.filter((s) => STARTER_ROOTS.includes(evolutionRoot(s.id)));
+    expect(all.slice(0, starters.length)).toEqual(starters);
+    expect([...new Set(starters.map((s) => evolutionRoot(s.id)))]).toEqual(['bramblecub', 'cindercap', 'glimfin']);
+    const tier = (s: (typeof all)[number]): number => (s.rarity === 'mythical' ? 2 : s.rarity === 'legendary' || s.legendary ? 1 : 0);
+    for (let i = 1; i < all.length; i++) expect(tier(all[i]!)).toBeGreaterThanOrEqual(tier(all[i - 1]!));
+    expect(all.at(-1)!.rarity).toBe('mythical');
   });
 
   it('throws RangeError on unknown ids', () => {

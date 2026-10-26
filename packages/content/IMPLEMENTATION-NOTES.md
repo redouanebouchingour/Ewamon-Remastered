@@ -903,3 +903,10 @@ target follows (179).
   the crypt's door instead of the static at zone level, and that the building overlaps no pocket or plan building.
 - The gravetender gains a `react` on the Champion's flag pointing at the crypt (data only: npc x / z alone feed the
   layout).
+
+## Dex order (2026-10-26)
+
+- `dexNumber` is no longer the source insertion order. `migrate-legacy.ts` `dexOrder` numbers the dex after migrating: the
+  starter lines (bramblecub, cindercap, glimfin) first, then every other evolution line together in source order, then
+  the legendaries, then the mythicals. Rows are emitted in that order. `DEX_STARTERS` in the generator must name the
+  same set as `STARTER_ROOTS` (`data/arena.ts`); `index.test.ts` checks both the set and the order.

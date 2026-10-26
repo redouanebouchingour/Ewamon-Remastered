@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-26 dex order. One entry. -->
+
+## 2026-10-26 · `00-spine.md` §2.3 SpeciesDef `dexNumber` · the starters open the dex, legendaries and mythicals close it
+Why: the user asked for the Ewadex to start with the starters, like the original games, and to keep every legendary and mythical at the end at all times. The generator now numbers the dex itself: the three starter lines (Bramblecub, Cindercap, Glimfin: Grass, Fire, Water) as #1 to #9, then every other evolution line kept together in source order (which also pulls kykaiser next to kygra and lawlander next to badlander), then the 10 legendaries (#166 to #175), then the 5 mythicals (#176 to #180). A new non-legendary addition lands before the legendaries without renumbering by hand. Saves key on species ids, so no data moves; the battle fuzz digests use core's own legacy fixture and stay byte-identical.
+Evidence: content `index.test.ts` (starters lead, legendaries then mythicals trail), `harmonic.test.ts` (the Elemutt line is #178 to #180); `pnpm check`.
+Affects: `packages/content/scripts/migrate-legacy.ts`; `packages/content/src/data/species.ts` (regenerated); `packages/content/test/{index,harmonic}.test.ts`; `packages/client/test/spriteCatalog.test.ts` (comment).
+
 <!-- 2026-10-26 acier's Majin form. One entry. -->
 
 ## 2026-10-26 · `40-pipelines.md` §40.1 species set, accounting · acier_majin
