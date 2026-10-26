@@ -41,8 +41,7 @@ import { DexEntry } from './dex/DexEntry';
 import { HabitatAtlas } from './dex/HabitatAtlas';
 import { RewardsView } from './dex/RewardsView';
 import { claimDexReward } from './dex/claim';
-import { revealOf } from './dex/reveal';
-import type { Reveal } from './dex/reveal';
+import { revealOf, startReveal, useRevealFor } from './dex/reveal';
 import {
   SORT_DIR,
   SORT_KEYS,
@@ -216,14 +215,14 @@ export function DexScreen() {
   }, [selected]);
 
   // reveal moments: the first opening since the entry was seen or recorded plays its reveal and marks it viewed
-  const [reveal, setReveal] = useState<{ readonly id: string; readonly kind: Reveal } | null>(null);
+  const reveal = useRevealFor(selected?.id ?? null);
   useEffect(() => {
     if (selected === null || entriesMap === undefined) return;
     const id = selected.id;
     const e = entriesMap[id];
     const kind = revealOf(e);
     if (kind === null || e === undefined) return;
-    setReveal({ id, kind });
+    startReveal(id, kind);
     apiFetch('dexViewed', { params: { speciesId: id } })
       .then((res) => {
         const cur = useSessionStore.getState().progression?.dexEntries;
@@ -713,7 +712,7 @@ export function DexScreen() {
                     sp={selected}
                     state={stateOf(selected.id)}
                     research={researchOf(selected.id)}
-                    reveal={reveal?.id === selected.id ? reveal.kind : null}
+                    reveal={reveal}
                     counters={entriesMap?.[selected.id]?.counters}
                     variants={variants[selected.id] ?? []}
                     alpha={alphaIds.includes(selected.id)}

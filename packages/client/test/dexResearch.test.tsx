@@ -82,4 +82,10 @@ describe('the Dex with research', () => {
     const tile = screen.getByRole('button', { name: /^Bramblecub, recorded/ });
     expect(within(tile).getByText('New')).toBeTruthy();
   });
+
+  it('plays the reveal once when a new entry opens', async () => {
+    withDex({ bramblecub: 1 }, ['bramblecub'], null);
+    renderAt('/play/dex?id=bramblecub');
+    expect((await screen.findByTestId('dex-reveal')).textContent).toContain('Recorded');
+  });
 });
