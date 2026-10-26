@@ -8,6 +8,7 @@ import type { ServerMessage } from '@ewa/protocol';
 import { installArenaFlow, routeArenaMessage } from '../app/arena';
 import type { ArenaSession } from '../app/arena';
 import { queueTradeEvolutions } from '../app/itemUseFeedback';
+import { speciesName } from '../data/content';
 import { useDaycareStore } from '../state/daycare';
 import { useNemesisStore } from '../state/nemesis';
 import { toast, useNotificationsStore } from '../state/notifications';
@@ -86,6 +87,8 @@ export function routeServerMessage(m: ServerMessage, ws: Pick<WorldSession, 'han
       return;
     case 'progressionDelta':
       applyProgressionDelta(m);
+      // Dex research: a level-up is worth a line (the Dex shows the rest)
+      for (const up of m.research ?? []) toast('success', `${speciesName(up.speciesId)}: research level ${up.level}${up.level >= 5 ? ', fully researched' : ''}.`);
       return;
     case 'toast':
       toast(m.level, m.text);

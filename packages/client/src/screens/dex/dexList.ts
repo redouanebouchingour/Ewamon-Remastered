@@ -10,12 +10,12 @@ import type { Rarity, SpeciesDef, TypeName } from '@ewa/core';
 import { RARITY_RANK, formsOfSpecies, habitatsOf, stageOfSpecies, statTotal } from '../../data/dexInfo';
 import type { DexState } from '../../data/dexInfo';
 
-export type SortKey = 'num' | 'name' | 'hp' | 'atk' | 'def' | 'spd' | 'total' | 'rarity';
+export type SortKey = 'num' | 'name' | 'hp' | 'atk' | 'def' | 'spd' | 'total' | 'rarity' | 'research';
 export type SortDir = 'asc' | 'desc';
 export type StateFilter = DexState | 'all' | 'shiny';
 export type Density = 'tiles' | 'list';
 
-export const SORT_KEYS: readonly SortKey[] = ['num', 'name', 'total', 'hp', 'atk', 'def', 'spd', 'rarity'];
+export const SORT_KEYS: readonly SortKey[] = ['num', 'name', 'total', 'hp', 'atk', 'def', 'spd', 'rarity', 'research'];
 export const SORT_LABEL: Readonly<Record<SortKey, string>> = {
   num: 'Number',
   name: 'Name',
@@ -25,13 +25,16 @@ export const SORT_LABEL: Readonly<Record<SortKey, string>> = {
   def: 'Defense',
   spd: 'Speed',
   rarity: 'Rarity',
+  research: 'Research',
 };
 /** the direction a sort starts in: numbers and names up, stats and rarity down (the strongest first) */
-export const SORT_DIR: Readonly<Record<SortKey, SortDir>> = { num: 'asc', name: 'asc', total: 'desc', hp: 'desc', atk: 'desc', def: 'desc', spd: 'desc', rarity: 'desc' };
+export const SORT_DIR: Readonly<Record<SortKey, SortDir>> = { num: 'asc', name: 'asc', total: 'desc', hp: 'desc', atk: 'desc', def: 'desc', spd: 'desc', rarity: 'desc', research: 'desc' };
 
 export interface DexRow {
   readonly sp: SpeciesDef;
   readonly state: DexState;
+  /** research level 0..5; null without research data (an older server) */
+  readonly research?: number | null;
 }
 
 export interface DexQuery {
@@ -43,6 +46,8 @@ export interface DexQuery {
   readonly stage: Stage | '';
   readonly form: boolean;
   readonly now: boolean;
+  /** research level at least this (0 = any) */
+  readonly minResearch: number;
   readonly sort: SortKey;
   readonly dir: SortDir;
   readonly density: Density;
@@ -61,6 +66,7 @@ export function readQuery(p: URLSearchParams): DexQuery {
     stage: (p.get('stage') ?? '') as Stage | '',
     form: p.get('form') === '1',
     now: p.get('now') === '1',
+    minResearch: Math.max(0, Math.min(5, Number(p.get('research') ?? '0') || 0)),
     sort,
     dir: dirRaw === 'asc' || dirRaw === 'desc' ? dirRaw : SORT_DIR[sort],
     density: p.get('density') === 'list' ? 'list' : 'tiles',
@@ -69,7 +75,7 @@ export function readQuery(p: URLSearchParams): DexQuery {
 
 /** True when any filter beyond search / type / state is on (the "more filters" row shows them). */
 export function hasExtraFilters(qy: DexQuery): boolean {
-  return qy.zone !== '' || qy.rarity !== '' || qy.stage !== '' || qy.form || qy.now;
+  return qy.zone !== '' || qy.rarity !== '' || qy.stage !== '' || qy.form || qy.now || qy.minResearch > 0;
 }
 
 /** Whether `timeOfDay` (the room's 0..1 clock, day = [0.25, 0.75)) is day; null when unknown. */
@@ -94,7 +100,7 @@ export function catchableNow(sp: SpeciesDef, ctx: FilterCtx): boolean {
 
 export function filterRows(rows: readonly DexRow[], qy: DexQuery, ctx: FilterCtx): DexRow[] {
   const needle = qy.q.trim().toLowerCase();
-  return rows.filter(({ sp, state: st }) => {
+  return rows.filter(({ sp, state: st, research }) => {
     if (qy.state === 'shiny') {
       if (!ctx.shiny.has(sp.id)) return false;
     } else if (qy.state !== 'all' && st !== qy.state) return false;
@@ -105,6 +111,7 @@ export function filterRows(rows: readonly DexRow[], qy: DexQuery, ctx: FilterCtx
     if (qy.form && (unknown || formsOfSpecies(sp).length === 0)) return false;
     if (qy.zone !== '' && !habitatsOf(sp.id).some((h) => h.zoneId === qy.zone)) return false;
     if (qy.now && !catchableNow(sp, ctx)) return false;
+    if (qy.minResearch > 0 && (unknown || (research ?? 0) < qy.minResearch)) return false;
     if (needle.length > 0) {
       if (unknown) return String(sp.dexNumber).includes(needle);
       return sp.name.toLowerCase().includes(needle) || String(sp.dexNumber).includes(needle);
@@ -134,6 +141,8 @@ export function sortValue(key: SortKey, dir: SortDir): (r: DexRow) => number | s
       return stat(statTotal);
     case 'rarity':
       return (r) => (r.state === 'unknown' ? hiddenNum : RARITY_RANK[r.sp.rarity]);
+    case 'research':
+      return (r) => (r.state === 'unknown' || r.research === null || r.research === undefined ? hiddenNum : r.research);
   }
 }
 

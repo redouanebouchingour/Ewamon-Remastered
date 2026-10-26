@@ -111,7 +111,16 @@ export function playLoader({ request }: LoaderFunctionArgs): Promise<{ readonly 
 export async function dexLoader({ request }: LoaderFunctionArgs) {
   const [dex] = await Promise.all([load(request, 'dex'), sessionReady(request.signal)]);
   useSessionStore.getState().applyProgressionDelta(
-    toProgressionDelta({ dexSeen: dex.seen, dexCaught: dex.caught, dexVariants: dex.variants, dexAlpha: dex.alpha, dexShiny: dex.shiny ?? [] }),
+    toProgressionDelta({
+      dexSeen: dex.seen,
+      dexCaught: dex.caught,
+      dexVariants: dex.variants,
+      dexAlpha: dex.alpha,
+      dexShiny: dex.shiny ?? [],
+      ...(dex.entries !== undefined ? { dexEntries: dex.entries } : {}),
+      ...(dex.research !== undefined ? { dexResearch: dex.research } : {}),
+      ...(dex.rewards !== undefined ? { dexRewards: dex.rewards } : {}),
+    }),
   );
   return dex;
 }

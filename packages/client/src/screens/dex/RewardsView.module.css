@@ -1,0 +1,111 @@
+/*
+ * Dex rewards: rows in three groups. A ready row gets a paper edge and the Claim button; a claimed one is dimmed with
+ * a check. What a reward pays is spelled out in small tags.
+ */
+
+.rewards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+
+.stampRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-5);
+  background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+}
+
+.error {
+  margin: 0;
+  color: var(--danger);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) minmax(0, 0.9fr) auto;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  background: var(--bg-2);
+  border-inline-start: 4px solid var(--line-2);
+}
+
+.ready {
+  border-inline-start-color: var(--text-hi);
+  background: var(--bg-3);
+}
+
+.claimed {
+  opacity: 0.6;
+}
+
+.kind {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-inline-size: 0;
+}
+
+.title {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.pays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+}
+
+.pay {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding: 0 var(--s-2);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--text-1);
+  font-size: var(--t-caption);
+  line-height: 20px;
+}
+
+.titlePay {
+  box-shadow: inset 0 0 0 1px var(--text-2);
+  color: var(--text-hi);
+}
+
+.count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}

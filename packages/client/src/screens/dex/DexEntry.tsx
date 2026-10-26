@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
-import { RELICS } from '@ewa/content';
+import { RELICS, RESEARCH_LEVEL_POINTS, RESEARCH_MAX_LEVEL, researchProgressOf } from '@ewa/content';
 import { VARIANT_KEYS } from '@ewa/protocol';
 import type { BattleFormDef, SpeciesDef, TypeName, VariantKey } from '@ewa/core';
 import { hushEntry, playCry, readEntry } from '../../audio/dexVoice';
@@ -33,6 +33,7 @@ import {
   unlockHint,
 } from '../../data/dexInfo';
 import type { DexState, EvoNode, Habitat, Origin } from '../../data/dexInfo';
+import { useDexPrefs } from '../../state/dexPrefs';
 import { useSessionStore } from '../../state/session';
 import { Button } from '../../ui/Button';
 import { CreatureSprite } from '../../ui/CreatureSprite';
@@ -47,7 +48,7 @@ import { RoamerNote } from '../RoamerNote';
 import l from '../layout.module.css';
 import s from './DexEntry.module.css';
 
-export type EntryTab = 'overview' | 'moves' | 'matchups' | 'habitat' | 'evolution' | 'forms';
+export type EntryTab = 'overview' | 'research' | 'moves' | 'matchups' | 'habitat' | 'evolution' | 'forms';
 const EMPTY: readonly string[] = [];
 
 /** Majin / Tenjin: the form's rule in one line */
@@ -87,6 +88,8 @@ export interface DexEntryProps {
   readonly state: DexState;
   /** the research level, once the server reports one */
   readonly research?: number;
+  /** the entry's research counters (GET /dex `entries`) */
+  readonly counters?: Readonly<Record<string, number>>;
   readonly variants: readonly VariantKey[];
   readonly alpha: boolean;
   readonly shiny: boolean;
@@ -97,6 +100,8 @@ export interface DexEntryProps {
   readonly onNext?: () => void;
   /** extra actions in the hero (compare, voice) */
   readonly actions?: ReactNode;
+  /** play the reveal: the first opening since it was seen or recorded */
+  readonly reveal?: 'seen' | 'recorded' | null;
 }
 
 /** The hero's view: the base form or one of its battle forms, a variant, shiny, alpha. */
@@ -107,7 +112,7 @@ interface View {
   readonly alpha: boolean;
 }
 
-export function DexEntry({ sp, state, research, variants, alpha, shiny, recordedIn, onOpen, onPrev, onNext, actions }: DexEntryProps) {
+export function DexEntry({ sp, state, research, counters, variants, alpha, shiny, recordedIn, onOpen, onPrev, onNext, actions, reveal = null }: DexEntryProps) {
   const [params, setParams] = useSearchParams();
   const [view, setView] = useState<View>({ form: null, variant: 'normal', shiny: false, alpha: false });
   useEffect(() => hushEntry, []);
@@ -143,6 +148,7 @@ export function DexEntry({ sp, state, research, variants, alpha, shiny, recorded
 
   const tabs: { key: EntryTab; label: string }[] = [
     { key: 'overview', label: 'Overview' },
+    ...(research !== undefined ? [{ key: 'research' as const, label: 'Research' }] : []),
     { key: 'moves', label: 'Moves' },
     { key: 'matchups', label: 'Matchups' },
     { key: 'habitat', label: 'Habitat' },
@@ -164,7 +170,12 @@ export function DexEntry({ sp, state, research, variants, alpha, shiny, recorded
   return (
     <aside className={cx(s.entry, access.goldFrame && s.gold)} data-type={types[0]} data-testid="dex-entry" aria-label={`${sp.name} entry`}>
       <header className={s.hero}>
-        <div className={cx(s.stage, view.alpha && s.alphaStage)}>
+        <div className={cx(s.stage, view.alpha && s.alphaStage, reveal !== null && s.revealing)} data-testid={reveal !== null ? 'dex-reveal' : undefined}>
+          {reveal !== null && (
+            <span className={s.revealStamp} aria-live="polite">
+              {reveal === 'recorded' ? 'Recorded' : 'Seen'}
+            </span>
+          )}
           <CreatureSprite
             speciesId={sp.id}
             form={access.forms ? view.form : null}
@@ -210,6 +221,7 @@ export function DexEntry({ sp, state, research, variants, alpha, shiny, recorded
       <Tabs<EntryTab> tabs={tabs} value={tab} onChange={setTab} label="Entry" className={s.tabs} />
       <div className={s.panel} role="tabpanel" aria-label={tabs.find((t) => t.key === tab)?.label}>
         {tab === 'overview' && <Overview sp={sp} form={form} state={state} access={access} variants={variants} alpha={alpha} shiny={shiny} recordedIn={recordedIn} />}
+        {tab === 'research' && research !== undefined && <ResearchTab sp={sp} level={research} counters={counters ?? {}} />}
         {tab === 'moves' && (access.moves ? <Moves sp={sp} /> : <Locked text={unlockHint(state, RESEARCH_GATE.moves)} />)}
         {tab === 'matchups' && (access.matchups ? <Matchups types={types} formName={form?.name ?? null} /> : <Locked text={unlockHint(state, RESEARCH_GATE.matchups)} />)}
         {tab === 'habitat' && <HabitatTab sp={sp} />}
@@ -239,8 +251,9 @@ function EntryNav({ num, caption, onPrev, onNext }: { readonly num: string; read
 }
 
 export function ResearchStamp({ level }: { readonly level: number }) {
+  const look = useDexPrefs((st) => st.stamp);
   return (
-    <span className={cx(s.stamp, level >= RESEARCH_GATE.goldFrame && s.stampGold)} title={`Research level ${level} of 5`}>
+    <span className={cx(s.stamp, level >= RESEARCH_GATE.goldFrame && s.stampGold, s[`look_${look}`])} title={`Research level ${level} of 5`}>
       <span className={s.stampLabel}>Research</span>
       <b className={s.stampValue}>{level}</b>
     </span>
@@ -757,6 +770,67 @@ function Forms({ sp, forms }: { readonly sp: SpeciesDef; readonly forms: readonl
           </article>
         );
       })}
+    </div>
+  );
+}
+
+// ---- research ------------------------------------------------------------------------------------------------------
+
+/** What each research level opens (the gates in data/dexInfo.ts `RESEARCH_GATE` and the server's perks). */
+const PERKS: readonly { readonly level: number; readonly text: string }[] = [
+  { level: 1, text: 'Its stats, abilities and forms (once recorded)' },
+  { level: RESEARCH_GATE.moves, text: 'Its moves: by level, TMs and tutors' },
+  { level: RESEARCH_GATE.matchups, text: 'Matchups, how each stage evolves, compare, and a better catch rate' },
+  { level: RESEARCH_GATE.goldFrame, text: 'A gold frame and better shiny odds in the wild' },
+];
+
+function ResearchTab({ sp, level, counters }: { readonly sp: SpeciesDef; readonly level: number; readonly counters: Readonly<Record<string, number>> }) {
+  const prog = researchProgressOf(sp.id, counters);
+  const next = level < RESEARCH_MAX_LEVEL ? (RESEARCH_LEVEL_POINTS[level] ?? null) : null;
+  const prev = level === 0 ? 0 : (RESEARCH_LEVEL_POINTS[level - 1] ?? 0);
+  return (
+    <div className={s.research} data-testid="dex-research">
+      <header className={s.researchHead}>
+        <ResearchStamp level={level} />
+        <div className={s.researchBar}>
+          <span className={l.caption}>
+            {prog.points} points{next !== null ? ` · ${next - prog.points} to level ${level + 1}` : ' · fully researched'}
+          </span>
+          <div className={l.statTrack}>
+            <div className={l.statFill} style={cssVars({ '--p': next === null ? 1 : Math.max(0, Math.min(1, (prog.points - prev) / Math.max(1, next - prev))) })} />
+          </div>
+        </div>
+      </header>
+      <ul className={s.tasks}>
+        {prog.tasks.map((t) => {
+          const nextTier = t.task.tiers[t.tiersReached];
+          return (
+            <li key={t.task.id} className={cx(s.task, t.task.kind === 'special' && s.special, nextTier === undefined && s.taskDone)}>
+              <span className={s.taskTitle}>{t.task.title}</span>
+              <span className={s.pips} aria-label={`${t.tiersReached} of ${t.task.tiers.length} tiers`}>
+                {t.task.tiers.map((n, i) => (
+                  <span key={n} className={cx(s.pip, i < t.tiersReached && s.pipOn)} title={`${n}`} />
+                ))}
+              </span>
+              <span className={s.taskCount}>
+                {t.count}
+                {nextTier !== undefined && <span className={l.caption}> / {nextTier}</span>}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <section className={l.section}>
+        <h4 className={l.sectionTitle}>What research opens</h4>
+        <ul className={s.perks}>
+          {PERKS.map((p) => (
+            <li key={p.level} className={cx(s.perk, level >= p.level && s.perkOn)}>
+              <b className={s.perkLevel}>{p.level}</b>
+              <span>{p.text}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }

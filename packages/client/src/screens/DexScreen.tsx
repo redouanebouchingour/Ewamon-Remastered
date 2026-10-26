@@ -16,7 +16,8 @@ import { DEX_TOTAL, SPECIES_BY_DEX, zoneName } from '../data/content';
 import { HABITAT_ZONES, dexAccess, statTotal } from '../data/dexInfo';
 import type { DexState } from '../data/dexInfo';
 import { buddyPlace } from '../state/buddy';
-import { useSessionStore } from '../state/session';
+import { toProgressionDelta, useSessionStore } from '../state/session';
+import { apiFetch } from '../net/api';
 import { Button } from '../ui/Button';
 import { CreatureSprite } from '../ui/CreatureSprite';
 import { EmptyState } from '../ui/EmptyState';
@@ -38,6 +39,10 @@ import { EcosystemPanel } from './EcosystemPanel';
 import { CompareView } from './dex/CompareView';
 import { DexEntry } from './dex/DexEntry';
 import { HabitatAtlas } from './dex/HabitatAtlas';
+import { RewardsView } from './dex/RewardsView';
+import { claimDexReward } from './dex/claim';
+import { revealOf } from './dex/reveal';
+import type { Reveal } from './dex/reveal';
 import {
   SORT_DIR,
   SORT_KEYS,
@@ -69,10 +74,11 @@ function entryLabel(sp: SpeciesDef, st: DexState): string {
   return `${sp.name}, ${st === 'caught' ? 'recorded' : 'seen'}${form}`;
 }
 
-type DexView = 'entries' | 'habitat';
+type DexView = 'entries' | 'habitat' | 'rewards';
 const VIEWS: readonly { readonly key: DexView; readonly label: string }[] = [
   { key: 'entries', label: 'Entries' },
   { key: 'habitat', label: 'Habitat atlas' },
+  { key: 'rewards', label: 'Rewards' },
 ];
 
 const num3 = (n: number): string => `#${String(n).padStart(3, '0')}`;
@@ -96,6 +102,10 @@ export function DexScreen() {
   const variants = useSessionStore((st) => st.progression?.dexVariants ?? NO_VARIANTS);
   const alphaIds = useSessionStore((st) => st.progression?.dexAlpha ?? EMPTY);
   const shinyIds = useSessionStore((st) => st.progression?.dexShiny ?? EMPTY);
+  const researchMap = useSessionStore((st) => st.progression?.dexResearch);
+  const entriesMap = useSessionStore((st) => st.progression?.dexEntries);
+  /** the research level of a species, undefined without research data (an older server) */
+  const researchOf = (id: string): number | undefined => (researchMap === undefined ? undefined : (researchMap[id] ?? 0));
   const badges = useSessionStore((st) => st.progression?.badges ?? NO_BADGES);
   const party = useSessionStore((st) => st.inventory?.party);
   const box = useSessionStore((st) => st.inventory?.box);
@@ -142,7 +152,7 @@ export function DexScreen() {
       { replace: true },
     );
 
-  const all: DexRow[] = SPECIES_BY_DEX.map((sp) => ({ sp, state: stateOf(sp.id) }));
+  const all: DexRow[] = SPECIES_BY_DEX.map((sp) => ({ sp, state: stateOf(sp.id), research: researchOf(sp.id) ?? null }));
   const rows = sortRowsBy(
     filterRows(all, qy, { shiny: shinySet, badges, timeOfDay: buddyPlace()?.timeOfDay ?? null }),
     qy.sort,
@@ -158,7 +168,9 @@ export function DexScreen() {
       if (c.speciesId === selected.id && c.caughtAt !== null) zones.add(c.caughtAt.zoneId);
     return [...zones];
   }, [selected, party, box]);
-  const view: DexView = params.get('view') === 'habitat' ? 'habitat' : 'entries';
+  const claimedRewards = useSessionStore((st) => st.progression?.dexRewards);
+  const viewParam = params.get('view');
+  const view: DexView = viewParam === 'habitat' ? 'habitat' : viewParam === 'rewards' && claimedRewards !== undefined ? 'rewards' : 'entries';
   const cmp = (params.get('cmp') ?? '').split(',').filter((x) => x !== '');
   const setCompare = (ids: readonly string[]): void =>
     setParams(
@@ -175,7 +187,7 @@ export function DexScreen() {
       },
       { replace: true },
     );
-  const comparable = SPECIES_BY_DEX.filter((sp) => dexAccess(stateOf(sp.id)).compare);
+  const comparable = SPECIES_BY_DEX.filter((sp) => dexAccess(stateOf(sp.id), researchOf(sp.id)).compare);
   const at = selected === null ? -1 : rows.findIndex((r) => r.sp.id === selected.id);
   const prev = at > 0 ? rows[at - 1] : undefined;
   const next = at !== -1 && at < rows.length - 1 ? rows[at + 1] : undefined;
@@ -202,6 +214,26 @@ export function DexScreen() {
     if (selected === null) return;
     listRef.current?.querySelector('[aria-current="true"]')?.scrollIntoView?.({ block: 'nearest' });
   }, [selected]);
+
+  // reveal moments: the first opening since the entry was seen or recorded plays its reveal and marks it viewed
+  const [reveal, setReveal] = useState<{ readonly id: string; readonly kind: Reveal } | null>(null);
+  useEffect(() => {
+    if (selected === null || entriesMap === undefined) return;
+    const id = selected.id;
+    const e = entriesMap[id];
+    const kind = revealOf(e);
+    if (kind === null || e === undefined) return;
+    setReveal({ id, kind });
+    apiFetch('dexViewed', { params: { speciesId: id } })
+      .then((res) => {
+        const cur = useSessionStore.getState().progression?.dexEntries;
+        const was = cur?.[id];
+        if (cur === undefined || was === undefined) return;
+        useSessionStore.getState().applyProgressionDelta(toProgressionDelta({ dexEntries: { ...cur, [id]: { ...was, viewedAt: res.viewedAt } } }));
+      })
+      .catch(() => undefined);
+    // the reveal is decided once per opening; the entries changing under it (the viewed mark) must not replay it
+  }, [selected?.id]);
 
   /** arrow keys move between tiles (rows in the rail), Home / End jump */
   const onGridKey = (e: KeyboardEvent<HTMLOListElement>): void => {
@@ -319,9 +351,7 @@ export function DexScreen() {
 
   const witnessed = seenSet.size;
   const extra = hasExtraFilters(qy);
-  const activeExtras = [qy.zone !== '', qy.rarity !== '', qy.stage !== '', qy.form, qy.now].filter(
-    Boolean,
-  ).length;
+  const activeExtras = [qy.zone !== '', qy.rarity !== '', qy.stage !== '', qy.form, qy.now, qy.minResearch > 0].filter(Boolean).length;
   return (
     <Panel
       title="Dex"
@@ -451,6 +481,18 @@ export function DexScreen() {
                 onChange={(v) => setParam('now', v ? '1' : '')}
                 className={s.toggle}
               />
+              {researchMap !== undefined && (
+                <Select
+                  label="Research"
+                  hideLabel
+                  value={String(qy.minResearch)}
+                  options={[
+                    { value: '0', label: 'Any research' },
+                    ...[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: n === 5 ? 'Fully researched' : `Research ${n}+` })),
+                  ]}
+                  onChange={(v) => setParam('research', v === '0' ? '' : v)}
+                />
+              )}
               {extra && (
                 <Button
                   variant="ghost"
@@ -459,7 +501,7 @@ export function DexScreen() {
                   onClick={() =>
                     setParams(
                       (p) => {
-                        for (const k of ['zone', 'rarity', 'stage', 'form', 'now']) p.delete(k);
+                        for (const k of ['zone', 'rarity', 'stage', 'form', 'now', 'research']) p.delete(k);
                         return p;
                       },
                       { replace: true },
@@ -521,13 +563,15 @@ export function DexScreen() {
       ) : (
         <>
           <Tabs<DexView>
-            tabs={VIEWS}
+            tabs={claimedRewards === undefined ? VIEWS.filter((v) => v.key !== 'rewards') : VIEWS}
             value={view}
             onChange={(v) => setParam('view', v === 'entries' ? '' : v)}
             label="Dex view"
             className={s.views}
           />
-          {view === 'habitat' ? (
+          {view === 'rewards' ? (
+            <RewardsView caught={caughtSet} research={researchMap ?? {}} claimed={claimedRewards ?? []} onClaim={claimDexReward} />
+          ) : view === 'habitat' ? (
             <HabitatAtlas
               stateOf={stateOf}
               badges={badges}
@@ -579,7 +623,7 @@ export function DexScreen() {
                     aria-label="Dex entries"
                     onKeyDown={onGridKey}
                   >
-                    {rows.map(({ sp, state: st }) => {
+                    {rows.map(({ sp, state: st, research }) => {
                       const v = variants[sp.id] ?? [];
                       const isSel = selectedId === sp.id;
                       return (
@@ -590,6 +634,7 @@ export function DexScreen() {
                               selected === null ? s.entry : s.row,
                               s[st],
                               isSel && s.selected,
+                              research === 5 && st === 'caught' && s.goldTile,
                             )}
                             data-type={st === 'unknown' ? undefined : sp.types[0]}
                             onClick={() => open(isSel ? '' : sp.id)}
@@ -598,6 +643,9 @@ export function DexScreen() {
                             aria-label={entryLabel(sp, st)}
                           >
                             <span className={s.num}>{num3(sp.dexNumber)}</span>
+                            {st !== 'unknown' && revealOf(entriesMap?.[sp.id]) !== null && (
+                              <span className={s.newTag}>New</span>
+                            )}
                             {alphaIds.includes(sp.id) && (
                               <Icon
                                 name="alpha"
@@ -632,6 +680,13 @@ export function DexScreen() {
                               desaturate={st === 'seen'}
                             />
                             <span className={s.name}>{st === 'unknown' ? '???' : sp.name}</span>
+                            {selected === null && st !== 'unknown' && research !== null && research !== undefined && (
+                              <span className={s.researchPips} aria-label={`Research level ${research}`}>
+                                {[1, 2, 3, 4, 5].map((n) => (
+                                  <span key={n} className={cx(s.rpip, n <= research && s.rpipOn)} />
+                                ))}
+                              </span>
+                            )}
                             {selected === null && st !== 'unknown' && (
                               <span className={s.tileTypes}>
                                 {sp.types.map((t) => (
@@ -657,6 +712,9 @@ export function DexScreen() {
                     key={selected.id}
                     sp={selected}
                     state={stateOf(selected.id)}
+                    research={researchOf(selected.id)}
+                    reveal={reveal?.id === selected.id ? reveal.kind : null}
+                    counters={entriesMap?.[selected.id]?.counters}
                     variants={variants[selected.id] ?? []}
                     alpha={alphaIds.includes(selected.id)}
                     shiny={shinyIds.includes(selected.id)}
@@ -669,9 +727,9 @@ export function DexScreen() {
                         variant="secondary"
                         size="sm"
                         icon="grid"
-                        disabled={!dexAccess(stateOf(selected.id)).compare}
+                        disabled={!dexAccess(stateOf(selected.id), researchOf(selected.id)).compare}
                         title={
-                          dexAccess(stateOf(selected.id)).compare
+                          dexAccess(stateOf(selected.id), researchOf(selected.id)).compare
                             ? 'Set it beside another species'
                             : 'Record it to compare it'
                         }

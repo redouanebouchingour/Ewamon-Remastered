@@ -881,3 +881,253 @@
 .capital {
   text-transform: capitalize;
 }
+
+/* ---- research ---- */
+
+.research {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+.researchHead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s-5);
+}
+
+.researchHead .stamp {
+  transform: scale(1.4);
+  transform-origin: left center;
+  margin-inline-end: var(--s-6);
+}
+
+.researchBar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.tasks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-2) var(--s-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.task {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 64px;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  background: var(--bg-1);
+  border-inline-start: 3px solid var(--line-2);
+}
+
+.special {
+  border-inline-start-color: var(--tc, var(--text-hi));
+}
+
+.taskDone {
+  border-inline-start-color: var(--text-hi);
+}
+
+.taskTitle {
+  overflow: hidden;
+  color: var(--text-1);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taskDone .taskTitle {
+  color: var(--text-hi);
+}
+
+.pips {
+  display: inline-flex;
+  gap: var(--s-1);
+}
+
+.pip {
+  inline-size: 10px;
+  block-size: 10px;
+  background: var(--bg-3);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  transform: skewX(-12deg);
+}
+
+.pipOn {
+  background: var(--text-hi);
+  box-shadow: none;
+}
+
+.taskCount {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.perks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.perk {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  color: var(--text-2);
+  font-size: var(--t-body);
+}
+
+.perkOn {
+  color: var(--text-hi);
+}
+
+.perkLevel {
+  display: grid;
+  place-items: center;
+  inline-size: 24px;
+  block-size: 24px;
+  background: var(--bg-3);
+  color: var(--text-1);
+  font-family: var(--face-display);
+  font-weight: 800;
+}
+
+.perkOn .perkLevel {
+  background: var(--text-hi);
+  color: var(--bg-0);
+}
+
+/* stamp looks (Dex rewards): the frame and the level box change; paper is the plain one above */
+.look_bronze {
+  box-shadow: inset 0 0 0 1px #c98a52;
+}
+
+.look_bronze .stampValue {
+  background: linear-gradient(135deg, #e0a36c, #8f5a2e);
+}
+
+.look_silver {
+  box-shadow: inset 0 0 0 1px #c9ccd6;
+}
+
+.look_silver .stampValue {
+  background: linear-gradient(135deg, #f1f2f6, #8e93a1);
+}
+
+.look_gold {
+  box-shadow: inset 0 0 0 1px var(--shiny-gold);
+}
+
+.look_gold .stampValue {
+  background: linear-gradient(135deg, var(--shiny-light), var(--shiny-gold));
+}
+
+.look_holo {
+  box-shadow: inset 0 0 0 1px var(--shiny-light);
+}
+
+.look_holo .stampValue {
+  background: linear-gradient(120deg, var(--type-fairy), var(--type-water), var(--shiny-gold), var(--type-grass));
+}
+
+/* ---- reveal: the silhouette fills in, the type slab wipes up, a paper stamp slams down ---- */
+
+.revealing {
+  animation: slabWipe 700ms var(--ease-out) both;
+}
+
+.revealing img {
+  animation: fillIn 900ms var(--ease-out) 150ms both;
+}
+
+.revealStamp {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  z-index: 2;
+  padding: var(--s-2) var(--s-5);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-family: var(--face-display);
+  font-size: var(--t-h2);
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+  pointer-events: none;
+  animation: stampSlam 1600ms var(--ease-out) 700ms both;
+}
+
+@keyframes slabWipe {
+  from {
+    clip-path: polygon(0 100%, 100% 100%, 100% 100%, 100% 100%, 0 100%);
+  }
+
+  to {
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%);
+  }
+}
+
+@keyframes fillIn {
+  from {
+    filter: brightness(0);
+    transform: scale(0.9);
+  }
+
+  to {
+    filter: none;
+    transform: none;
+  }
+}
+
+@keyframes stampSlam {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-8deg) scale(2.2);
+  }
+
+  18% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(-8deg) scale(1);
+  }
+
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(-8deg) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-8deg) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .revealing,
+  .revealing img {
+    animation: none;
+  }
+
+  .revealStamp {
+    animation: none;
+    opacity: 0;
+  }
+}

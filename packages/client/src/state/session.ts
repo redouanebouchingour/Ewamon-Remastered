@@ -29,6 +29,23 @@ export interface Profile {
 
 export type QuestState = Readonly<Record<string, Readonly<Record<string, { readonly count: number; readonly done: boolean }>>>>;
 
+/** The research levels with the room's level-ups (progressionDelta `research`) on top. */
+function researchAfter(levels: Readonly<Record<string, number>> | undefined, ups: readonly { readonly speciesId: string; readonly level: number }[] | undefined): Readonly<Record<string, number>> | undefined {
+  if (levels === undefined || ups === undefined || ups.length === 0) return levels;
+  const out: Record<string, number> = { ...levels };
+  for (const u of ups) out[u.speciesId] = Math.max(out[u.speciesId] ?? 0, u.level);
+  return out;
+}
+
+/** One Dex entry as GET /dex `entries` sends it (protocol `DexEntrySchema`). */
+export interface DexEntryRecord {
+  readonly seenAt: string;
+  readonly caughtAt: string | null;
+  readonly counters: Readonly<Record<string, number>>;
+  readonly firstSeenZone: string | null;
+  readonly viewedAt: string | null;
+}
+
 export interface Progression {
   readonly badges: readonly BadgeId[];
   readonly trainerExp: number;
@@ -40,6 +57,12 @@ export interface Progression {
   readonly dexAlpha: readonly string[];
   /** Phase D4: species of which a shiny was caught (GET /dex `shiny`) */
   readonly dexShiny?: readonly string[];
+  /** Dex research (GET /dex, REST-only): each entry's dates and research counters */
+  readonly dexEntries?: Readonly<Record<string, DexEntryRecord>>;
+  /** Dex research: the research level 0..5 by species (absent: an older server, nothing gated by research) */
+  readonly dexResearch?: Readonly<Record<string, number>>;
+  /** Dex research: the completion rewards claimed */
+  readonly dexRewards?: readonly string[];
   readonly flags: readonly string[];
   /** questId -> objectiveId -> progress */
   readonly quests: QuestState;
@@ -102,6 +125,10 @@ export type ProgressionDelta = ServerMessageOf<'progressionDelta'> & {
   readonly dexAlpha?: readonly string[];
   /** Phase D4 (REST-only, like dexAlpha) */
   readonly dexShiny?: readonly string[];
+  /** Dex research (REST-only, like dexAlpha) */
+  readonly dexEntries?: Readonly<Record<string, DexEntryRecord>>;
+  readonly dexResearch?: Readonly<Record<string, number>>;
+  readonly dexRewards?: readonly string[];
   /** POST /quests/claim of a daily / weekly mission (REST-only, like the dex extras) */
   readonly missionClaimed?: { readonly questId: string; readonly missionId: string };
   /** Phase B3: POST /quests/claim of a story quest (REST-only) — appended to `questsClaimed` */
@@ -223,6 +250,9 @@ export const useSessionStore = create<SessionState>()(
           dexVariants: prev?.dexVariants ?? {},
           dexAlpha: prev?.dexAlpha ?? [],
           dexShiny: prev?.dexShiny ?? [],
+          ...(prev?.dexEntries !== undefined ? { dexEntries: prev.dexEntries } : {}),
+          ...(prev?.dexResearch !== undefined ? { dexResearch: prev.dexResearch } : {}),
+          ...(prev?.dexRewards !== undefined ? { dexRewards: prev.dexRewards } : {}),
           flags: storyFlags(me.flags),
           quests,
           questsClaimed: me.quests.filter((q) => q.claimed).map((q) => q.id),
@@ -254,6 +284,9 @@ export const useSessionStore = create<SessionState>()(
           dexVariants: d.dexVariants ?? p.dexVariants,
           dexAlpha: d.dexAlpha ?? p.dexAlpha,
           dexShiny: d.dexShiny ?? p.dexShiny ?? [],
+          ...(d.dexEntries !== undefined || p.dexEntries !== undefined ? { dexEntries: d.dexEntries ?? p.dexEntries } : {}),
+          ...(d.dexResearch !== undefined || p.dexResearch !== undefined ? { dexResearch: researchAfter(d.dexResearch ?? p.dexResearch, d.research) } : {}),
+          ...(d.dexRewards !== undefined || p.dexRewards !== undefined ? { dexRewards: d.dexRewards ?? p.dexRewards } : {}),
           flags: union(p.flags, d.flags === null ? null : storyFlags(d.flags)),
           quests: d.questProgress === null ? p.quests : questsFrom(d.questProgress, p.quests),
           questsClaimed: d.questClaimed === undefined || p.questsClaimed.includes(d.questClaimed) ? p.questsClaimed : [...p.questsClaimed, d.questClaimed],
@@ -360,6 +393,9 @@ export function toProgressionDelta(res: {
   readonly dexVariants?: Readonly<Record<string, readonly VariantKey[]>>;
   readonly dexAlpha?: readonly string[];
   readonly dexShiny?: readonly string[];
+  readonly dexEntries?: Readonly<Record<string, DexEntryRecord>>;
+  readonly dexResearch?: Readonly<Record<string, number>>;
+  readonly dexRewards?: readonly string[];
   readonly questProgress?: readonly QuestProgressEntry[];
   readonly missionClaimed?: { readonly questId: string; readonly missionId: string };
   readonly questClaimed?: string;
@@ -378,6 +414,9 @@ export function toProgressionDelta(res: {
     ...(res.dexVariants !== undefined ? { dexVariants: res.dexVariants } : {}),
     ...(res.dexAlpha !== undefined ? { dexAlpha: res.dexAlpha } : {}),
     ...(res.dexShiny !== undefined ? { dexShiny: res.dexShiny } : {}),
+    ...(res.dexEntries !== undefined ? { dexEntries: res.dexEntries } : {}),
+    ...(res.dexResearch !== undefined ? { dexResearch: res.dexResearch } : {}),
+    ...(res.dexRewards !== undefined ? { dexRewards: res.dexRewards } : {}),
     ...(res.missionClaimed !== undefined ? { missionClaimed: res.missionClaimed } : {}),
     ...(res.questClaimed !== undefined ? { questClaimed: res.questClaimed } : {}),
   };
