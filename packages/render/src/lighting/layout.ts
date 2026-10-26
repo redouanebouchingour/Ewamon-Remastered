@@ -8,8 +8,9 @@
  * - loops over every non-shadow `PointLight` / `SpotLight` (no `map`, no `colorNode`) in ONE uniform array of
  *   `LOCAL_LIGHT_VEC4` vec4 per light, bounded by a uniform count (`LocalLightsNode`): the zone's lamps, windows,
  *   braziers and crystals change uniform values, never a program or a cache key;
- * - keeps the stock per-light path for everything else (the sun with its CSM, the hemisphere fill, the arena beacons
- *   and the rig's shadow slots), all persistent objects whose ids never change.
+ * - keeps the stock per-light path for everything else (the sun with its CSM, the hemisphere fill), persistent
+ *   objects whose ids never change. Since 2026-10-25 no punctual light casts a shadow map, so the arena beacons are
+ *   looped too.
  *
  * One uniform buffer for all local lights: three's addon `DynamicLighting` keeps 3–4 arrays per light type (one
  * uniform buffer each), which took the lit fragment stages over WebGPU's 12-uniform-buffer limit (measured: 13).
@@ -17,8 +18,13 @@
  * Shading is the stock spot/point math (`SpotLightNode` / `PointLightNode` in three 0.186): `getDistanceAttenuation`
  * on the view-space distance, and for a spot `smoothstep(cos(angle), cos(angle · (1 − penumbra)), dot(L, axis))`; a
  * point light is a spot whose cone factor is exactly 1 (cone cosines −2 / −1).
+ *
+ * Performance addition (2026-10-25): each render call packs only the lights that can reach a visible fragment — lit
+ * (colour × intensity > 0) and, with a range, a range sphere inside the camera frustum. The loop runs over the packed
+ * count, so the zone's lamps cost nothing by day (§10.3.5 multiplier 0) and off-screen lamps nothing at night. Measured
+ * on a GTX 1650 at 1362 × 752 in mirevale at noon: 21 dark lamps looped by every lit fragment were ~4.3 ms of GPU.
  */
-import { Lighting, LightsNode, Node, Vector3, Vector4 } from 'three/webgpu';
+import { Frustum, Lighting, LightsNode, Matrix4, Node, Sphere, Vector3, Vector4 } from 'three/webgpu';
 import type { Light, NodeBuilder, NodeFrame, Object3D, PointLight, SpotLight } from 'three/webgpu';
 import { Loop, NodeUpdateType, getDistanceAttenuation, positionView, renderGroup, smoothstep, uniform, uniformArray, vec3 } from 'three/tsl';
 
@@ -38,6 +44,18 @@ export function isLocalLight(l: Light): boolean {
 
 const _p = new Vector3();
 const _t = new Vector3();
+const _vp = new Matrix4();
+const _frustum = new Frustum();
+const _sphere = new Sphere();
+
+/** Whether a local light can light a fragment `camera` sees: lit, and its range sphere (if it has a range) in the frustum. */
+export function localLightReaches(l: Punctual, frustum: Frustum): boolean {
+  if (!(l.intensity > 0) || l.color.r + l.color.g + l.color.b <= 0) return false;
+  if (!(l.distance > 0)) return true;   // no cutoff: reaches everything
+  _sphere.center.setFromMatrixPosition(l.matrixWorld);
+  _sphere.radius = l.distance;
+  return frustum.intersectsSphere(_sphere);
+}
 
 /** The loop over the local lights: one uniform array + a uniform count, updated per render call (view space). */
 export class LocalLightsNode extends Node {
@@ -63,16 +81,23 @@ export class LocalLightsNode extends Node {
 
   get count(): number { return Math.min(this.lights.length, this.maxCount); }
 
+  /** The lights the last update packed (the loop's bound): the reaching ones, in registration order. */
+  get packedCount(): number { return this.countNode.value; }
+
   override update(frame: NodeFrame): boolean | undefined {
     const camera = frame.camera;
     if (!camera) return undefined;
     const view = camera.matrixWorldInverse;
-    const n = this.count;
-    this.countNode.value = n;
-    for (let i = 0; i < n; i++) {
-      const l = this.lights[i]!;
+    _vp.multiplyMatrices(camera.projectionMatrix, view);
+    _frustum.setFromProjectionMatrix(_vp, camera.coordinateSystem, camera.reversedDepth);
+    const total = this.count;
+    let n = 0;
+    for (let j = 0; j < total; j++) {
+      const l = this.lights[j]!;
+      if (!localLightReaches(l, _frustum)) continue;
       const r = this.rows;
-      const k = i * LOCAL_LIGHT_VEC4;
+      const k = n * LOCAL_LIGHT_VEC4;
+      n++;
       _p.setFromMatrixPosition(l.matrixWorld);
       const pos = _t.copy(_p).applyMatrix4(view);
       r[k]!.set(pos.x, pos.y, pos.z, l.distance);
@@ -89,6 +114,7 @@ export class LocalLightsNode extends Node {
         r[k + 3]!.set(-1, 0, 0, 0);
       }
     }
+    this.countNode.value = n;
     return undefined;
   }
 

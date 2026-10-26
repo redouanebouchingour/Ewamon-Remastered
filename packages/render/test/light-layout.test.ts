@@ -3,7 +3,7 @@
  * light layout"). three 0.186 keys every lit render object by the scene's lights node; with the stock `LightsNode`
  * that key holds every light's id, so a zone's own lights made every lit object a new node build and, with a
  * different count, new programs. With the layout (`createLightingLayout`: one looped uniform array for the non-shadow
- * lights + the rig's persistent shadow slots), the key the boot compiles with is the key of every zone.
+ * lights; since 2026-10-25 no punctual light casts a shadow map), the key the boot compiles with is the key of every zone.
  */
 import { describe, expect, it, vi } from 'vitest';
 import { Group, LightsNode, Scene, SpotLight } from 'three/webgpu';
@@ -22,11 +22,10 @@ function sceneLights(scene: Object3D): Light[] {
   return out;
 }
 
-/** The arena's two reserved shadow-casting beacons (battleStage.ts), in the scene from boot. */
+/** The arena's two reserved beacons (battleStage.ts), in the scene from boot (no shadow map since 2026-10-25). */
 function beacons(scene: Scene): void {
-  for (let i = 0; i < LIGHT_LAYOUT.reservedShadowLights; i++) {
+  for (let i = 0; i < 2; i++) {
     const b = new SpotLight(0xffffff, 0);
-    b.castShadow = true;
     scene.add(b, b.target);
   }
 }
@@ -60,34 +59,26 @@ describe('fixed light layout (handover)', () => {
     rig.dispose();
   });
 
-  it('owns 2 shadow-casting slots from construction; idle ones are not counted', () => {
+  it('no punctual light casts a shadow map: the lit programs carry only the sun\'s shadow (amended 2026-10-25)', () => {
     const scene = new Scene();
     const rig = new LightRig(scene);
-    const lights = sceneLights(rig.layout);
-    const slots = lights.filter((l) => l.castShadow);
-    expect(slots).toHaveLength(LIGHT_LAYOUT.shadowSpotSlots);
-    for (const s of slots) {
-      expect(s).toBeInstanceOf(SpotLight);
-      expect(s.intensity).toBe(0);
-      expect((s as SpotLight).shadow.autoUpdate).toBe(false);
-      expect((s as SpotLight).shadow.mapSize.x).toBe(LIGHT_LAYOUT.idleShadowMap);
+    beacons(scene);
+    expect(sceneLights(scene).filter((l) => l.castShadow).map((l) => l.name)).toEqual(['ewa:sun']);
+    const spec = realSpec('mirevale');
+    expect(spec.lights.some((l) => l.castShadow)).toBe(true);    // mirevale's plaza lantern was a shadow-map caster
+    const h = rig.createPunctuals(spec.lights, (() => { const g = new Group(); scene.add(g); return g; })());
+    for (const x of h) {
+      expect(x.light.castShadow).toBe(false);
+      expect(isLocalLight(x.light)).toBe(true);
+      expect(x.light.position.toArray()).toEqual([...x.source.position]);
     }
-    expect(lights.filter((l) => !l.castShadow)).toEqual([]);
-    expect(countPunctualLights(scene, { shadow: 0, nonShadow: 0 })).toEqual({ shadow: 0, nonShadow: 0 });
-
-    const h = rig.createPunctuals(realSpec('mirevale').lights, (() => { const g = new Group(); scene.add(g); return g; })());
-    const borrowed = h.filter((x) => x.slot !== null);
-    expect(borrowed.length).toBe(rig.slotLightsInUse().length);
-    for (const b of borrowed) {
-      expect((b.light as SpotLight).shadow.mapSize.x).toBe(512);
-      expect((b.light as SpotLight).shadow.autoUpdate).toBe(true);
-      expect(b.light.position.toArray()).toEqual([...b.source.position]);
-    }
-    expect(countPunctualLights(scene, { shadow: 0, nonShadow: 0 })).toEqual(rig.counts());
+    expect(countPunctualLights(scene, { shadow: 0, nonShadow: 0 })).toEqual({ shadow: 0, nonShadow: spec.lights.length + 2 });
+    const layout = createLightingLayout().getNode(scene) as LayoutLightsNode;
+    layout.setLights(sceneLights(scene));
+    expect(layout.local.count).toBe(spec.lights.length + 2);     // the zone's lights and the beacons, all in the loop
+    expect(layout.local.count).toBeLessThanOrEqual(LIGHT_LAYOUT.maxLocalLights);
     rig.releasePunctuals(h);
-    expect(sceneLights(rig.layout)).toHaveLength(LIGHT_LAYOUT.shadowSpotSlots);   // nothing left the layout
     rig.dispose();
-    expect(scene.children.includes(rig.layout)).toBe(false);
   });
 });
 
@@ -127,6 +118,33 @@ describe('the local-light loop (layout.ts)', () => {
     node.setLights([spot, point, other]);
     expect(node.customCacheKey()).not.toBe(k0);
   });
+
+  it('packs only the lights that reach the view: dark lamps and lamps whose range is off-screen cost no loop iteration', async () => {
+    const { PerspectiveCamera, PointLight } = await import('three/webgpu');
+    const lamp = (x: number, z: number, intensity: number, range = 6): InstanceType<typeof PointLight> => {
+      const p = new PointLight(0xffcc88, intensity, range, 2);
+      p.position.set(x, 2, z);
+      p.updateMatrixWorld(true);
+      return p;
+    };
+    const near = lamp(1, 0, 8);
+    const dark = lamp(-1, 0, 0);                  // a lamp by day (§10.3.5 multiplier 0)
+    const behind = lamp(0, 60, 8);                // 50 m behind the camera, 6 m range
+    const edge = lamp(14, 0, 8, 12);              // centre off-screen, range reaches into the view
+    const endless = lamp(0, 80, 8, 0);            // no cutoff: always looped
+    const node = createLightingLayout().getNode(new Scene()) as LayoutLightsNode;
+    node.setLights([near, dark, behind, edge, endless]);
+    const camera = new PerspectiveCamera(30, 16 / 9, 0.5, 400);
+    camera.position.set(0, 8, 10); camera.lookAt(0, 0, 0); camera.updateMatrixWorld(true);
+    node.local.update({ camera } as never);
+    expect(node.local.count).toBe(5);
+    expect(node.local.packedCount).toBe(3);
+    const rows = (node.local as unknown as { rows: { x: number; y: number; z: number; w: number }[] }).rows;
+    expect([0, 1, 2].map((i) => rows[i * LOCAL_LIGHT_VEC4]!.w)).toEqual([6, 12, 0]);   // near, edge, endless: in order
+    near.intensity = 0; edge.intensity = 0;
+    node.local.update({ camera } as never);
+    expect(node.local.packedCount).toBe(1);
+  });
 });
 
 describe('handover (b): ZoneSystem.prepare builds the next zone off the scene', () => {
@@ -147,7 +165,7 @@ describe('handover (b): ZoneSystem.prepare builds the next zone off the scene', 
     const a = realSpec('mirevale');
     const b = realSpec('mire_route');
     const ha = await sys.load(a);
-    expect(rig.slotLightsInUse()).toHaveLength(1);                 // mirevale's shadow-casting lantern
+    expect(rig.counts().shadow + rig.counts().nonShadow).toBe(a.lights.length);
     const countsA = rig.counts();
 
     const evict = vi.spyOn(lib, 'evictExcept');
@@ -177,7 +195,6 @@ describe('handover (b): ZoneSystem.prepare builds the next zone off the scene', 
     expect(hb.disposed).toBe(false);
     hb.dispose();
     expect(rig.counts()).toEqual({ shadow: 0, nonShadow: 0 });
-    expect(rig.slotLightsInUse()).toEqual([]);
     rig.dispose(); lib.disposeAll();
   }, 120_000);
 });

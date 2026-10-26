@@ -180,8 +180,11 @@ export interface SceneDirector {
   /** Phase A: the pocket whose floor the player stands on (null outside); call after every step / warp / correction. */
   updatePocket(x: number, z: number): void;
   readonly pocket: PlacedInterior | null;
-  /** The rig's current yaw (radians); forwarded to `interiors.setView` when it changed while a pocket is active. */
-  syncView(yaw: number): void;
+  /**
+   * The rig's current yaw (radians), or null in first person (every hall wall stands); forwarded to `interiors.setView`
+   * when it changed while a pocket is active.
+   */
+  syncView(yaw: number | null): void;
   /** The active pocket's actors (nameplates), [] outside. */
   readonly pocketActors: readonly PocketActor[];
   /** True for an actor the director spawned (zone NPC / trainer, pocket NPC / trainer / leader). */
@@ -256,7 +259,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
   let pocket: PlacedInterior | null = null;
   let floors: FloorIndex | null = null;
   let outsideHeading: Heading | null = null;
-  let viewYaw = Number.NaN;
+  let viewYaw: number | null = Number.NaN;
   let activeActors: PocketActor[] = [];
   let gates: GateSync | null = null;
   /** Phase D7: the zone's overworld weather (state.weather); interiors and battles render none */
@@ -645,7 +648,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     },
 
     syncView(yaw) {
-      if (pocket === null || yaw === viewYaw || !Number.isFinite(yaw)) return;
+      if (pocket === null || yaw === viewYaw || (yaw !== null && !Number.isFinite(yaw))) return;
       viewYaw = yaw;
       handle?.interiors?.setView(yaw);
     },

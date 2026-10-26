@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Group, PointLight, Scene, SpotLight } from 'three/webgpu';
+import { DirectionalLight, Group, PerspectiveCamera, PointLight, Scene, SpotLight } from 'three/webgpu';
 import type { LightSource } from '../src/descriptors.js';
 import { LIGHT_BUDGET } from '../src/descriptors.js';
 import {
-  CASCADE_SPLITS_M, CSM_OPTIONS, LIGHT_LAYOUT, LightRig, SPEC_LIGHT_UNIT, SPOT_PARAMS, SUN_SHADOW, assertLightBudget, cascadeBreaks, castsShadowMap,
-  flickerFactor, lightTypeFor,
+  CASCADE_JUMP_M, CASCADE_SCHEDULE, CASCADE_SPLITS_M, CSM_OPTIONS, FAR_CASCADE_SCALE, LIGHT_LAYOUT, LightRig, SPEC_LIGHT_UNIT, SPOT_PARAMS, SUN_SHADOW, assertLightBudget,
+  cascadeBreaks, flickerFactor, lightTypeFor,
 } from '../src/lighting/rig.js';
 import { heightFogFactor } from '../src/lighting/fog.js';
 import { weatherParams } from '../src/lighting/weather.js';
@@ -42,14 +42,9 @@ describe('§10.3.2 light budget', () => {
     expect(assertLightBudget([src('a', true)], { shadow: 7, nonShadow: 3 })).toEqual({ shadow: 8, nonShadow: 3 });
   });
 
-  it('maps kinds to Spot (−Y) vs Point lights, and only spot kinds render shadow maps (fixed layout, amended 2026-10-06)', () => {
+  it('maps kinds to Spot (−Y) vs Point lights', () => {
     for (const k of ['lamp', 'lantern', 'beacon', 'window'] as const) expect(lightTypeFor(k)).toBe('SpotLight');
     for (const k of ['brazier', 'forge', 'lava', 'crystal', 'candle', 'fire'] as const) expect(lightTypeFor(k)).toBe('PointLight');
-    expect(castsShadowMap({ kind: 'lantern', castShadow: true })).toBe(true);
-    expect(castsShadowMap({ kind: 'lava', castShadow: true })).toBe(false);
-    expect(castsShadowMap({ kind: 'fire', castShadow: true })).toBe(false);
-    expect(castsShadowMap({ kind: 'brazier', castShadow: true })).toBe(false);
-    expect(castsShadowMap({ kind: 'lantern', castShadow: false })).toBe(false);
   });
 
   it('flicker is deterministic and bounded by amplitude ≤ 0.15', () => {
@@ -63,25 +58,29 @@ describe('§10.3.2 light budget', () => {
   });
 });
 
-describe('§10.3.1 sun + 4 cascades', () => {
-  it('splits at 14 / 34 / 72 / 160 m over a 160 m far', () => {
-    expect(CASCADE_SPLITS_M).toEqual([14, 34, 72, 160]);
-    expect(CSM_OPTIONS).toMatchObject({ cascades: 4, maxFar: 160, mode: 'custom', lightMargin: 60 });
-    expect(cascadeBreaks(160, [])).toEqual([14 / 160, 34 / 160, 72 / 160, 1]);
+describe('§10.3.1 sun cascades (2 since 2026-10-25, IMPLEMENTATION-NOTES "Cheaper shadows and reflections")', () => {
+  it('splits at 44 / 160 m over a 160 m far', () => {
+    expect(CASCADE_SPLITS_M).toEqual([44, 160]);
+    expect(CSM_OPTIONS).toMatchObject({ cascades: 2, maxFar: 160, mode: 'custom', lightMargin: 60 });
+    expect(cascadeBreaks(160, [])).toEqual([44 / 160, 1]);
     const b = [9, 9, 9, 9, 9];
     expect(cascadeBreaks(160, b)).toBe(b);
-    expect(b.length).toBe(4);
-    expect(SUN_SHADOW).toEqual({ mapSize: 2048, bias: -0.0004, normalBias: 0.02, radius: 2 });
-    expect(SPOT_PARAMS).toMatchObject({ angle: 0.87, penumbra: 0.5, mapSize: 512, bias: -0.0006, normalBias: 0.03, radius: 2 });
+    expect(b.length).toBe(2);
+    expect(SUN_SHADOW).toEqual({ mapSize: 1536, bias: -0.0004, normalBias: 0.02, radius: 2 });
+    expect(FAR_CASCADE_SCALE).toBe(0.5);
+    expect(SPOT_PARAMS).toEqual({ angle: 0.87, penumbra: 0.5 });
   });
 
-  it('builds a 4-cascade CSM on one directional light, and the far cascade texel ≤ 8 cm', () => {
+  it('builds a 2-cascade CSM on one directional light; the near cascade covers every diorama zoom stop', () => {
     const scene = new Scene();
     const rig = new LightRig(scene);
-    expect(rig.csm.cascades).toBe(4);
-    expect(rig.sun.shadow.mapSize.x).toBe(2048);
+    expect(rig.csm.cascades).toBe(2);
+    expect(rig.sun.shadow.mapSize.x).toBe(1536);
     expect((rig.sun.shadow as unknown as { shadowNode: unknown }).shadowNode).toBe(rig.csm);
-    expect((160 - 72) / 2048).toBeLessThanOrEqual(0.08);
+    // the farthest ground the diorama camera sees: zoom stop 2 (34 m), pitch −52°, the top screen edge 14° above the axis
+    const h = 34 * Math.sin(52 * Math.PI / 180);
+    const top = (h / Math.sin(38 * Math.PI / 180)) * Math.cos(14 * Math.PI / 180);
+    expect(top).toBeLessThan(CASCADE_SPLITS_M[0]!);
     rig.updateFrustums();                         // guarded before the first render (no camera yet)
     rig.dispose();
     rig.dispose();                                // idempotent
@@ -96,23 +95,63 @@ describe('§10.3.1 sun + 4 cascades', () => {
     expect(rig.sun.visible).toBe(true);           // never hidden: the lights set is part of every program key
     rig.dispose();
   });
+
+  it('staggers the cascades: at most 1 map a frame while the camera only walks; both on a turn, a jump or a refresh', () => {
+    const rig = new LightRig(new Scene());
+    const cascades = Array.from({ length: 2 }, () => new DirectionalLight());
+    (rig.csm as unknown as { lights: DirectionalLight[] }).lights.push(...cascades);   // the CSM creates them on its first build
+    const camera = new PerspectiveCamera(30, 16 / 9, 0.5, 400);
+    camera.position.set(0, 20, 20);
+    camera.lookAt(0, 0, 0);
+    const live = (): number[] => cascades.flatMap((l, i) => (l.shadow.autoUpdate ? [i] : []));
+    rig.scheduleShadows(camera);
+    expect(live()).toEqual([0, 1]);                                // the first frame renders everything
+    expect(rig.cascadeMapSizes()).toEqual([1536, 768]);            // the far cascade at half the near one's edge
+    const seen: number[][] = [];
+    for (let f = 1; f <= 8; f++) {
+      camera.position.x += 0.08;                                    // walking: ~5 m/s at 60 fps
+      rig.scheduleShadows(camera);
+      seen.push(live());
+    }
+    for (const s of seen) expect(s.length).toBeLessThanOrEqual(1);
+    expect(seen.flat().filter((i) => i === 0).length).toBe(4);     // 0–44 m every 2nd frame
+    expect(seen.flat().filter((i) => i === 1).length).toBe(2);     // 44–160 m every 4th
+    expect(CASCADE_SCHEDULE).toHaveLength(4);
+
+    camera.rotateY(0.01);                                           // a heading change
+    rig.scheduleShadows(camera);
+    expect(live()).toEqual([0, 1]);
+    camera.position.x += CASCADE_JUMP_M + 1;                       // a warp
+    rig.scheduleShadows(camera);
+    expect(live()).toEqual([0, 1]);
+    camera.fov = 40;                                                // a projection change
+    rig.scheduleShadows(camera);
+    expect(live()).toEqual([0, 1]);
+    rig.applyDirectional([0.3, 0.9, 0.3], [1, 1, 1], 1);           // the sun turned (a dawn / dusk swap)
+    rig.scheduleShadows(camera);
+    expect(live()).toEqual([0, 1]);
+    rig.scheduleShadows(camera);
+    expect(live().length).toBeLessThanOrEqual(1);
+    rig.setSunShadowMap(1024);                                      // a resized map is empty
+    expect(rig.cascadeMapSizes()).toEqual([1024, 512]);
+    rig.scheduleShadows(camera);
+    expect(live()).toEqual([0, 1]);
+    rig.dispose();
+  });
 });
 
 describe('punctual lights (§10.3.2, §10.2.6)', () => {
-  it('creates, multiplies, disables and releases lights (a shadow caster borrows a layout slot)', () => {
+  it('creates, multiplies, disables and releases lights; a castShadow source is a looped light too (amended 2026-10-25)', () => {
     const rig = new LightRig(new Scene());
     const parent = new Group();
     const h = rig.createPunctuals([src('lamp', true), { ...src('fire', false, 'brazier'), intensity: 4, flicker: { amplitude: 0.1, hz: 5 } }], parent);
     expect(h[0]!.light).toBeInstanceOf(SpotLight);
     expect(h[1]!.light).toBeInstanceOf(PointLight);
-    expect(h[0]!.slot).toBe(0);
-    expect(h[0]!.light.parent).toBe(rig.layout);                  // the slot stays in the layout group
-    expect(h[0]!.light.castShadow).toBe(true);
-    expect(h[1]!.light.castShadow).toBe(false);                   // batched by the layout
+    for (const x of h) expect(x.light.castShadow).toBe(false);    // looped by the layout: no shadow map, no per-light code
+    expect(h[0]!.light.parent).toBe(parent);
     expect(h[0]!.target!.position.y).toBeCloseTo(1.5, 9);       // pointing −Y
-    expect(parent.children.length).toBe(1);                       // the zone's own point light
-    expect(rig.slotLightsInUse()).toEqual([h[0]!.light]);
-    expect(rig.counts()).toEqual({ shadow: 1, nonShadow: 1 });
+    expect(parent.children.length).toBe(3);                       // the lamp, its target and the brazier
+    expect(rig.counts()).toEqual({ shadow: 1, nonShadow: 1 });    // the content budget still counts the source
 
     rig.setPunctualMultiplier(0.5);
     rig.update(0);
@@ -121,32 +160,25 @@ describe('punctual lights (§10.3.2, §10.2.6)', () => {
     rig.update(1.3);
     expect(h[0]!.light.intensity).toBe(0);
     expect(h[1]!.light.intensity).toBe(0);
-    expect(parent.children.length).toBe(1);                       // objects are not removed
+    expect(parent.children.length).toBe(3);                       // objects are not removed
 
-    const slotDispose = vi.spyOn(h[0]!.light, 'dispose');
-    const ownDispose = vi.spyOn(h[1]!.light, 'dispose');
+    const lampDispose = vi.spyOn(h[0]!.light, 'dispose');
     rig.releasePunctuals([h[0]!]);
-    expect(slotDispose).not.toHaveBeenCalled();                   // a slot is never disposed: it goes idle
-    expect(h[0]!.light.parent).toBe(rig.layout);
-    expect(h[0]!.light.castShadow).toBe(true);
-    expect(h[0]!.light.intensity).toBe(0);
-    expect((h[0]!.light as SpotLight).shadow.autoUpdate).toBe(false);
-    expect((h[0]!.light as SpotLight).shadow.mapSize.x).toBe(LIGHT_LAYOUT.idleShadowMap);
-    expect(rig.slotLightsInUse()).toEqual([]);
+    expect(lampDispose).toHaveBeenCalledTimes(1);
+    expect(parent.children.length).toBe(1);
     expect(rig.counts()).toEqual({ shadow: 0, nonShadow: 1 });
     rig.releasePunctuals([h[1]!]);
-    expect(ownDispose).toHaveBeenCalledTimes(1);
     expect(parent.children.length).toBe(0);
     rig.dispose();
   });
 
-  it('refuses a 3rd shadow-map caster in dev (the layout has 2 slots); map-less casters count up to 8', () => {
-    expect(LIGHT_LAYOUT.shadowSpotSlots).toBe(2);
+  it('enforces the content budget in dev: 8 castShadow + 24 other sources', () => {
     const rig = new LightRig(new Scene());
-    rig.createPunctuals(Array.from({ length: 2 }, (_, i) => src(`s${i}`, true)), new Group());
+    rig.createPunctuals(Array.from({ length: 8 }, (_, i) => src(`s${i}`, true)), new Group());
     expect(() => rig.createPunctuals([src('extra', true)], new Group())).toThrow('light budget');
-    rig.createPunctuals(Array.from({ length: 6 }, (_, i) => src(`b${i}`, true, 'brazier')), new Group());
-    expect(() => rig.createPunctuals([src('b6', true, 'brazier')], new Group())).toThrow('light budget');
+    rig.createPunctuals(Array.from({ length: 24 }, (_, i) => src(`n${i}`, false)), new Group());
+    expect(() => rig.createPunctuals([src('n24', false)], new Group())).toThrow('light budget');
+    expect(LIGHT_LAYOUT.maxLocalLights).toBeGreaterThanOrEqual(8 + 24 + 2 + 1);   // + the arena's beacons + the follower
     rig.dispose();
   });
 });

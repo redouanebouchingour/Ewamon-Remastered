@@ -79,6 +79,7 @@ import { useUiStore } from '../state/ui';
 import { FONT, TYPE_COLORS } from '../ui/tokens';
 import { createStepCollider } from './collider';
 import type { StepCollider } from './collider';
+import { withNeighbours, zoneSpecFor } from './zoneSpecFor';
 import { beatDialogue, gymPlan, leaguePostDialogue, leagueSpeaker, npcPlan, rematchOfBattle, storyFlagSet, trainerPlan } from './dialogue';
 import { questHintFor } from './questHint';
 import type { DialogueLines, InteractPlan } from './dialogue';
@@ -119,7 +120,7 @@ import { createSpriteCatalog, loadCreatureManifest } from './spriteCatalog';
 import { ARENA_FALLBACK, mountArenaBackdrop } from './arenaBackdrop';
 import type { MountedBackdrop } from './arenaBackdrop';
 import { DeviceRecovery } from './deviceRecovery';
-import { awaitArrival } from './arrival';
+import { arrivalOf, awaitArrival } from './arrival';
 import { fetchIntoCache, neighbourPrefetchPlan, runPrefetch } from './prefetch';
 import type { PrefetchToken } from './prefetch';
 import type { SpriteCatalog } from './spriteCatalog';
@@ -234,6 +235,8 @@ class World implements World3D {
   private lastDrawn = -1;
   /** graphics.frameCap unlimited: frames are posted through a MessageChannel instead of rAF (see `scheduleUnlimited`) */
   private readonly unlimitedChannel = typeof MessageChannel !== 'undefined' ? new MessageChannel() : null;
+  /** graphics.frameCap unlimited: the previous frame's `onSubmittedWorkDone` (two frames in flight, see `scheduleUnlimited`) */
+  private prevWorkDone: Promise<void> | null = null;
   /** bumped whenever the loop is stopped or re-scheduled, so a frame posted before it is dropped */
   private loopGen = 0;
   private acc = 0;
@@ -443,6 +446,7 @@ class World implements World3D {
       quality: useSettingsStore.getState().graphics.quality,
       onCompileProgress: (p) => this.onCompileProgress(p),
       onDeviceLost: (info) => void this.recovery.onLost(info),
+      beforeWarmUp: (renderer) => this.prepareBootZone(renderer),
     });
     if (this.disposed) {
       r.dispose();
@@ -996,6 +1000,27 @@ class World implements World3D {
     this.input.clear();
     this.spectatorArenas.clear();
     this.followers?.clear();
+  }
+
+  /**
+   * Load time (2026-10-25): the renderer's boot compile waits on the GPU process for many seconds with the main thread
+   * idle, and the zone load used to start only after it. The zone the player will enter is prepared meanwhile, so its
+   * textures load and its geometry builds during the compile; `enterZone`'s `loadZone` adopts it (the same spec as
+   * `SceneDirector.doLoad`: `sameZone` compares id, seed and harvest level). The zone is the joined room's when the
+   * join already landed, else the session's (`hydrateFromMe` seeds it from `/me` presence before the play route
+   * mounts the world; it is the zone `PlayShell` enters). A wrong guess is dropped by that `loadZone`.
+   */
+  private prepareBootZone(r: Renderer): void {
+    if (this.inArena || this.ws.kind === 'arena') return;
+    const s = useSessionStore.getState();
+    if (s.progression === null) return;   // the harvest state needs the story flags
+    const zoneId = this.roomZone ?? s.zoneId;
+    if (zoneId === null) return;
+    const z = zoneDef(zoneId);
+    // where the player will stand: the room's state once it carries the local player, else the zone's spawn (doLoad's own fallback)
+    const room = this.roomZone === zoneId ? this.room : null;
+    const focus = (room !== null ? arrivalOf(room, this.ws.selfId) : null) ?? { x: z.spawn.x, z: z.spawn.z };
+    void r.prepareZone?.(withNeighbours(zoneSpecFor(z, harvestStateFor(zoneId, this.flags())), z), { focus, eager: true });
   }
 
   /** A room (join / handover) is live and the renderer exists: load its zone (`label`: the overlay text, E6 recovery). */
@@ -1989,6 +2014,7 @@ class World implements World3D {
   stop(): void {
     this.running = false;
     this.loopGen++;
+    this.prevWorkDone = null;
     if (this.raf !== 0) cancelAnimationFrame(this.raf);
     this.raf = 0;
     if (this.hiddenTimer !== null) clearTimeout(this.hiddenTimer);
@@ -2013,9 +2039,10 @@ class World implements World3D {
   }
 
   /**
-   * Unlimited frame rate: rAF never fires faster than the display, so the next frame is a posted task once the GPU queue
-   * drained (WebGPU; one frame in flight, no runaway queue), else at once. Tasks interleave with input and the browser's
-   * own rendering steps.
+   * Unlimited frame rate: rAF never fires faster than the display, so the next frame is a posted task once the GPU finished
+   * the frame BEFORE the one just submitted (WebGPU; two frames in flight, as under rAF: the CPU encodes frame N+1 while the
+   * GPU draws frame N, and the queue cannot run away), else at once. With one frame in flight the CPU and GPU took turns and
+   * Unlimited fell below the display rate. Tasks interleave with input and the browser's own rendering steps.
    */
   private scheduleUnlimited(channel: MessageChannel): void {
     const gen = this.loopGen;
@@ -2025,7 +2052,9 @@ class World implements World3D {
     const post = (): void => channel.port2.postMessage(gen);
     const backend = (this.renderer as Renderer | undefined)?.renderer.backend as unknown as { device?: { queue: { onSubmittedWorkDone(): Promise<void> } } } | undefined;
     const queue = backend?.device?.queue;
-    if (queue) void queue.onSubmittedWorkDone().then(post, post);
+    const wait = this.prevWorkDone;
+    this.prevWorkDone = queue ? queue.onSubmittedWorkDone().catch(() => undefined) : null;
+    if (wait) void wait.then(post, post);
     else post();
   }
 
@@ -2053,6 +2082,7 @@ class World implements World3D {
   private onVisibility(): void {
     if (!this.running) return;
     this.loopGen++;
+    this.prevWorkDone = null;
     if (this.raf !== 0) cancelAnimationFrame(this.raf);
     this.raf = 0;
     if (this.hiddenTimer !== null) clearTimeout(this.hiddenTimer);
@@ -2160,8 +2190,8 @@ class World implements World3D {
       this.nameplateLeft = NAMEPLATE_MS;
       this.updateNameplates();
     }
-    // the active pocket drops the walls facing the camera (only on a yaw change)
-    if (this.director.pocket !== null) this.director.syncView(this.cameraYaw());
+    // the active pocket drops the walls facing the camera (only on a yaw change); in first person every wall stands
+    if (this.director.pocket !== null) this.director.syncView(this.fpOn ? null : this.cameraYaw());
     this.backdrop?.update(frameDt);
     // (3)
     this.hudWriter.flush();

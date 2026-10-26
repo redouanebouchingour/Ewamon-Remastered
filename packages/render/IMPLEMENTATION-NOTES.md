@@ -2332,6 +2332,12 @@ pool; `Part3.worldFx`).
   (last frame's body pose: the camera updates before the pool). A hidden body still poses while it dances.
 - `ActorPool.setHidden(id, hidden)` (contract addition): hides one actor's body (its feet, decal and nameplate anchor
   stay); `spawn` resets it. The client hides the player's own body in first person.
+- No see-through in first person (2026-10-25, player report: a dithered hole in the roofs straight ahead). The occluder
+  fade's capsule and foreground volume are for the diorama camera: `DioramaRig.firstPersonActive` (true when the last
+  `update` posed the eye) makes the renderer write strength 0 (`occlusionStrength(shotBlend, fp)`) in the same frame the
+  eye moves, so neither toggle shows a frame of dither. A uniform only: same programs, no recompile.
+  `InteriorsHandle.setView(null)` (contract widening) stands every wall of the active hall; the client passes null in
+  first person (it passed the look yaw, which dropped the wall behind the eye and left it easing back up on a turn).
 
 ## Breakdance (emote 7, 2026-10-22, not in the spine)
 
@@ -2347,6 +2353,8 @@ pool; `Part3.worldFx`).
 - `quality.ts`: `GraphicsQuality` `'low' | 'medium' | 'high'` and `QUALITY_PROFILES`. `high` is the SPEC (pixel-ratio cap
   1.5, 4 × 2048² sun cascades, GTAO 16 spp, DOF, bloom). `medium`: cap 1.25, 4 × 1024², GTAO 8 spp. `low`: cap 1,
   4 × 1024², no GTAO, no DOF, no bloom (TRAA, the grade, grain and chroma stay; the user's toggles still apply on top).
+  Since 2026-10-25 every preset has 2 sun cascades (1536² + 768² at `high`, 1024² + 512² below) and GTAO at 8 spp and
+  quarter resolution: see "Cheaper shadows and reflections".
 - `RendererOptions.quality` (default `'high'`, so tests and harnesses see the SPEC graph) and `Renderer.setQuality(q)`
   (contract additions). `'auto'` resolves through `recommendedQuality(caps)`: `low` on an integrated Intel adapter
   (`isIntegratedIntel`: WebGPU `intel <arch>` or an ANGLE string; Arc / `xe-hpg` excluded), `medium` on the WebGL2
@@ -2390,3 +2398,204 @@ pool; `Part3.worldFx`).
 - `zone/generators/trophies.ts` reuses the set's builders (crystal housing, brazier, lantern, crate) and composes the
   wanted board, the scar stone and the banner from `box` / `beam` / `lathe` with the set's own surfaces, all of which
   `setSurfaces` already binds, so no surface or program is new to a route. No collider footprint: walk-through.
+
+## Performance and load time (2026-10-25, deviations from §10.3.2 / §10.7.5)
+
+Measured on an i7-10750H + GTX 1650 at 1920 × 1080, DPR 1, mirevale at noon in the client harness. GPU timestamp
+queries under-report badly on this adapter (`probe.gpuFrameMs()` said 2.6 ms against ~16 ms real): measure real GPU
+time by draining the queue, running one `tick()` and timing until `device.queue.onSubmittedWorkDone()`.
+
+### Local-light packing (deviates from §10.3.2 "every light rendered every frame")
+
+- `LocalLightsNode.update` (`lighting/layout.ts`) packs only lights that can reach a visible fragment: lit
+  (colour × intensity > 0) and, with a range, a range sphere inside the camera frustum (`localLightReaches`). The loop
+  bound is the packed count (`packedCount`), so by day (§10.3.5 multiplier 0) the zone's lamps cost nothing and at
+  night off-screen lamps cost nothing. Order is registration order. ~4.3 ms GPU per frame at noon in mirevale (21
+  dark lamps looped by every lit fragment).
+
+### Shadow update staggering
+
+(Superseded in its numbers by "Cheaper shadows and reflections": 2 cascades, schedule `[0] [1] [0] []`.)
+
+- `LightRig.scheduleShadows(camera)`, called per frame in `frameSteps` step 2, sets each CSM cascade light's
+  `shadow.autoUpdate` from `CASCADE_SCHEDULE` (`[0,1] [0,2] [0,1] [0,3]`): the near cascade every frame, 14–34 m every
+  2nd, the far two every 4th; 2 of 4 maps per frame. Every cascade renders after a camera jump (> `CASCADE_JUMP_M`), a
+  turn or sun turn (`CASCADE_TURN_EPS`), a projection change, `setSunShadowMap` or `updateFrustums`.
+- Correctness rests on three 0.186: `ShadowNode.renderShadow` is the only place a shadow-casting light's
+  `shadow.updateMatrices` runs (`lightShadowMatrix` re-derives only for `castShadow !== true`), so a skipped cascade's
+  map and matrix stay paired and lag a few frames without swimming.
+- Main thread 27.6 → 11.7 ms per frame, shadow draws 299 → 126, 32 → 50 fps.
+
+### Lit shaders without spot shadows (deviates from §10.3.2 / §10.7.5)
+
+- No punctual light renders a shadow map. The layout's 2 shadow spot slots (`LIGHT_LAYOUT.shadowSpotSlots`,
+  `reservedShadowLights`, `idleShadowMap`, `castsShadowMap`, `slotLightsInUse`) are gone; a `castShadow: true` source
+  is a looped local light and still counts against the content budget's 8. The arena beacons (`battleStage.ts`) and
+  the evolution sequence's borrowed beacon cast none either (`armWarmupShadows`, `beaconShadowsLive`, the warm-up
+  shadow frames are gone). `LIGHT_LAYOUT.maxLocalLights` 32 → 40.
+- Each shadowed spot inlined ~88 lines into every lit fragment shader (projection, 5-tap PCF, the direct-light call),
+  four of them, lit or not. Largest lit fragment shader 102 → 69 KB, all shaders −27 %, boot compile ~26 s → ~17–21 s.
+- Visual cost: lamps and beacons light but cast no shadows; the sun's CSM still casts every world shadow.
+- `stats.ts` `dumpZone` lost `extraLights`; `countPunctualLights` lost the `ewaIdle` skip (only idle slots set it).
+
+### Occluder fade bound (`materials/occlusion.ts`)
+
+- The foreground volume faded everything taller than `fgHeightM` and more than `fgNearM` ahead of the player, with no
+  bound beside or below the sight line: town roofs in the lower screen dithered away and showed hollow interiors. It
+  now fades only within `fgSideM` (3.5 m) of the camera → chest line sideways and no lower than `fgBelowM` (1 m) under
+  it, each eased over `fgRampM`. The real-occluder capsule is unchanged.
+
+### Boot-time zone prepare
+
+- `RendererOptions.beforeWarmUp(host)` runs right before step 8's warm-up compile (a throw is logged in dev and
+  swallowed). The owner starts `prepareZone(spec, { eager: true })` there so the zone's texture fetch and build run
+  while the main thread would otherwise wait on the GPU process; `loadZone` adopts it, a wrong guess is dropped there.
+- `eager`: `ZoneSystem.prepare` uses `PREPARE_EAGER_SLICE_MS` (32 ms) slices yielding a task (`nextSlice`) instead of
+  8 ms slices per frame (without this the boot prepare was slower, 40.6 s against 34.6 s); `prepareZone` compiles the
+  near units at `COMPILE_CONCURRENCY`, then the far ones in background slots. Playable ~8 s sooner (34.6 / 42.5 s →
+  24.8 / 36.5 s).
+- Side effect: the eager near compile usually lands inside the warm-up, so `captureBaseline()` includes the prepared
+  zone's programs / geometries. Only the harness `info()` reads `baseline`, and only `?bootprep=1` sees it raised.
+
+### Splat lookup index (`zone/layout.ts`)
+
+- `splatAt` builds a per-context index on first use (module `WeakMap`): road segments in flat arrays, precomputed
+  cos / sin per building / pocket / grass patch, and a lazily filled 4 m grid of the segments and buildings that can
+  decide a sample in that cell (1-Lipschitz bound with margin; an exact nearest-segment search, not a radius cut).
+  Kept candidates run the same arithmetic in the original order, so every output is bit-identical
+  (`test/splat-index.test.ts` holds the frozen old version; `EWA_SPLAT_FULL=1` checks every sample of all 21 zones).
+  All zones 4.2 s → 1.5 s; mirevale ~195 → ~85 ms.
+
+### Water backdrop without transmission (deviates from §10.5.6 "MeshPhysicalNodeMaterial with transmission")
+
+- The water is still a `MeshPhysicalNodeMaterial` (opaque, IOR 1.333, roughness / foam fades unchanged), but
+  `transmission` is 0. In three 0.186, transmission > 0 makes `PhysicalLightingModel` sample
+  `viewportOpaqueMipTexture()`: per render, `ViewportTextureNode.updateBefore` → `Renderer.copyFramebufferToTexture`.
+  `WebGPUBackend.copyFramebufferToTexture` ends the scene pass (4 HalfFloat MRT targets + depth), copies, builds the
+  whole mip chain and reopens the pass with `loadOp: load`. Then every water fragment runs `getIBLVolumeRefraction`
+  with a two-level bicubic tap (`textureBicubicLevel`).
+- `materials/waterBackdrop.ts` rebuilds the same term on three's own hook instead. `backdropNode` is
+  (1 − EnvironmentBRDF) × `diffuseContribution` × the backdrop, which is `getIBLVolumeRefraction` with the water's
+  zero thickness. `backdropAlphaNode` is `tr × (1 − h) × (1 − foam) × weight`. `LightsNode` mixes the diffuse toward it
+  exactly as for transmission, and the material stays in the transparent list as before. The backdrop is one shared
+  `ViewportTextureNode` subclass in `SharedUniforms.waterBackdrop`, so there is one copy per render however many
+  water materials read it. It is read with one trilinear tap at three's LOD (log2(width) × roughness × 0.666, so a
+  harvest-roughened water still sees a blurred bed). The tap is shifted by (final − geometric) view normal × 0.012
+  UV, ramped in over the first metre of depth (none at the bank). three's thickness-0 transmission had no shift.
+- A lower-resolution copy is not possible through three's API: `copyFramebufferToTexture` is a `copyTextureToTexture`
+  of equal extents (only a sub-rectangle), and nothing else can split the scene pass. It would not help anyway: a 1 × 1
+  copy cost the same as the full copy with mips (see below). The cost is the pass split.
+- `QualityProfile.waterBackdrop` is `high` only. `setWaterBackdrop(b, false)` (`medium` / `low`, applied in the renderer's
+  constructor and `setQuality`) zeroes the weight uniform and sets a flag that makes `updateBefore` return before the
+  copy. The scene pass is never split, and the texture stays its 1 × 1 placeholder (or the last copy). There is one
+  water program either way: switching compiles nothing, and the boot program count (119 in tide_route) is unchanged.
+- Measured on an Apple M2 Max (not the GTX 1650), 1920 × 1080, DPR 1, `high`. Harness `tide_route` (harvest thinning)
+  at noon, `place(22, -50)`, heading 0, zoom stop 2, about 85 % of the frame water. Real GPU time (drain the queue,
+  `tick()`, until `onSubmittedWorkDone`), medians of 240 frames, interleaved rounds:
+
+  | Case | ms / frame |
+  |---|---|
+  | before: three transmission (full copy + mip chain + bicubic) | 9.1–9.5 |
+  | before, mip generation off | 9.1 |
+  | before, a 1 × 1 copy (pass split, no bandwidth) | 9.2 |
+  | before, copy skipped (transmission still shaded) | 7.2–7.3 |
+  | before, transmission 0 (no backdrop at all) | 6.4 |
+  | after, `high` (backdrop on) | 8.3 |
+  | after, `high` without mips (not adopted, the bed loses its rough-water blur) | 8.0 |
+  | after, `medium` / `low` (backdrop off) | 6.1–6.3 |
+  | after, backdrop node removed from the graph | 6.2 |
+
+  On this GPU the saving is −1.1 ms on `high` and −3.1 ms on `medium` / `low`. On an immediate-mode GPU such as the
+  GTX 1650 the pass split is cheaper and the copy bandwidth a larger share; it has not been re-measured there.
+- Visual: before / after at `high` match by day and at night with the moon glints. Without the backdrop the water
+  reads a little lighter and bluer (no darker bed mixed in).
+
+### Cheaper shadows and reflections (deviates from §10.3.1, §10.2.4 / §10.2.2 clearcoat, §10.8.3 GTAO)
+
+The user's call (2026-10-25): shadows and reflections may get blockier on `high` too, judged from the default diorama
+camera only, to run on an i7-10750H + GTX 1650 at 1080p. Geometry, textures, characters, sprites and UI are unchanged.
+
+- **2 sun cascades instead of 4** (`lighting/rig.ts`): `CASCADE_SPLITS_M` `[44, 160]`, `CSM_OPTIONS.cascades` 2. The
+  diorama camera (FOV 28°, pitch −52°, distance 20 / 26 / 34 m) sees view depths of ~17–25 / ~22–32 / ~29–42 m, so
+  the old splits put everything on screen into the 14–34 m and 34–72 m cascades and the 0–14 m cascade, rendered every
+  frame, held almost nothing visible (34 shadow draws a frame). The 0–44 m cascade now covers every zoom stop.
+  `CASCADE_SCHEDULE` `[0] [1] [0] []`: the near one every 2nd frame (the cadence the player's own cascade had before),
+  the far one every 4th, 0.75 map renders a frame and never 2. Jump / turn / sun-turn / projection refreshes unchanged.
+- **Map sizes**: `QualityProfile.sunShadowMap` is the near cascade's edge, the far one gets `FAR_CASCADE_SCALE` (½):
+  `high` 1536² + 768² (was 4 × 2048²), `medium` / `low` 1024² + 512² (was 4 × 1024²). The cascades are cloned from the
+  sun's shadow on the CSM's first build, so `LightRig` keeps the sizes and writes them onto the cascade lights in the
+  next `scheduleShadows` (`cascadeMapSizes()` reads them back). Live, no recompile. Shadow depth memory 64 MB → 11.8 MB at
+  `high` (depth only; three's per-cascade colour attachment shrinks with it).
+- **No clearcoat lobe** (`materials/graph.ts` deviation 7): `surfaceStructure` never returns `physical`; cobble, slate
+  roof, obsidian, wet rock, wet flagstone and insulator glass render on `MeshStandardNodeMaterial`. The coat folds into
+  the base roughness: `mix(rough, coat.roughness, sat(mix(coat.base, coat.wet, wetness) × COAT_GLOSS))`, `COAT_GLOSS` 3
+  (a wet cobble ~0.22, a soaked slate roof 0.18, obsidian 0.08). The wet darkening, the wet roughness × 0.45 and the
+  puddles are unchanged. The physical program evaluated a second BRDF for the sun, the environment and every looped
+  local light on every cobble / roof fragment. Programs: the `physical` and `physical+tri` structures are gone.
+- **Noise only when it shows** (`materials/weatherSurface.ts`, `materials/clouds.ts`): every lit library fragment ran
+  5 Perlin noises whatever the weather (puddles 1, frost 2, cloud shadows 2). Each field now sits in an `If` on its
+  uniform (wetness > 0.02, frost > 0, cloud strength > 0; uniform control flow, every fragment takes the same branch):
+  a dry day skips 3, a night or an overcast sky also skips the 2 cloud octaves. Below each gate the old graph
+  multiplied the noise by 0, so the image is identical; the puddle and coarse-frost fields are 2D noise now (3D at a
+  constant z before: another pattern of the same scale and cover).
+- **GTAO** (`QualityProfile.gtaoScale`, `post/pipeline.ts`): 8 spp at quarter resolution on every preset with GTAO (was
+  16 spp at half on `high`). TRAA's temporal filter keeps it smooth; no visible difference from the diorama camera.
+  `high` and `medium` now plan the same GTAO stage, so switching between them rebuilds no post graph.
+- Kept: PCF (5 Vogel taps + hardware compare) with radius 2, the CSM fade band, the PMREM at 128 and its re-bake rule,
+  per-object `castShadow` (see the table for each).
+
+Measured on an Apple M2 Max (not the GTX 1650), headless Chrome, client harness, mirevale, 1920 × 1080, DPR 1,
+`high`. Views: the plaza from `(0, 6)`, rig 0, zoom stop 1, at night (0.02) in rain (wetness 1) and at noon. "Frame" =
+drain the queue, one `tick()`, until `onSubmittedWorkDone` (median of 200–280 frames, interleaved rounds); "pipelined"
+= 20 ticks back to back / 20 (GPU-bound throughput); "main" = the `tick()` call's main-thread ms. Structural levers
+(cascade count, filter, fade, noise, clearcoat as a class) were A/B'd over alternating page loads; the others toggled
+in one page. This GPU sometimes ran a whole page session at roughly half clock (every number ~2×); those sessions are
+left out. Per lever, against the old `high`:
+
+| Lever | Frame ms | Main ms | Look from the diorama camera | Adopted |
+|---|---|---|---|---|
+| a. 4 cascades → 2 (44 / 160 m), schedule `[0] [1] [0] []`, same 2048² | −1.1 (both views) | −0.7 | Player / prop shadows 2× coarser texels; a tree canopy's dappled shadow thins a little | yes |
+| a. maps 2048² → 1024² (4 cascades) / 512² | 0.0 / −0.3…−0.5 | 0 / −0.2 | 1024: softer; 512: blobby up close | 1536² + 768² on `high`, 1024² + 512² below |
+| b. 1-tap hardware compare instead of 5-tap PCF | 0.0 | 0 | harder, stair-stepped edges | no |
+| b. radius 2 → 1 | +0.1 | 0 | sharper | no |
+| b. CSM fade off | 0.0 | 0 | a seam between cascades | no |
+| c. clearcoat off (night, rain; 3 materials) | −0.4…−1.1 | 0 | wet cobbles keep their gloss through the folded roughness | yes (folded into roughness) |
+| d. a PMREM bake (128) | +1.3 for the one frame it runs | +0.7 | — | no: one bake per ≥ 20 s or 2° of sun, ~0 a frame |
+| e. GTAO 16 → 8 spp (half res) | −0.1 | 0 | none | yes (with quarter res) |
+| e. GTAO half → quarter res (16 or 8 spp) | −0.3 (pipelined −0.25) | 0 | none | yes |
+| f. weather noise gated (dry) | −0.6…−0.7 | 0 | identical | yes |
+| f. cloud-shadow noise gated (night) | ~−0.5 | 0 | identical | yes |
+| f. all sun shadows off (bound, after the above) | −1.0…−1.2 | −1.0…−1.1 | — | no |
+
+GTAO's saving is under the 0.5 ms bar on this GPU; it was adopted because it is a full-screen pass whose share grows on
+a ~4× slower GPU and it is invisible from the diorama camera. Per-object `castShadow` on small scatter was not the
+cost: grass, flowers and pebbles already cast nothing; trees, rocks and bushes are a dozen instanced draws. The shadow
+draws are buildings (84 material groups in 11 meshes) and props (37 groups); a merged shadow-only proxy per building
+would cut them further and is left open.
+
+Whole change, old `high` → new `high`, same views (fast-clock sessions, 2 per side):
+
+| View | Frame ms | Pipelined ms | Main ms | Shadow draws (median frame) |
+|---|---|---|---|---|
+| night, rain | 10.9–11.2 → 7.9–8.8 | 6.9–7.1 → 4.7–4.8 | 3.4 → 2.6–3.2 | 124 → 80 (0 on 1 frame in 4) |
+| noon | 9.9–10.0 → 7.2–7.7 | 5.5–5.6 → 3.9–4.2 | 3.3 → 2.6–2.8 | 120 → 80 |
+
+The prior note measured ~3.5 ms of i7-10750H main thread per cascade render: 2 → 0.75 renders a frame projects to
+~4 ms a frame there. Programs after boot settle and in mirevale 125 → 121 (vertex 58 → 56, fragment 67 → 65); the
+boot compile 1.34 s → 1.23–1.32 s, the zone compile 0.55–0.58 s → 0.44–0.53 s (one fewer cascade branch in every lit
+shader; this machine's shader cache was warm).
+
+Visual (screenshots at the default camera, before / after): at night in rain the plaza reads the same, the lamp pools
+and the wet glints on the cobbles stay; at noon the stall's and the player's shadows are softer and the big tree's
+canopy shadow is a little lighter and less dappled (visible side by side, not alone); at zoom stop 0 the player's
+shadow is a softer blob. First-person sees the 0–44 m cascade at 1536² up close: blockier, accepted.
+
+### Tried and rejected
+
+- Shadows (2026-10-25): a 1-tap hardware-compare filter, a smaller PCF radius, the CSM fade off and a smaller PMREM
+  bought nothing measurable (table above). Lowering the cards' alpha cut in the shadow pass did not bring the canopy's
+  shadow density back (the colour pass's `alphaTest` still discards there).
+- `COMPILE_CONCURRENCY` 12 instead of 4: no gain beyond run-to-run spread (the GPU process compiles largely serially).
+- Lower quality presets: barely changed GPU time at 1080p on the GTX 1650.
+- Deferring the 83 library warm-up quads: only ~8–27 distinct programs, which the first zone needs anyway.
+- A lazy or word-wise `geometryDigest`: ~56 ms over 25 MB; the SPEC defines it byte-wise.

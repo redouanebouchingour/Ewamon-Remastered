@@ -2343,7 +2343,8 @@ the second isolated client (the component over the landing page: the foe and own
 - On: the rig's `setFirstPerson` gets the look; `cameraYaw()` returns the look yaw, so WASD walks where you look
   (the same camera-relative `LocalPlayerController` path); the player's own body is hidden (re-applied each frame, a
   zone handover respawns the actor) and faces the look; the diorama's tilt-shift DOF is off (it blurred everything
-  past a few metres); wheel zoom and the Q / R heading turns do nothing.
+  past a few metres); wheel zoom and the Q / R heading turns do nothing. In a hall `syncView(null)` stands every wall
+  (render `setView(null)`); render turns the occluder fade off by itself (2026-10-25).
 - Looking: a left-button drag over the canvas (`InputCallbacks.look`, 0.0042 rad per px, pitch ±1.35 rad). In the
   diorama `look` declines and the drag turns the heading as before.
 
@@ -2364,10 +2365,12 @@ the second isolated client (the component over the landing page: the foe and own
   frames until the next slot on a fixed 1000 / cap ms grid (1 ms slack), so 120 / 144 Hz displays do half the work and
   the simulation still steps by real elapsed time. The hidden-tab 250 ms loop is unchanged.
 - `FRAME_CAP_UNLIMITED` (−1, "Unlimited"): rAF never fires faster than the display, so `scheduleUnlimited` posts the
-  next frame through a `MessageChannel` once `device.queue.onSubmittedWorkDone()` resolved (one frame in flight; at once
-  on WebGL2). `loopGen` drops a frame posted before a stop or a visibility change. Frames beyond the refresh rate are never
-  shown: a benchmark mode. Live check (dev-alt, headless Chrome at 60 Hz): 60 / Display ≈ 60 fps, Unlimited ≈ 74 fps,
-  a 0 ms timeout still fires in ≈ 5 ms (p50) in all three.
+  next frame through a `MessageChannel` once the PREVIOUS frame's `device.queue.onSubmittedWorkDone()` resolved (two
+  frames in flight, as under rAF; at once on WebGL2). With one frame in flight (the first cut) the CPU waited for the GPU
+  to drain and the GPU for the CPU to encode, so on a GPU-bound scene Unlimited fell below the Display rate (2026-10-25).
+  `loopGen` drops a frame posted before a stop or a visibility change. Frames beyond the refresh rate are never shown: a
+  benchmark mode. Live check (dev-alt, headless Chrome at 60 Hz): 60 / Display ≈ 60 fps, Unlimited ≈ 74 fps, a 0 ms timeout
+  still fires in ≈ 5 ms (p50) in all three.
 - `GraphicsSettings.showFps` (default false): Settings › Graphics › Show FPS puts a mono readout ("58 fps", `FpsChip`)
   in the top bar beside the speedrun clock. World3D's once-a-second `onSecond` writes the drawn frames to
   `useUiStore.fps` when it is on (dev builds always did); with a frame cap the count is the capped rate.
@@ -2862,3 +2865,17 @@ the second isolated client (the component over the landing page: the foe and own
 - Live check: the alt pair with an act3c account holding every species and an act2 account; screenshots of tiles,
   list, every entry tab (dustcub's split, hyoryu's Majin Form, ravatar's relic forms, a seen-only gated entry), the
   habitat atlas, compare, and the rewards view.
+
+## Load time and Docker CPU (2026-10-25)
+
+- `World3D.prepareBootZone` (`createRenderer`'s `beforeWarmUp`): prepares the zone the player will enter
+  (`roomZone ?? session zoneId`, which `/me` fills before `PlayShell` mounts) with `eager: true` during the boot shader
+  compile. The spec is `withNeighbours(zoneSpecFor(z, harvestStateFor(id, flags)), z)`, what `SceneDirector.doLoad`
+  builds, so `loadZone` adopts it (`sameZone`: id, seed, harvest level). Focus is the room's player position if known,
+  else the zone spawn (doLoad's own fallback); it only steers the eager first-view compile. Skipped in an arena or
+  without progression. Device-loss recovery runs it again.
+- Harness: `?bootprep=1` (`HarnessWorld.bootPrepare`) for A/B: compare `?zone=mirevale&bg=1` with `…&bg=1&bootprep=1`,
+  reading `renderer ready` and `zone mirevale loaded`, alternating runs.
+- Docker dev watchers: `tsx watch` polls at `CHOKIDAR_INTERVAL` 1000 ms (was chokidar's 100 ms, ~55 % of a core); Vite
+  polls sources every 1000 ms (was 300 ms, ~40 %) and no longer polls `public/` (an edited asset needs a page reload, a
+  new one `docker compose restart client`). Apply the compose change with `docker compose up -d server`.

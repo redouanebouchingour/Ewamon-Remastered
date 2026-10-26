@@ -241,6 +241,7 @@ export class DioramaRig implements CameraRig {
   // first person: the look the client sets each frame (null = the diorama); the lens it last applied
   private fp: { yaw: number; pitch: number } | null = null;
   private fpLens = false;
+  private fpActive = false;   // whether the last update posed the eye in first person (the occluder fade is off then)
   private dioramaNear = 0;
   // blended pose (exposed for tests / HUD)
   private readonly pose: OrbitPose = { center: new Vector3(), yaw: 0, pitch: PITCH * DEG, distance: DISTANCE[DEFAULT_ZOOM_STOP] };
@@ -274,6 +275,8 @@ export class DioramaRig implements CameraRig {
   }
 
   get firstPerson(): boolean { return this.fp !== null; }
+  /** True when the last `update` posed the eye in first person (a look is set, diorama mode, no shot, a followed actor). */
+  get firstPersonActive(): boolean { return this.fpActive; }
 
   /** Switches the lens between the diorama's (28°, near 0.5 m) and first person's (70°, near 0.08 m). */
   private applyLens(fp: boolean): void {
@@ -465,6 +468,7 @@ export class DioramaRig implements CameraRig {
     // first person: the eye at the followed actor's head, looking along the client's yaw / pitch (focus stays the feet)
     const fpOn = this.fp !== null && this.mode === 'diorama' && b === 0 && this.followed !== null;
     this.applyLens(fpOn);
+    this.fpActive = fpOn;
     if (fpOn) {
       const f = this.fp!;
       const fx = -Math.sin(f.yaw);

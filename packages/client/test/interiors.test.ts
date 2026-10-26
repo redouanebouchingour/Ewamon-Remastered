@@ -38,7 +38,7 @@ function fakeWorld() {
   let base: number | null = null;
   const interiors = {
     setActive: (id: string | null) => log.push(`active ${id}`),
-    setView: (yaw: number) => log.push(`view ${yaw.toFixed(3)}`),
+    setView: (yaw: number | null) => log.push(`view ${yaw === null ? 'null' : yaw.toFixed(3)}`),
     setGateOpen: (id: string, open: boolean) => log.push(`gate ${id} ${open}`),
     setSwitchOn: (id: string, on: boolean) => log.push(`switch ${id} ${on}`),
   };
@@ -197,6 +197,12 @@ describe('Phase A interiors (client)', () => {
     expect(log.length).toBe(n);
     d.syncView(yaw + Math.PI / 2);
     expect(log.at(-1)).toBe(`view ${(yaw + Math.PI / 2).toFixed(3)}`);
+    // first person: null once (every wall stands), then a yaw again on the way back
+    d.syncView(null);
+    d.syncView(null);
+    expect(log.slice(-2)).toEqual([`view ${(yaw + Math.PI / 2).toFixed(3)}`, 'view null']);
+    d.syncView(yaw);
+    expect(log.at(-1)).toBe(`view ${yaw.toFixed(3)}`);
     // leave through the door: default diagonal, heading 2 again, pocket actors gone
     const door = interiorWarps('mirevale').find((w) => w.id === 'mirevale.gym.out')!;
     d.updatePocket(door.toX, door.toZ);

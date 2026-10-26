@@ -8,6 +8,7 @@ import { uniform } from 'three/tsl';
 import type { HarvestLevel } from '../descriptors.js';
 import { createOcclusionUniforms, type OcclusionState } from './occlusion.js';
 import { CLOUDS } from './clouds.js';
+import { createWaterBackdrop, type WaterBackdrop } from './waterBackdrop.js';
 
 /** SPEC §10.2.3, verbatim. */
 export interface SharedUniforms {
@@ -27,6 +28,8 @@ export interface SharedUniforms {
   readonly clouds?: UniformNode<'vec4', Vector4>;
   /** Addition (§10.7.8 world effects): frost 0..1, ramped up under hail and back after it (`weatherSurface.ts`). */
   readonly frost?: UniformNode<'float', number>;
+  /** Addition (IMPLEMENTATION-NOTES "Water backdrop without transmission"): the water graph's shared backdrop copy. */
+  readonly waterBackdrop?: WaterBackdrop;
 }
 
 /** Pushers the grass reads (§10.7.8). */
@@ -43,6 +46,7 @@ export function createSharedUniforms(): SharedUniforms {
     push: Array.from({ length: PUSHERS }, (_, i) => uniform(new Vector4(0, 0, 1, 0)).setName(`ewaPush${i}`)),
     clouds: uniform(new Vector4(0, 0.35, CLOUDS.scale, CLOUDS.driftMps)).setName('ewaClouds'),
     frost: uniform(0).setName('ewaFrost'),
+    waterBackdrop: createWaterBackdrop(),
   };
 }
 

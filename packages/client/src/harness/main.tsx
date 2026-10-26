@@ -87,6 +87,7 @@ createRoot(layer).render(<HarnessOverlay />);
 // ?residency=legacy: the creature binding before CreatureTextures (before / after texture-memory runs)
 const world = new HarnessWorld(canvas, say, params.get('residency') === 'legacy' ? 'legacy' : 'managed');
 world.backgroundCompile = params.get('bg') === '1';
+world.bootPrepare = params.get('bootprep') === '1';
 
 function anchors(): ResolvedAnchor[] {
   const out: ResolvedAnchor[] = [];

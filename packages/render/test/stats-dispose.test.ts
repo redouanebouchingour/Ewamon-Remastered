@@ -151,7 +151,7 @@ describe('dispose bookkeeping (mocked GPU)', () => {
     rig.setPunctualEnabled(false);
     rig.update(0);
     expect(rig.handlesList()[0]!.light.intensity).toBe(0);
-    expect(countPunctualLights(scene, { shadow: 0, nonShadow: 0 })).toEqual({ shadow: 1, nonShadow: 0 });
+    expect(countPunctualLights(scene, { shadow: 0, nonShadow: 0 })).toEqual({ shadow: 0, nonShadow: 1 });
     rig.dispose();
   });
 });

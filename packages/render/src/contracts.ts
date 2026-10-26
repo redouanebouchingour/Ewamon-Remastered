@@ -221,8 +221,11 @@ export interface InteriorSpec {
 export interface InteriorsHandle {
   /** The pocket the local player stands in (its hall shows, its outside canopy hides), or null (every pocket reads as a thicket from outside). */
   setActive(id: string | null): void;
-  /** Camera view yaw (radians, the rig's current yaw): walls of the active pocket whose outward normal faces the camera drop to a 0.5 m kerb. */
-  setView(yaw: number): void;
+  /**
+   * Camera view yaw (radians, the rig's current yaw): walls of the active pocket whose outward normal faces the camera
+   * drop to a 0.5 m kerb. null (first person: the eye is inside the hall, nothing hides the player) stands every wall.
+   */
+  setView(yaw: number | null): void;
   setGateOpen(gateId: string, open: boolean): void;
   setSwitchOn(switchId: string, on: boolean): void;
 }
