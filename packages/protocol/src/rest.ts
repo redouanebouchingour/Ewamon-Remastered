@@ -428,6 +428,9 @@ export const DexRes = z.object({
 });
 export const DexSpeciesParams = z.object({ speciesId: z.string().min(1).max(32) });
 export const DexViewedRes = z.object({ speciesId: z.string(), viewedAt: IsoDate });
+/** Dex completion rewards (content `DEX_REWARDS`): claim one whose set is complete; once per player. */
+export const DexRewardParams = z.object({ rewardId: z.string().min(1).max(48) });
+export const DexRewardClaimRes = z.object({ rewardId: z.string(), rewards: StringList, inventory: ItemCounts, money: Money });
 export const ShopParams = z.object({ zoneId: ZoneIdSchema });
 /** `ShopRes` (stock, prices, the haggle deal) is defined with shop haggling below. */
 export const ShopTradeReq = z.object({ item: ItemId, qty: Qty });
@@ -1429,6 +1432,8 @@ export const ROUTES = {
   dex: route({ method: 'GET', path: '/dex', auth: 'bearer', response: DexRes }),
   // Dex research: the player opened an entry (the "new" marker clears); 404 for a species not in their dex
   dexViewed: route({ method: 'POST', path: '/dex/viewed/:speciesId', auth: 'bearer', params: DexSpeciesParams, request: Nothing, response: DexViewedRes }),
+  // Dex completion rewards: 404 unknown id, 409 rewardIncomplete (the set is not complete) / AlreadyClaimed
+  dexRewardClaim: route({ method: 'POST', path: '/dex/rewards/:rewardId/claim', auth: 'bearer', params: DexRewardParams, request: Nothing, response: DexRewardClaimRes }),
   shop: route({ method: 'GET', path: '/shop/:zoneId', auth: 'bearer', params: ShopParams, response: ShopRes }),
   shopBuy: route({ method: 'POST', path: '/shop/buy', auth: 'bearer', request: ShopTradeReq, response: InventoryMoneyRes }),
   shopSell: route({ method: 'POST', path: '/shop/sell', auth: 'bearer', request: ShopTradeReq, response: InventoryMoneyRes }),

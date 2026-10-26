@@ -2,7 +2,7 @@
  * §4.7 rows: GET /dex, /shop/*, /battle-pass*, /history/*, /players/:username, /leaderboard.
  * Prices, rewards and levels are content + core; the client sends intents (item, qty, level) only.
  */
-import { BATTLE_PASS, CHALLENGE_CLEARED_FLAG, CHALLENGE_FAILED_FLAG, CHALLENGE_MODE_FLAG, SHOP_STOCK_DEFAULT, zone as zoneById } from '@ewa/content';
+import { BATTLE_PASS, CHALLENGE_CLEARED_FLAG, dexRewardById, dexRewardReady, CHALLENGE_FAILED_FLAG, CHALLENGE_MODE_FLAG, SHOP_STOCK_DEFAULT, zone as zoneById } from '@ewa/content';
 import type { ZoneDef } from '@ewa/content';
 import { trainerLevelFor, tierFor } from '@ewa/core';
 import type { ConsumableDef, ItemDef, OrbDef } from '@ewa/core';
@@ -14,6 +14,8 @@ import {
   BattlePassStateSchema,
   CreaturesAddedRes,
   DexRes,
+  DexRewardClaimRes,
+  DexRewardParams,
   DexSpeciesParams,
   DexViewedRes,
   InventoryMoneyRes,
@@ -109,6 +111,26 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
     const ok = await repos.db.transaction((tx) => repos.progress.markViewed(tx, req.user.sub, speciesId, now));
     if (!ok) throw new HttpError(404, 'NotFound');
     return out(deps, DexViewedRes, { speciesId, viewedAt: iso(now) });
+  });
+
+  // Dex completion rewards: the set must be complete now (recorded species, research levels); each once per player
+  app.post('/dex/rewards/:rewardId/claim', bearer, async (req) => {
+    const { rewardId } = DexRewardParams.parse(req.params);
+    const def = dexRewardById(rewardId);
+    if (def === undefined) throw new HttpError(404, 'NotFound');
+    const id = req.user.sub;
+    const now = new Date(clock());
+    const res = await repos.db.transaction(async (tx) => {
+      await repos.players.lock(tx, id);
+      const dex = await repos.progress.dex(tx, id);
+      if (!dexRewardReady(def, { caught: new Set(dex.caught), research: researchLevels(dex.entries) })) throw new HttpError(409, 'rewardIncomplete');
+      if (!(await repos.progress.claimReward(tx, id, def.id, now))) throw new HttpError(409, 'AlreadyClaimed');
+      const money = def.money > 0 ? await repos.players.addMoney(tx, id, def.money) : (await repos.players.byId(tx, id))!.money;
+      if (Object.keys(def.items).length > 0) await repos.inventory.addMany(tx, id, def.items);
+      await repos.audit.write(tx, { actorId: id, action: 'dex.reward', subject: def.id, detail: {} }, now);
+      return { rewardId: def.id, rewards: await repos.progress.claimedRewards(tx, id), inventory: await repos.inventory.all(tx, id), money };
+    });
+    return out(deps, DexRewardClaimRes, res);
   });
 
   // ---- shop -----------------------------------------------------------------------------------------------------

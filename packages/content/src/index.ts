@@ -699,3 +699,5 @@ export {
   signatureStage,
 } from './data/rival';
 export type { RivalArc, RivalIdentity, RivalRecord, RivalTemperament } from './data/rival';
+export { DEX_REWARDS, DEX_STAMPS, DEX_TITLES, dexRewardById, dexRewardProgress, dexRewardReady, dexStampsOf, dexTitlesOf } from './data/dexRewards';
+export type { DexRewardCtx, DexRewardDef, DexRewardNeed, DexStamp } from './data/dexRewards';

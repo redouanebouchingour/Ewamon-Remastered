@@ -1,7 +1,7 @@
 /**
  * §4.7 rows: GET /me, POST /zone/enter, POST /profile, POST /quests/claim.
  */
-import { BATTLE_PASS, BODIES, CHALLENGE_MODE_FLAG, FALLEN_MEMORIAL_RIBBON, FALLEN_RIBBON, QUESTS, TITLES, quest as questById, zone as zoneById } from '@ewa/content';
+import { BATTLE_PASS, BODIES, CHALLENGE_MODE_FLAG, DEX_TITLES, dexTitlesOf, FALLEN_MEMORIAL_RIBBON, FALLEN_RIBBON, QUESTS, TITLES, quest as questById, zone as zoneById } from '@ewa/content';
 import { TRAINER_EXP, trainerLevelFor } from '@ewa/core';
 import { ChallengeReq, ChallengeRes, MeRes, PlayerProfileSchema, QuestClaimReq, QuestClaimRes, ZoneEnterReq, ZoneEnterRes, profileRequestFor } from '@ewa/protocol';
 import type { QuestView, ZoneId } from '@ewa/protocol';
@@ -40,7 +40,8 @@ function syntheticView(questId: string, missions: readonly DailyMission[], rows:
   };
 }
 
-const profileReq = profileRequestFor(TITLES, BODIES.map((b) => b.id));
+// a Dex reward's trainer title passes the shape check; the route then asks that its reward was claimed
+const profileReq = profileRequestFor([...TITLES, ...DEX_TITLES.filter((t) => !TITLES.includes(t))], BODIES.map((b) => b.id));
 
 export function registerMeRoutes(app: FastifyInstance, deps: RestDeps): void {
   const { repos, clock, content } = deps;
@@ -151,6 +152,9 @@ export function registerMeRoutes(app: FastifyInstance, deps: RestDeps): void {
     const body = profileReq.parse(req.body);
     const id = req.user.sub;
     const row = await repos.db.transaction(async (tx) => {
+      if (body.title !== undefined && !TITLES.includes(body.title) && !dexTitlesOf(await repos.progress.claimedRewards(tx, id)).includes(body.title)) {
+        throw new HttpError(403, 'titleLocked');
+      }
       await repos.players.setIdentity(tx, id, body);
       return (await repos.players.byId(tx, id))!;
     });
