@@ -159,16 +159,16 @@ export function assertRosterCoverage(): RosterReport;
 
 | Zone | Kind | Band | Table id | targetCount | Slots | daySum | nightSum | Rarest day slot → mean wait |
 |---|---|---|---|---|---|---|---|---|
-| mire_route | route | 2–6 | enc_mire_route | 80 | 11 | 45 | 44 | bloomsprite 2/45 → 56 s |
-| ash_route | route | 7–11 | enc_ash_route | 80 | 10 | 37 | 35 | cindercap 3/37 → 31 s |
-| tide_route | route | 11–15 | enc_tide_route | 80 | 11 | 48 | 46 | kygra 2/48 → 60 s |
+| mire_route | route | 2–6 | enc_mire_route | 80 | 13 | 57 | 50 | bloomsprite 2/57 → 71 s |
+| ash_route | route | 7–11 | enc_ash_route | 80 | 13 | 48 | 51 | cindercap 3/48 → 40 s |
+| tide_route | route | 11–15 | enc_tide_route | 80 | 13 | 53 | 48 | kygra 2/53 → 66 s |
 | galvan_route | route | 15–20 | enc_galvan_route | 80 | 10 | 43 | 41 | wooltug 4/43 → 27 s |
-| deepcut_route | route | 20–25 | enc_deepcut_route | 80 | 13 | 56 | 61 | pyrecap 2/56 → 70 s |
+| deepcut_route | route | 20–25 | enc_deepcut_route | 80 | 15 | 63 | 68 | pyrecap, burrowyrm 2/63 → 79 s |
 | hollow_route | route | 25–30 | enc_hollow_route | 80 | 15 | 28 | 69 | fibrostis 5/28 → 14 s |
-| siege_route | route | 30–35 | enc_siege_route | 80 | 11 | 48 | 48 | flowbot 2/48 → 60 s |
-| ascent_route | route | 35–42 | enc_ascent_route | 80 | 11 | 47 | 40 | serpyre 3/47 → 39 s |
-| saltmourn | town | 14–24 | enc_saltmourn | 20 | 6 | 17 | 17 | kygra 2/17 → 30 s |
-| skyrend | town | 38–44 | enc_skyrend | 20 | 6 | 21 | 21 | veilpup 2/21 → 37 s |
+| siege_route | route | 30–35 | enc_siege_route | 80 | 13 | 50 | 53 | flowbot, shalewing 2/50 → 63 s |
+| ascent_route | route | 35–42 | enc_ascent_route | 80 | 12 | 47 | 42 | serpyre 3/47 → 39 s |
+| saltmourn | town | 14–24 | enc_saltmourn | 20 | 7 | 17 | 22 | kygra 2/17 → 30 s |
+| skyrend | town | 38–44 | enc_skyrend | 20 | 7 | 23 | 23 | veilpup, snowlet 2/23 → 41 s |
 | solenne | town | 40–45 | enc_solenne | 20 | 6 | 26 | 28 | bloomsprite 3/26 → 30 s |
 | eclipse_shrine | story | 45–50 | enc_eclipse_shrine | 36 | 9 | 23 | 35 | shardling 5/23 → 16 s |
 | umbral_observatory | story | 42–48 | enc_umbral_observatory | 36 | 12 | 27 | 53 | fibrostis 5/27 → 19 s |
@@ -197,6 +197,8 @@ Column order is fixed and machine-parsed: `zoneId | species | weight | levelMin 
 | mire_route | snapling | 5 | 3 | 6 | night | uncommon | land |
 | mire_route | bramblecub | 3 | 4 | 6 | any | rare | land |
 | mire_route | bloomsprite | 2 | 4 | 6 | day | rare | land |
+| mire_route | puffinch | 6 | 2 | 5 | any | common | land |
+| mire_route | sproutgrub | 6 | 2 | 5 | day | common | land |
 | mire_route | mossling | 1 | 6 | 6 | any | alpha | land |
 
 ### 6.2 ash_route — cinder, Fire, L7–11
@@ -212,6 +214,9 @@ Column order is fixed and machine-parsed: `zoneId | species | weight | levelMin 
 | ash_route | cindercap | 3 | 8 | 11 | any | rare | land |
 | ash_route | moflame | 2 | 9 | 11 | night | rare | land |
 | ash_route | cryptorb | 2 | 9 | 11 | night | rare | land |
+| ash_route | kindlegrub | 6 | 7 | 10 | any | common | land |
+| ash_route | tuskling | 5 | 8 | 11 | any | uncommon | land |
+| ash_route | corvlet | 5 | 8 | 11 | night | uncommon | land |
 | ash_route | flampling | 1 | 11 | 11 | day | alpha | land |
 
 ### 6.3 tide_route — salt, Water, L11–15 (surf zone)
@@ -228,6 +233,8 @@ Column order is fixed and machine-parsed: `zoneId | species | weight | levelMin 
 | tide_route | glimfin | 3 | 13 | 15 | any | rare | water |
 | tide_route | ripshell | 3 | 13 | 15 | any | rare | water |
 | tide_route | kygra | 2 | 14 | 15 | day | rare | water |
+| tide_route | twinklit | 2 | 11 | 14 | night | rare | land |
+| tide_route | joeyjab | 5 | 12 | 15 | day | uncommon | land |
 | tide_route | mudbub | 1 | 15 | 15 | any | alpha | land |
 
 ### 6.4 galvan_route — storm, Electric, L15–20
@@ -261,6 +268,8 @@ Column order is fixed and machine-parsed: `zoneId | species | weight | levelMin 
 | deepcut_route | yahit | 3 | 22 | 25 | any | rare | land |
 | deepcut_route | pyrecap | 2 | 20 | 23 | any | rare | land |
 | deepcut_route | lithokrysm | 2 | 24 | 25 | any | rare | land |
+| deepcut_route | scorpit | 5 | 20 | 24 | any | uncommon | land |
+| deepcut_route | burrowyrm | 2 | 22 | 25 | any | rare | land |
 | deepcut_route | pebblit | 1 | 25 | 25 | any | alpha | land |
 
 ### 6.6 hollow_route — vesper, Ghost, L25–30
@@ -297,6 +306,8 @@ Column order is fixed and machine-parsed: `zoneId | species | weight | levelMin 
 | siege_route | coalette | 5 | 30 | 33 | night | uncommon | land |
 | siege_route | flowbot | 2 | 33 | 35 | any | rare | land |
 | siege_route | acier | 2 | 33 | 35 | any | rare | land |
+| siege_route | gravelwisp | 5 | 30 | 33 | night | uncommon | land |
+| siege_route | shalewing | 2 | 30 | 34 | day | rare | land |
 | siege_route | grubolt | 1 | 35 | 35 | any | alpha | land |
 
 ### 6.8 ascent_route — sky, Dragon, L35–42 (surf: the glacier melt)
@@ -313,6 +324,7 @@ Column order is fixed and machine-parsed: `zoneId | species | weight | levelMin 
 | ascent_route | resilith | 5 | 35 | 38 | any | uncommon | land |
 | ascent_route | serpyre | 3 | 39 | 42 | any | rare | land |
 | ascent_route | umbrit | 3 | 38 | 42 | night | rare | land |
+| ascent_route | meteorb | 2 | 35 | 37 | night | rare | land |
 | ascent_route | scalewisp | 1 | 42 | 42 | any | alpha | land |
 
 ### 6.9 saltmourn — town static: the drowned harbour, L14–24 (all water)
@@ -327,6 +339,7 @@ The only town whose "static" species are the point of the town. `TOWN_SPAWN_TUNI
 | saltmourn | kygra | 2 | 16 | 20 | day | rare | water |
 | saltmourn | wraithtide | 2 | 16 | 20 | night | rare | water |
 | saltmourn | voltide | 2 | 20 | 24 | any | rare | water |
+| saltmourn | gnashfin | 5 | 18 | 24 | night | uncommon | water |
 
 ### 6.10 skyrend — town static: the cliff roosts, L38–44
 
@@ -338,6 +351,7 @@ The only town whose "static" species are the point of the town. `TOWN_SPAWN_TUNI
 | skyrend | glacifang | 5 | 39 | 44 | night | uncommon | land |
 | skyrend | resilith | 3 | 40 | 44 | any | rare | land |
 | skyrend | veilpup | 2 | 38 | 41 | any | rare | land |
+| skyrend | snowlet | 2 | 38 | 41 | any | rare | land |
 
 ### 6.11 solenne — town static: the suburb park and pond, L40–45
 
@@ -415,7 +429,9 @@ The only town whose "static" species are the point of the town. `TOWN_SPAWN_TUNI
 
 Totals (Appendix A): **15 tables, 152 slots, 79 distinct species placed directly**; closure under evolution = 120; plus 8 statics and 2 mythical rewards = **130**.
 
-Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60; `dustcub` (#132, Ground) → `badlander` (#133, Ground/Dark) @30 — deepcut_route `uncommon 5` L20–24; `veilpup` (#134, Psychic) → `hollowolf` (#135, Psychic/Cosmic) @42 — skyrend `any rare 2` L38–41; `castlemaw` (#136, Dark/Steel single stage, with a Rage Form) — umbral_observatory `night rare 2` L44–48. Dustcub's evolution is an honor split at 30 (core honor.ts): `lawlander` (#137, Ground/Fighting, the High Honor branch, honor ≥ 0) or `badlander` (Low Honor); lawlander is obtainable by evolution only, so the directly placed count does not change. `hyoryu` (#138, Ice/Dragon legendary, a Majin Form that turns it Dragon/Dark) is the ninth static: eclipse_shrine L60 after the title (§7), in no table (on ascent_route the sprite planner duplicated 6 species in the_rift). `cryptorb` (#139, Electric/Ghost; ash_route `night rare 2` L9–11) splits by honor at 34 into `vysion` (#141, Steel/Psychic, High Honor) or `ultraze` (#140, Steel/Dark, Low Honor), both obtainable by evolution only. With them the game has 157 slots, 84 species placed directly, 141 obtainable, 73 families. The mythical Elemutt line (2026-10-25): `elemutt` (#142, Normal) is quest q13's reward (Mirevale, Act I, L5) and evolves at 16 into `katamute` (#143, Normal), at 36 into `ravatar` (#144, Normal, five relic forms opened by held relics from the four postgame shrines and quest q14); in no table, so the slots stay 157. `kykaiser` (#145, Water, 2026-10-26) is the legacy single stage kygra's evolution at 45 (`.design/additions/patches.js`), obtainable by evolution only: no table, no new family. Now 85 species placed directly, **145** obtainable, 74 families.
+Post-legacy additions (`.design/additions/species.js`, not counted by Appendix A, which reads only `ewamon.js`): `hollowmane` (#131, Ghost/Fighting single stage) — the_rift `night rare 2` L57–60; `dustcub` (#132, Ground) → `badlander` (#133, Ground/Dark) @30 — deepcut_route `uncommon 5` L20–24; `veilpup` (#134, Psychic) → `hollowolf` (#135, Psychic/Cosmic) @42 — skyrend `any rare 2` L38–41; `castlemaw` (#136, Dark/Steel single stage, with a Rage Form) — umbral_observatory `night rare 2` L44–48. Dustcub's evolution is an honor split at 30 (core honor.ts): `lawlander` (#137, Ground/Fighting, the High Honor branch, honor ≥ 0) or `badlander` (Low Honor); lawlander is obtainable by evolution only, so the directly placed count does not change. `hyoryu` (#138, Ice/Dragon legendary, a Majin Form that turns it Dragon/Dark) is the ninth static: eclipse_shrine L60 after the title (§7), in no table (on ascent_route the sprite planner duplicated 6 species in the_rift). `cryptorb` (#139, Electric/Ghost; ash_route `night rare 2` L9–11) splits by honor at 34 into `vysion` (#141, Steel/Psychic, High Honor) or `ultraze` (#140, Steel/Dark, Low Honor), both obtainable by evolution only. With them the game has 157 slots, 84 species placed directly, 141 obtainable, 73 families. The mythical Elemutt line (2026-10-25): `elemutt` (#142, Normal) is quest q13's reward (Mirevale, Act I, L5) and evolves at 16 into `katamute` (#143, Normal), at 36 into `ravatar` (#144, Normal, five relic forms opened by held relics from the four postgame shrines and quest q14); in no table, so the slots stay 157. `kykaiser` (#145, Water, 2026-10-26) is the legacy single stage kygra's evolution at 45 (`.design/additions/patches.js`), obtainable by evolution only: no table, no new family. The type-gap lines (2026-10-26, `.design/type-gap-concepts.pdf`): 14 families, 34 species (#146–179), each root in one table: mire_route `puffinch` (common 6, L2–5) and `sproutgrub` (day common 6, L2–5); ash_route `kindlegrub` (common 6, L7–10), `tuskling` (uncommon 5, L8–11) and `corvlet` (night uncommon 5, L8–11); tide_route `joeyjab` (day uncommon 5, L12–15) and `twinklit` (night rare 2, L11–14); deepcut_route `scorpit` (uncommon 5, L20–24) and `burrowyrm` (rare 2, L22–25); siege_route `gravelwisp` (night uncommon 5, L30–33) and `shalewing` (day rare 2, L30–34); ascent_route `meteorb` (night rare 2, L35–37); saltmourn `gnashfin` (water, night uncommon 5, L18–24); skyrend `snowlet` (rare 2, L38–41). Corvlet splits by honor at 30 into `augurvane` (Psychic/Flying, ≥ 0) or `ravenmourne` (Dark/Flying). Corvlet, tuskling and joeyjab first sat on galvan_route: there the sprite planner needed a duplicated atlas or moved rimeidol's, yaschamp's or wooltug's atlases out of their ecosystem migration targets, so the three moved to the placement that keeps every migration route drawable. With them: 171 slots, **99** species placed directly, **179** obtainable, 88 families.
+
+Before the type-gap lines: 85 species placed directly, 145 obtainable, 74 families.
 
 ---
 
@@ -521,6 +537,20 @@ One row per evolution root (67) plus the legendary/mythical singles. `wild:` lis
 | glacinid · galaxion · voltaura · voidraxis · sunjaw · raikitsune · bankaiser · zenryu · hyoryu | `LEGENDARY_STATICS` (§7) | single |
 | lumyth · noxmyth | quest rewards q12 / q11 (§12.1); battle-pass 50 choice | single |
 | elemutt → katamute → ravatar | quest reward q13 (§12.1), mythical | @16, @36 |
+| puffinch → gustling → galeforth | wild: mire_route | @14, @34 |
+| corvlet → augurvane / ravenmourne | wild: ash_route (night) | @30 by honor: ≥ 0 augurvane, below ravenmourne |
+| sproutgrub → leafcoon → mantleaf | wild: mire_route (day) | @10, @24 |
+| snowlet → hoarfrowl | wild: skyrend | @44 |
+| tuskling → shagtusk → rimetusk | wild: ash_route | @24, @44 |
+| scorpit → dunevenom | wild: deepcut_route | @28 |
+| shalewing → petraptor | wild: siege_route (day) | @36 |
+| twinklit → lumistar → stellaria | wild: tide_route (night) | @20, @38 |
+| meteorb → craterhulk | wild: ascent_route (night) | @38 |
+| gravelwisp → tombdune | wild: siege_route (night) | @33 |
+| gnashfin → dreadmaw | wild: saltmourn (water, night) | @30 |
+| kindlegrub → pyremoth | wild: ash_route | @26 |
+| joeyjab → roobrawler | wild: tide_route (day) | @30 |
+| burrowyrm → dunescale → mesadrake | wild: deepcut_route | @32, @52 |
 
 Type coverage of direct placements: all 19 types have ≥ 3 directly placed species; Cosmic (3 species, all legendary/mythical) is covered by statics and quests only, by construction.
 
@@ -618,7 +648,7 @@ The cost of this roster is server rows and AOI traffic, not frame time. Numbers 
 | Spawn cadence when below target | 1 per 1.5–3.5 s | 1 per 2–5 s | 1 per 2–5 s | — |
 | `SpawnState` bytes per row (schema, ≈) | 64 | 64 | 64 | 54 KB resident for all 15 tables |
 | Rng draws per spawn | 2 + 1 alpha + 1–2 variant + ≤ 8 position | same | same | ≤ 13 |
-| Distinct species per table (sprite atlas bind cost, `10-render.md`) | 8–13 | 5–6 | 8–11 | max **13** (hollow_route) |
+| Distinct species per table (sprite atlas bind cost, `10-render.md`) | 9–14 | 6–7 | 8–11 | max **14** (hollow_route, deepcut_route; amended 2026-10-26: the type-gap lines) |
 
 Hard ceilings: no table exceeds **16 slots** or **14 distinct species** (the per-zone sprite atlas in `PLAN.md`'s pipeline is sized for 16); no zone exceeds `targetCount 80` (amended 2026-10-08: was 14; at 14 a route held about 0.1 creatures in the 20 × 17 m diorama view, and a 180 s lifetime against a 14 s mean respawn capped it near 13 anyway). `validate.ts` fails a table at 17 slots or 15 species.
 

@@ -27,6 +27,9 @@ const EWAMON_MOVE_ADDITIONS = {
     effectChance: 20, contact: false, typeFromForm: true, effectOnlyBaseForm: true,
     description: "Takes the type of Ravatar's relic form, Normal in its base form; 100 power; 100% accuracy; 5 PP. In its base form, 20% chance to raise the user's Attack, Defense and Speed by one stage each.",
   },
+  // The first low-power Cosmic attack (2026-10-26): Twinklit and Meteorb start with it, so a Cosmic line has STAB
+  // before Starfall (90). Plain damage, no effect.
+  "Comet Tap": { power: 40, type: "Cosmic", pp: 30, effect: null, accuracy: 100, contact: false },
 };
 
 module.exports = { EWAMON_MOVE_ADDITIONS };

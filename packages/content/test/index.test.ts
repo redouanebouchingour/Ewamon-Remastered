@@ -29,9 +29,9 @@ describe('createContentIndex()', () => {
     expect(idx.typeChart).toBe(TYPE_CHART);
   });
 
-  it('allSpecies() is sorted by dexNumber and has 145 rows', () => {
+  it('allSpecies() is sorted by dexNumber and has 179 rows', () => {
     const all = idx.allSpecies();
-    expect(all.length).toBe(145);
+    expect(all.length).toBe(179);
     for (let i = 1; i < all.length; i++) expect(all[i]!.dexNumber).toBeGreaterThan(all[i - 1]!.dexNumber);
     expect(all[0]!.id).toBe('smellduck');
   });
@@ -61,7 +61,7 @@ describe('createContentIndex()', () => {
       expect(d.evolution.branches[0]!.condition).toEqual({ kind: 'ability', ability: 'Lightning Rod' });
       expect(d.evolution.branches[1]!.condition).toBeNull();
     }
-    expect(SPECIES.filter((s) => s.evolution?.kind === 'split').map((s) => s.id)).toEqual(['darkone', 'dustcub', 'cryptorb']);
+    expect(SPECIES.filter((s) => s.evolution?.kind === 'split').map((s) => s.id)).toEqual(['darkone', 'dustcub', 'cryptorb', 'corvlet']);
   });
 
   it('world accessors resolve and throw on unknown ids', () => {

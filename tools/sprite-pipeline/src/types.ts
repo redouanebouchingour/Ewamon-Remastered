@@ -68,12 +68,14 @@ export const NORMAL_SCALE = 0.5;
 /** Pipeline-built mip levels 1..MIP_LEVELS per map. */
 export const MIP_LEVELS = 3;
 /**
- * Hard ceiling for every file under `public/creatures/` outside `anim/` (spec §40.6). 44 MiB since 2026-10-25 (the
+ * Hard ceiling for every file under `public/creatures/` outside `anim/` (spec §40.6). 52 MiB since 2026-10-26 (the 34
+ * type-gap species, #146 to #179, about 52.9 MB at the top encoder rung, with room left for the Astaroth legendary;
+ * the user's call over dropping every sprite to q80); 44 MiB (46 137 344) from 2026-10-25 (the
  * Elemutt line: elemutt, katamute, ravatar and its five relic forms, 45.50 MB at the top encoder rung); 41 MiB
  * (42 991 616) from 2026-10-24 (cryptorb, ultraze and vysion, kept at the top encoder rung); 40 MiB (41 943 040) from 2026-10-13 (hyoryu and its Majin form); 39.25 MiB (41 156 608) from 2026-10-11 (the 11 Majin / Tenjin form
  * entries); 35 MiB (36 700 160) before.
  */
-export const CREATURES_BUDGET_BYTES = 46_137_344;
+export const CREATURES_BUDGET_BYTES = 54_525_952;
 /** Bind cap per zone (= 2 × 4096² in texels). */
 export const MAX_ATLASES_PER_ZONE = 8;
 /** Planner duplicates allowed over the whole world. */

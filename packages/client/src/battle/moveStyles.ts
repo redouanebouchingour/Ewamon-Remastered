@@ -31,6 +31,7 @@ export const MOVE_STYLE: Readonly<Record<string, MoveStyle>> = {
   'Charge Beam': 'beam',
   'Citrus Toss': 'orb',
   'Close Combat': 'punch',
+  'Comet Tap': 'orb',
   Confusion: 'spin',
   // ravatar: the energy of every past life drawn into one sphere (in the colours of its relic form's type)
   'Cosmic Convergence': 'orb',

@@ -10,11 +10,13 @@ export const SHINY_DERIVED: Readonly<Record<string, VariantPalette>> = {
   bramblecub: { hue: 72, saturation: 1.05, lightness: 1 }, // jade from 80°, chroma 0.23, value 0.40
   brookrawl: { hue: -77, saturation: 1.05, lightness: 1 }, // violet from 349°, chroma 0.17, value 0.43
   budwing: { hue: -83, saturation: 1.05, lightness: 1 }, // magenta from 25°, chroma 0.21, value 0.48
+  burrowyrm: { hue: 60, saturation: 1.05, lightness: 1 }, // lime from 28°, chroma 0.42, value 0.68
   castlemaw: { hue: -75, saturation: 1.6, lightness: 1.3 }, // rose from 50°, chroma 0.02, value 0.24
   cindercap: { hue: 78, saturation: 1.05, lightness: 1 }, // lime from 10°, chroma 0.34, value 0.47
   coalette: { hue: 67, saturation: 1.05, lightness: 1 }, // lime from 21°, chroma 0.31, value 0.45
   coldplate: { hue: 70, saturation: 1.05, lightness: 1 }, // violet from 202°, chroma 0.18, value 0.55
-  cryptorb: { hue: 141, saturation: 1.05, lightness: 1 }, // cyan from 45°, chroma 0.15, value 0.38
+  corvlet: { hue: 143, saturation: 1.6, lightness: 1.3 }, // cyan from 43°, chroma 0.08, value 0.27
+  cryptorb: { hue: 140, saturation: 1.05, lightness: 1 }, // cyan from 46°, chroma 0.15, value 0.38
   darkone: { hue: -120, saturation: 1.05, lightness: 1 }, // lime from 208°, chroma 0.33, value 0.52
   dreambud: { hue: 59, saturation: 1.05, lightness: 1 }, // violet from 213°, chroma 0.20, value 0.79
   dustcub: { hue: -49, saturation: 1.05, lightness: 1 }, // rose from 24°, chroma 0.12, value 0.35
@@ -25,19 +27,24 @@ export const SHINY_DERIVED: Readonly<Record<string, VariantPalette>> = {
   flampling: { hue: -78, saturation: 1.05, lightness: 1 }, // magenta from 20°, chroma 0.53, value 0.67
   flowbot: { hue: 150, saturation: 1.05, lightness: 1 }, // azure from 62°, chroma 0.27, value 0.59
   galaxion: { hue: 66, saturation: 1.05, lightness: 1 }, // lime from 22°, chroma 0.26, value 0.44
-  glacifang: { hue: -114, saturation: 1.05, lightness: 1 }, // lime from 202°, chroma 0.22, value 0.61
+  glacifang: { hue: -115, saturation: 1.05, lightness: 1 }, // lime from 203°, chroma 0.23, value 0.60
   glacinid: { hue: -123, saturation: 1.05, lightness: 1 }, // lime from 211°, chroma 0.21, value 0.69
   glimfin: { hue: 148, saturation: 1.05, lightness: 1 }, // rose from 187°, chroma 0.40, value 0.56
   glimp: { hue: -62, saturation: 1.05, lightness: 1 }, // jade from 214°, chroma 0.10, value 0.91
   glowtent: { hue: 58, saturation: 1.05, lightness: 1 }, // jade from 94°, chroma 0.22, value 0.56
+  gnashfin: { hue: 57, saturation: 1.05, lightness: 1 }, // violet from 215°, chroma 0.18, value 0.38
+  gravelwisp: { hue: 52, saturation: 1.05, lightness: 1 }, // lime from 36°, chroma 0.24, value 0.58
   grubolt: { hue: -52, saturation: 1.6, lightness: 0.85 }, // jade from 204°, chroma 0.07, value 0.36
   gustuff: { hue: 48, saturation: 1.05, lightness: 1 }, // violet from 224°, chroma 0.29, value 0.80
   hexroach: { hue: -118, saturation: 1.05, lightness: 1 }, // magenta from 60°, chroma 0.18, value 0.30
   hollowmane: { hue: 174, saturation: 1.6, lightness: 0.85 }, // jade from 338°, chroma 0.04, value 0.42
   hyoryu: { hue: 78, saturation: 1.05, lightness: 1 }, // violet from 194°, chroma 0.29, value 0.72
-  kygra: { hue: 54, saturation: 1.05, lightness: 1 }, // violet from 218°, chroma 0.30, value 0.52
+  joeyjab: { hue: -125, saturation: 1.05, lightness: 1 }, // violet from 37°, chroma 0.37, value 0.67
+  kindlegrub: { hue: -109, saturation: 1.05, lightness: 1 }, // violet from 21°, chroma 0.31, value 0.54
+  kygra: { hue: 55, saturation: 1.05, lightness: 1 }, // violet from 217°, chroma 0.27, value 0.48
   lumyth: { hue: 148, saturation: 1.05, lightness: 1 }, // gold from 258°, chroma 0.27, value 0.70
   malice: { hue: -114, saturation: 1.05, lightness: 1 }, // cyan from 300°, chroma 0.22, value 0.53
+  meteorb: { hue: -78, saturation: 1.05, lightness: 1 }, // lime from 166°, chroma 0.13, value 0.41
   miscarmen: { hue: -84, saturation: 1.05, lightness: 1 }, // rose from 59°, chroma 0.12, value 0.68
   moflame: { hue: 162, saturation: 1.05, lightness: 1 }, // cyan from 24°, chroma 0.43, value 0.63
   mossling: { hue: -112, saturation: 1.05, lightness: 1 }, // rose from 87°, chroma 0.15, value 0.37
@@ -49,24 +56,31 @@ export const SHINY_DERIVED: Readonly<Record<string, VariantPalette>> = {
   noxmyth: { hue: 164, saturation: 1.6, lightness: 1.3 }, // jade from 348°, chroma 0.09, value 0.18
   pebblit: { hue: -115, saturation: 1.05, lightness: 1 }, // violet from 27°, chroma 0.12, value 0.49
   pebfist: { hue: 158, saturation: 1.05, lightness: 1 }, // cyan from 28°, chroma 0.13, value 0.41
+  puffinch: { hue: 54, saturation: 1.05, lightness: 1 }, // lime from 34°, chroma 0.32, value 0.71
   raidori: { hue: 165, saturation: 1.05, lightness: 1 }, // azure from 47°, chroma 0.18, value 0.47
   raikitsune: { hue: -50, saturation: 1.05, lightness: 1 }, // rose from 25°, chroma 0.34, value 0.53
   resilian: { hue: 74, saturation: 1.05, lightness: 1 }, // jade from 78°, chroma 0.24, value 0.54
   rimeidol: { hue: 70, saturation: 1.05, lightness: 1 }, // magenta from 232°, chroma 0.18, value 0.62
   ripshell: { hue: -91, saturation: 1.05, lightness: 1 }, // magenta from 33°, chroma 0.23, value 0.43
-  scalewisp: { hue: -78, saturation: 1.05, lightness: 1 }, // lime from 166°, chroma 0.18, value 0.33
+  scalewisp: { hue: -80, saturation: 1.05, lightness: 1 }, // lime from 168°, chroma 0.19, value 0.31
+  scorpit: { hue: -92, saturation: 1.05, lightness: 1 }, // magenta from 34°, chroma 0.32, value 0.59
   scraphog: { hue: 66, saturation: 1.05, lightness: 1 }, // lime from 22°, chroma 0.10, value 0.35
   seedrift: { hue: -116, saturation: 1.6, lightness: 0.85 }, // rose from 91°, chroma 0.08, value 0.64
   serpyre: { hue: -124, saturation: 1.05, lightness: 1 }, // lime from 212°, chroma 0.30, value 0.52
+  shalewing: { hue: -59, saturation: 1.05, lightness: 1 }, // rose from 34°, chroma 0.15, value 0.49
   shardling: { hue: -55, saturation: 1.05, lightness: 1 }, // jade from 207°, chroma 0.15, value 0.67
   shiveruff: { hue: 58, saturation: 1.05, lightness: 1 }, // violet from 214°, chroma 0.35, value 0.84
   slushpup: { hue: -48, saturation: 1.05, lightness: 1 }, // jade from 200°, chroma 0.16, value 0.67
   smellduck: { hue: -106, saturation: 1.05, lightness: 1 }, // rose from 81°, chroma 0.42, value 0.66
   snapling: { hue: -115, saturation: 1.05, lightness: 1 }, // rose from 90°, chroma 0.22, value 0.37
+  snowlet: { hue: -116, saturation: 1.05, lightness: 1 }, // lime from 204°, chroma 0.16, value 0.83
+  sproutgrub: { hue: 79, saturation: 1.05, lightness: 1 }, // jade from 73°, chroma 0.36, value 0.53
   stormchick: { hue: -100, saturation: 1.05, lightness: 1 }, // magenta from 42°, chroma 0.30, value 0.76
   sunjaw: { hue: -122, saturation: 1.05, lightness: 1 }, // violet from 34°, chroma 0.33, value 0.52
-  tidalfang: { hue: 80, saturation: 1.05, lightness: 1 }, // violet from 192°, chroma 0.24, value 0.46
+  tidalfang: { hue: 80, saturation: 1.05, lightness: 1 }, // violet from 192°, chroma 0.24, value 0.45
   tidespine: { hue: -108, saturation: 1.05, lightness: 1 }, // lime from 196°, chroma 0.22, value 0.53
+  tuskling: { hue: 159, saturation: 1.05, lightness: 1 }, // cyan from 27°, chroma 0.20, value 0.54
+  twinklit: { hue: 161, saturation: 1.05, lightness: 1 }, // rose from 174°, chroma 0.23, value 0.63
   umbrit: { hue: -59, saturation: 1.6, lightness: 1.3 }, // azure from 271°, chroma 0.04, value 0.17
   veilpup: { hue: -52, saturation: 1.05, lightness: 1 }, // cyan from 238°, chroma 0.11, value 0.44
   voidraxis: { hue: 145, saturation: 1.05, lightness: 1 }, // gold from 261°, chroma 0.15, value 0.23

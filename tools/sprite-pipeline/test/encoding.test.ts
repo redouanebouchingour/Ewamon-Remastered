@@ -59,6 +59,17 @@ const ALBEDO_WHOLE_MIN_PSNR = 30;          // per sprite, whole cell (measured m
 const ALBEDO_WHOLE_MEDIAN_MIN_PSNR = 35;   // over the set
 const ALBEDO_CROP_MIN_PSNR = 26;           // per sprite, worst edge crop (measured min 27.1)
 const ALBEDO_WHOLE_MAX_EDGE_BAD = 0.5;     // measured max 0.46, median 0.20
+// The 34 type-gap species (2026-10-26, #146 to #179) are low-resolution pixel art (.design/imagegen/PIXEL-STYLE.md):
+// nearly every texel sits on a hard colour edge, and stage 2's lanczos fit to 881 px (no integer factor exists) turns
+// each art pixel's border into a ramp the lossy encoder rounds. Their whole-cell edge share measured 0.39 to 0.85 at
+// q88 (mantleaf/front the worst) while PSNR and luma stay inside the bounds, so they get their own edge bound.
+const PIXEL_ART_SPECIES = new Set([
+  'puffinch', 'gustling', 'galeforth', 'corvlet', 'ravenmourne', 'augurvane', 'sproutgrub', 'leafcoon', 'mantleaf',
+  'snowlet', 'hoarfrowl', 'tuskling', 'shagtusk', 'rimetusk', 'scorpit', 'dunevenom', 'shalewing', 'petraptor',
+  'twinklit', 'lumistar', 'stellaria', 'meteorb', 'craterhulk', 'gravelwisp', 'tombdune', 'gnashfin', 'dreadmaw',
+  'kindlegrub', 'pyremoth', 'joeyjab', 'roobrawler', 'burrowyrm', 'dunescale', 'mesadrake',
+]);
+const PIXEL_ART_MAX_EDGE_BAD = 0.9;
 const ALBEDO_WHOLE_MEDIAN_MAX_EDGE_BAD = 0.25;
 const ALBEDO_WHOLE_MAX_INTERIOR_BAD = 0.15; // measured max 0.14, median 0.02
 const ALBEDO_WHOLE_MEDIAN_MAX_INTERIOR_BAD = 0.03;
@@ -394,10 +405,11 @@ describe.skipIf(!CAN_RUN)('§40.1.6.4 acceptance tests on the real output', () =
     expect(all.length).toBe(manifest.atlases.reduce((n, a) => n + a.slots, 0)); // one crop per placed sprite
     const fmt = (s: SpriteStat): string => `${s.sprite}: psnr ${s.psnr.toFixed(1)} edgeBad ${(s.edgeBad * 100).toFixed(1)}% (${s.edgeCount} edge px) interiorBad ${(s.interiorBad * 100).toFixed(2)}% lumaErr ${s.maxLumaErr.toFixed(1)}`;
     const median = (xs: number[]): number => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
+    const edgeBound = (sprite: string): number => (PIXEL_ART_SPECIES.has(sprite.split('/')[0]!) ? PIXEL_ART_MAX_EDGE_BAD : ALBEDO_WHOLE_MAX_EDGE_BAD);
     const bad = [
       ...all.filter((s) => s.whole.psnr < ALBEDO_WHOLE_MIN_PSNR).map((s) => `whole PSNR < ${ALBEDO_WHOLE_MIN_PSNR}: ${fmt(s)}`),
       ...all.filter((s) => s.psnr < ALBEDO_CROP_MIN_PSNR).map((s) => `crop PSNR < ${ALBEDO_CROP_MIN_PSNR}: ${fmt(s)}`),
-      ...all.filter((s) => s.whole.edgeBad > ALBEDO_WHOLE_MAX_EDGE_BAD).map((s) => `whole edge bad > ${ALBEDO_WHOLE_MAX_EDGE_BAD}: ${fmt(s)}`),
+      ...all.filter((s) => s.whole.edgeBad > edgeBound(s.sprite)).map((s) => `whole edge bad > ${edgeBound(s.sprite)}: ${fmt(s)}`),
       ...all.filter((s) => s.whole.interiorBad > ALBEDO_WHOLE_MAX_INTERIOR_BAD).map((s) => `whole interior bad > ${ALBEDO_WHOLE_MAX_INTERIOR_BAD}: ${fmt(s)}`),
       ...all.filter((s) => s.maxLumaErr > ALBEDO_MAX_LUMA_ERR).map((s) => `crop luma > ${ALBEDO_MAX_LUMA_ERR}: ${fmt(s)}`),
     ];

@@ -24,14 +24,14 @@ import {
 } from '../src/index';
 
 describe('counts', () => {
-  it('145 species with dense dex numbers', () => {
-    expect(SPECIES.length).toBe(145);
+  it('179 species with dense dex numbers', () => {
+    expect(SPECIES.length).toBe(179);
     const dex = SPECIES.map((s) => s.dexNumber).sort((a, b) => a - b);
-    expect(dex).toEqual(Array.from({ length: 145 }, (_, i) => i + 1));
+    expect(dex).toEqual(Array.from({ length: 179 }, (_, i) => i + 1));
     expect(SPECIES.filter((s) => s.legendary).length).toBe(14);
   });
-  it('197 moves (193 legacy + Hollow Crescent, Vendetta Volley, Aurora Requiem, Crimson Lotus Prison), 25 abilities, 17 items, 10 orbs, 23 consumables', () => {
-    expect(MOVES.length).toBe(198);
+  it('199 moves (193 legacy + Hollow Crescent, Vendetta Volley, Aurora Requiem, Crimson Lotus Prison, Cosmic Convergence, Comet Tap), 25 abilities, 17 items, 10 orbs, 23 consumables', () => {
+    expect(MOVES.length).toBe(199);
     expect(ABILITIES.length).toBe(28);
     expect(ITEMS.length).toBe(17);
     expect(ORBS.length).toBe(10);

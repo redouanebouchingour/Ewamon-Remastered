@@ -142,7 +142,10 @@ export function ScarNote({ creature: c }: { readonly creature: CreatureInstance 
 }
 
 /** The meter's low and high ends per honor line; dustcub's outlaw and lawman unless a line names its own. */
-const HONOR_ENDS: Readonly<Record<string, readonly [string, string]>> = { cryptorb: ['Purge', 'Protect'] };
+const HONOR_ENDS: Readonly<Record<string, readonly [string, string]>> = {
+  cryptorb: ['Purge', 'Protect'],
+  corvlet: ['Thief', 'Oracle'],
+};
 
 /** The honor ledger (core honor.ts): where the creature stands between outlaw and lawman, and what its evolution will be. */
 export function HonorLedger({ creature: c, sp }: { readonly creature: CreatureInstance; readonly sp: SpeciesDef }) {

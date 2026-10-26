@@ -1591,7 +1591,7 @@
      "Fighting"
     ],
     "evolve": "Final",
-    "look": "A muscular kangaroo boxer with a gold champion belt and a taped tail. A tiny joey with miniature gloves peeks out of its pouch, copying every move.",
+    "look": "A muscular tan kangaroo fighter standing tall on its strong hind legs. Its fists are wrapped in thick red cloth tape like a street brawler, a gold belt sits around its waist and its long thick tail is bound with white tape. Tall pointed ears, a cream belly and a confident, battle-ready stance.",
     "palette": [
      [
       "#c98a52",
@@ -1603,7 +1603,7 @@
      ],
      [
       "#c0492f",
-      "glove red"
+      "red hand tape"
      ],
      [
       "#f4cf3f",

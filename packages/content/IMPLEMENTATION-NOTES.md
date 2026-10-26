@@ -844,6 +844,23 @@ no such field) — a CHANGELOG entry is owed when the spec is next amended.
 - Tests: `test/harmonic.test.ts` (8); the count tests follow (144 species, 74 families, 14 legendary flags, 198 moves,
   28 abilities, 14 quests, the full-dex achievement at 144).
 
+## The type-gap lines #146 to #179 (2026-10-26)
+
+34 species in 14 families from `.design/additions/species.js` (concepts: `.design/type-gap-concepts.pdf`; concept data
+and sprites: `.design/imagegen/concepts/`), aimed at the thinnest types (Cosmic, Normal, Bug, Ice) and missing
+combinations: first pure Bug, Ice, Ghost and Cosmic lines and 15 new dual combinations. Five lines have three stages;
+corvlet is the fourth honor split (`splitEvolvesInto` at 30, augurvane at honor >= 0, else ravenmourne), so the split
+tests now expect four. Comet Tap (`.design/additions/moves.js`, Cosmic, 40 power, no effect) gives twinklit and meteorb
+Cosmic STAB before Starfall; every other move and ability already existed. Learnsets, catch rates, sizes and exp yields
+were set next to comparable lines; flavor text is new for every species. Snowlet evolves at 44 (not the concept's 32)
+so its skyrend spawn (L38 to 41) stays below its evolution level.
+
+Spawns: one slot per root, weights and times by RC-3 and RC-7 (uncommon 5, common 6 to 9, Dark / Ghost types night
+only). Corvlet, tuskling and joeyjab were first planned on galvan_route; the sprite planner then duplicated an atlas or
+moved rimeidol, yaschamp or wooltug out of their migration targets, so they moved to ash_route (corvlet, tuskling) and
+tide_route (joeyjab). Counts: 179 species, 199 moves, 88 families, 99 placed directly, 171 slots; the dex achievement
+target follows (179).
+
 ## Dex research tasks (2026-10-26, not in the SPEC yet)
 
 - `src/data/research.ts` (exported from the index): `researchTasksOf(speciesId)` builds a species' tasks from

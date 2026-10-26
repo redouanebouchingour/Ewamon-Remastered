@@ -1,7 +1,7 @@
 {
-  "total": 328,
+  "total": 396,
   "actionable": 0,
-  "informational": 166,
+  "informational": 168,
   "excluded": [
     {
       "file": "back/yaschamp(back)(fighterstyle).png",
@@ -29,7 +29,7 @@
     "coverage": 1,
     "multiframe": 20,
     "nonsquare": 50,
-    "sidemismatch": 66
+    "sidemismatch": 68
   },
   "flagged": [
     {
@@ -1413,6 +1413,24 @@
       "actionable": []
     },
     {
+      "species": "tuskling",
+      "side": "back",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "back/tuskling(back).png",
+      "actionable": []
+    },
+    {
+      "species": "tuskling",
+      "side": "front",
+      "flags": [
+        "sidemismatch"
+      ],
+      "source": "front/tuskling(front).png",
+      "actionable": []
+    },
+    {
       "species": "velvetomb",
       "side": "back",
       "flags": [
@@ -1578,12 +1596,12 @@
   ],
   "bindStats": {
     "ascent_route": {
-      "atlases": 7,
+      "atlases": 8,
       "duplicated": [],
       "unbound": []
     },
     "ash_route": {
-      "atlases": 5,
+      "atlases": 7,
       "duplicated": [],
       "unbound": []
     },
@@ -1598,7 +1616,7 @@
       "unbound": []
     },
     "deepcut_route": {
-      "atlases": 6,
+      "atlases": 7,
       "duplicated": [],
       "unbound": []
     },
@@ -1628,7 +1646,7 @@
       "unbound": []
     },
     "mire_route": {
-      "atlases": 5,
+      "atlases": 6,
       "duplicated": [],
       "unbound": []
     },
@@ -1643,7 +1661,7 @@
       "unbound": []
     },
     "siege_route": {
-      "atlases": 6,
+      "atlases": 7,
       "duplicated": [],
       "unbound": []
     },
@@ -1684,7 +1702,7 @@
       "unbound": []
     },
     "tide_route": {
-      "atlases": 6,
+      "atlases": 7,
       "duplicated": [],
       "unbound": []
     },
@@ -1706,12 +1724,12 @@
       {
         "albedo": 88,
         "normal": 92,
-        "totalBytes": 45787235
+        "totalBytes": 52878152
       }
     ],
     "thumbs": {
-      "count": 164,
-      "bytes": 892678,
+      "count": 198,
+      "bytes": 1071048,
       "rungs": {
         "q32/aq100/a8": 2,
         "q40/aq100/a8": 3,
@@ -1719,11 +1737,11 @@
         "q56/aq100/a8": 3,
         "q64/aq100/a8": 4,
         "q72/aq100/a8": 26,
-        "q80/aq100/a16": 82,
-        "q80/aq100/a8": 8,
-        "q80/aq90": 32
+        "q80/aq100/a16": 100,
+        "q80/aq100/a8": 9,
+        "q80/aq90": 47
       }
     }
   },
-  "totalBytes": 45787235
+  "totalBytes": 52878152
 }

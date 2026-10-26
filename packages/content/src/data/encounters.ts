@@ -5,7 +5,9 @@
  * — species already placed elsewhere, so the directly-placed set stayed 79. The post-legacy hollowmane (#131) adds a
  * night rare slot to the_rift, dustcub (#132) an uncommon slot to deepcut_route, veilpup (#134) a rare slot to
  * skyrend, castlemaw (#136) a night rare slot to umbral_observatory and cryptorb (#139) a night rare slot to
- * ash_route: 84 placed directly.
+ * ash_route: 84 placed directly. The 14 type-gap roots (2026-10-26, #146 to #179) add one slot each, in tables chosen so
+ * the sprite planner needs no duplicate and every ecosystem migration route stays drawable (roster-coverage §6, the
+ * post-legacy note): 99 placed directly.
  */
 import type { EncounterSlot, EncounterTable, EncounterTier, Medium, SpawnTuning, TimeOfDay, ZoneId } from '../types';
 
@@ -92,6 +94,8 @@ export const ENCOUNTER_TABLES: readonly EncounterTable[] = [
     // Phase D8: the mire's ponds (boardwalk, Old Rod, later HM Surf)
     s('mossling', 5, 3, 6, 'day', 'uncommon', 'water'),
     s('mudbub', 5, 3, 6, 'night', 'uncommon', 'water'),
+    s('puffinch', 6, 2, 5, 'any', 'common'),
+    s('sproutgrub', 6, 2, 5, 'day', 'common'),
     s('mossling', 1, 6, 6, 'any', 'alpha'),
   ]),
   // 6.2 ash_route — cinder, Fire, L7–11
@@ -105,6 +109,9 @@ export const ENCOUNTER_TABLES: readonly EncounterTable[] = [
     s('cindercap', 3, 8, 11, 'any', 'rare'),
     s('moflame', 2, 9, 11, 'night', 'rare'),
     s('cryptorb', 2, 9, 11, 'night', 'rare'),
+    s('kindlegrub', 6, 7, 10, 'any', 'common'),
+    s('tuskling', 5, 8, 11, 'any', 'uncommon'),
+    s('corvlet', 5, 8, 11, 'night', 'uncommon'),
     s('flampling', 1, 11, 11, 'day', 'alpha'),
   ]),
   // 6.3 tide_route — salt, Water, L11–15 (surf zone)
@@ -119,6 +126,8 @@ export const ENCOUNTER_TABLES: readonly EncounterTable[] = [
     s('glimfin', 3, 13, 15, 'any', 'rare', 'water'),
     s('ripshell', 3, 13, 15, 'any', 'rare', 'water'),
     s('kygra', 2, 14, 15, 'day', 'rare', 'water'),
+    s('twinklit', 2, 11, 14, 'night', 'rare'),
+    s('joeyjab', 5, 12, 15, 'day', 'uncommon'),
     s('mudbub', 1, 15, 15, 'any', 'alpha'),
   ]),
   // 6.4 galvan_route — storm, Electric, L15–20
@@ -148,6 +157,8 @@ export const ENCOUNTER_TABLES: readonly EncounterTable[] = [
     s('yahit', 3, 22, 25, 'any', 'rare'),
     s('pyrecap', 2, 20, 23, 'any', 'rare'),
     s('lithokrysm', 2, 24, 25, 'any', 'rare'),
+    s('scorpit', 5, 20, 24, 'any', 'uncommon'),
+    s('burrowyrm', 2, 22, 25, 'any', 'rare'),
     s('pebblit', 1, 25, 25, 'any', 'alpha'),
   ]),
   // 6.6 hollow_route — vesper, Ghost, L25–30
@@ -180,6 +191,8 @@ export const ENCOUNTER_TABLES: readonly EncounterTable[] = [
     s('coalette', 5, 30, 33, 'night', 'uncommon'),
     s('flowbot', 2, 33, 35, 'any', 'rare'),
     s('acier', 2, 33, 35, 'any', 'rare'),
+    s('gravelwisp', 5, 30, 33, 'night', 'uncommon'),
+    s('shalewing', 2, 30, 34, 'day', 'rare'),
     s('grubolt', 1, 35, 35, 'any', 'alpha'),
   ]),
   // 6.8 ascent_route — sky, Dragon, L35–42 (surf: the glacier melt)
@@ -194,6 +207,7 @@ export const ENCOUNTER_TABLES: readonly EncounterTable[] = [
     s('resilith', 5, 35, 38, 'any', 'uncommon'),
     s('serpyre', 3, 39, 42, 'any', 'rare'),
     s('umbrit', 3, 38, 42, 'night', 'rare'),
+    s('meteorb', 2, 35, 37, 'night', 'rare'),
     s('scalewisp', 1, 42, 42, 'any', 'alpha'),
   ]),
   // 6.9 saltmourn — town static: the drowned harbour, L14–24 (all water)
@@ -204,6 +218,7 @@ export const ENCOUNTER_TABLES: readonly EncounterTable[] = [
     s('kygra', 2, 16, 20, 'day', 'rare', 'water'),
     s('wraithtide', 2, 16, 20, 'night', 'rare', 'water'),
     s('voltide', 2, 20, 24, 'any', 'rare', 'water'),
+    s('gnashfin', 5, 18, 24, 'night', 'uncommon', 'water'),
   ]),
   // 6.10 skyrend — town static: the cliff roosts, L38–44
   table('skyrend', [
@@ -215,6 +230,7 @@ export const ENCOUNTER_TABLES: readonly EncounterTable[] = [
     // Phase D8: the meltwater tarn under the roosts
     s('tidalfang', 3, 39, 44, 'any', 'rare', 'water'),
     s('veilpup', 2, 38, 41, 'any', 'rare'),
+    s('snowlet', 2, 38, 41, 'any', 'rare'),
   ]),
   // 6.11 solenne — town static: the suburb park and pond, L40–45
   table('solenne', [

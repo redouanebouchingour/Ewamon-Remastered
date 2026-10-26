@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-26 the type-gap lines (#146–179). One entry. -->
+
+## 2026-10-26 · `00-spine.md` SpeciesDef `dexNumber`, ACHIEVEMENTS, §3 rule 3 counts; `20-client.md` §20.9.5; `40-pipelines.md` §40.1 species set, accounting, budget table (`creatures/` ≤ 52 MiB), acceptance 2 and 4; `50-verification-budget.md` rule 11, content and sprite test rows, roster row · the type-gap lines (#146–179)
+Why: the user asked for Ewamon in the thinnest types and the missing type combinations (`.design/type-gap-concepts.pdf`): 14 families, 34 species, five of them three-stage lines and one honor split (corvlet at 30: augurvane, Psychic/Flying, at honor ≥ 0, else ravenmourne, Dark/Flying), plus Comet Tap, the first 40-power Cosmic attack. Their sprites are low-resolution pixel art the user approved (`.design/imagegen/PIXEL-STYLE.md`). At the top encoder rung they need 52.88 MB, so the creature ceiling goes from 44 to 52 MiB (the user's call over dropping every sprite to q80, with room left for the Astaroth legendary). Pixel art is almost all hard edge, so acceptance test 4 gives those 34 species an edge-share bound of 90 %.
+Evidence: `pnpm --filter @ewa/content run validate` (179/179 obtainable, 88 families, 99 placed directly); content tests; `tools/sprite-pipeline/test/{budget,zones,encoding}.test.ts` (198 entries, 99 atlases, 52 878 152 B, none duplicated, 0 actionable flags); client `ecosystem-sprites.test.ts` (every migration route drawable).
+Affects: `.design/additions/{species,moves}.js`; `packages/content/src/data/{species,moves,encounters,achievements,shinyDerived}.ts`, `src/{schema,validate,roster}.ts`; `packages/client/src/screens/CreatureDetail.tsx` (corvlet's honor meter reads Thief / Oracle); `packages/client/public/creatures/`; `tools/sprite-pipeline/src/types.ts`, `tools/asset-audit/src/bytes.ts`; `.design/roster-coverage.md`.
+
 <!-- 2026-10-26 kykaiser (#145), kygra's evolution. One entry. -->
 
 ## 2026-10-26 · `00-spine.md` SpeciesDef `dexNumber`, ACHIEVEMENTS, §3 rule 3 counts; `20-client.md` §20.9.5; `40-pipelines.md` §40.1 species set, accounting, budget table, acceptance 2; `50-verification-budget.md` rule 11, content and sprite test rows, roster row · kykaiser (#145)

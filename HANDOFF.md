@@ -55,12 +55,12 @@ fail under machine load and pass alone).
 | Area | State | Proof |
 |---|---|---|
 | core | 1,000-battle singles fuzz byte-identical through every phase (battle forms, honor, Majin / Tenjin all optional with defaults); doubles behind `slots: 2` with their own fuzz; capLevel / noExp for the tower; battle forms (`formChange`, form signature moves, `Action.transform`); honor ledger (`honor` event, 37 event kinds) | `npx vitest run packages/core` |
-| content | 145 species / 74 families obtainable (130 legacy + 15 post-legacy, see below); 198 moves; 21 zones; interiors for every town building (8 themed gym halls with puzzles, the 4-chamber league hall); 39 TMs, 6 stones, 30 achievements, 12 league rematch teams, Cut/Strength obstacles, water slots; town arrival points; 13 Majin / Tenjin species and the two bands in the story | `pnpm --filter @ewa/content run validate` |
+| content | 179 species / 88 families obtainable (130 legacy + 49 post-legacy, see below); 199 moves; 21 zones; interiors for every town building (8 themed gym halls with puzzles, the 4-chamber league hall); 39 TMs, 6 stones, 30 achievements, 12 league rematch teams, Cut/Strength obstacles, water slots; town arrival points; 13 Majin / Tenjin species and the two bands in the story | `pnpm --filter @ewa/content run validate` |
 | server | interiors (door warps, per-player gates, switches, hall arenas), story grants, quests incl. restoreZone / deliverItem, TMs / tutor / evolve (incl. the honor split, migration `0005_honor`), trade evolutions, shinies, achievements, weather, doubles, surf / fishing / obstacles / bike, raids resync, fast travel + visited flags, ranked queue, rematches, battle tower, password reset + email verification; denser wild spawns (80 / 20 / 36 alive on route / town / story) | `npx vitest run packages/server` |
 | progression | Acts I–III + all 12 league fights headless, 0 desyncs, final `GET /me` has 8 badges + Wardens + Champion + 33 beats + 8 legendaries (full walk re-run and re-recorded 2026-10-20 on the sculpted terrain: 6/6 files in 2583 s, act1 563 s, act2 803 s, act3a 282 s, act3b 472 s, act3c 220 s, halls 9/9, 0 desyncs; `packages/server/test/fixtures/progression/PROGRESS.md`) | `pnpm test:progression` (~41 min) |
 | client | every server system has UI. The **Broadcast UI** (2026-10-11): carbon panels, paper white, one hot orange for selected / press / focus, type colour as the hero, Barlow Condensed over Barlow, 19 type icons instead of letter codes, canvas HUD in the same language, battle command deck, five top-bar links + More, Party as a card row. Signature-move cinematics, the Majin / Tenjin bond cinematic + transform toggle + band tutorial, the honor meter | `npx vitest run packages/client`; Playwright `client-e2e` |
 | render | interiors, doubles stage, shiny glow, surf ripple, weather, art pass, density dressing, neighbour skirt, fixed light layout + off-scene zone prepare, device-lost recovery; 14 move motion styles (63 → 64 VFX ids with `form_tenjin`); battle-form auras (flames / light, sigil ring, rim); M3 town art for Saltmourn, Skyrend, Cinderhold, Stormrook (`albedoCal`, `Palette.grassTone`, `lava_glow` emissive, plaza clutter) | `npx vitest run packages/render`; `.design/audits/M3-render-audit.md` |
-| sprites | 164 sprite keys (145 species + battle forms), 82 atlases, creature byte ceiling 46,137,344 (44 MiB, raised 2026-10-25 for the Elemutt line; 41 MiB from 2026-10-24) | `pnpm --filter @ewa/sprite-pipeline` tests |
+| sprites | 198 sprite keys (179 species + battle forms), 99 atlases, creature byte ceiling 54,525,952 (52 MiB, raised 2026-10-26 for the type-gap lines; 44 MiB from 2026-10-25, 41 MiB from 2026-10-24) | `pnpm --filter @ewa/sprite-pipeline` tests |
 | arena PvP | out-of-world battles: Standard, Level 50, Ranked (Lv 50, the only rated kind), Weekly Cup, friend invites, AI Training; healed copies (no hp / exp); a dedicated `arena` room + stadium; the in-world challenge and Mirevale ranked queue unchanged | `npx vitest run packages/server/test/arena.test.ts packages/client/test/arena.test.tsx`; SPEC §30.4.10, §20.9.9d |
 | audio | 380 jobs (188 sfx ids) from the 58 user-approved CC0 downloads, no new downloads since; 73.33 MiB of 80; credits + licences shipped; 13 signature-move premixes (`sig_*`, `sig_cosmic_convergence` since 2026-10-25) and 2 bond sounds | `npx vitest run tools/audio-pipeline`; `IMPLEMENTATION-NOTES.md` "Phase E4 downloads" |
 
@@ -94,6 +94,16 @@ fail under machine load and pass alone).
   now takes `evolvesInto` / `evolvesAt` there) with kygra's learn levels pinned. Evolution only, no table. The white
   backgrounds were keyed by border flood, the white claw tips that touch the background restored by hand; the back is
   mirrored to face right. 45.79 MB of the 44 MiB ceiling, top rung.
+- **The type-gap lines #146 to #179** (2026-10-26): 14 families, 34 species aimed at the thinnest types and the
+  missing combinations (concepts in `.design/type-gap-concepts.pdf`): five three-stage lines (puffinch, sproutgrub,
+  tuskling, twinklit, burrowyrm), corvlet's honor split at 30 (augurvane Psychic/Flying or ravenmourne Dark/Flying, the
+  meter reads Thief / Oracle) and eight two-stage lines. Comet Tap is the first 40-power Cosmic move. Every root spawns
+  in one table (roster-coverage §6); the tables were chosen with the sprite planner so no zone duplicates an atlas and
+  every ecosystem migration route stays drawable (galvan_route broke rimeidol, yaschamp and wooltug). The sprites are
+  low-res pixel art from gpt-image (`.design/imagegen/PIXEL-STYLE.md`, tools in `pixel-tools/`): 128 px sources
+  enlarged 8x nearest into `assets-src/creatures/`, copies of the 128 px files in `.design/imagegen/concepts/`.
+  52.88 MB at the top rung: the creature ceiling went to 52 MiB (the user's call), and acceptance test 4 gives these
+  34 pixel-art species an edge-share bound of 90 %. Existing moves and abilities otherwise; no signature moves.
 - **The Dex upgrade** (2026-10-26): tabbed entries (Overview, Research, Moves, Matchups, Habitat, Evolution, Forms) with a
   form / variant / shiny / alpha viewer and split evolutions as branches with their conditions; sorting, a list view,
   more filters and arrow keys; a habitat atlas, compare, rewards; Listen (type cry + the entry read aloud); deep links

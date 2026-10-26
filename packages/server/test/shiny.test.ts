@@ -67,9 +67,11 @@ describe('the shiny roll', () => {
 
   it('adds no rng draw: the pre-D4 fields of 3 000 seeded spawns hash to the value captured from the pre-D4 director', () => {
     // the director's inputs as they were when the digest was captured: Phase D8 added water slots to mire_route's table
-    // and Phase D10 stamped its obstacle — drop the former and un-stamp the latter (the director code is what is pinned)
+    // and Phase D10 stamped its obstacle — drop the former and un-stamp the latter (the director code is what is pinned).
+    // The type-gap lines (2026-10-26) added puffinch and sproutgrub slots to the table: dropped too.
     const full = encounterTableFor('mire_route')!;
-    const table: EncounterTable = { ...full, slots: full.slots.filter((s) => (s.medium ?? 'land') === 'land') };
+    const later = new Set(['puffinch', 'sproutgrub']);
+    const table: EncounterTable = { ...full, slots: full.slots.filter((s) => (s.medium ?? 'land') === 'land' && !later.has(s.species)) };
     const surface = getZoneSurface('mire_route');
     const walkable = Uint8Array.from(surface.heightfield.walkable);
     for (const i of surface.obstacleCells.keys()) walkable[i] = 1;
