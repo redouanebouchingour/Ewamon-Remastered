@@ -1,0 +1,11 @@
+Image 1 is a battle sprite from an indie creature-collecting RPG called Ewamon. Draw ONE new original creature in exactly the same pixel art style as image 1, but do not copy its design.
+
+Pixel art style (most important): a true low-resolution pixel art sprite drawn on a grid of about 100 by 100 pixels, then enlarged with nearest-neighbour scaling so every art pixel is a big, crisp square block, exactly like image 1. Thick dark outline around the whole silhouette. Flat cel shading with only 2 or 3 tones per colour, hard edges between tones. Big simple shapes, a clean readable silhouette, large expressive eyes. No fine feather texture, no gradients, no soft airbrush shading, no anti-aliasing, no blur, no painterly detail.
+
+Creature: Gustling, an original Normal/Flying creature, the middle stage of a line that starts as a round cream-and-tan ball of a chick and ends as a tall hawk with a red feather scarf. Gustling is in between: an egg-shaped body, a cream belly, a tan back, big dark eyes with a white shine, a small orange beak. Its oversized tan wings are wrapped around its body like a travelling cloak, with darker tan bands at the wing tips peeking out at the bottom. A short ruff of rust-red feathers circles its neck. A single cream feather curls up from the top of its head like a question mark. Two ribbon tail strands with rust-red tips trail behind it. Short orange legs. Curious, calm expression.
+
+Pose and framing: front battle sprite, 3/4 view facing slightly to the left, full body, centered, with empty space around it, the same scale as image 1.
+
+Colours: cream #efe2c4, tan #c49a64, orange #e0874a, dark outline #2a2d3c.
+
+Background: perfectly flat solid magenta #ff00ff, the same as image 1, no shadow, no scenery. No magenta or pink on the creature. No text, no border, no watermark, only one creature.
