@@ -286,6 +286,7 @@ export function buildTallGrass(surface: SurfaceId, seed: number, size: readonly 
 /**
  * A ground clump: 5 short two-sided cards fanned round a centre (0.55–0.85 m wide, 0.28–0.45 m tall), leaning back
  * 12–30° and sampling the dense lower band of the grass card (v 0..0.7), normals bent up so it lights like the lawn.
+ * lod1 3 cards, lod2 2 (every other / every third card of the fan, widened to keep the clump's cover).
  */
 export function buildGroundTuft(surface: SurfaceId, seed: number): PropGeo {
   const p = createPrng(seed);
@@ -295,7 +296,10 @@ export function buildGroundTuft(surface: SurfaceId, seed: number): PropGeo {
   for (let k = 0; k < n; k++) {
     const w = 0.55 + p.next() * 0.3; const h = 0.28 + p.next() * 0.17;
     const a = a0 + (k * TAU) / n + (p.next() - 0.5) * 0.4;
-    card(tiers[0]!, surface, Math.cos(a) * 0.12, -0.03, Math.sin(a) * 0.12, w, h, a + Math.PI / 2, -0.2 - p.next() * 0.3, [0, -1.0, 0], 0.8, [0, 0, 1, 0.7], true);
+    const lean = -0.2 - p.next() * 0.3;
+    card(tiers[0]!, surface, Math.cos(a) * 0.12, -0.03, Math.sin(a) * 0.12, w, h, a + Math.PI / 2, lean, [0, -1.0, 0], 0.8, [0, 0, 1, 0.7], true);
+    if (k % 2 === 0) card(tiers[1]!, surface, Math.cos(a) * 0.12, -0.03, Math.sin(a) * 0.12, w * 1.3, h, a + Math.PI / 2, lean, [0, -1.0, 0], 0.8, [0, 0, 1, 0.7], true);
+    if (k % 3 === 0) card(tiers[2]!, surface, Math.cos(a) * 0.12, -0.03, Math.sin(a) * 0.12, w * 1.6, h, a + Math.PI / 2, lean, [0, -1.0, 0], 0.8, [0, 0, 1, 0.7], true);
   }
   return propGeo(tiers[0]!, tiers[1]!, tiers[2]!, null, [surface]);
 }

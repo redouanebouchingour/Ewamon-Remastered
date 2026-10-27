@@ -11,6 +11,7 @@
 import type { Node, UniformNode } from 'three/webgpu';
 import { abs, float, length, max, modelWorldMatrix, mx_noise_float, sin, smoothstep, uv, vec2, vec3, vec4 } from 'three/tsl';
 import type { SharedUniforms } from './harvest.js';
+import { detailState } from '../zone/detail.js';
 
 export interface WindParams {
   readonly amplitude: UniformNode<'float', number>;
@@ -33,7 +34,8 @@ export const WIND_TRUNK_HEIGHT_M = 6.0;
 
 /**
  * Displaces a local-space position by the shared wind field. Returns the new local position.
- * `p` is normally `positionLocal`.
+ * `p` is normally `positionLocal`. Past the detail distance (`zone/detail.ts`) the sway eases out over the rim's fade
+ * band and the foliage stands still; at "max" the radius is past every zone, so everything sways as before.
  */
 export function windDisplace(p: Node, w: WindParams, u: SharedUniforms): Node {
   const pv = p as Node<'vec3'>;
@@ -42,7 +44,9 @@ export function windDisplace(p: Node, w: WindParams, u: SharedUniforms): Node {
   const gust = mx_noise_float(vec3(wp.xz.mul(0.05), u.windTime.mul(0.07))).mul(0.5).add(0.5);   // 0..1 slow gust field
   const sway = sin(phase).mul(0.7).add(sin(phase.mul(2.3).add(1.7)).mul(0.3));
   const weight = w.stiffnessFromUv ? uv().y : pv.y.div(WIND_TRUNK_HEIGHT_M).clamp(0, 1);
-  const q = weight.mul(weight);                                                                // quadratic stiffness
+  const field = detailState.uniform as unknown as Node<'vec4'>;
+  const near = float(1).sub(smoothstep(field.z.sub(field.w), field.z, length(wp.xz.sub(field.xy))));
+  const q = weight.mul(weight).mul(near);                                                      // quadratic stiffness
   let d: Node<'vec3'> = vec3(u.windDir.x, 0, u.windDir.y).mul(sway.mul(w.amplitude).mul(gust).mul(q));
   if (w.push !== undefined && u.push !== undefined) d = d.add(pushDisplace(wp, u.push).mul(q.mul(w.push)));
   return pv.add(d);

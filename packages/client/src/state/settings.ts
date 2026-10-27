@@ -18,6 +18,8 @@ export type GraphicsQualitySetting = 'auto' | 'low' | 'medium' | 'high';
  * GPU finishes frames (beyond the refresh rate: the extra frames are never shown, a benchmark mode).
  */
 export type FrameCap = -1 | 0 | 30 | 60;
+/** How far from the player grass tufts, flowers, pebbles and ambient motes (fireflies, pollen…) draw: 4 / 8 / 16 m, or all (render `zone/detail.ts`). */
+export type DetailDistance = 'close' | 'medium' | 'far' | 'max';
 export const FRAME_CAP_UNLIMITED = -1;
 
 export interface GraphicsSettings {
@@ -25,6 +27,7 @@ export interface GraphicsSettings {
   readonly renderScale: 0.75 | 1;
   readonly quality: GraphicsQualitySetting;
   readonly frameCap: FrameCap;
+  readonly detailDistance: DetailDistance;
   /** frames per second in the top bar */
   readonly showFps: boolean;
   readonly dof: boolean;
@@ -134,7 +137,7 @@ export const DEFAULT_KEYBINDS: Keybinds = {
 export const INPUT_ACTIONS = Object.keys(DEFAULT_KEYBINDS) as InputAction[];
 
 export const DEFAULT_SETTINGS: SettingsData = {
-  graphics: { reducedEffects: false, renderScale: 1, quality: 'auto', frameCap: 60, showFps: false, dof: true, bloom: true, grain: true, chroma: true, shake: true, hitstop: true, slowmo: true },
+  graphics: { reducedEffects: false, renderScale: 1, quality: 'auto', frameCap: 60, detailDistance: 'max', showFps: false, dof: true, bloom: true, grain: true, chroma: true, shake: true, hitstop: true, slowmo: true },
   accessibility: { reducedMotion: 'system', colorblind: 'none', uiScale: 1, battleTextSpeed: 'normal', screenFlash: true, speedrunTimer: false, battleCommentary: true, trainerBanter: true, followerChatter: true },
   audio: { master: 0.8, music: 0.7, sfx: 0.8, ui: 0.6, muteWhenHidden: true, npcVoices: false, battleVoices: false, voices: 0.8, speechInput: false },
   keybinds: DEFAULT_KEYBINDS,

@@ -11,7 +11,7 @@ import { TYPE_NAMES } from '@ewa/core';
 import { REDUCED_LOCKED } from '../state/effective';
 import { useEffectiveSettings } from '../state/applySettings';
 import { INPUT_ACTIONS, UI_SCALE, bindingConflict, isBindable, useSettingsStore } from '../state/settings';
-import type { Colorblind, FrameCap, GraphicsQualitySetting, GraphicsSettings, InputAction } from '../state/settings';
+import type { Colorblind, DetailDistance, FrameCap, GraphicsQualitySetting, GraphicsSettings, InputAction } from '../state/settings';
 import { Button } from '../ui/Button';
 import { Segmented, Select } from '../ui/Field';
 import { Panel } from '../ui/Panel';
@@ -40,7 +40,7 @@ const TABS: readonly { readonly key: Tab; readonly label: string }[] = [
   { key: 'world', label: 'World' },
 ];
 
-type EffectToggle = Exclude<keyof GraphicsSettings, 'reducedEffects' | 'renderScale' | 'quality' | 'frameCap' | 'showFps'>;
+type EffectToggle = Exclude<keyof GraphicsSettings, 'reducedEffects' | 'renderScale' | 'quality' | 'frameCap' | 'detailDistance' | 'showFps'>;
 const EFFECT_TOGGLES: Readonly<Record<EffectToggle, { readonly label: string; readonly description: string }>> = {
   dof: { label: 'Depth of field', description: 'Soft focus on the distance. Never blurs your creature or an active battler.' },
   bloom: { label: 'Bloom', description: 'Glow around bright light. Static, so it stays available under reduced motion.' },
@@ -107,7 +107,7 @@ function GraphicsTab() {
       <div className={s.control}>
         <div>
           <p className={s.controlLabel}>Quality</p>
-          <p className={l.caption}>Low renders at 1× pixel density without ambient occlusion, depth of field or bloom and with half the shadow detail. Auto picks Low on Intel integrated graphics.</p>
+          <p className={l.caption}>Low renders at 1× pixel density without ambient occlusion, depth of field or bloom, with half the shadow detail and simpler trees and grass sooner. Auto picks Low on Intel integrated graphics.</p>
         </div>
         <Segmented<GraphicsQualitySetting>
           label="Quality"
@@ -119,6 +119,23 @@ function GraphicsTab() {
             { value: 'high', label: 'High' },
           ]}
           onChange={(v) => set('graphics', { quality: v })}
+        />
+      </div>
+      <div className={s.control}>
+        <div>
+          <p className={s.controlLabel}>Detail distance</p>
+          <p className={l.caption}>How far from you short grass, flowers, pebbles, fireflies and other drifting motes are drawn. Tall grass always shows.</p>
+        </div>
+        <Segmented<DetailDistance>
+          label="Detail distance"
+          value={g.detailDistance}
+          options={[
+            { value: 'close', label: 'Close' },
+            { value: 'medium', label: 'Medium' },
+            { value: 'far', label: 'Far' },
+            { value: 'max', label: 'Max' },
+          ]}
+          onChange={(v) => set('graphics', { detailDistance: v })}
         />
       </div>
       <div className={s.control}>

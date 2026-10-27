@@ -693,6 +693,7 @@ class World implements World3D {
       this.applyBattleInset();
     };
     apply();
+    this.renderer.setDetailDistance?.(useSettingsStore.getState().graphics.detailDistance);
     this.rendererOffs.push(onBattlePanelTop(() => this.applyBattleInset()));
     if (typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(apply);
@@ -707,6 +708,10 @@ class World implements World3D {
       useSettingsStore.subscribe(
         (s) => s.graphics.quality,
         (q) => this.renderer.setQuality?.(q),
+      ),
+      useSettingsStore.subscribe(
+        (s) => s.graphics.detailDistance,
+        (d) => this.renderer.setDetailDistance?.(d),
       ),
     );
   }

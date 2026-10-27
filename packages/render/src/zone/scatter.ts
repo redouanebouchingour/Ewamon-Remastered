@@ -24,6 +24,7 @@ import { ScatterMatrices, ScatterMesh, scatterColors } from './instancing.js';
 import { hash2 } from './prng.js';
 import { drain, type Steps } from '../steps.js';
 import { CARD_RENDER_ORDER } from './split.js';
+import { DETAIL_KINDS, FOLIAGE_LOD_FAR, FOLIAGE_LOD_STEP_M, chunkInDetail, detailState, isFoliageKind } from './detail.js';
 
 /** One scatter instance (world placement + tint). */
 export interface Instance { readonly x: number; readonly y: number; readonly z: number; readonly yaw: number; readonly scale: number; readonly tint: number }
@@ -54,6 +55,8 @@ export interface ChunkRec {
   tier: Tier;
   /** Inside the camera frustum padded by the shadow reach. */
   active: boolean;
+  /** Within the detail distance of the focus (`detail.ts`): the detail kinds draw this chunk's instances. */
+  detail: boolean;
   /** Objects shown only at a tier (merged static props). */
   readonly byTier: [Object3D[], Object3D[], Object3D[], Object3D[]];
   /** Objects visible at every tier (terrain). */
@@ -78,7 +81,7 @@ export class ChunkSet {
     let c = this.chunks.get(index);
     if (c === undefined) {
       const [x, z] = chunkCentre(this.grid, index);
-      c = { index, centre: new Vector3(x, y, z), tier: 0, active: true, byTier: [[], [], [], []], always: [] };
+      c = { index, centre: new Vector3(x, y, z), tier: 0, active: true, detail: true, byTier: [[], [], [], []], always: [] };
       this.chunks.set(index, c);
       this.list.push(c);
     }
@@ -87,14 +90,20 @@ export class ChunkSet {
 
   at(x: number, z: number): ChunkRec { return this.get(chunkOf(this.grid, x, z)); }
 
-  /** Per-frame tier + activity update. Zero allocation. Returns the number of chunks at the impostor tier. */
+  /**
+   * Per-frame tier + activity + detail update. Zero allocation. Returns the number of chunks at the impostor tier.
+   * The tier distances are scaled by the LOD scale (`detail.ts`: a distance over the scale against the SPEC's tiers).
+   */
   update(cameraPos: Vector3, camera: Camera | null): number {
     if (camera) _frustum.setFromProjectionMatrix(_vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
     const half = this.grid.cell / 2 + SHADOW_REACH_M;
+    const lodScale = detailState.lodScale;
     let far = 0; let changed = false;
     for (let i = 0; i < this.list.length; i++) {
       const c = this.list[i]!;
-      const t = chooseTier(c.centre.distanceTo(cameraPos), c.tier);
+      const t = chooseTier(c.centre.distanceTo(cameraPos) / lodScale, c.tier);
+      const detail = chunkInDetail(c.centre.x, c.centre.z, this.grid.cell / 2);
+      if (detail !== c.detail) { c.detail = detail; changed = true; }
       let active = true;
       if (camera) {
         _box.min.set(c.centre.x - half, c.centre.y - 6, c.centre.z - half);
@@ -251,6 +260,12 @@ export class ScatterMask {
 
 const MASKS = new WeakMap<Object3D, ScatterMask>();
 
+// per-tier instance bounds of the foliage write (ScatterField.syncFoliage)
+const _minX = new Float64Array(4);
+const _maxX = new Float64Array(4);
+const _minZ = new Float64Array(4);
+const _maxZ = new Float64Array(4);
+
 /** The ground-cover mask of a zone root (created on first use; every `ScatterField` under that root reads it). */
 export function scatterMaskFor(root: Object3D): ScatterMask {
   let m = MASKS.get(root);
@@ -289,6 +304,12 @@ export class ScatterField {
   private readonly spheres = [new Sphere(), new Sphere(), new Sphere(), new Sphere()];
   private generation = -1;
   readonly total: number;
+  /** Whether the detail distance hides this kind (`detail.ts`): only chunks within it are written. */
+  readonly detail: boolean;
+  /** Foliage (`detail.ts`): with a finite detail distance each instance picks its own tier from the focus. */
+  readonly foliage: boolean;
+  /** The focus, radius and generations the per-instance foliage write used (NaN = never written that way). */
+  private foliageAt = [NaN, NaN, NaN];
   /** The zone root's ground-cover mask and this kind's cover class (T1 / T3). */
   readonly mask: ScatterMask;
   readonly coverClass: number;
@@ -304,6 +325,8 @@ export class ScatterField {
   constructor(readonly kind: ScatterKind, instances: readonly Instance[], chunks: ChunkSet, parent: Object3D, tints: readonly Color[]) {
     this.mask = scatterMaskFor(parent);
     this.coverClass = coverClassOf(kind.name);
+    this.detail = DETAIL_KINDS.has(kind.name);
+    this.foliage = isFoliageKind(kind.name);
     this.halfCell = chunks.grid.cell / 2;
     const byChunk = new Map<number, Instance[]>();
     for (const it of instances) {
@@ -345,7 +368,7 @@ export class ScatterField {
         matrices ??= new ScatterMatrices(cap);
         const tinted = tint === 'all' || (tint === 'cards' && part.cls === 1);
         if (tinted) colorAttr ??= scatterColors(cap);
-        const mesh = new ScatterMesh(part.geometry, mats, matrices, tinted ? colorAttr : null, this.spheres[t]!);
+        const mesh = new ScatterMesh(part.geometry, mats, matrices, tinted ? colorAttr : null, this.spheres[t]!, this.detail);
         mesh.name = `ewa:scatter:${kind.name}:t${t}:a${part.cls}`;
         // read by dumpZone (§40.5.2 `scatter.instanced`: the dump gains the scatter kind and LOD tier; 3 = impostor)
         mesh.userData = { ewaScatterKind: kind.name, ewaScatterTier: t };
@@ -369,6 +392,7 @@ export class ScatterField {
    * Zero allocation.
    */
   sync(chunks: ChunkSet): void {
+    if (this.foliage && this.syncFoliage(chunks)) return;
     const maskChanged = this.mask.generation !== this.maskGeneration;
     if (chunks.generation === this.generation && !maskChanged) return;
     this.maskGeneration = this.mask.generation;
@@ -389,7 +413,7 @@ export class ScatterField {
       let minX = Infinity; let maxX = -Infinity; let minZ = Infinity; let maxZ = -Infinity;
       for (let c = 0; c < this.recs.length; c++) {
         const rec = this.recs[c]!;
-        if (rec.tier !== t || !rec.active) continue;
+        if (rec.tier !== t || !rec.active || (this.detail && !rec.detail)) continue;
         const s = this.starts[c]!; const n = this.counts[c]!;
         dstM.set(this.matrices.subarray(s * 16, (s + n) * 16), k * 16);
         if (dstC) dstC.set(this.colors.subarray(s * 3, (s + n) * 3), k * 3);
@@ -411,6 +435,93 @@ export class ScatterField {
       for (const m of group) { m.instances = k; m.visible = k > 0; }
     }
     this.applyMask(true);
+  }
+
+  /**
+   * Foliage under a finite detail distance (`detail.ts`): every active chunk's instances are written one by one into
+   * the tier their distance from the focus asks for (never finer than the chunk's own tier): within the radius the
+   * chunk's tier, past it lod1, past `FOLIAGE_LOD_FAR` × it lod2. Rewritten when the focus moved
+   * `FOLIAGE_LOD_STEP_M`, or the radius, the chunks or the mask changed; the mask is applied inline. Foliage counts
+   * are a few hundred per zone, so a rewrite is cheap. Returns false (the chunk path runs) when the radius is
+   * unlimited. Zero allocation.
+   */
+  private syncFoliage(chunks: ChunkSet): boolean {
+    const r = detailState.radius;
+    const at = this.foliageAt;
+    if (!Number.isFinite(r)) {
+      if (!Number.isNaN(at[0]!)) { at.fill(NaN); this.generation = -1; }   // back to the chunk path: rewrite it all
+      return false;
+    }
+    const fx = detailState.focusX; const fz = detailState.focusZ;
+    const due = Number.isNaN(at[0]!) || Math.hypot(fx - at[0]!, fz - at[1]!) >= FOLIAGE_LOD_STEP_M || r !== at[2]
+      || chunks.generation !== this.generation || this.mask.generation !== this.maskGeneration;
+    if (!due) return true;
+    at[0] = fx; at[1] = fz; at[2] = r;
+    this.generation = chunks.generation;
+    this.maskGeneration = this.mask.generation;
+    this.dstAt.fill(-1);   // no chunk slices: applyMask has nothing to do
+    this.masked.fill(0);
+    const k = this.lo;   // per tier: instances written
+    k.fill(0);
+    _minX.fill(Infinity); _maxX.fill(-Infinity); _minZ.fill(Infinity); _maxZ.fill(-Infinity);
+    const src = this.matrices; const srcC = this.colors;
+    const masked = this.mask.count > 0; const cls = this.coverClass;
+    const far = r * FOLIAGE_LOD_FAR;
+    for (let c = 0; c < this.recs.length; c++) {
+      const rec = this.recs[c]!;
+      if (!rec.active) continue;
+      const s = this.starts[c]!; const n = this.counts[c]!;
+      for (let i = 0; i < n; i++) {
+        const so = (s + i) * 16;
+        const x = src[so + 12]!; const z = src[so + 14]!;
+        const d = Math.hypot(x - fx, z - fz);
+        let t = Math.max(rec.tier, d > far ? 2 : d > r ? 1 : 0);
+        while (t > rec.tier && this.tierMeshes[t] === null) t--;
+        const group = this.tierMeshes[t];
+        if (!group) continue;
+        const head = group[0]!;
+        const dstM = head.instanceMatrix.array as Float32Array;
+        const j = k[t]!; k[t] = j + 1;
+        const o = j * 16;
+        for (let e = 0; e < 16; e++) dstM[o + e] = src[so + e]!;
+        if (masked) {
+          const f = this.mask.factor(x, z, cls);
+          if (f <= MASK_HIDE_BELOW) { for (let e = 0; e < 11; e++) dstM[o + e] = 0; }
+          else if (f < 1) { dstM[o + 4] = dstM[o + 4]! * f; dstM[o + 5] = dstM[o + 5]! * f; dstM[o + 6] = dstM[o + 6]! * f; }
+        }
+        for (let g = 0; g < group.length; g++) {
+          const ca = group[g]!.instanceColor;
+          if (ca === null) continue;
+          const dc = ca.array as Float32Array;
+          dc[j * 3] = srcC[(s + i) * 3]!; dc[j * 3 + 1] = srcC[(s + i) * 3 + 1]!; dc[j * 3 + 2] = srcC[(s + i) * 3 + 2]!;
+          break;
+        }
+        if (x < _minX[t]!) _minX[t] = x;
+        if (x > _maxX[t]!) _maxX[t] = x;
+        if (z < _minZ[t]!) _minZ[t] = z;
+        if (z > _maxZ[t]!) _maxZ[t] = z;
+      }
+    }
+    for (let t = 0; t < 4; t++) {
+      const group = this.tierMeshes[t];
+      if (!group) continue;
+      const n = k[t]!;
+      if (n > 0) {
+        const sphere = this.spheres[t]!;
+        sphere.center.set((_minX[t]! + _maxX[t]!) / 2, 4, (_minZ[t]! + _maxZ[t]!) / 2);
+        sphere.radius = Math.hypot((_maxX[t]! - _minX[t]!) / 2 + 10, 14, (_maxZ[t]! - _minZ[t]!) / 2 + 10);
+        const head = group[0]!;
+        head.instanceMatrix.clearUpdateRanges(); extendUpload(head.instanceMatrix, 0, n * 16, this.spare[t]!);
+        for (const m of group) {
+          const ca = m.instanceColor;
+          if (ca === null) continue;
+          ca.clearUpdateRanges(); ca.addUpdateRange(0, n * 3); ca.needsUpdate = true;
+          break;
+        }
+      }
+      for (const m of group) { m.instances = n; m.visible = n > 0; }
+    }
+    return true;
   }
 
   /**

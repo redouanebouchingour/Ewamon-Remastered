@@ -54,6 +54,7 @@ import { coerceTimeScale } from './post/effects.js';
 import { GROVE_GRADE, type GradePalette } from './post/grade.js';
 import { ALL_PASSES_ON, GRAPH_PASSES, PostStack, type PassSwitches } from './post/pipeline.js';
 import { QUALITY_PROFILES, recommendedQuality, type GraphicsQuality } from './quality.js';
+import { DETAIL_DISTANCE_M, setDetailFocus, setDetailRadius, setLodScale, type DetailDistance } from './zone/detail.js';
 import { setWaterBackdrop } from './materials/waterBackdrop.js';
 import {
   computePassMs, copyInfo, countPunctualLights, createRenderStats, dumpZone, median, PassTimer, readBudgetCounts, TimestampResolver,
@@ -185,6 +186,8 @@ export interface Renderer {
   setQuality?(q: GraphicsQuality | 'auto'): void;
   /** The preset in effect (`'auto'` resolved). Optional for fakes. */
   readonly quality?: GraphicsQuality;
+  /** Detail distance addition (`zone/detail.ts`): grass tufts, flowers, pebbles and ambient motes within 4 / 8 / 16 m of the player, or all. Optional for fakes. */
+  setDetailDistance?(d: DetailDistance): void;
   resize(cssWidth: number, cssHeight: number): void;
   setTimeScale(s: number): void;               // 1 normal · 0 hitstop · 0.35 crit slow-mo; scales every render-side animation
   frame(dtMs: number): void;                   // exactly one pipeline.render() + one HUD draw when dirty
@@ -574,6 +577,7 @@ class RendererHost implements Renderer, HostContext {
     this.lighting = new LightRig(this.scene);
     this.lighting.setSunShadowMap(QUALITY_PROFILES[this.quality].sunShadowMap);
     if (this.materials.uniforms.waterBackdrop !== undefined) setWaterBackdrop(this.materials.uniforms.waterBackdrop, QUALITY_PROFILES[this.quality].waterBackdrop);
+    setLodScale(QUALITY_PROFILES[this.quality].lodScale);
     this.sky = new SkyController(gpu, this.scene);
     this.fog = createHeightFog();
     this.scene.fogNode = this.fog.node;
@@ -1233,8 +1237,13 @@ class RendererHost implements Renderer, HostContext {
     this.quality = next;
     this.lighting.setSunShadowMap(QUALITY_PROFILES[next].sunShadowMap);
     if (this.materials.uniforms.waterBackdrop !== undefined) setWaterBackdrop(this.materials.uniforms.waterBackdrop, QUALITY_PROFILES[next].waterBackdrop);
+    setLodScale(QUALITY_PROFILES[next].lodScale);
     this.post.setQuality(next);
     this.resize(this.cssW, this.cssH);
+  }
+
+  setDetailDistance(d: DetailDistance): void {
+    setDetailRadius(DETAIL_DISTANCE_M[d] ?? Infinity);
   }
 
   /** §10.1.3: `setPixelRatio(pr); setSize(w, h, false)`; camera aspect, HUD, CSM frustums follow. */
@@ -1336,6 +1345,7 @@ class RendererHost implements Renderer, HostContext {
     // (1) camera
     this.camera.update(scaled);
     const focus = (this.camera.focus as Vector3) ?? _focusFallback;
+    setDetailFocus(focus.x, focus.z);
     // the diorama occluder fade (M2-spawn-noon-9): camera → the followed feet, faded out as a shot blends in, off in
     // first person (the rig posed the eye this same update, so the toggle never shows a frame of dither)
     const occ = this.materials.uniforms.occlusion;

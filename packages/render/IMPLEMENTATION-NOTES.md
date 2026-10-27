@@ -2629,3 +2629,37 @@ shadow is a softer blob. First-person sees the 0–44 m cascade at 1536² up clo
 - `battle-trainer.test.ts` now covers cards from 0.23 m to 8.3 m (margin past the 4.65 m largest). A giant (card past the old 2.69 m) in doubles stands
   right behind its trainer, and the avatar covers up to 6.6 % of its card there: that case is held to 8 %, every other to 5 %.
 - Doubles keep `SLOT_SPACING` 1.8 m: two wide giants side by side overlap, as two 3 m cards already did.
+
+## Detail distance and LOD scale (2026-10-27, not in the SPEC; deviates from §10.5.7's fixed tier distances)
+
+- `zone/detail.ts`: a page-wide detail state the renderer writes (`setDetailDistance`, the focus each frame,
+  `QualityProfile.lodScale` on `setQuality`). Client setting Graphics › Detail distance: close 4 m, medium 8 m, far
+  16 m, max unlimited (the default, the old look).
+- Detail kinds (`DETAIL_KINDS`: `grass_tuft`, `flower_patch`, `rock_b`) carry a per-vertex `ewaDetail` marker on their
+  scatter geometry. The marker is part of the attribute layout, so only those kinds key a new node build (their
+  materials were theirs alone: no extra programs elsewhere). In `scatterInstance` an instance past the radius
+  shrinks to its origin over the last 1.5 m (zero size: nothing rasterises, beauty or shadow). On the CPU a 32 m chunk
+  wholly outside the radius sets `ChunkRec.detail` false and the detail kinds leave it out of their tier buffers. The
+  flag flips only when the player crosses a chunk edge at the radius, and then it bumps `ChunkSet.generation` like a
+  tier change.
+- Tall grass is not a detail kind: it marks the encounter patches.
+- Ambient motes (`worldfx/ambient.ts`) fade to nothing past the radius and draw at size 0.
+- LOD scale: chunk tiers compare `distance / lodScale` with `LOD_DISTANCES`, and building and set-piece `THREE.LOD`
+  levels sit at `BUILDING_LOD_LEVELS × lodScale`. high 1 (the SPEC), medium 0.8, low 0.6. The camera sits 20–34 m
+  from the player, so at 1 nearly all of the view is tier 0. At 0.6 the far half of the view drops to lod1.
+- `buildGroundTuft` gains real lod1 (3 widened cards) and lod2 (2 cards) tiers. lod0 is unchanged: same PRNG draws in
+  the same order. Before this, lod1 reused lod0 and there was no lod2.
+- Foliage (`isFoliageKind`: trees, `bush`, `tall_grass`) under a finite detail distance takes its tier per instance
+  from the focus (`ScatterField.syncFoliage`, never finer than its chunk's tier): within the radius the chunk's tier,
+  past it lod1, past 4 × it lod2. It is rewritten when the focus moved 1 m, or when the radius, the chunks or the
+  mask changed (a few hundred instances per zone), with the mask applied inline. At max it returns to the chunk path.
+  Tiers ≥ `shadowTierLimit` cast no shadow, so lod2 trees and bushes lose theirs: the price of the setting.
+  Measured in the mirevale sandbox (diorama, noon): foliage tiers 98 / 317 / 0 → 0 / 13 / 402 at close, scene
+  triangles 391 k → 249 k.
+- Hand-placed foliage props (`bush`, `flower_patch`, `tree_*` in `ZoneSpec.props`) are no longer merged into the
+  chunk's static mesh. They join the scatter field of their kind as untinted instances, taking the zone's scatter
+  geometry of that kind, or the first prop's when the zone scatters none. That gives them the per-instance foliage LOD
+  above (a merged chunk can only switch as a whole). Their colliders are unchanged. Look change: a hand-placed bush
+  shares its shape with the zone's scattered bushes instead of having its own seed's shape.
+- Wind (`materials/wind.ts`): the sway and the walker push ease out past the detail distance (the same rim fade), so
+  foliage outside it stands still. At max the radius is past every zone and nothing changes.

@@ -22,13 +22,20 @@
  * runs after it, on the instanced position, as before. Everything else about the geometry (morph, skinning,
  * displacement) does not exist on scatter.
  */
-import { InstancedBufferAttribute, InstancedBufferGeometry, InstancedInterleavedBuffer, InterleavedBufferAttribute, Mesh, NodeMaterial, StaticDrawUsage } from 'three/webgpu';
+import { BufferAttribute, InstancedBufferAttribute, InstancedBufferGeometry, InstancedInterleavedBuffer, InterleavedBufferAttribute, Mesh, NodeMaterial, StaticDrawUsage } from 'three/webgpu';
 import type { BufferGeometry, Material, Node, NodeBuilder, Sphere } from 'three/webgpu';
-import { Fn, attribute, instanceColor, mat4, normalLocal, positionLocal, positionPrevious, transformNormal } from 'three/tsl';
+import { Fn, attribute, float, instanceColor, length, mat4, normalLocal, positionLocal, positionPrevious, smoothstep, transformNormal } from 'three/tsl';
+import { detailState } from './detail.js';
 
 /** The matrix rows (vec4 each) and the tint (vec3), as geometry attribute names. */
 export const SCATTER_MATRIX_ROWS = Object.freeze(['ewaInstM0', 'ewaInstM1', 'ewaInstM2', 'ewaInstM3'] as const);
 export const SCATTER_COLOR_ATTRIBUTE = 'ewaInstColor';
+/**
+ * Detail-distance marker (`detail.ts`): a per-vertex 1 on the detail kinds' geometry. Its presence is part of the
+ * attribute layout, so the detail kinds key their own node build (the fade below) and every other scatter mesh keeps
+ * the one it had.
+ */
+export const SCATTER_DETAIL_ATTRIBUTE = 'ewaDetail';
 
 /** One tier's instance matrices: 16 floats per instance, shared by the tier's class meshes. */
 export class ScatterMatrices {
@@ -61,7 +68,7 @@ export class ScatterMesh extends Mesh<InstancedBufferGeometry, Material | Materi
   readonly instanceColor: InstancedBufferAttribute | null;
   boundingSphere: Sphere | null;
 
-  constructor(part: BufferGeometry, material: Material | Material[], matrices: ScatterMatrices, colors: InstancedBufferAttribute | null, sphere: Sphere) {
+  constructor(part: BufferGeometry, material: Material | Material[], matrices: ScatterMatrices, colors: InstancedBufferAttribute | null, sphere: Sphere, detail = false) {
     installScatterInstancing();
     const g = new InstancedBufferGeometry();
     g.name = part.name;
@@ -71,6 +78,7 @@ export class ScatterMesh extends Mesh<InstancedBufferGeometry, Material | Materi
     g.setDrawRange(part.drawRange.start, part.drawRange.count);
     SCATTER_MATRIX_ROWS.forEach((n, i) => g.setAttribute(n, matrices.rows[i]!));
     if (colors !== null) g.setAttribute(SCATTER_COLOR_ATTRIBUTE, colors);
+    if (detail) g.setAttribute(SCATTER_DETAIL_ATTRIBUTE, detailMarker(part));
     g.instanceCount = 0;
     super(g, material);
     this.instanceMatrix = matrices.buffer;
@@ -87,6 +95,18 @@ export class ScatterMesh extends Mesh<InstancedBufferGeometry, Material | Materi
     this.dispatchEvent({ type: 'dispose' } as never);
     this.geometry.dispose();
   }
+}
+
+const MARKERS = new WeakMap<BufferGeometry, BufferAttribute>();
+
+/** The detail marker of a part (one per part geometry, shared by every mesh drawing it). */
+function detailMarker(part: BufferGeometry): BufferAttribute {
+  let a = MARKERS.get(part);
+  if (a === undefined) {
+    a = new BufferAttribute(new Float32Array(part.getAttribute('position').count).fill(1), 1);
+    MARKERS.set(part, a);
+  }
+  return a;
 }
 
 /** Whether `o` is a `ScatterMesh` (duck-typed: stats / compile-plan code holds plain `Object3D`s). */
@@ -118,6 +138,14 @@ const scatterInstance = Fn((_inputs: unknown, builder: NodeBuilder) => {
   const b = builder as unknown as { needsPreviousData(): boolean; hasGeometryAttribute(n: string): boolean };
   const row = (n: string): Node<'vec4'> => attribute(n, 'vec4') as unknown as Node<'vec4'>;
   const m = mat4(row(SCATTER_MATRIX_ROWS[0]), row(SCATTER_MATRIX_ROWS[1]), row(SCATTER_MATRIX_ROWS[2]), row(SCATTER_MATRIX_ROWS[3]));
+  if (b.hasGeometryAttribute(SCATTER_DETAIL_ATTRIBUTE)) {
+    // detail distance: the instance shrinks to its origin over the rim's fade band (0 = nothing rasterises)
+    const field = detailState.uniform as unknown as Node<'vec4'>;
+    const d = length(row(SCATTER_MATRIX_ROWS[3]).xz.sub(field.xy));
+    const keep = float(1).sub(smoothstep(field.z.sub(field.w), field.z, d)).mul(attribute(SCATTER_DETAIL_ATTRIBUTE, 'float'));
+    (positionLocal as unknown as { assign(n: Node): void }).assign(positionLocal.mul(keep));
+    if (b.needsPreviousData()) (positionPrevious as unknown as { assign(n: Node): void }).assign(positionPrevious.mul(keep));
+  }
   (positionLocal as unknown as { assign(n: Node): void }).assign(m.mul(positionLocal).xyz);
   if (b.needsPreviousData()) (positionPrevious as unknown as { assign(n: Node): void }).assign(m.mul(positionPrevious).xyz);
   if (b.hasGeometryAttribute('normal')) (normalLocal as unknown as { assign(n: Node): void }).assign(transformNormal(normalLocal, m));

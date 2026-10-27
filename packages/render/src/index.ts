@@ -92,6 +92,7 @@ export {
   roadDistance, roadZAt, warpPairs,
 } from './zone/layout.js';
 export type { BiomeLightStyle, Circle, Ellipse, LayoutInput, PlanLightData, RngLike, Road, Vec2, ZoneLayoutPlan } from './zone/layout.js';
+export { DETAIL_DISTANCE_M, DETAIL_KINDS, type DetailDistance } from './zone/detail.js';
 export { BUILDING_LOD_LEVELS, CHUNK_SIZE, LOD_DISTANCES, LOD_HYSTERESIS, chooseTier, chunkGrid, chunkOf, tierFor } from './zone/lod.js';
 export type { ChunkGrid, Tier } from './zone/lod.js';
 export { PALETTES, gradeOf, lightingPaletteOf, paletteFor } from './zone/palettes.js';

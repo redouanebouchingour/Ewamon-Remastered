@@ -41,6 +41,7 @@ import {
   type PocketRect, type SplatContext, type SplatFields, type ZoneLayoutPlan,
 } from './layout.js';
 import { BUILDING_LOD_LEVELS, CHUNK_SIZE, chunkGrid, type ChunkGrid } from './lod.js';
+import { detailState } from './detail.js';
 import { paletteFor } from './palettes.js';
 import { createPrng, fbm2, hash2, valueNoise } from './prng.js';
 import { ChunkSet, ScatterField, jitteredPointSteps, jitteredPoints, type ChunkRec, type Instance, type ScatterKind } from './scatter.js';
@@ -361,12 +362,21 @@ function* zoneSteps(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonly Surf
     const m = trs(x, y, z, yaw, scale);
     for (let k = 0; k < 3; k++) addPropTier(t[k]!, geo, k as 0 | 1 | 2, m);
   };
+  // hand-placed foliage joins the scatter of its kind (step 7), so it takes its LOD per instance (detail.ts)
+  const propFoliage = new Map<string, { readonly seed: number; readonly instances: Instance[] }>();
   for (const pp of spec.props) {
-    const geo = buildPropKind(set, pp.kind, pp.seed);
-    if (!geo) continue;
     const y = heightClamped(h, pp.x, pp.z);
-    placeProp(geo, pp.x, y - (pp.kind.startsWith('tree') ? 0.1 : 0), pp.z, pp.yaw, pp.scale > 0 ? pp.scale : 1, !NON_CASTING_PROPS.has(pp.kind));
-    disposeProp(geo);
+    const yp = y - (pp.kind.startsWith('tree') ? 0.1 : 0);
+    if (isFoliageProp(pp.kind)) {
+      let e = propFoliage.get(pp.kind);
+      if (e === undefined) { e = { seed: pp.seed, instances: [] }; propFoliage.set(pp.kind, e); }
+      e.instances.push({ x: pp.x, y: yp, z: pp.z, yaw: pp.yaw, scale: pp.scale > 0 ? pp.scale : 1, tint: UNTINTED });
+    } else {
+      const geo = buildPropKind(set, pp.kind, pp.seed);
+      if (!geo) continue;
+      placeProp(geo, pp.x, yp, pp.z, pp.yaw, pp.scale > 0 ? pp.scale : 1, !NON_CASTING_PROPS.has(pp.kind));
+      disposeProp(geo);
+    }
     const r = PROP_BLOCKER[pp.kind] ?? 0;
     if (pp.kind === 'garden') collider.addFootprint({ kind: 'rect', x: pp.x, z: pp.z, hw: 2.7 + MOVER_R, hd: 1.8 + MOVER_R, yaw: pp.yaw });
     else if (pp.kind === 'bench') collider.addFootprint({ kind: 'rect', x: pp.x, z: pp.z, hw: 1.0 + MOVER_R, hd: 0.25 + MOVER_R, yaw: pp.yaw });
@@ -476,6 +486,12 @@ function* zoneSteps(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonly Surf
   const tints = [...palette.scatterTints, ...FLOWER_TINTS, ...dressing.grassTints].map((hex) => new Color(hex));
   const flowerTint0 = palette.scatterTints.length;
   const scatterKinds = yield* scatterSteps(spec, plan, set, dressing, splat, collider, skirtY, mat, views, (scatterRng.next() * 4294967296) >>> 0, flowerTint0, FLOWER_TINTS.length, palette.scatterTints.length, skirtClear);
+  for (const [kind, e] of [...propFoliage].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+    const into = scatterKinds.find((sk) => sk.kind.name === kind);
+    if (into !== undefined) { into.instances.push(...e.instances); continue; }
+    const made = propFoliageKind(set, kind, e.seed, mat, views);
+    if (made !== null) scatterKinds.push({ ...made, instances: e.instances });
+  }
   for (const sk of scatterKinds) {
     const field = new ScatterField(sk.kind, sk.instances, chunks, root, tints);
     fields.push(field);
@@ -507,6 +523,7 @@ function* zoneSteps(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonly Surf
 
   let disposed = false;
   let lastStepMs = -1;
+  let lodScale = 1;
   const geometries = built.geometries;
   const handle: ZoneHandleImpl = {
     id: spec.id,
@@ -536,6 +553,11 @@ function* zoneSteps(spec: ZoneSpec, deps: ZoneBuildDeps, surfaces: readonly Surf
       }
       const far = chunks.update(camera, (cameraObject as Object3D & { isCamera?: boolean }).isCamera ? cameraObject as never : null);
       for (let i = 0; i < fields.length; i++) fields[i]!.sync(chunks);
+      if (detailState.lodScale !== lodScale) {
+        // the quality preset's LOD scale (detail.ts) moves the building / set-piece level distances too
+        lodScale = detailState.lodScale;
+        for (const lod of lods) lod.levels.forEach((lv, t) => { lv.distance = BUILDING_LOD_LEVELS[t]!.distance * lodScale; });
+      }
       for (let i = 0; i < lods.length; i++) {
         const lod = lods[i]!;
         lod.visible = lodChunks[i]!.active;
@@ -721,6 +743,27 @@ const FLOWER_TINTS = ['#ffb3c8', '#ffe07a', '#fff6ea', '#c6adff', '#ffbd7a', '#f
 type PartsAt = (x: number, z: number, cast?: boolean) => [Parts, Parts, Parts];
 
 /** Hand-placed kinds too small / low for a shadow draw per cascade. */
+/**
+ * Hand-placed props drawn as scatter instances of their kind instead of merged into the chunk mesh: one draw per tier
+ * and an LOD per instance (`detail.ts`). They take the zone's scatter geometry of that kind (or the first prop's when
+ * the zone scatters none), so a hand-placed bush shares its shape with the zone's other bushes.
+ */
+function isFoliageProp(kind: string): boolean {
+  return kind === 'bush' || kind === 'flower_patch' || kind.startsWith('tree');
+}
+/** A tint index past every palette: the instance keeps the material's own colour, as the merged prop did. */
+const UNTINTED = -1;
+
+/** The scatter kind for a hand-placed foliage prop kind the zone does not scatter itself. */
+function propFoliageKind(set: BiomeSet, kind: string, seed: number, mat: (id: SurfaceId) => Material, views: BufferGeometry[]): { kind: ScatterKind; sources: BufferGeometry[] } | null {
+  const geo = buildPropKind(set, kind, seed);
+  if (geo === null) return null;
+  if (kind === 'bush') return kindFrom('bush', geo, mat, views, true, 3, null, 2);
+  if (kind === 'flower_patch') return kindFrom('flower_patch', geo, mat, views, false, 2, null, 0, 'all');
+  const t = set.trees.find((x) => x.kind === kind) ?? set.trees[0];
+  return kindFrom(kind, geo, mat, views, true, 3, t !== undefined ? impostorFor(geo, t.leaf) : null);
+}
+
 const NON_CASTING_PROPS = new Set<string>(['flower_patch', 'rock_s', 'sign', 'crate', 'barrel', 'planter', 'fence']);
 
 /** Where roads cross the playable boundary (gaps in walls / hedges). */
@@ -1417,7 +1460,7 @@ function* scatterSteps(spec: ZoneSpec, plan: ZoneLayoutPlan, set: BiomeSet, dres
       inst.push({ x: p.x, y: yAt(p.x, p.z), z: p.z, yaw: p.h * 89, scale: 0.75 + p.h * 0.6, tint: grassTint(p.h) });
     }
     for (const c of coverOf('tuft')) inst.push({ x: c.x, y: yAt(c.x, c.z), z: c.z, yaw: c.h * 89, scale: c.scale, tint: grassTint(c.h) });
-    if (inst.length) out.push({ ...kindFrom('grass_tuft', { ...tuft, lod1: tuft.lod0 }, mat, views, false, 2, null, 0), instances: inst });
+    if (inst.length) out.push({ ...kindFrom('grass_tuft', tuft, mat, views, false, 3, null, 0), instances: inst });
     yield 'scatter:tufts';
   }
 

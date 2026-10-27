@@ -8,7 +8,8 @@
  * night, pollen by day, embers over Cinderhold, salt spray, storm sparks, snow motes, star motes at the shrine, void
  * spores in the rift). The second carries the zone's mood: falling ash where honor has cast a shadow (denser per
  * level), else the season's sky over Solenne (red embers for the Majin, gold motes for the Tenjin). Rain thins the
- * first layer. Indoors (`setAmbient(false)`) the field is off.
+ * first layer. Indoors (`setAmbient(false)`) the field is off. The detail distance (`zone/detail.ts`) narrows the field:
+ * motes past it fade out and draw at size 0 (no fragments).
  */
 import { Color, CustomBlending, InstancedBufferAttribute, OneFactor, OneMinusSrcAlphaFactor, PointsNodeMaterial, Sprite, Vector3, Vector4 } from 'three/webgpu';
 import type { Node, PerspectiveCamera, UniformNode } from 'three/webgpu';
@@ -19,6 +20,7 @@ import { LAYERS } from '../descriptors.js';
 import { overlayMrt } from '../sprites/overlayMrt.js';
 import { hexToLinearInto } from '../sprites/typeColors.js';
 import { mulberry32 } from '../stage/vfx.js';
+import { detailState } from '../zone/detail.js';
 
 /** Motes in the field: the biome layer, then the mood layer. */
 export const AMBIENT_MOTES = 720;
@@ -251,14 +253,17 @@ export class AmbientMotes {
     const pos = vec3(px, py, pz).add(wander);
     m.positionNode = pos;
     // the density draw, a blink, and a fade at the box's rim and the band's ends (no pop as a mote wraps)
-    const dxz = length(vec2(px.sub(f.x), pz.sub(f.z))).div(half);
-    const rim = smoothstep(1, 0.7, dxz);
+    const distM = length(vec2(px.sub(f.x), pz.sub(f.z)));
+    const dxz = distM.div(half);
+    const field = detailState.uniform as unknown as Node<'vec4'>;
+    const near = float(1).sub(smoothstep(field.z.sub(field.w), field.z, distM));   // the detail distance
+    const rim = smoothstep(1, 0.7, dxz).mul(near);
     const yk = py.sub(f.y).sub(band.x).div(range);
     const ends = smoothstep(0, 0.12, yk).mul(smoothstep(1, 0.88, yk));
     const blinkWave = sin(t.mul(1.7).add(ph.mul(13))).mul(0.5).add(0.5);
     const blink = mix(float(1), smoothstep(0.55, 0.95, blinkWave), move.z);
     const shown = step(ex.x, look.x);
-    m.sizeNode = look.y.mul(ex.w).mul(shown).mul(this.sizeScale);
+    m.sizeNode = look.y.mul(ex.w).mul(shown).mul(step(0.001, near)).mul(this.sizeScale);
     // per mote, in the vertex stage (TSL builds a node shared by select branches inside the first one: varyings)
     const alphaV = varying(look.z.mul(rim).mul(ends).mul(blink).mul(shown));
     const glowV = varying(look.w);

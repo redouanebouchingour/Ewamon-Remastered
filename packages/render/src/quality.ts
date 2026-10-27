@@ -30,12 +30,17 @@ export interface QualityProfile {
    * no mid-pass copy of the scene. A uniform and a flag on the one water program: switching compiles nothing.
    */
   readonly waterBackdrop: boolean;
+  /**
+   * The LOD distance multiplier (`zone/detail.ts`): scatter tiers and building levels switch at the SPEC's 40 / 90 /
+   * 160 m times this. The diorama camera sits 20–34 m from the player, so below 1 the far half of the view drops a tier.
+   */
+  readonly lodScale: number;
 }
 
 export const QUALITY_PROFILES: Readonly<Record<GraphicsQuality, QualityProfile>> = Object.freeze({
-  high: Object.freeze({ pixelRatioCap: 1.5, sunShadowMap: 1536, gtao: true, gtaoSamples: 8, gtaoScale: 0.25, dof: true, bloom: true, waterBackdrop: true }),
-  medium: Object.freeze({ pixelRatioCap: 1.25, sunShadowMap: 1024, gtao: true, gtaoSamples: 8, gtaoScale: 0.25, dof: true, bloom: true, waterBackdrop: false }),
-  low: Object.freeze({ pixelRatioCap: 1, sunShadowMap: 1024, gtao: false, gtaoSamples: 8, gtaoScale: 0.25, dof: false, bloom: false, waterBackdrop: false }),
+  high: Object.freeze({ pixelRatioCap: 1.5, sunShadowMap: 1536, gtao: true, gtaoSamples: 8, gtaoScale: 0.25, dof: true, bloom: true, waterBackdrop: true, lodScale: 1 }),
+  medium: Object.freeze({ pixelRatioCap: 1.25, sunShadowMap: 1024, gtao: true, gtaoSamples: 8, gtaoScale: 0.25, dof: true, bloom: true, waterBackdrop: false, lodScale: 0.8 }),
+  low: Object.freeze({ pixelRatioCap: 1, sunShadowMap: 1024, gtao: false, gtaoSamples: 8, gtaoScale: 0.25, dof: false, bloom: false, waterBackdrop: false, lodScale: 0.6 }),
 });
 
 /**
