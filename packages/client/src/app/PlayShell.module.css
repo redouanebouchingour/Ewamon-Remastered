@@ -92,7 +92,7 @@
   box-shadow: inset 1px 0 0 var(--line-1);
 }
 
-/* the breakdance: a key chip like the others, in the accent so it reads as the one button in the legend */
+/* the emote wheel: a key chip like the others, in the accent so it reads as the one button in the legend */
 .dance {
   display: inline-flex;
   align-items: center;

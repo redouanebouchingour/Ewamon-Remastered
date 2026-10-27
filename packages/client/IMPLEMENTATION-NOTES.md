@@ -2356,6 +2356,18 @@ the second isolated client (the component over the landing page: the foe and own
 - Any player's breakdance (own, or a remote's `emote` change to 7) makes every NPC / trainer actor within 30 m hop
   along (`SceneDirector.forEachStatic`, `actors.setHop`). Walking ends the dance (emotes yield to locomotion).
 
+## Emote wheel (2026-10-27, not in the SPEC)
+
+- G and the key legend's button (now "Emotes") open `EmoteWheel` (`state/emotes.ts`, replacing `state/dance.ts`): a
+  PUBG-style ring of eight slices over the live world. The pointer's direction from the centre lights a slice (the
+  whole screen aims, the hub is a dead zone); a click plays it, or hold G (≥ `HOLD_MS`), aim and let go. A tap leaves
+  it up; G again, Escape, a right click or a hub click close it; ←/→ and Enter work too. The wheel is mounted only over
+  the bare live world (no panel, battle or arena), and unmounting closes it.
+- World3D `emote(n)` sends the pick and plays it on the own actor at once. The breakdance keeps its fanfare; the high
+  five plays `hit_normal` on its slap (520 ms in), "you, me, battle" the `spotted` sting. The breakdance and the whip /
+  nae nae (own or a remote's) make the villagers within 30 m hop along for the emote's length. The 1..6 number-key
+  emotes are unchanged.
+
 ## Graphics quality and frame cap (2026-10-23, not in the SPEC)
 
 - `GraphicsSettings.quality` (`'auto' | 'low' | 'medium' | 'high'`, default `'auto'`: render's `recommendedQuality`, low

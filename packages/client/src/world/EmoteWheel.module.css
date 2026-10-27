@@ -1,0 +1,108 @@
+/*
+ * The emote wheel (2026-10-27): a ring of eight black slices round a hub, centred over the live world. The lit slice
+ * turns accent orange and pops out a little; the hub names it in condensed uppercase. The layer under it catches the
+ * pointer everywhere, so the direction from the centre aims (a stick, not a target).
+ */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-panel);
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  cursor: crosshair;
+  background: radial-gradient(circle at center, var(--scrim), transparent 55%);
+}
+
+.wheel {
+  inline-size: min(420px, 86vmin);
+  block-size: min(420px, 86vmin);
+  overflow: visible;
+  animation: pop 140ms ease-out;
+}
+
+.rim {
+  fill: none;
+  stroke: var(--line-2);
+  stroke-width: 2;
+}
+
+.slice path {
+  fill: var(--bg-0);
+  fill-opacity: 0.82;
+  stroke: var(--line-1);
+  stroke-width: 1;
+  transition: fill 80ms linear, transform 80ms ease-out;
+  transform-origin: 0 0;
+}
+
+.slice[data-lit] path {
+  fill: var(--accent);
+  fill-opacity: 1;
+  transform: scale(1.05);
+}
+
+.glyph {
+  font-size: var(--t-display);
+  pointer-events: none;
+  user-select: none;
+  transition: transform 80ms ease-out;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.slice[data-lit] .glyph {
+  transform: scale(1.25) rotate(-8deg);
+}
+
+.hub {
+  fill: var(--bg-0);
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.label {
+  fill: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.sub {
+  fill: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wheel {
+    animation: none;
+  }
+
+  .slice path,
+  .glyph {
+    transition: none;
+  }
+}
+
+:global(:root[data-reduced='1']) .wheel {
+  animation: none;
+}
+
+:global(:root[data-reduced='1']) .slice path,
+:global(:root[data-reduced='1']) .glyph {
+  transition: none;
+}

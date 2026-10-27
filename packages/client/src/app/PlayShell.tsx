@@ -11,6 +11,7 @@ import { BattleOverlay } from '../battle/BattleOverlay';
 import { ChallengePrompt } from '../world/ChallengePrompt';
 import { ChatInput } from '../world/ChatInput';
 import { DialogueBox } from '../world/DialogueBox';
+import { EmoteWheel } from '../world/EmoteWheel';
 import { NpcStrikeFx } from '../world/NpcStrikeFx';
 import { BuddyBubble } from '../world/BuddyBubble';
 import { BuddyTalk } from '../world/BuddyTalk';
@@ -33,7 +34,7 @@ import { setNavigator } from './navigation';
 import { installMessageRouter } from '../net/messageRouter';
 import { getWorldSession } from '../net/WorldSession';
 import { worldCapability } from '../scene/worldHost';
-import { dance } from '../state/dance';
+import { useEmoteWheelStore } from '../state/emotes';
 import { useSettingsStore } from '../state/settings';
 import type { InputAction } from '../state/settings';
 import { useUiStore } from '../state/ui';
@@ -96,10 +97,10 @@ function useShellHotkeys(): void {
         ui.toggleHud();
         return;
       }
-      // the breakdance (not a remappable binding: G was free)
-      if (e.code === 'KeyG' && !e.repeat && location.pathname === '/play') {
+      // the emote wheel (not a remappable binding: G was free); while it is up it owns G itself
+      if (e.code === 'KeyG' && !e.repeat && location.pathname === '/play' && ui.battle === null) {
         e.preventDefault();
-        dance();
+        useEmoteWheelStore.getState().setOpen(true);
         return;
       }
       // LLM feature 6: talk to the lead walking behind you (Y)
@@ -175,8 +176,8 @@ function WorldHint() {
           <kbd>{keyLabel(binds[action][0])}</kbd> {label}
         </span>
       ))}
-      <button type="button" className={s.dance} onClick={dance} aria-label="Dance — G" data-testid="dance-button">
-        <kbd>G</kbd> Dance
+      <button type="button" className={s.dance} onClick={() => useEmoteWheelStore.getState().setOpen(true)} aria-label="Emotes — G" data-testid="emote-button">
+        <kbd>G</kbd> Emotes
       </button>
     </aside>
   );
@@ -208,6 +209,8 @@ export function PlayShell() {
       {!hasPanel && !inBattle && !inArena && worldCapability() && <Minimap />}
       {/* followers with field powers: who walks behind the player and what that lead can do here */}
       {!hasPanel && !inBattle && !inArena && worldCapability() && <FieldPowerChip />}
+      {/* the emote wheel (G / the Emotes button), over the live world only */}
+      {!hasPanel && !inBattle && !inArena && worldCapability() && <EmoteWheel />}
       {/* Phase D12: Prof. Wynn's tutorial steps (live world only, like the minimap) */}
       {worldCapability() && !inArena && <TutorialCard />}
       {/* Majin / Tenjin: the band cards (once a band is in the inventory), state apart from the opening tutorial */}

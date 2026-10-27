@@ -11,7 +11,7 @@ import {
   SkinnedMesh, Texture, Vector3,
 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
-import { ACTOR_POOL_SIZE, BREAKDANCE_EMOTE, BREAKDANCE_MS, CHARACTER, CharacterPool, EMOTE_CLIPS } from '../src/stage/actors.js';
+import { ACTOR_POOL_SIZE, BREAKDANCE_EMOTE, BREAKDANCE_MS, CHARACTER, CharacterPool, EMOTE_CLIPS, EMOTE_POSES, emoteMs } from '../src/stage/actors.js';
 import { parseCharacterSet, resolveLook, type AccessoryTemplate, type CharacterSet, type CharacterSource, type ShapeTemplate } from '../src/stage/looks.js';
 
 const file = (url: string) => ({ url, bytes: 1, hash: 'abcdef0123456789' });
@@ -253,6 +253,36 @@ describe('CharacterPool — KayKit bodies', () => {
     pool.setHidden('b', true);
     pool.update(16);
     expect((pool as unknown as { byId: Map<string, { inst: { root: { visible: boolean } } }> }).byId.get('b')!.inst.root.visible).toBe(false);
+    pool.dispose();
+  });
+
+  it('the emote wheel (8..14) plays each silly one for its own length, moves the body and leaves it upright', async () => {
+    const { pool } = await readyPool();
+    pool.spawn('a', { look: 'casual_male', name: 'A', guildTag: '', isLocal: false });
+    await flush();
+    pool.setTransform('a', 0, 0, 0, false, false);
+    pool.update(16);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the instance root is private
+    const root = (id: string) => (pool as any).byId.get(id).inst.root as { position: { y: number }; rotation: { x: number; y: number; z: number } };
+    for (const n of [8, 9, 10, 11, 12, 13, 14] as const) {
+      expect(EMOTE_POSES[n], `emote ${n}`).not.toBeNull();
+      expect(emoteMs(n)).toBeGreaterThan(2000);
+      pool.setEmote('a', n);
+      let moved = 0;
+      for (let t = 0; t < emoteMs(n) - 200; t += 16) {
+        pool.update(16);
+        const r = root('a');
+        moved = Math.max(moved, Math.abs(r.position.y), Math.abs(r.rotation.x), Math.abs(r.rotation.y), Math.abs(r.rotation.z));
+      }
+      expect(pool.emoteOf('a').n, `emote ${n} still on`).toBe(n);
+      expect(moved, `emote ${n} moves`).toBeGreaterThan(0.05);
+      for (let t = 0; t < 400; t += 16) pool.update(16);
+      expect(pool.emoteOf('a').n, `emote ${n} over`).toBe(0);
+      for (let t = 0; t < 600; t += 16) pool.update(16);
+      expect(root('a').position.y).toBeCloseTo(0);
+      expect(root('a').rotation.x).toBe(0);
+      expect(root('a').rotation.z).toBe(0);
+    }
     pool.dispose();
   });
 

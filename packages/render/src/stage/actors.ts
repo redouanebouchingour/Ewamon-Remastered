@@ -45,9 +45,14 @@ export const EMOTE_MS = 2000;
 /** Emote 7, the breakdance (client NPC-voice build, IMPLEMENTATION-NOTES "Breakdance"): longer than the 2 s cards. */
 export const BREAKDANCE_EMOTE = 7;
 export const BREAKDANCE_MS = 6000;
+/**
+ * The emote wheel (IMPLEMENTATION-NOTES "Emote wheel"): 7 the breakdance, 8..14 high five, "you, me, battle", whip /
+ * nae nae, dab, look left, look right, crying. Lengths match protocol `emoteLengthMs`.
+ */
+export const EMOTE_WHEEL_MS: readonly number[] = Object.freeze([0, EMOTE_MS, EMOTE_MS, EMOTE_MS, EMOTE_MS, EMOTE_MS, EMOTE_MS, BREAKDANCE_MS, 2600, 3400, 5200, 3000, 2600, 2600, 4200]);
 /** How long an emote plays (ms). */
 export function emoteMs(n: number): number {
-  return n === BREAKDANCE_EMOTE ? BREAKDANCE_MS : EMOTE_MS;
+  return EMOTE_WHEEL_MS[n] ?? EMOTE_MS;
 }
 /** Head-top anchor above the feet before a look resolves (m). */
 export const HEAD_ANCHOR_M = 1.7;
@@ -83,17 +88,22 @@ export const CHARACTER = Object.freeze({
   boundsCentreY: 1.1, boundsRadius: 1.75,
 });
 
-export type EmoteId = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
-/** spine §4.1: 1..6 = wave happy sad alert heart cool; 7 = breakdance (not in the spine). */
-export const EMOTE_NAMES: readonly string[] = Object.freeze(['', 'wave', 'happy', 'sad', 'alert', 'heart', 'cool', 'breakdance']);
+export type EmoteId = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14;
+/** spine §4.1: 1..6 = wave happy sad alert heart cool; 7.. = the emote wheel (not in the spine). */
+export const EMOTE_NAMES: readonly string[] = Object.freeze([
+  '', 'wave', 'happy', 'sad', 'alert', 'heart', 'cool', 'breakdance', 'highfive', 'battle', 'whip', 'dab', 'lookleft', 'lookright', 'crying',
+]);
 /**
  * The clip each emote plays (§10.7.7). KayKit ships no wave and nothing downcast, so those two are procedural poses
  * over the idle (`EMOTE_POSES`): the right arm raised and waving, the head and chest bowed. Joy and the heart hop
  * (`cheer`), alert flinches, cool is the one-handed `use`.
  */
-export const EMOTE_CLIPS: readonly (string | null)[] = Object.freeze([null, null, 'cheer', null, 'flinch', 'cheer', 'use', null]);
+export const EMOTE_CLIPS: readonly (string | null)[] = Object.freeze([null, null, 'cheer', null, 'flinch', 'cheer', 'use', null, null, null, null, null, null, null, null]);
+type EmotePose = 'wave' | 'bow' | 'breakdance' | 'highfive' | 'battle' | 'whip' | 'dab' | 'lookleft' | 'lookright' | 'crying';
 /** Procedural emotes (applied after the mixer, weighted by the emote fade). */
-export const EMOTE_POSES: readonly ('wave' | 'bow' | 'breakdance' | null)[] = Object.freeze([null, 'wave', null, 'bow', null, null, null, 'breakdance']);
+export const EMOTE_POSES: readonly (EmotePose | null)[] = Object.freeze([
+  null, 'wave', null, 'bow', null, null, null, 'breakdance', 'highfive', 'battle', 'whip', 'dab', 'lookleft', 'lookright', 'crying',
+] as const);
 /** Emotes that loop for their 2 s (the others play once and hold). */
 const EMOTE_LOOPS: readonly boolean[] = Object.freeze([false, false, true, false, false, true, false, false]);
 /** Procedural wave / bow numbers (root space: +x left, +y up, +z forward; radians, Hz). */
@@ -120,6 +130,25 @@ export const BREAKDANCE = Object.freeze({
   freezeTiltZ: 1.15, freezeTiltX: 0.35, freezeLiftM: 0.42,
   limbHz: 7,
 });
+/**
+ * The wheel's silly ones (emotes 8..14), in seconds from their start. Directions are root space (+x left, +y up,
+ * +z forward); a right-arm direction is mirrored (-x).
+ */
+export const SILLY = Object.freeze({
+  /** High five: wind-up, the slap, the hold, then "OW OW OW" (hand flapping, hopping). */
+  highFive: Object.freeze({ windEnd: 0.45, slapEnd: 0.6, holdEnd: 1.1, flapHz: 9, hopHz: 3, hopM: 0.14 }),
+  /** You (point at the camera), me (thumbs at own chest), battle (boxing bob with alternating jabs). */
+  battle: Object.freeze({ youEnd: 0.9, meEnd: 1.8, jabHz: 2.6, bobHz: 4, bobM: 0.08 }),
+  /** Two whips (one per `whipS`), then the nae nae (hips swaying under a raised waving arm). */
+  whip: Object.freeze({ whipEnd: 2.4, whipS: 1.2, naeHz: 1.1, waveHz: 2.2, bounceM: 0.06 }),
+  /** Six snapping dabs (alternating sides), then one held, trembling with rage. */
+  dab: Object.freeze({ count: 6, everyS: 0.32, snapS: 0.06, hopM: 0.16, finalHopM: 0.38, trembleHz: 23 }),
+  /** Look left / right: the slow suspicious turn, the snap, the scan, a double take, the snap again. */
+  look: Object.freeze({ creepEnd: 0.5, snapEnd: 0.62, scanEnd: 1.9, backEnd: 2.05, againEnd: 2.2, headRad: 1.25 }),
+  /** Crying: hands to the face, sobbing shoulders, and a wail (head thrown back, arms flung) every `wailEvery` s. */
+  crying: Object.freeze({ faceEnd: 0.4, sobHz: 3.2, wailEvery: 1.3, wailS: 0.4 }),
+});
+
 /** Villagers dancing along: hop height (m) and rate (Hz). */
 export const HOP = Object.freeze({ heightM: 0.28, hz: 2.4 });
 
@@ -436,7 +465,7 @@ export class CharacterPool implements ActorPool {
     r.hopLeft = Math.max(0, ms);
   }
 
-  setEmote(id: string, n: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7): void {
+  setEmote(id: string, n: EmoteId): void {
     const r = this.byId.get(id);
     if (r === undefined) return;
     r.emote = n;
@@ -580,9 +609,17 @@ export class CharacterPool implements ActorPool {
       g.mixer.update(dt);
       if (r.emoteW > 0.002 && r.emote !== 0) {
         const pose = EMOTE_POSES[r.emote];
-        if (pose === 'wave') this.poseWave(g, r.emoteW, (EMOTE_MS - r.emoteLeft) / 1000);
+        const t = (emoteMs(r.emote) - r.emoteLeft) / 1000;
+        if (pose === 'wave') this.poseWave(g, r.emoteW, t);
         else if (pose === 'bow') this.poseBow(g, r.emoteW);
-        else if (pose === 'breakdance') this.poseBreakdance(g, r.emoteW, (BREAKDANCE_MS - r.emoteLeft) / 1000);
+        else if (pose === 'breakdance') this.poseBreakdance(g, r.emoteW, t);
+        else if (pose === 'highfive') this.poseHighFive(g, r.emoteW, t);
+        else if (pose === 'battle') this.poseBattle(g, r.emoteW, t);
+        else if (pose === 'whip') this.poseWhip(g, r.emoteW, t);
+        else if (pose === 'dab') this.poseDab(g, r.emoteW, t);
+        else if (pose === 'lookleft') this.poseLook(g, r.emoteW, t, 1);
+        else if (pose === 'lookright') this.poseLook(g, r.emoteW, t, -1);
+        else if (pose === 'crying') this.poseCrying(g, r.emoteW, t);
       }
     }
     this.pickShadowCasters();
@@ -967,6 +1004,181 @@ export class CharacterPool implements ActorPool {
     this.aimLimb(g, 'upperlegr', 'lowerlegr', -lx, ly, -lz, w);
   }
 
+  // ---- the emote wheel's silly ones (8..14): root first, then chest / head turns, then limbs, all in root space ----
+
+  /** Root lift (m), lean forward (rad, about x), extra yaw and roll (rad), all by the emote weight; then `_qRoot`. */
+  private rootPose(g: Instance, w: number, liftM: number, lean: number, yaw: number, roll: number): void {
+    const root = g.root;
+    root.rotation.order = 'YXZ';
+    root.position.y += liftM * w;
+    root.rotation.set(lean * w, root.rotation.y + yaw * w, roll * w);
+    root.updateMatrixWorld(true);
+    root.getWorldQuaternion(_qRoot);
+  }
+
+  /** Turns a bone about a root-space axis (x: pitch forward, y: yaw to the left, z: roll to the right). */
+  private turnBone(g: Instance, bone: string, x: number, y: number, z: number, angle: number): void {
+    const b = g.bones.get(bone);
+    if (b === undefined || angle === 0) return;
+    _t.set(x, y, z).applyQuaternion(_qRoot);
+    tiltBone(b, _t, angle);
+  }
+
+  /** One arm: the upper arm along (ux, uy, uz), the forearm along (fx, fy, fz); `side` 1 = left, -1 = right (x mirrored). */
+  private arm(g: Instance, side: 1 | -1, ux: number, uy: number, uz: number, fx: number, fy: number, fz: number, w: number): void {
+    const left = side === 1;
+    this.aimLimb(g, left ? 'upperarml' : 'upperarmr', left ? 'lowerarml' : 'lowerarmr', ux * side, uy, uz, w);
+    this.aimLimb(g, left ? 'lowerarml' : 'lowerarmr', left ? 'wristl' : 'wristr', fx * side, fy, fz, w);
+  }
+
+  /** High five (8): the wind-up, the SLAP, the proud hold, then the hand flapping in pain while hopping on one foot. */
+  private poseHighFive(g: Instance, w: number, t: number): void {
+    const H = SILLY.highFive;
+    if (t < H.windEnd) {
+      const k = ease(t / H.windEnd);
+      this.rootPose(g, w, 0, -0.16 * k, 0.25 * k, 0);
+      this.turnBone(g, 'head', 1, 0, 0, -0.2 * k * w);
+      this.arm(g, -1, 0.45, 0.75, -0.45, 0.2, 0.6, -0.75, w);
+    } else if (t < H.holdEnd) {
+      const k = ease((t - H.windEnd) / (H.slapEnd - H.windEnd));
+      const buzz = t > H.slapEnd ? Math.sin(t * 90) * 0.02 : 0;
+      this.rootPose(g, w, 0.12 * Math.sin(Math.min(1, k) * Math.PI), 0.2 * k, 0.25 * (1 - k) + buzz, buzz);
+      this.arm(g, -1, 0.25, 0.75, 0.6, 0.15, 0.85, 0.5, w);
+    } else {
+      const ph = t - H.holdEnd;
+      const flap = Math.sin(ph * Math.PI * 2 * H.flapHz);
+      this.rootPose(g, w, Math.abs(Math.sin(ph * Math.PI * H.hopHz)) * H.hopM, 0.1, 0.15 * Math.sin(ph * 5), 0.12 * Math.sin(ph * 7));
+      this.turnBone(g, 'head', 1, 0, 0, -0.35 * w);
+      this.turnBone(g, 'head', 0, 0, 1, 0.2 * Math.sin(ph * 11) * w);
+      this.arm(g, -1, 0.55, -0.1, 0.8, 0.2 + 0.25 * flap, 0.6 * flap, 0.75, w);
+      // the right leg pulled up: hopping on the left foot
+      this.aimLimb(g, 'upperlegr', 'lowerlegr', -0.2, -0.45, 0.85, w);
+      this.aimLimb(g, 'lowerlegr', 'footr', -0.1, -1, -0.15, w);
+    }
+    // the left hand on the hip throughout
+    this.arm(g, 1, 0.75, -0.6, -0.1, -0.55, -0.45, 0.3, w);
+  }
+
+  /** "You, me, battle" (9): point at the camera, both thumbs at the own chest, then put 'em up and jab. */
+  private poseBattle(g: Instance, w: number, t: number): void {
+    const B = SILLY.battle;
+    if (t < B.youEnd) {
+      const poke = Math.max(0, Math.sin(t * Math.PI * 2 * 2.2)) * 0.12;
+      this.rootPose(g, w, 0, 0.14 + poke, -0.1, 0);
+      this.turnBone(g, 'head', 1, 0, 0, 0.12 * w);
+      this.arm(g, -1, 0.15, 0.2, 1, 0.1, 0.25, 1, w);
+      this.arm(g, 1, 0.3, -1, 0, 0.2, -1, 0.2, w);
+    } else if (t < B.meEnd) {
+      const k = (t - B.youEnd) / (B.meEnd - B.youEnd);
+      this.rootPose(g, w, Math.sin(k * Math.PI) * 0.12, -0.2, 0, 0);
+      this.turnBone(g, 'head', 1, 0, 0, -0.3 * w);
+      this.arm(g, 1, 0.75, -0.2, 0.45, -0.7, 0.35, -0.55, w);
+      this.arm(g, -1, 0.75, -0.2, 0.45, -0.7, 0.35, -0.55, w);
+    } else {
+      const ph = t - B.meEnd;
+      const jab = Math.sin(ph * Math.PI * 2 * B.jabHz);
+      const jl = Math.max(0, jab);
+      const jr = Math.max(0, -jab);
+      this.rootPose(g, w, Math.abs(Math.sin(ph * Math.PI * B.bobHz)) * B.bobM, 0.1, 0.18 * jab, 0.06 * jab);
+      this.turnBone(g, 'head', 1, 0, 0, 0.15 * w);
+      this.arm(g, 1, 0.35 - 0.2 * jl, -0.45 + 0.5 * jl, 0.6 + 0.4 * jl, 0.1, 0.85 - 0.75 * jl, 0.5 + 0.5 * jl, w);
+      this.arm(g, -1, 0.35 - 0.2 * jr, -0.45 + 0.5 * jr, 0.6 + 0.4 * jr, 0.1, 0.85 - 0.75 * jr, 0.5 + 0.5 * jr, w);
+      this.aimLimb(g, 'upperlegl', 'lowerlegl', 0.3, -1, 0.1, w);
+      this.aimLimb(g, 'upperlegr', 'lowerlegr', -0.3, -1, -0.1, w);
+    }
+  }
+
+  /** Whip / nae nae (10): two whips (the arm out, the forearm snapping across, a crouch), then the nae nae. */
+  private poseWhip(g: Instance, w: number, t: number): void {
+    const W = SILLY.whip;
+    if (t < W.whipEnd) {
+      const p = (t % W.whipS) / W.whipS;
+      const snap = p < 0.4 ? 0 : p < 0.55 ? ease((p - 0.4) / 0.15) : 1 - ease((p - 0.55) / 0.45);
+      this.rootPose(g, w, -0.04 * snap, 0.1 * snap, -0.4 * snap, -0.12 * snap);
+      this.turnBone(g, 'head', 0, 1, 0, -0.35 * snap * w);
+      this.arm(g, -1, 0.6 - 0.9 * snap, 0.15 + 0.15 * snap, 0.8, 0.6 - 1.1 * snap, 0.15 + 0.2 * snap, 0.8 - 0.3 * snap, w);
+      this.arm(g, 1, 0.5, -0.65, 0.2, 0.1, -0.1, 1, w);
+      this.aimLimb(g, 'upperlegl', 'lowerlegl', 0.25, -0.85, 0.45 * snap, w);
+      this.aimLimb(g, 'lowerlegl', 'footl', 0.1, -1, -0.35 * snap, w);
+    } else {
+      const ph = t - W.whipEnd;
+      const sway = Math.sin(ph * Math.PI * 2 * W.naeHz);
+      const wave = Math.sin(ph * Math.PI * 2 * W.waveHz);
+      this.rootPose(g, w, Math.abs(Math.sin(ph * Math.PI * 2 * W.naeHz)) * W.bounceM, 0.04, 0.28 * sway, 0.16 * sway);
+      this.turnBone(g, 'chest', 0, 0, 1, -0.2 * sway * w);
+      this.turnBone(g, 'head', 0, 0, 1, 0.25 * sway * w);
+      this.arm(g, -1, 0.15, 1, 0.1, 0.15 + 0.4 * wave, 1, 0.15, w);
+      this.arm(g, 1, 0.25, -1, 0.3 * sway, 0.2, -1, 0.4 + 0.3 * sway, w);
+    }
+  }
+
+  /** DAB aggressively (11): six dabs snapping side to side, each with a hop, then one held and trembling with rage. */
+  private poseDab(g: Instance, w: number, t: number): void {
+    const D = SILLY.dab;
+    const i = Math.min(D.count, Math.floor(t / D.everyS));
+    const since = t - i * D.everyS;
+    const side = i % 2 === 0 ? 1 : -1;
+    const k = ease(Math.min(1, since / D.snapS));
+    // the pose blends from the other side over the snap (the first dab from standing)
+    const from = i === 0 ? 0 : -side;
+    const s = from + (side - from) * k;
+    const final = i >= D.count;
+    const tremble = final ? Math.sin(t * Math.PI * 2 * D.trembleHz) * 0.05 : 0;
+    const hop = Math.max(0, 1 - since / (final ? 0.35 : 0.2)) * (final ? D.finalHopM : D.hopM);
+    this.rootPose(g, w, hop, 0.18 + tremble, 0.3 * s + tremble, -0.1 * s + tremble);
+    this.turnBone(g, 'chest', 1, 0, 0, 0.2 * w);
+    this.turnBone(g, 'head', 1, 0, 0, 0.55 * Math.abs(s) * w);
+    this.turnBone(g, 'head', 0, 1, 0, 0.45 * s * w);
+    // the far arm straight out and up toward the dab side; the near arm bent across the face, pointing the same way
+    const far: 1 | -1 = s >= 0 ? 1 : -1;
+    const a = Math.abs(s);
+    this.arm(g, far, 0.85 * a + 0.3 * (1 - a), 0.5 * a - 0.9 * (1 - a), 0.15, 0.85 * a + 0.25 * (1 - a), 0.5 * a - 0.95 * (1 - a), 0.15, w);
+    const near = (-far) as 1 | -1;
+    this.arm(g, near, -0.55 * a + 0.3 * (1 - a), 0.45 * a - 0.9 * (1 - a), 0.7 * a, -0.9 * a + 0.25 * (1 - a), 0.45 * a - 0.95 * (1 - a), -0.1 * a, w);
+  }
+
+  /** Look left (12, d = 1) / right (13, d = -1): creep, SNAP, scan with a hand shading the eyes, double take, snap again. */
+  private poseLook(g: Instance, w: number, t: number, d: 1 | -1): void {
+    const L = SILLY.look;
+    let head: number;
+    if (t < L.creepEnd) head = 0.35 * ease(t / L.creepEnd);
+    else if (t < L.snapEnd) head = 0.35 + (L.headRad - 0.35) * ease((t - L.creepEnd) / (L.snapEnd - L.creepEnd));
+    else if (t < L.scanEnd) head = L.headRad + Math.sin((t - L.snapEnd) * Math.PI * 3) * 0.1;
+    else if (t < L.backEnd) head = L.headRad * (1 - ease((t - L.scanEnd) / (L.backEnd - L.scanEnd)));
+    else if (t < L.againEnd) head = L.headRad * ease((t - L.backEnd) / (L.againEnd - L.backEnd));
+    else head = L.headRad;
+    const peer = head / L.headRad;
+    this.rootPose(g, w, 0, 0.15 * peer, 0.22 * peer * d, -0.12 * peer * d);
+    this.turnBone(g, 'chest', 0, 1, 0, 0.3 * peer * d * w);
+    this.turnBone(g, 'head', 0, 1, 0, (head - 0.3 * peer) * d * w);
+    this.turnBone(g, 'head', 1, 0, 0, 0.15 * peer * w);
+    // the hand on the look side shades the eyes; the other dangles
+    const shade = (-d) as 1 | -1;
+    const k = Math.min(1, t / 0.35);
+    this.arm(g, shade, 0.6, 0.35 * k - 0.8 * (1 - k), 0.55, -0.55 * k + 0.2 * (1 - k), 0.5 * k - 0.9 * (1 - k), 0.4, w);
+    this.arm(g, d, 0.35, -1, -0.1, 0.3, -1, 0.15, w);
+  }
+
+  /** Crying (14): hands to the face, the shoulders heaving, and every so often a WAIL (head back, arms flung up). */
+  private poseCrying(g: Instance, w: number, t: number): void {
+    const C = SILLY.crying;
+    const k = ease(Math.min(1, t / C.faceEnd));
+    const sob = Math.sin(t * Math.PI * 2 * C.sobHz);
+    const wp = t < C.faceEnd ? 1 : ((t - C.faceEnd) % C.wailEvery) / C.wailS;
+    const wail = wp < 1 ? Math.sin(wp * Math.PI) : 0;
+    this.rootPose(g, w, Math.abs(sob) * 0.03 * k, (0.12 + 0.04 * sob) * (1 - wail) - 0.18 * wail, 0, 0.05 * sob);
+    this.turnBone(g, 'chest', 1, 0, 0, (0.22 + 0.08 * sob) * k * (1 - wail) * w);
+    this.turnBone(g, 'head', 1, 0, 0, (0.4 * k * (1 - wail) - 0.6 * wail) * w);
+    this.turnBone(g, 'head', 0, 0, 1, 0.15 * Math.sin(t * 4) * w);
+    // blend of three arm poses: hanging (rest), hands on the face, flung up in the wail
+    const face = (1 - wail) * k;
+    const rest = 1 - face - wail;
+    const ux = 0.3 * face + 0.7 * wail + 0.25 * rest, uy = 0.6 * wail - 0.1 * face - 0.9 * rest, uz = 0.85 * face + 0.2 * wail;
+    const fx = -0.3 * face + 0.75 * wail + 0.2 * rest, fy = 0.85 * face + 0.65 * wail - 0.9 * rest, fz = 0.25 * face;
+    this.arm(g, 1, ux, uy, uz, fx, fy, fz, w);
+    this.arm(g, -1, ux, uy, uz, fx, fy, fz, w);
+  }
+
   /** Aims a limb along a root-space direction (`_qRoot` holds the root's world rotation). */
   private aimLimb(g: Instance, upper: string, lower: string, x: number, y: number, z: number, w: number): void {
     const u = g.bones.get(upper), l = g.bones.get(lower);
@@ -1100,6 +1312,12 @@ const _qd = new Quaternion();
 const _qw = new Quaternion();
 const _qp = new Quaternion();
 const _qI = new Quaternion();
+
+/** Smoothstep on 0..1 (clamped). */
+function ease(x: number): number {
+  const c = Math.min(1, Math.max(0, x));
+  return c * c * (3 - 2 * c);
+}
 
 /** Rotates `bone` (in world space, by weight `w`) so the direction bone → `child` points along world `dir`. */
 function aimBone(bone: Object3D, child: Object3D, dir: Vector3, w: number): void {

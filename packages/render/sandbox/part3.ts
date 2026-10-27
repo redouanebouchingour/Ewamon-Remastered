@@ -9,7 +9,7 @@
  *
  * `?demo=people`: every look of `models.manifest.json` (24) in two rows facing the camera, a few creature billboards
  * beside them for scale, and walkers / runners circling in front at 1.0, 4.2 and 7.0 m/s (the protocol's walk and run
- * speeds). Controls on `part3.people`: `emote(n)` (all, 0..6), `close(i)` (inspector close-up on look i), `wide()`,
+ * speeds). Controls on `part3.people`: `emote(n)` (all, 0..14), `close(i)` (inspector close-up on look i), `wide()`,
  * `march(on)` (the lineup walks 3 m along its row and back, `&marchSpeed=` m/s), `gait(i)`, `stats()`.
  *
  * `?demo=legends` (amended 2026-10-06, §10.4.5 flipbook): the 10 animated legendaries / mythicals (`&species=a,b` to
@@ -20,7 +20,7 @@
  */
 import { Group, Vector3 } from 'three/webgpu';
 import { SPECIES } from '@ewa/content';   // sandbox only (vite alias); the render package never imports content
-import { ARENA_BACKDROP, part3Of, rendererInternals, type Terrain, type AnimAtlasSet, type AtlasSet, type AuraKind, type CreatureBillboard, type FrameHook, type Renderer, type SpriteDescriptor, type TypeName, type VariantKey, type VfxId } from '../src/index.js';
+import { ARENA_BACKDROP, part3Of, rendererInternals, type Terrain, type AnimAtlasSet, type AtlasSet, type AuraKind, type CreatureBillboard, type EmoteId, type FrameHook, type Renderer, type SpriteDescriptor, type TypeName, type VariantKey, type VfxId } from '../src/index.js';
 
 interface ManifestMap { readonly url: string; readonly mips: readonly string[] }
 interface ManifestAtlas { readonly id: string; readonly species: readonly string[]; readonly size: 2048; readonly albedo: ManifestMap; readonly normal: ManifestMap; readonly emissive: ManifestMap; readonly normalScale: 0.5 | 1 }
@@ -313,7 +313,7 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
     });
     const people = {
       ids, looks, creatures,
-      emote: (n: 0 | 1 | 2 | 3 | 4 | 5 | 6) => ids.forEach((id) => p.actors.setEmote(id, n)),
+      emote: (n: EmoteId) => ids.forEach((id) => p.actors.setEmote(id, n)),
       march: (on: boolean) => { marchOn = on; if (!on) ids.forEach((id, i) => p.actors.setTransform(id, base[i]!.x, base[i]!.z, faceCam, false, false)); },
       // close-up on look i: the other row steps far away so no head stands between the camera and the subject
       close: (i: number, ms = 400) => {

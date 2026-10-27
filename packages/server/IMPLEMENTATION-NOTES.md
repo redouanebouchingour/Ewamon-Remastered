@@ -1262,6 +1262,7 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
 ## Breakdance emote (2026-10-22)
 
 - The emote timer clears emote 7 (`EMOTE_BREAKDANCE`) after `BREAKDANCE_MS` (6 s) instead of `EMOTE_MS`.
+- Emote wheel (2026-10-27): the timer clears every emote after protocol `emoteLengthMs(emote)` (8..14 run 2.6–5.2 s).
 
 ## NPC memory and town reputation (2026-10-24, not in the SPEC)
 

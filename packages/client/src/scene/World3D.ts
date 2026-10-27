@@ -36,10 +36,10 @@ import { Group, Vector3 } from 'three/webgpu';
 import { BIKE_ITEM, BODIES, HOLLOWED_FLAG, POSTGAME_FLAG, SHADOW_MAX, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, shadowNotice, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { BattleState, CreatureInstance } from '@ewa/core';
-import { BREAKDANCE_MS, FISH_REACH_M } from '@ewa/protocol';
+import { EMOTE_BREAKDANCE, EMOTE_MAX, FISH_REACH_M, emoteLengthMs } from '@ewa/protocol';
 import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
 import { ACTOR_POOL_SIZE, createRenderer, edgePoint, headingYaw, heroSurfaces, part3Of } from '@ewa/render';
-import type { CompileProgress, CreatureBillboard, DetailDistance as RenderDetailDistance, Renderer, SurfaceId, TypeName, VfxId, WeatherKind, ZoneHandle } from '@ewa/render';
+import type { CompileProgress, CreatureBillboard, DetailDistance as RenderDetailDistance, EmoteId, Renderer, SurfaceId, TypeName, VfxId, WeatherKind, ZoneHandle } from '@ewa/render';
 import { createAudioDirector } from '../audio/AudioDirector';
 import type { AudioDirector } from '../audio/AudioDirector';
 import { loadAudioManifest, validateAudioManifest } from '../audio/manifest';
@@ -74,7 +74,7 @@ import { DynamicResolution } from './dynamicResolution';
 import { setFishingActions, useFishingStore } from '../state/fishing';
 import { setStrikeHook } from '../state/npcFx';
 import { useViewStore } from '../state/view';
-import { setDanceAction } from '../state/dance';
+import { setEmoteAction, type WheelEmote } from '../state/emotes';
 import { noteTutorialEvent } from '../state/tutorial';
 import { useUiStore } from '../state/ui';
 import { FONT, TYPE_COLORS } from '../ui/tokens';
@@ -137,9 +137,11 @@ const LOOK_RAD_PER_PX = 0.0042;
 const FP_START_PITCH = -0.12;
 const FP_PITCH_MAX = 1.35;
 
-/** The breakdance: emote 7 and how far (m) from the dancer the villagers hop along. */
-const BREAKDANCE_EMOTE = 7;
+/** The emote wheel's dances (the breakdance, whip / nae nae) and how far (m) from the dancer the villagers hop along. */
+const WHIP_EMOTE = 10;
 const DANCE_ALONG_M = 30;
+/** The high five's slap lands this long after it starts (render `SILLY.highFive.slapEnd`). */
+const HIGH_FIVE_SLAP_MS = 520;
 
 const MAX_STEPS = 4;
 const NO_ITEMS: Readonly<Record<string, number>> = Object.freeze({});
@@ -360,7 +362,7 @@ class World implements World3D {
       onMiss: () => undefined,
     });
     setFishingActions({ press: () => this.fishing.press(), cancel: () => this.fishing.cancel() });
-    setDanceAction(() => this.dance());
+    setEmoteAction((n) => this.emote(n));
     setStrikeHook((kind, npcId, by, onHit) => (by === 'player' ? this.playerStrike(kind, npcId, onHit) : this.npcStrike(kind, npcId, onHit)));
     this.input = new LocalPlayerController({
       held: this.capture.held,
@@ -959,8 +961,8 @@ class World implements World3D {
       d.push(
         $(p).listen('emote', (v: number) => {
           if (!this.ready) return;
-          this.renderer.actors.setEmote(key, Math.max(0, Math.min(BREAKDANCE_EMOTE, v)) as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7);
-          if (v === BREAKDANCE_EMOTE) this.danceAlong(p.x, p.z);
+          this.renderer.actors.setEmote(key, Math.max(0, Math.min(EMOTE_MAX, v)) as EmoteId);
+          if (v === EMOTE_BREAKDANCE || v === WHIP_EMOTE) this.danceAlong(p.x, p.z, emoteLengthMs(v));
         }),
       );
       d.push(
@@ -1542,28 +1544,31 @@ class World implements World3D {
     return true;
   }
 
-  // ---- the breakdance (emote 7) -------------------------------------------------------------------------------------
+  // ---- the emote wheel (emotes 7..14) ----------------------------------------------------------------------------
 
   /**
-   * G / the Dance button: the emote goes to the room (the others see it on this player's avatar), plays on the
-   * player's own actor at once (the server does not echo a player's own emote), with the fanfare, and every villager
-   * within DANCE_ALONG_M hops along. First person stays on: the eye rides the dancing body (render `bodyTilt`).
+   * A pick on the emote wheel (G): the emote goes to the room (the others see it on this player's avatar) and plays
+   * on the player's own actor at once (the server does not echo a player's own emote). The breakdance brings its
+   * fanfare, the high five its slap, "you, me, battle" the spotted sting; for the dances every villager within
+   * DANCE_ALONG_M hops along. First person stays on: the eye rides the breakdancing body (render `bodyTilt`).
    */
-  private dance(): void {
+  private emote(n: WheelEmote): void {
     if (!this.ready || this.worldBlocked() || this.director.battleFrame !== null) return;
-    this.ws.send('emote', { emote: BREAKDANCE_EMOTE });
-    this.renderer.actors.setEmote(this.ws.selfId, BREAKDANCE_EMOTE);
-    this.audio.play('ui_stinger_victory_trainer', null);
-    this.danceAlong(this.input.pose.x, this.input.pose.z);
+    this.ws.send('emote', { emote: n });
+    this.renderer.actors.setEmote(this.ws.selfId, n);
+    if (n === EMOTE_BREAKDANCE) this.audio.play('ui_stinger_victory_trainer', null);
+    else if (n === 9) this.audio.play('spotted', null);
+    else if (n === 8) setTimeout(() => { if (this.ready) this.audio.play('hit_normal', null); }, HIGH_FIVE_SLAP_MS);
+    if (n === EMOTE_BREAKDANCE || n === WHIP_EMOTE) this.danceAlong(this.input.pose.x, this.input.pose.z, emoteLengthMs(n));
   }
 
   /** The villagers near a dancer hop along for the dance's length. */
-  private danceAlong(x: number, z: number): void {
+  private danceAlong(x: number, z: number, ms: number): void {
     const r2 = DANCE_ALONG_M * DANCE_ALONG_M;
     this.director.forEachStatic((id, sx, sz) => {
       const dx = sx - x;
       const dz = sz - z;
-      if (dx * dx + dz * dz <= r2) this.renderer.actors.setHop(id, BREAKDANCE_MS);
+      if (dx * dx + dz * dz <= r2) this.renderer.actors.setHop(id, ms);
     });
   }
 
@@ -2639,7 +2644,7 @@ class World implements World3D {
     setBattleActions(null);
     setEvolutionPlayer(null);
     setStrikeHook(null);
-    setDanceAction(null);
+    setEmoteAction(null);
     resetBuddyAmbient();
     this.strikeFx?.finish();
     this.playerStrikeFx?.finish();

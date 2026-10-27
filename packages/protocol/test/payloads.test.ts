@@ -15,6 +15,8 @@ import {
   parseClientMessage,
   RANKED_WINDOW,
   rankedWindow,
+  EMOTE_MAX,
+  emoteLengthMs,
 } from '../src/index';
 import type { ClientMessageType } from '../src/index';
 
@@ -46,7 +48,7 @@ const CASES: Record<ClientMessageType, Case> = {
   },
   emote: {
     valid: { emote: 3 },
-    invalid: [{ emote: 0 }, { emote: 8 }, { emote: '3' }, { emote: 2.5 }, {}],
+    invalid: [{ emote: 0 }, { emote: 15 }, { emote: '3' }, { emote: 2.5 }, {}],
   },
   chat: {
     valid: { text: 'hello there' },
@@ -288,6 +290,14 @@ describe('§4.3 CLIENT_MESSAGES', () => {
     expect(rankedWindow(30_000)).toBe(250);
     expect(rankedWindow(10 * 60_000)).toBe(RANKED_WINDOW.max);
     expect(rankedWindow(-5)).toBe(100);
+  });
+
+  it('the emote wheel: emotes up to EMOTE_MAX, each with its own length (1..6 keep 2 s, the breakdance 6 s)', () => {
+    expect(CLIENT_MESSAGES.emote.safeParse({ emote: EMOTE_MAX }).success).toBe(true);
+    expect(CLIENT_MESSAGES.emote.safeParse({ emote: EMOTE_MAX + 1 }).success).toBe(false);
+    for (let n = 1; n <= 6; n++) expect(emoteLengthMs(n)).toBe(2_000);
+    expect(emoteLengthMs(7)).toBe(6_000);
+    for (let n = 8; n <= EMOTE_MAX; n++) expect(emoteLengthMs(n)).toBeGreaterThan(2_000);
   });
 
   it('Phase D10/D11: interact names obstacles; input carries an optional bike flag', () => {

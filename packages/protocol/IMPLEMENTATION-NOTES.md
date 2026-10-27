@@ -239,6 +239,12 @@ installed library that future readers should not have to re-derive. The spec its
 - `EmoteMsg.emote` accepts 1..7: 7 is the breakdance (`EMOTE_BREAKDANCE`), which stays on `PlayerState.emote` for
   `BREAKDANCE_MS` (6 s) instead of 2 s. Not in the spine (§4.1 lists 1..6).
 
+## Emote wheel (2026-10-27)
+
+- `EmoteMsg.emote` accepts 1..`EMOTE_MAX` (14): 8..14 are the wheel's high five, "you, me, battle", whip / nae nae,
+  dab, look left, look right and crying. `emoteLengthMs(n)` is the one length table (1..6 2 s, 7 6 s, 8..14 2.6–5.2 s)
+  the server's emote timer reads; render keeps its own copy (`EMOTE_WHEEL_MS`, render imports only three).
+
 ## NPC memory and town reputation (2026-10-24)
 
 - Routes `npcMemory` (`GET /npc/memory/:npcId`) and `npcMemoryWrite` (`POST /npc/memory`, dedicated limit

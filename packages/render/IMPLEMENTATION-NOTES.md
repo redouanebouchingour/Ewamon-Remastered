@@ -2348,6 +2348,17 @@ pool; `Part3.worldFx`).
   tilt never outlives the dance. Like every emote it yields to walking. The HUD card shows 🔥.
 - `ActorPool.setHop(id, ms)` (contract addition): the actor hops in place (`HOP`), for villagers dancing along.
 
+## Emote wheel (emotes 8..14, 2026-10-27, not in the spine)
+
+- `EmoteId` is 0..14; `emoteMs(n)` reads `EMOTE_WHEEL_MS` (protocol `emoteLengthMs`'s numbers). 8..14 are procedural
+  poses like the breakdance (`EMOTE_POSES`, numbers in `SILLY`): high five (wind-up, slap, then flapping the hurt hand
+  while hopping on one foot), "you, me, battle" (point at the camera, thumbs at the own chest, boxing bob with jabs),
+  whip / nae nae (two whips, then the sway under a raised waving arm), dab (six snapping dabs, side to side, then one
+  held and trembling), look left / right (creep, snap, scan with a hand shading the eyes, double take) and crying (hands
+  to the face, heaving shoulders, a wail every 1.3 s). Each sets the root (`rootPose`: lift, lean, yaw, roll), turns
+  chest / head (`turnBone`) and aims both arm segments (`arm`, upper arm then forearm to the wrist) in root space after
+  the mixer; zero allocation. HUD cards: ✋ ⚔ 🕺 😤 👀 👀 😭.
+
 ## Quality presets (2026-10-23, not in the SPEC)
 
 - `quality.ts`: `GraphicsQuality` `'low' | 'medium' | 'high'` and `QUALITY_PROFILES`. `high` is the SPEC (pixel-ratio cap

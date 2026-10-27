@@ -54,7 +54,7 @@ describe('ZoneRoom — join, AOI, movement, chat, leave', () => {
     ja.room.send('emote', { emote: 3 });
     await waitFor(() => jb.room.state.players.get(a.id)!.emote === 3, 3000);
     await waitFor(() => jb.room.state.players.get(a.id)!.emote === 0, 5000);
-    ja.room.send('emote', { emote: 9 });
+    ja.room.send('emote', { emote: 15 });
     await waitFor(() => ja.msgs.some((m) => m.type === 'error' && m.code === 'invalidPayload'), 3000);
     // the breakdance (emote 7) outlasts the 2 s emote cards: still on after 3 s, cleared by its 6 s
     await sleep(1_600);

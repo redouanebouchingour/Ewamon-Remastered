@@ -37,7 +37,7 @@ import {
 import type { BadgeId, EncounterTable, Ecosystem, Heightfield, LinkDir, PlanEllipse, RaidHotspot, RectSolid, TrainerDef, ZoneDef, ZoneId } from '@ewa/content';
 import { createRng } from '@ewa/core';
 import type { Rng, WeatherKind } from '@ewa/core';
-import { BREAKDANCE_MS, BattleSummary, CLIENT_MESSAGES, CLOSE_CODES, EMOTE_BREAKDANCE, FISH_REACH_M, PlayerState, RaidState, SpawnState, ZoneState, rankedWindow } from '@ewa/protocol';
+import { BattleSummary, CLIENT_MESSAGES, CLOSE_CODES, FISH_REACH_M, PlayerState, RaidState, SpawnState, ZoneState, emoteLengthMs, rankedWindow } from '@ewa/protocol';
 import type { ChallengeFailReason, ClientMessageType, ClientPayload, FastTravelRefusal, FishRefusal, RankedIdleReason, ServerMessage, ServerMessageOf } from '@ewa/protocol';
 import type { RoomDeps } from '../deps';
 import { censor, sanitizeChat } from '../chat/filter';
@@ -3012,8 +3012,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     // 3. emote timers (+ S8: `moving` clears once inputs stop, so remote avatars stop their walk cycle)
     for (const [pid, at] of this.emoteSetAt) {
       const ps = state.players.get(pid);
-      // the breakdance (emote 7) plays longer than the 2 s emote cards
-      if (at + (ps?.emote === EMOTE_BREAKDANCE ? BREAKDANCE_MS : EMOTE_MS) > now) continue;
+      // the wheel's emotes (7 the breakdance, 8..14) play longer than the 2 s emote cards
+      if (at + (ps !== undefined ? emoteLengthMs(ps.emote) : EMOTE_MS) > now) continue;
       if (ps !== undefined) ps.emote = 0;
       this.emoteSetAt.delete(pid);
     }
