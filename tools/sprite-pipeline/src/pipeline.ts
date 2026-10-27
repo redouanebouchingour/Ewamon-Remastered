@@ -46,6 +46,7 @@ import type { ExcludedFile, SpriteSource } from './sources.js';
 import { compareSources, resolveSources } from './sources.js';
 import type { GrayImage, RgbaImage } from './types.js';
 import {
+  ALPHA_THRESHOLD,
   ANIM_BUDGET_BYTES,
   ANIM_DIR,
   CONCURRENCY,
@@ -577,10 +578,18 @@ export function spriteCacheKey(bytes: Uint8Array, id: string, spriteSize: number
   );
 }
 
+/** The share of a normalised cell's height its opaque texels (the atlas's binary alpha) span: the renderer sizes the card by it. */
+export function bodyVOf(albedo: RgbaImage): number {
+  const b = alphaBbox(albedo, ALPHA_THRESHOLD);
+  return b === null ? 0 : round((b.y1 - b.y0 + 1) / albedo.height, 4);
+}
+
 export async function processSprite(src: SpriteSource, cache: SpriteCache, ctx: ProcessContext): Promise<ProcessedSprite> {
   const hash = spriteCacheKey(ctx.bytes, src.id, ctx.spriteSize, ctx.frame, ctx.alpha);
   if (!ctx.force && cache.has(hash)) {
-    return { source: src, hash, meta: cache.readMeta(hash), cached: true };
+    const meta = cache.readMeta(hash);
+    if (meta.bodyV === undefined) meta.bodyV = bodyVOf(await cache.readRgba(hash, 'albedo'));
+    return { source: src, hash, meta, cached: true };
   }
   const decoded = await decodeToRgba(ctx.bytes, ctx.frame);
   const alpha = recoverAlpha(decoded, ctx.alpha);
@@ -619,6 +628,7 @@ export async function processSprite(src: SpriteSource, cache: SpriteCache, ctx: 
     kernel,
     emissivePixels,
     bbox: alphaBbox(albedo),
+    bodyV: bodyVOf(albedo),
   };
   await cache.write(hash, { meta, albedo, normal, emissive });
   return { source: src, hash, meta, cached: false };
@@ -766,6 +776,7 @@ function buildManifest(
         uv: pxToUv(px, atlasSize),
         footV: MANIFEST_FOOT_V,
         aspect: r.w / r.h,
+        ...(m.meta.bodyV !== undefined && m.meta.bodyV > 0 ? { bodyV: m.meta.bodyV } : {}),
         pixelScale: m.meta.pixelScale,
         source: m.source.file,
       };

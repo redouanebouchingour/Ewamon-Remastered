@@ -181,7 +181,7 @@ describe('T1 Pillar 7: the arena clears the ground cover and the props in its ri
 describe('T3 creature reveal', () => {
   const desc = (id: string): SpriteDescriptor => {
     const f = { atlas: 'a-001', rect: [0, 0.5, 0.5, 1] as const, px: [0, 0, 1024, 1024] as const, footV: 0.08, aspect: 1 };
-    return { id, front: f, back: f, sizeScale: 1, types: ['Grass'], variant: 'normal', isAlpha: false };
+    return { id, front: f, back: f, heightM: 1.376, types: ['Grass'], variant: 'normal', isAlpha: false };
   };
 
   it('flattens the grass round shown creatures near the focus, not round distant or hidden ones; stable slots', async () => {

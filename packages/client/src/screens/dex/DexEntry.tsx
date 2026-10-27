@@ -200,6 +200,9 @@ export function DexEntry({ sp, state, research, counters, variants, alpha, shiny
               <TypeBadge key={t} type={t} />
             ))}
             <span className={cx(s.rarity, s[`r_${sp.rarity}`])}>{sp.rarity}</span>
+            <span className={s.height} title="How tall it stands, as it is drawn in the world" data-testid="dex-height">
+              {formatHeight(creatureHeightM(sp, form, view.alpha))}
+            </span>
             {research !== undefined && state === 'caught' && <ResearchStamp level={research} />}
           </div>
           <p className={cx(s.verdict, state === 'caught' ? s.recorded : s.seenOnly)}>
@@ -230,6 +233,19 @@ export function DexEntry({ sp, state, research, counters, variants, alpha, shiny
       </div>
     </aside>
   );
+}
+
+/** An alpha stands this much taller (render `BILLBOARD.alphaScale`; the dex does not load the renderer). */
+const ALPHA_SCALE = 1.12;
+
+/** How tall the creature on show stands (m): the form's own height when it names one, an alpha's ALPHA_SCALE ×. */
+export function creatureHeightM(sp: SpeciesDef, form: BattleFormDef | null, alpha: boolean): number {
+  return (form?.heightM ?? sp.heightM) * (alpha ? ALPHA_SCALE : 1);
+}
+
+/** 0.45 m, 1.2 m, 2.0 m: two decimals under a metre, one above. */
+export function formatHeight(m: number): string {
+  return m < 1 ? `${Number(m.toFixed(2))} m` : `${m.toFixed(1)} m`;
 }
 
 function EntryNav({ num, caption, onPrev, onNext }: { readonly num: string; readonly caption: string; readonly onPrev?: () => void; readonly onNext?: () => void }) {

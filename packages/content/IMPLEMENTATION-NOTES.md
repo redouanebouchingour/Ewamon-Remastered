@@ -911,3 +911,10 @@ target follows (179).
   starter lines (bramblecub, cindercap, glimfin) first, then every other evolution line together in source order, then
   the legendaries, then the mythicals. Rows are emitted in that order. `DEX_STARTERS` in the generator must name the
   same set as `STARTER_ROOTS` (`data/arena.ts`); `index.test.ts` checks both the set and the order.
+
+## Species heights (2026-10-27)
+
+`sizeScale` is no longer emitted: `heightM` (metres) comes from `.design/additions/heights.js`, judged by eye from each
+sprite, its flavor and its line (the player is 1.55 m). A species missing from the table, or a table key that names no
+species or battle form, fails the generator. A battle form gets its own `heightM` only when keyed `<species>_<form>`
+there (17 forms rise past their species, e.g. hyoryu 3.5 → Majin 3.8 m); the rest stand as tall as the species.

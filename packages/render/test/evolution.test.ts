@@ -168,9 +168,9 @@ function fakeSet(id: string): AtlasSet {
   const m = (k: string) => ({ url: `/c/${id}.${k}.webp`, mips: ['1', '2', '3'].map((i) => `/c/${id}.${k}.m${i}.webp`) });
   return { id, albedo: m('albedo'), normal: m('normal'), emissive: m('emissive'), size: 2048, normalScale: 0.5 };
 }
-function desc(id: string, atlas: string, sizeScale = 1): SpriteDescriptor {
+function desc(id: string, atlas: string, heightM = 1.376): SpriteDescriptor {
   const f = (x: number) => ({ atlas, rect: [x, 0.5, x + 0.5, 1] as const, px: [x * 2048, 0, 1024, 1024] as const, footV: 0.08, aspect: 1 });
-  return { id, front: f(0.5), back: f(0), sizeScale, types: ['Grass'], variant: 'normal', isAlpha: false };
+  return { id, front: f(0.5), back: f(0), heightM, types: ['Grass'], variant: 'normal', isAlpha: false };
 }
 
 interface Fixture {

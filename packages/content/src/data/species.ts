@@ -4,7 +4,6 @@
 // species 'clementar': rarity "epic" → "rare" (no epic Rarity in the spine)
 // species 'lithokrysm': evolvesFrom null in legacy, derived 'pebblit' from the parent's evolvesInto
 // species 'prismolith': rarity "epic" → "rare" (no epic Rarity in the spine)
-// species 'ampmite': sizeScale 0.45 clamped to 0.5 (schema range 0.5..2.2)
 // species 'archonosis': default move 'Abyssal Nova' names no MOVES row — dropped
 // species 'archonosis': learnable move 'Abyssal Nova' names no MOVES row — dropped
 // species 'resilithorn': rarity "epic" → "rare" (no epic Rarity in the spine)
@@ -37,7 +36,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 48,
     rarity: 'common',
     catchRate: 45,
-    sizeScale: 0.82,
+    heightM: 0.5,
     expYield: 58,
     moves: ['Tackle', 'Vine Lash', 'Nature Drain', 'Growl'],
     learnableMoves: [
@@ -67,7 +66,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 61,
     rarity: 'uncommon',
     catchRate: 28,
-    sizeScale: 1.1,
+    heightM: 1.2,
     expYield: 126,
     moves: ['Vine Lash', 'Leaf Blade', 'Nature Drain', 'Synthesis'],
     learnableMoves: [
@@ -97,7 +96,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 70,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.3,
+    heightM: 2.1,
     expYield: 220,
     moves: ['Leaf Blade', 'Forest Fury', 'Power Whip', 'Synthesis'],
     learnableMoves: [
@@ -124,6 +123,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       baseSpd: 80,
       onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 },
       sprite: { front: 'thornback_tenjin_front', back: 'thornback_tenjin_back' },
+      heightM: 2.3,
     },
   },
   {
@@ -138,7 +138,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 70,
     rarity: 'uncommon',
     catchRate: 30,
-    sizeScale: 0.7,
+    heightM: 0.45,
     expYield: 74,
     moves: ['Flame Dash', 'Tackle', 'Will-O-Wisp', 'Growl'],
     learnableMoves: [
@@ -168,7 +168,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 86,
     rarity: 'uncommon',
     catchRate: 24,
-    sizeScale: 0.92,
+    heightM: 0.9,
     expYield: 132,
     moves: ['Flame Dash', 'Fire Fang', 'Will-O-Wisp', 'Inferno Rush'],
     learnableMoves: [
@@ -198,7 +198,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 102,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.2,
+    heightM: 1.7,
     expYield: 228,
     moves: ['Inferno Rush', 'Blaze Tackle', 'Solar Flare', 'Will-O-Wisp'],
     learnableMoves: [
@@ -225,6 +225,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       baseSpd: 130,
       onEnter: { clearNegativeStages: true, lowerFoes: { stat: 'spd', stages: 1 } },
       sprite: { front: 'infernomorel_majin_front', back: 'infernomorel_majin_back' },
+      heightM: 1.9,
     },
   },
   {
@@ -239,7 +240,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 82,
     rarity: 'uncommon',
     catchRate: 28,
-    sizeScale: 0.72,
+    heightM: 0.35,
     expYield: 78,
     moves: ['Bubble Beam', 'Thunder Claw', 'Quick Attack', 'Light Screen'],
     learnableMoves: [
@@ -269,7 +270,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 99,
     rarity: 'uncommon',
     catchRate: 22,
-    sizeScale: 0.95,
+    heightM: 0.5,
     expYield: 138,
     moves: ['Bubble Beam', 'Thunder Claw', 'Aqua Blade', 'Light Screen'],
     learnableMoves: [
@@ -299,7 +300,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 116,
     rarity: 'rare',
     catchRate: 9,
-    sizeScale: 1.25,
+    heightM: 0.9,
     expYield: 236,
     moves: ['Aqua Blade', 'Thunder Claw', 'Volt Crash', 'Hydro Crush'],
     learnableMoves: [
@@ -326,6 +327,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       baseSpd: 126,
       onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 },
       sprite: { front: 'abysspark_tenjin_front', back: 'abysspark_tenjin_back' },
+      heightM: 1,
     },
   },
   {
@@ -340,7 +342,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 72,
     rarity: 'common',
     catchRate: 45,
-    sizeScale: 0.72,
+    heightM: 0.5,
     expYield: 60,
     moves: ['Peck', 'Leaf Blade', 'Stink Cloud', 'Feather Dance'],
     learnableMoves: [
@@ -370,7 +372,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 96,
     rarity: 'uncommon',
     catchRate: 22,
-    sizeScale: 0.95,
+    heightM: 0.9,
     expYield: 145,
     moves: ['Peck', 'Leaf Blade', 'Stink Cloud', 'Feather Dance'],
     learnableMoves: [
@@ -402,7 +404,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 40,
     rarity: 'common',
     catchRate: 45,
-    sizeScale: 0.6,
+    heightM: 0.4,
     expYield: 60,
     moves: ['Tackle', 'Vine Lash', 'Dragon Burst', 'Nature Drain'],
     learnableMoves: [
@@ -432,7 +434,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 80,
     rarity: 'uncommon',
     catchRate: 25,
-    sizeScale: 1,
+    heightM: 0.9,
     expYield: 140,
     moves: ['Leaf Blade', 'Dragon Burst', 'Nature Drain', 'Forest Fury'],
     learnableMoves: [
@@ -462,7 +464,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 70,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.3,
+    heightM: 1.8,
     expYield: 270,
     moves: ['Gem Storm', 'Dragon Rush', 'Forest Fury', 'Nature Drain'],
     learnableMoves: [
@@ -492,7 +494,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 72,
     rarity: 'common',
     catchRate: 45,
-    sizeScale: 0.68,
+    heightM: 0.45,
     expYield: 60,
     moves: ['Sand Attack', 'Tackle', 'Mud-Slap', 'Bite'],
     learnableMoves: [
@@ -522,7 +524,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 92,
     rarity: 'uncommon',
     catchRate: 25,
-    sizeScale: 0.95,
+    heightM: 0.9,
     expYield: 130,
     moves: ['Mud-Slap', 'Rock Throw', 'Sand Tomb', 'Citrus Toss'],
     learnableMoves: [
@@ -552,7 +554,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 82,
     rarity: 'rare',
     catchRate: 5,
-    sizeScale: 1.3,
+    heightM: 1.7,
     expYield: 245,
     moves: ['Earthquake', 'Wood Hammer', 'Sandstorm', 'Zest Blast'],
     learnableMoves: [
@@ -578,6 +580,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       baseSpd: 110,
       onEnter: { clearNegativeStages: true, lowerFoes: { stat: 'spd', stages: 1 } },
       sprite: { front: 'clementar_majin_front', back: 'clementar_majin_back' },
+      heightM: 1.8,
     },
   },
   {
@@ -592,7 +595,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 60,
     rarity: 'common',
     catchRate: 50,
-    sizeScale: 0.55,
+    heightM: 0.35,
     expYield: 50,
     moves: ['Fairy Wind', 'Tackle', 'Light Screen', 'Growl'],
     learnableMoves: [
@@ -621,7 +624,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 90,
     rarity: 'uncommon',
     catchRate: 25,
-    sizeScale: 0.78,
+    heightM: 0.6,
     expYield: 130,
     moves: ['Fairy Wind', 'Dazzling Gleam', 'Light Screen', 'Moonblast'],
     learnableMoves: [
@@ -648,6 +651,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       baseSpd: 100,
       onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 },
       sprite: { front: 'glimmereen_tenjin_front', back: 'glimmereen_tenjin_back' },
+      heightM: 0.7,
     },
   },
   {
@@ -662,7 +666,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 76,
     rarity: 'common',
     catchRate: 40,
-    sizeScale: 0.72,
+    heightM: 0.5,
     expYield: 76,
     moves: ['Ice Shard', 'Frost Bite', 'Quick Attack', 'Growl'],
     learnableMoves: [
@@ -693,7 +697,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 110,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.15,
+    heightM: 1.1,
     expYield: 224,
     moves: ['Frost Bite', 'Glacier Crash', 'Body Slam', 'Blizzard'],
     learnableMoves: [
@@ -724,7 +728,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 92,
     rarity: 'rare',
     catchRate: 14,
-    sizeScale: 1.2,
+    heightM: 1.4,
     expYield: 210,
     moves: ['Extrasensory', 'Blizzard', 'Future Sight', 'Heal Pulse'],
     learnableMoves: [
@@ -755,7 +759,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 48,
     rarity: 'common',
     catchRate: 45,
-    sizeScale: 0.55,
+    heightM: 0.35,
     expYield: 58,
     moves: ['Fairy Wind', 'Rock Throw', 'Charm', 'Sand Attack'],
     learnableMoves: [
@@ -786,7 +790,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 40,
     rarity: 'rare',
     catchRate: 12,
-    sizeScale: 1.1,
+    heightM: 1.4,
     expYield: 200,
     moves: ['Steel Slash', 'Iron Defense', 'Crystal Slam', 'Seismic Crush'],
     learnableMoves: [
@@ -816,7 +820,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 94,
     rarity: 'rare',
     catchRate: 8,
-    sizeScale: 1.25,
+    heightM: 1.9,
     expYield: 248,
     moves: ['Power Gem', 'Ancient Power', 'Dazzling Gleam', 'Play Rough'],
     learnableMoves: [
@@ -848,7 +852,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 70,
     rarity: 'common',
     catchRate: 42,
-    sizeScale: 0.6,
+    heightM: 0.5,
     expYield: 62,
     moves: ['Lick', 'Vine Lash', 'Nature Drain', 'Growl'],
     learnableMoves: [
@@ -880,7 +884,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 96,
     rarity: 'uncommon',
     catchRate: 18,
-    sizeScale: 1.05,
+    heightM: 1.6,
     expYield: 166,
     moves: ['Hex', 'Vine Lash', 'Forest Fury', 'Shadow Sneak'],
     learnableMoves: [
@@ -911,7 +915,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 82,
     rarity: 'common',
     catchRate: 40,
-    sizeScale: 0.5,
+    heightM: 0.2,
     expYield: 64,
     moves: ['String Shot', 'Quick Attack', 'Thunder Fang', 'Bug Bite'],
     learnableMoves: [
@@ -943,7 +947,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 116,
     rarity: 'uncommon',
     catchRate: 16,
-    sizeScale: 0.75,
+    heightM: 0.5,
     expYield: 178,
     moves: ['Thunder Claw', 'Signal Beam', 'X-Scissor', 'Volt Crash'],
     learnableMoves: [
@@ -974,7 +978,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 74,
     rarity: 'common',
     catchRate: 46,
-    sizeScale: 0.62,
+    heightM: 0.5,
     expYield: 60,
     moves: ['Fairy Wind', 'Wing Gust', 'Charm', 'Quick Attack'],
     learnableMoves: [
@@ -1006,7 +1010,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 108,
     rarity: 'uncommon',
     catchRate: 16,
-    sizeScale: 0.95,
+    heightM: 1,
     expYield: 162,
     moves: ['Dazzling Gleam', 'Acrobatics', 'Play Rough', 'Roost'],
     learnableMoves: [
@@ -1038,7 +1042,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 46,
     rarity: 'common',
     catchRate: 40,
-    sizeScale: 0.85,
+    heightM: 1.1,
     expYield: 64,
     moves: ['Bubble Beam', 'Low Kick', 'Protect', 'Mach Punch'],
     learnableMoves: [
@@ -1070,7 +1074,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 75,
     rarity: 'common',
     catchRate: 50,
-    sizeScale: 0.65,
+    heightM: 0.45,
     expYield: 60,
     moves: ['Confusion', 'Calm Mind', 'Light Screen', 'Growl'],
     learnableMoves: [
@@ -1100,7 +1104,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 95,
     rarity: 'uncommon',
     catchRate: 25,
-    sizeScale: 0.95,
+    heightM: 1,
     expYield: 130,
     moves: ['Psych Wave', 'Extrasensory', 'Calm Mind', 'Brain Pulse'],
     learnableMoves: [
@@ -1134,7 +1138,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 118,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.2,
+    heightM: 1.7,
     expYield: 220,
     moves: ['Mind Crush', 'Future Sight', 'Shadow Ball'],
     learnableMoves: [
@@ -1169,7 +1173,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 38,
     rarity: 'common',
     catchRate: 40,
-    sizeScale: 0.55,
+    heightM: 0.5,
     expYield: 60,
     moves: ['Bug Bite', 'Iron Defense', 'String Shot', 'Steel Slash'],
     learnableMoves: [
@@ -1201,7 +1205,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 55,
     rarity: 'rare',
     catchRate: 12,
-    sizeScale: 1.2,
+    heightM: 0.9,
     expYield: 232,
     moves: ['X-Scissor', 'Steel Slash', 'Iron Defense', 'Megahorn'],
     learnableMoves: [
@@ -1235,7 +1239,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 42,
     rarity: 'common',
     catchRate: 40,
-    sizeScale: 0.75,
+    heightM: 0.6,
     expYield: 65,
     moves: ['Rock Throw', 'Ember', 'Bite', 'Rock Slide'],
     learnableMoves: [
@@ -1268,7 +1272,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 58,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.25,
+    heightM: 1.4,
     expYield: 250,
     moves: ['Rock Slide', 'Flame Dash', 'Stone Edge', 'Heat Wave'],
     learnableMoves: [
@@ -1303,7 +1307,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 32,
     rarity: 'common',
     catchRate: 45,
-    sizeScale: 0.7,
+    heightM: 0.5,
     expYield: 58,
     moves: ['Mud-Slap', 'Water Pulse', 'Tackle', 'Sand Attack'],
     learnableMoves: [
@@ -1336,7 +1340,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 45,
     rarity: 'rare',
     catchRate: 12,
-    sizeScale: 1.25,
+    heightM: 1,
     expYield: 242,
     moves: ['Earthquake', 'Scald', 'Bulldoze', 'Mud-Slap'],
     learnableMoves: [
@@ -1370,7 +1374,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 45,
     rarity: 'common',
     catchRate: 45,
-    sizeScale: 0.7,
+    heightM: 0.6,
     expYield: 55,
     moves: ['Tackle', 'Growl', 'Quick Attack', 'Howl'],
     learnableMoves: [
@@ -1400,7 +1404,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 48,
     rarity: 'uncommon',
     catchRate: 25,
-    sizeScale: 0.9,
+    heightM: 0.9,
     expYield: 135,
     moves: ['Tackle', 'Howl', 'Body Slam', 'Slash'],
     learnableMoves: [
@@ -1432,7 +1436,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 65,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.25,
+    heightM: 1.6,
     expYield: 265,
     moves: ['Body Slam', 'Howl', 'Double Edge', 'Hyper Beam'],
     learnableMoves: [
@@ -1465,7 +1469,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 72,
     rarity: 'common',
     catchRate: 50,
-    sizeScale: 0.55,
+    heightM: 0.3,
     expYield: 58,
     moves: ['Thunder Fang', 'Wing Gust', 'Quick Attack', 'Growl'],
     learnableMoves: [
@@ -1496,7 +1500,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 116,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.05,
+    heightM: 1.3,
     expYield: 234,
     moves: ['Thunder Claw', 'Sky Pierce', 'Volt Crash', 'Aerial Ace'],
     learnableMoves: [
@@ -1527,7 +1531,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 58,
     rarity: 'common',
     catchRate: 45,
-    sizeScale: 0.62,
+    heightM: 0.5,
     expYield: 62,
     moves: ['Dragon Rush', 'Wing Gust', 'Tackle', 'Growl'],
     learnableMoves: [
@@ -1558,7 +1562,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 100,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.2,
+    heightM: 1.9,
     expYield: 238,
     moves: ['Dragon Claw', 'Aerial Ace', 'Dragon Rush', 'Sky Pierce'],
     learnableMoves: [
@@ -1589,7 +1593,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 55,
     rarity: 'common',
     catchRate: 42,
-    sizeScale: 0.7,
+    heightM: 0.6,
     expYield: 66,
     moves: ['Bubble Beam', 'Dragon Rush', 'Bite', 'Growl'],
     learnableMoves: [
@@ -1620,7 +1624,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 88,
     rarity: 'rare',
     catchRate: 8,
-    sizeScale: 1.35,
+    heightM: 2.6,
     expYield: 248,
     moves: ['Aqua Blade', 'Dragon Rush', 'Crunch', 'Hydro Crush'],
     learnableMoves: [
@@ -1651,7 +1655,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 52,
     rarity: 'common',
     catchRate: 44,
-    sizeScale: 0.62,
+    heightM: 0.5,
     expYield: 60,
     moves: ['Ice Shard', 'Dragon Rush', 'Bite', 'Growl'],
     learnableMoves: [
@@ -1682,7 +1686,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 82,
     rarity: 'rare',
     catchRate: 9,
-    sizeScale: 1.25,
+    heightM: 1.9,
     expYield: 244,
     moves: ['Glacier Crash', 'Dragon Claw', 'Blizzard', 'Dragon Rush'],
     learnableMoves: [
@@ -1713,7 +1717,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 38,
     rarity: 'common',
     catchRate: 48,
-    sizeScale: 0.62,
+    heightM: 0.3,
     expYield: 58,
     moves: ['Bubble Beam', 'Vine Lash', 'Tackle', 'Growl'],
     learnableMoves: [
@@ -1744,7 +1748,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 48,
     rarity: 'rare',
     catchRate: 6,
-    sizeScale: 1.3,
+    heightM: 1.6,
     expYield: 242,
     moves: ['Power Whip', 'Hydro Crush', 'Synthesis', 'Nature Drain'],
     learnableMoves: [
@@ -1775,7 +1779,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 56,
     rarity: 'common',
     catchRate: 46,
-    sizeScale: 0.7,
+    heightM: 0.4,
     expYield: 62,
     moves: ['Ice Shard', 'Bubble Beam', 'Bite', 'Growl'],
     learnableMoves: [
@@ -1806,7 +1810,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 72,
     rarity: 'rare',
     catchRate: 11,
-    sizeScale: 1.1,
+    heightM: 1.1,
     expYield: 218,
     moves: ['Glacier Crash', 'Aqua Blade', 'Crunch', 'Blizzard'],
     learnableMoves: [
@@ -1837,7 +1841,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 60,
     rarity: 'common',
     catchRate: 50,
-    sizeScale: 0.6,
+    heightM: 0.5,
     expYield: 56,
     moves: ['Acid', 'Bubble Beam', 'String Shot', 'Growl'],
     learnableMoves: [
@@ -1868,7 +1872,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 94,
     rarity: 'rare',
     catchRate: 12,
-    sizeScale: 0.95,
+    heightM: 1.4,
     expYield: 210,
     moves: ['Sludge Bomb', 'Hydro Crush', 'Cross Poison', 'Toxic Slam'],
     learnableMoves: [
@@ -1899,7 +1903,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 50,
     rarity: 'common',
     catchRate: 44,
-    sizeScale: 0.65,
+    heightM: 0.5,
     expYield: 60,
     moves: ['Vine Lash', 'Acid', 'Bite', 'Growl'],
     learnableMoves: [
@@ -1930,7 +1934,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 64,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.05,
+    heightM: 1.3,
     expYield: 220,
     moves: ['Sludge Bomb', 'Power Whip', 'Cross Poison', 'Nature Drain'],
     learnableMoves: [
@@ -1961,7 +1965,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 62,
     rarity: 'common',
     catchRate: 52,
-    sizeScale: 0.5,
+    heightM: 0.3,
     expYield: 48,
     moves: ['Wing Gust', 'Nature Drain', 'Tackle', 'Growl'],
     learnableMoves: [
@@ -1992,7 +1996,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 102,
     rarity: 'uncommon',
     catchRate: 18,
-    sizeScale: 0.85,
+    heightM: 0.9,
     expYield: 172,
     moves: ['Leaf Blade', 'Aerial Ace', 'Sky Pierce', 'Petal Blizzard'],
     learnableMoves: [
@@ -2023,7 +2027,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 36,
     rarity: 'common',
     catchRate: 40,
-    sizeScale: 0.75,
+    heightM: 0.8,
     expYield: 68,
     moves: ['Iron Defense', 'Ice Shard', 'Steel Slash', 'Tackle'],
     learnableMoves: [
@@ -2054,7 +2058,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 54,
     rarity: 'rare',
     catchRate: 8,
-    sizeScale: 1.15,
+    heightM: 2,
     expYield: 224,
     moves: ['Gyro Ball', 'Glacier Crash', 'Iron Defense', 'Smart Strike'],
     learnableMoves: [
@@ -2085,7 +2089,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 66,
     rarity: 'common',
     catchRate: 48,
-    sizeScale: 0.55,
+    heightM: 0.3,
     expYield: 58,
     moves: ['Will-O-Wisp', 'Lick', 'Flame Dash', 'Growl'],
     learnableMoves: [
@@ -2116,7 +2120,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 100,
     rarity: 'rare',
     catchRate: 11,
-    sizeScale: 1.05,
+    heightM: 1.8,
     expYield: 218,
     moves: ['Shadow Ball', 'Inferno Rush', 'Will-O-Wisp', 'Ghost Mist'],
     learnableMoves: [
@@ -2147,7 +2151,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 64,
     rarity: 'common',
     catchRate: 48,
-    sizeScale: 0.55,
+    heightM: 0.4,
     expYield: 60,
     moves: ['Confusion', 'Fairy Wind', 'Calm Mind', 'Growl'],
     learnableMoves: [
@@ -2178,7 +2182,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 108,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 0.95,
+    heightM: 1.2,
     expYield: 222,
     moves: ['Moonblast', 'Extrasensory', 'Dazzling Gleam', 'Future Sight'],
     learnableMoves: [
@@ -2210,7 +2214,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 48,
     rarity: 'common',
     catchRate: 42,
-    sizeScale: 0.65,
+    heightM: 0.7,
     expYield: 64,
     moves: ['Fairy Wind', 'Steel Slash', 'Dazzling Gleam', 'Charm'],
     learnableMoves: [
@@ -2241,7 +2245,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 76,
     rarity: 'rare',
     catchRate: 9,
-    sizeScale: 1.15,
+    heightM: 1.8,
     expYield: 226,
     moves: ['Flash Cannon', 'Play Rough', 'Smart Strike', 'Dazzling Gleam'],
     learnableMoves: [
@@ -2269,6 +2273,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       baseSpd: 86,
       onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 },
       sprite: { front: 'gemknight_tenjin_front', back: 'gemknight_tenjin_back' },
+      heightM: 2,
     },
   },
   {
@@ -2283,7 +2288,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 68,
     rarity: 'common',
     catchRate: 46,
-    sizeScale: 0.65,
+    heightM: 0.4,
     expYield: 62,
     moves: ['Bite', 'Acid', 'Night Slash', 'Growl'],
     learnableMoves: [
@@ -2314,7 +2319,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 106,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.05,
+    heightM: 1.3,
     expYield: 222,
     moves: ['Sludge Bomb', 'Night Slash', 'Crunch', 'Dark Pulse'],
     learnableMoves: [
@@ -2343,6 +2348,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       baseSpd: 134,
       onEnter: { clearNegativeStages: true, lowerFoes: { stat: 'def', stages: 1 } },
       sprite: { front: 'toxshade_majin_front', back: 'toxshade_majin_back' },
+      heightM: 1.5,
     },
   },
   {
@@ -2357,7 +2363,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 54,
     rarity: 'common',
     catchRate: 40,
-    sizeScale: 0.85,
+    heightM: 0.9,
     expYield: 72,
     moves: ['Power Jab', 'Mud-Slap', 'Mach Punch', 'Growl'],
     learnableMoves: [
@@ -2388,7 +2394,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 72,
     rarity: 'rare',
     catchRate: 8,
-    sizeScale: 1.25,
+    heightM: 1.8,
     expYield: 238,
     moves: ['Champion Punch', 'Earthquake', 'Body Slam', 'Rock Slide'],
     learnableMoves: [
@@ -2420,7 +2426,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 68,
     rarity: 'common',
     catchRate: 50,
-    sizeScale: 0.5,
+    heightM: 0.3,
     expYield: 55,
     moves: ['Peck', 'Flame Dash', 'Wing Gust', 'Growl'],
     learnableMoves: [
@@ -2451,7 +2457,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 105,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.2,
+    heightM: 1.7,
     expYield: 230,
     moves: ['Inferno Rush', 'Aerial Ace', 'Flare Blitz', 'Sky Pierce'],
     learnableMoves: [
@@ -2479,6 +2485,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       baseSpd: 115,
       onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 },
       sprite: { front: 'solpyre_tenjin_front', back: 'solpyre_tenjin_back' },
+      heightM: 1.9,
     },
   },
   {
@@ -2493,7 +2500,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 95,
     rarity: 'common',
     catchRate: 50,
-    sizeScale: 0.7,
+    heightM: 0.4,
     expYield: 60,
     moves: ['Quick Attack', 'Wing Gust', 'String Shot', 'Aerial Ace'],
     learnableMoves: [
@@ -2523,7 +2530,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 75,
     rarity: 'uncommon',
     catchRate: 30,
-    sizeScale: 0.95,
+    heightM: 0.9,
     expYield: 145,
     moves: ['Quick Attack', 'Wing Gust', 'X-Scissor', 'Aerial Ace'],
     learnableMoves: [
@@ -2554,7 +2561,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 50,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.3,
+    heightM: 1.8,
     expYield: 280,
     moves: ['Rock Slide', 'Power Whip', 'Megahorn', 'Stone Edge'],
     learnableMoves: [
@@ -2585,7 +2592,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 54,
     rarity: 'uncommon',
     catchRate: 36,
-    sizeScale: 0.65,
+    heightM: 0.5,
     expYield: 66,
     moves: ['Bite', 'Ice Shard', 'Growl', 'Night Slash'],
     learnableMoves: [
@@ -2617,7 +2624,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 82,
     rarity: 'uncommon',
     catchRate: 38,
-    sizeScale: 0.78,
+    heightM: 0.8,
     expYield: 108,
     moves: ['Bite', 'Fairy Wind', 'Quick Attack', 'Charm'],
     learnableMoves: [
@@ -2649,7 +2656,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 114,
     rarity: 'uncommon',
     catchRate: 14,
-    sizeScale: 1,
+    heightM: 1.4,
     expYield: 176,
     moves: ['Crunch', 'Dazzling Gleam', 'Sucker Punch', 'Play Rough'],
     learnableMoves: [
@@ -2681,7 +2688,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 90,
     rarity: 'uncommon',
     catchRate: 30,
-    sizeScale: 0.75,
+    heightM: 0.8,
     expYield: 80,
     moves: ['Shadow Bolt', 'Dark Pulse', 'Thunder Fang', 'Night Slash'],
     learnableMoves: [
@@ -2718,7 +2725,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 75,
     rarity: 'rare',
     catchRate: 15,
-    sizeScale: 1.1,
+    heightM: 1.6,
     expYield: 160,
     moves: ['Dark Fire', 'Dark Pulse', 'Inferno Shade', 'Abyssal Roar'],
     learnableMoves: [
@@ -2748,7 +2755,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 104,
     rarity: 'rare',
     catchRate: 4,
-    sizeScale: 1.3,
+    heightM: 2,
     expYield: 260,
     moves: ['Dragon Fire', 'Thunder Claw', 'Mystic Blast', 'Elemental Fury'],
     learnableMoves: [
@@ -2778,7 +2785,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 40,
     rarity: 'uncommon',
     catchRate: 35,
-    sizeScale: 0.95,
+    heightM: 0.5,
     expYield: 95,
     moves: ['Toxic Slam', 'Shadow Strike', 'Dark Lasso', 'Poison Fog'],
     learnableMoves: [
@@ -2808,7 +2815,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 75,
     rarity: 'rare',
     catchRate: 15,
-    sizeScale: 1.2,
+    heightM: 1.3,
     expYield: 190,
     moves: ['Toxic Slam', 'Shadow Strike', 'Dark Lasso', 'Poison Fog'],
     learnableMoves: [
@@ -2838,7 +2845,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 60,
     rarity: 'uncommon',
     catchRate: 45,
-    sizeScale: 0.95,
+    heightM: 1,
     expYield: 65,
     moves: ['Bubble Beam', 'Bite', 'Rock Throw', 'Aqua Blade'],
     learnableMoves: [
@@ -2869,7 +2876,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 85,
     rarity: 'rare',
     catchRate: 15,
-    sizeScale: 1.3,
+    heightM: 2.2,
     expYield: 210,
     moves: ['Aqua Blade', 'Stone Edge', 'Crunch', 'Trident Surge'],
     learnableMoves: [
@@ -2905,7 +2912,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 30,
     rarity: 'uncommon',
     catchRate: 40,
-    sizeScale: 0.78,
+    heightM: 0.8,
     expYield: 60,
     moves: ['Sand Attack', 'Poison Fog', 'Rock Throw', 'Acid'],
     learnableMoves: [
@@ -2936,7 +2943,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 40,
     rarity: 'rare',
     catchRate: 15,
-    sizeScale: 1.3,
+    heightM: 2.3,
     expYield: 185,
     moves: ['Sludge Bomb', 'Stealth Rock', 'Toxic Slam', 'Stone Edge'],
     learnableMoves: [
@@ -2971,7 +2978,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 72,
     rarity: 'uncommon',
     catchRate: 24,
-    sizeScale: 0.9,
+    heightM: 0.6,
     expYield: 118,
     moves: ['Peck', 'Steel Slash', 'Aerial Ace', 'Iron Defense'],
     learnableMoves: [
@@ -3002,7 +3009,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 104,
     rarity: 'rare',
     catchRate: 9,
-    sizeScale: 1.2,
+    heightM: 1.4,
     expYield: 232,
     moves: ['Steel Slash', 'Aerial Ace', 'Smart Strike', 'Sky Pierce'],
     learnableMoves: [
@@ -3033,7 +3040,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 66,
     rarity: 'uncommon',
     catchRate: 28,
-    sizeScale: 0.78,
+    heightM: 0.4,
     expYield: 96,
     moves: ['Acid', 'Bug Bite', 'String Shot', 'Cross Poison'],
     learnableMoves: [
@@ -3064,7 +3071,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 96,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.15,
+    heightM: 1,
     expYield: 226,
     moves: ['Cross Poison', 'X-Scissor', 'Signal Beam', 'Sludge Bomb'],
     learnableMoves: [
@@ -3095,7 +3102,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 38,
     rarity: 'uncommon',
     catchRate: 34,
-    sizeScale: 0.85,
+    heightM: 0.6,
     expYield: 72,
     moves: ['Mud-Slap', 'Steel Slash', 'Bite', 'Iron Defense'],
     learnableMoves: [
@@ -3127,7 +3134,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 52,
     rarity: 'rare',
     catchRate: 12,
-    sizeScale: 1.25,
+    heightM: 1.3,
     expYield: 198,
     moves: ['Smart Strike', 'Bulldoze', 'Gyro Ball', 'Earthquake'],
     learnableMoves: [
@@ -3158,7 +3165,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 58,
     rarity: 'uncommon',
     catchRate: 34,
-    sizeScale: 0.72,
+    heightM: 0.5,
     expYield: 70,
     moves: ['Flame Dash', 'Mud Shot', 'Bite', 'Sand Attack'],
     learnableMoves: [
@@ -3191,7 +3198,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 84,
     rarity: 'rare',
     catchRate: 12,
-    sizeScale: 1.05,
+    heightM: 1.3,
     expYield: 192,
     moves: ['Inferno Rush', 'Fire Fang', 'Bulldoze', 'Earthquake'],
     learnableMoves: [
@@ -3222,7 +3229,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 62,
     rarity: 'uncommon',
     catchRate: 16,
-    sizeScale: 1.1,
+    heightM: 1.3,
     expYield: 190,
     moves: ['Aqua Blade', 'Close Combat', 'Bulk Up', 'Body Slam'],
     learnableMoves: [
@@ -3253,7 +3260,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 84,
     rarity: 'uncommon',
     catchRate: 28,
-    sizeScale: 0.8,
+    heightM: 0.3,
     expYield: 148,
     moves: ['Fairy Wind', 'Vine Lash', 'Dazzling Gleam', 'Nature Drain'],
     learnableMoves: [
@@ -3285,7 +3292,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 78,
     rarity: 'uncommon',
     catchRate: 30,
-    sizeScale: 0.68,
+    heightM: 1,
     expYield: 68,
     moves: ['Shadow Sneak', 'Bite', 'Hex', 'Night Slash'],
     learnableMoves: [
@@ -3318,7 +3325,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 112,
     rarity: 'rare',
     catchRate: 8,
-    sizeScale: 1.1,
+    heightM: 2,
     expYield: 238,
     moves: ['Shadow Ball', 'Dark Pulse', 'Phantom Strike', 'Nasty Plot'],
     learnableMoves: [
@@ -3352,7 +3359,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 60,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.15,
+    heightM: 1.9,
     expYield: 180,
     moves: ['Steel Slash', 'Iron Defense', 'Six-Blade Storm', 'Metal Burst'],
     learnableMoves: [
@@ -3379,6 +3386,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       baseSpd: 88,
       onEnter: { clearNegativeStages: true, lowerFoes: { stat: 'def', stages: 1 } },
       sprite: { front: 'acier_majin_front', back: 'acier_majin_back' },
+      heightM: 2.1,
     },
   },
   {
@@ -3393,7 +3401,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 80,
     rarity: 'rare',
     catchRate: 12,
-    sizeScale: 0.95,
+    heightM: 0.5,
     expYield: 170,
     moves: ['Ghost Flame', 'Confusion', 'Will-O-Wisp', 'Psych Wave'],
     learnableMoves: [
@@ -3424,7 +3432,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 102,
     rarity: 'rare',
     catchRate: 8,
-    sizeScale: 1.1,
+    heightM: 1.3,
     expYield: 185,
     moves: ['Psych Wave', 'Ghost Mist', 'Mind Crush', 'Hypno Fog'],
     learnableMoves: [
@@ -3454,7 +3462,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 100,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.1,
+    heightM: 0.9,
     expYield: 175,
     moves: ['Flame Dash', 'Fire Fang', 'Inferno Rush', 'Blaze Tackle'],
     learnableMoves: [
@@ -3484,7 +3492,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 120,
     rarity: 'rare',
     catchRate: 5,
-    sizeScale: 1.3,
+    heightM: 1.3,
     expYield: 270,
     moves: ['Flame Dash', 'Inferno Rush', 'Flare Blitz', 'Dragon Rush'],
     learnableMoves: [
@@ -3514,7 +3522,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 80,
     rarity: 'rare',
     catchRate: 20,
-    sizeScale: 1,
+    heightM: 1.1,
     expYield: 140,
     moves: ['Power Jab', 'Iron Fist', 'Champion Punch', 'Quick Attack'],
     learnableMoves: [
@@ -3543,7 +3551,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 85,
     rarity: 'rare',
     catchRate: 3,
-    sizeScale: 1.2,
+    heightM: 1.6,
     expYield: 270,
     moves: ['Champion Punch', 'Power Jab', 'Iron Fist', 'Knockout Blow'],
     learnableMoves: [
@@ -3572,7 +3580,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 85,
     rarity: 'rare',
     catchRate: 3,
-    sizeScale: 1.3,
+    heightM: 2,
     expYield: 285,
     moves: ['Prime Uppercut', 'Body Slam', 'Iron Fist', 'Knockout Blow'],
     learnableMoves: [
@@ -3600,7 +3608,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 85,
     rarity: 'rare',
     catchRate: 15,
-    sizeScale: 0.95,
+    heightM: 0.8,
     expYield: 160,
     moves: ['Dragon Rush', 'Quick Attack', 'Wing Gust', 'Aerial Ace'],
     learnableMoves: [
@@ -3630,7 +3638,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 92,
     rarity: 'rare',
     catchRate: 8,
-    sizeScale: 1.35,
+    heightM: 1.9,
     expYield: 260,
     moves: ['Inferno Rush', 'Flame Dash', 'Dragon Rush', 'Blaze Tackle'],
     learnableMoves: [
@@ -3660,7 +3668,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 104,
     rarity: 'rare',
     catchRate: 14,
-    sizeScale: 1.1,
+    heightM: 1.6,
     expYield: 198,
     moves: ['Aqua Blade', 'Shadow Strike', 'Lick', 'Hex'],
     learnableMoves: [
@@ -3692,7 +3700,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 90,
     rarity: 'rare',
     catchRate: 5,
-    sizeScale: 1.05,
+    heightM: 1.6,
     expYield: 265,
     moves: ['Volt Crash', 'Steel Slash', 'Iron Defense', 'Thunder Claw'],
     learnableMoves: [
@@ -3722,7 +3730,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 115,
     rarity: 'rare',
     catchRate: 5,
-    sizeScale: 1.3,
+    heightM: 1.6,
     expYield: 250,
     moves: ['Aqua Blade', 'Tidal Slash', 'Trident Surge', 'Steel Tide'],
     learnableMoves: [
@@ -3752,7 +3760,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 122,
     rarity: 'rare',
     catchRate: 5,
-    sizeScale: 1.45,
+    heightM: 2.4,
     expYield: 280,
     moves: ['Trident Surge', 'Steel Tide', 'Tidal Slash', 'Hydro Crush'],
     learnableMoves: [
@@ -3785,7 +3793,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 100,
     rarity: 'rare',
     catchRate: 5,
-    sizeScale: 1.4,
+    heightM: 1.5,
     expYield: 240,
     moves: ['Thunder Claw', 'Lightning Mane', 'Volt Dragon', 'Dragon Rush'],
     learnableMoves: [
@@ -3812,6 +3820,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       baseSpd: 110,
       onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 },
       sprite: { front: 'raidori_tenjin_front', back: 'raidori_tenjin_back' },
+      heightM: 1.7,
     },
   },
   {
@@ -3826,7 +3835,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 52,
     rarity: 'rare',
     catchRate: 20,
-    sizeScale: 0.6,
+    heightM: 0.5,
     expYield: 66,
     moves: ['Lick', 'Fairy Wind', 'Quick Attack', 'Charm'],
     learnableMoves: [
@@ -3857,7 +3866,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 74,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 0.95,
+    heightM: 1.1,
     expYield: 154,
     moves: ['Shadow Ball', 'Dazzling Gleam', 'Ghost Mist', 'Play Rough'],
     learnableMoves: [
@@ -3889,7 +3898,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 102,
     rarity: 'rare',
     catchRate: 5,
-    sizeScale: 1.4,
+    heightM: 2.2,
     expYield: 280,
     moves: ['Phantom Strike', 'Moonblast', 'Poltergeist', 'Play Rough'],
     learnableMoves: [
@@ -3919,6 +3928,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       baseSpd: 130,
       onEnter: { clearNegativeStages: true, lowerFoes: { stat: 'atk', stages: 1 } },
       sprite: { front: 'necrogeist_majin_front', back: 'necrogeist_majin_back' },
+      heightM: 2.4,
     },
   },
   {
@@ -3933,7 +3943,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 122,
     rarity: 'rare',
     catchRate: 6,
-    sizeScale: 1.25,
+    heightM: 2,
     expYield: 240,
     moves: ['Shadow Sneak', 'Low Kick', 'Phantom Strike', 'Bulk Up'],
     learnableMoves: [
@@ -3963,6 +3973,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       baseSpd: 150,
       onEnter: { clearNegativeStages: true, lowerFoes: { stat: 'atk', stages: 1 } },
       sprite: { front: 'hollowmane_rage_front', back: 'hollowmane_rage_back' },
+      heightM: 2.3,
       signatureMove: { replaces: 'Night Slash', move: 'Hollow Crescent' },
     },
   },
@@ -3978,7 +3989,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 52,
     rarity: 'uncommon',
     catchRate: 90,
-    sizeScale: 0.78,
+    heightM: 0.6,
     expYield: 64,
     moves: ['Tackle', 'Sand Attack', 'Mud-Slap', 'Dark Lasso'],
     learnableMoves: [
@@ -4019,7 +4030,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 74,
     rarity: 'rare',
     catchRate: 30,
-    sizeScale: 1.1,
+    heightM: 1.7,
     expYield: 168,
     moves: ['Dark Lasso', 'Night Slash', 'Bulldoze', 'Sucker Punch'],
     learnableMoves: [
@@ -4052,6 +4063,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       baseSpd: 102,
       onEnter: { clearNegativeStages: true, lowerFoes: { stat: 'atk', stages: 1 } },
       sprite: { front: 'badlander_majin_front', back: 'badlander_majin_back' },
+      heightM: 1.9,
     },
   },
   {
@@ -4066,7 +4078,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 70,
     rarity: 'rare',
     catchRate: 30,
-    sizeScale: 1.1,
+    heightM: 1.7,
     expYield: 168,
     moves: ['Bulldoze', 'Counter', 'Mach Punch', 'Protect'],
     learnableMoves: [
@@ -4099,6 +4111,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       baseSpd: 80,
       onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 },
       sprite: { front: 'lawlander_tenjin_front', back: 'lawlander_tenjin_back' },
+      heightM: 1.8,
     },
   },
   {
@@ -4113,7 +4126,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 84,
     rarity: 'rare',
     catchRate: 45,
-    sizeScale: 0.8,
+    heightM: 0.6,
     expYield: 72,
     moves: ['Quick Attack', 'Confusion', 'Bite', 'Calm Mind'],
     learnableMoves: [
@@ -4146,7 +4159,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 126,
     rarity: 'rare',
     catchRate: 25,
-    sizeScale: 1.2,
+    heightM: 1.6,
     expYield: 224,
     moves: ['Extrasensory', 'Starfall', 'Mind Crush', 'Calm Mind'],
     learnableMoves: [
@@ -4178,7 +4191,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 76,
     rarity: 'rare',
     catchRate: 8,
-    sizeScale: 1.2,
+    heightM: 1.8,
     expYield: 236,
     moves: ['Bite', 'Metal Burst', 'Snarl', 'Smart Strike'],
     learnableMoves: [
@@ -4208,6 +4221,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       baseSpd: 104,
       onEnter: { clearNegativeStages: true, lowerFoes: { stat: 'def', stages: 1 } },
       sprite: { front: 'castlemaw_rage_front', back: 'castlemaw_rage_back' },
+      heightM: 2,
       signatureMove: { replaces: 'Flash Cannon', move: 'Vendetta Volley' },
     },
   },
@@ -4223,7 +4237,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 80,
     rarity: 'rare',
     catchRate: 45,
-    sizeScale: 0.75,
+    heightM: 0.6,
     expYield: 66,
     moves: ['Spark', 'Lick', 'Confusion', 'Charge Beam'],
     learnableMoves: [
@@ -4264,7 +4278,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 78,
     rarity: 'rare',
     catchRate: 30,
-    sizeScale: 1.25,
+    heightM: 2.1,
     expYield: 172,
     moves: ['Flash Cannon', 'Night Slash', 'Thunder Fang', 'Snarl'],
     learnableMoves: [
@@ -4300,7 +4314,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 90,
     rarity: 'rare',
     catchRate: 30,
-    sizeScale: 1.15,
+    heightM: 1.9,
     expYield: 172,
     moves: ['Extrasensory', 'Flash Cannon', 'Calm Mind', 'Light Screen'],
     learnableMoves: [
@@ -4335,7 +4349,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 78,
     rarity: 'common',
     catchRate: 60,
-    sizeScale: 0.55,
+    heightM: 0.25,
     expYield: 55,
     moves: ['Peck', 'Quick Attack', 'Wing Gust', 'Feather Dance'],
     learnableMoves: [
@@ -4368,7 +4382,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 96,
     rarity: 'uncommon',
     catchRate: 45,
-    sizeScale: 0.85,
+    heightM: 0.6,
     expYield: 130,
     moves: ['Quick Attack', 'Wing Gust', 'Aerial Ace', 'Slash'],
     learnableMoves: [
@@ -4400,7 +4414,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 124,
     rarity: 'rare',
     catchRate: 25,
-    sizeScale: 1.3,
+    heightM: 1.4,
     expYield: 220,
     moves: ['Aerial Ace', 'Brave Bird', 'Double Edge', 'Roost'],
     learnableMoves: [
@@ -4433,7 +4447,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 74,
     rarity: 'common',
     catchRate: 55,
-    sizeScale: 0.6,
+    heightM: 0.4,
     expYield: 62,
     moves: ['Peck', 'Bite', 'Snarl', 'Wing Gust'],
     learnableMoves: [
@@ -4474,7 +4488,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 112,
     rarity: 'uncommon',
     catchRate: 25,
-    sizeScale: 1.25,
+    heightM: 1.4,
     expYield: 200,
     moves: ['Night Slash', 'Sucker Punch', 'Sky Pierce', 'Brave Bird'],
     learnableMoves: [
@@ -4507,7 +4521,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 114,
     rarity: 'uncommon',
     catchRate: 25,
-    sizeScale: 1.2,
+    heightM: 1.3,
     expYield: 200,
     moves: ['Extrasensory', 'Brain Pulse', 'Hurricane Wing', 'Calm Mind'],
     learnableMoves: [
@@ -4540,7 +4554,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 44,
     rarity: 'common',
     catchRate: 70,
-    sizeScale: 0.5,
+    heightM: 0.3,
     expYield: 50,
     moves: ['Tackle', 'String Shot', 'Bug Bite', 'Vine Whip'],
     learnableMoves: [
@@ -4571,7 +4585,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 30,
     rarity: 'uncommon',
     catchRate: 45,
-    sizeScale: 0.8,
+    heightM: 0.7,
     expYield: 110,
     moves: ['String Shot', 'Synthesis', 'Protect', 'Vine Whip'],
     learnableMoves: [
@@ -4602,7 +4616,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 112,
     rarity: 'uncommon',
     catchRate: 25,
-    sizeScale: 1.15,
+    heightM: 1.5,
     expYield: 210,
     moves: ['X-Scissor', 'Leaf Blade', 'Power Whip', 'Signal Beam'],
     learnableMoves: [
@@ -4635,7 +4649,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 66,
     rarity: 'uncommon',
     catchRate: 35,
-    sizeScale: 0.55,
+    heightM: 0.3,
     expYield: 75,
     moves: ['Powder Snow', 'Peck', 'Wing Gust', 'Growl'],
     learnableMoves: [
@@ -4668,7 +4682,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 106,
     rarity: 'rare',
     catchRate: 20,
-    sizeScale: 1.2,
+    heightM: 1.5,
     expYield: 230,
     moves: ['Ice Beam', 'Blizzard', 'Hurricane Wing', 'Roost'],
     learnableMoves: [
@@ -4701,7 +4715,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 34,
     rarity: 'uncommon',
     catchRate: 45,
-    sizeScale: 0.65,
+    heightM: 0.8,
     expYield: 70,
     moves: ['Tackle', 'Powder Snow', 'Ice Shard', 'Mud-Slap'],
     learnableMoves: [
@@ -4733,7 +4747,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 42,
     rarity: 'uncommon',
     catchRate: 30,
-    sizeScale: 1.3,
+    heightM: 1.8,
     expYield: 160,
     moves: ['Ice Shard', 'Bulldoze', 'Frost Bite', 'Body Slam'],
     learnableMoves: [
@@ -4766,7 +4780,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 54,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.9,
+    heightM: 3.6,
     expYield: 260,
     moves: ['Glacier Crash', 'Earthquake', 'Frost Bite', 'Iron Defense'],
     learnableMoves: [
@@ -4799,7 +4813,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 50,
     rarity: 'common',
     catchRate: 55,
-    sizeScale: 0.5,
+    heightM: 0.25,
     expYield: 60,
     moves: ['Acid', 'Sand Attack', 'Mud-Slap', 'Bite'],
     learnableMoves: [
@@ -4832,7 +4846,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 84,
     rarity: 'uncommon',
     catchRate: 25,
-    sizeScale: 1.35,
+    heightM: 1.3,
     expYield: 215,
     moves: ['Cross Poison', 'Venom Fang', 'Sand Tomb', 'Earthquake'],
     learnableMoves: [
@@ -4865,7 +4879,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 62,
     rarity: 'rare',
     catchRate: 15,
-    sizeScale: 0.7,
+    heightM: 0.5,
     expYield: 90,
     moves: ['Rock Throw', 'Wing Gust', 'Bite', 'Ancient Power'],
     learnableMoves: [
@@ -4898,7 +4912,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 106,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.6,
+    heightM: 2.4,
     expYield: 250,
     moves: ['Stone Edge', 'Rock Slide', 'Sky Pierce', 'Brave Bird'],
     learnableMoves: [
@@ -4931,7 +4945,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 72,
     rarity: 'uncommon',
     catchRate: 30,
-    sizeScale: 0.5,
+    heightM: 0.3,
     expYield: 60,
     moves: ['Comet Tap', 'Fairy Wind', 'Charm', 'Light Screen'],
     learnableMoves: [
@@ -4963,7 +4977,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 92,
     rarity: 'uncommon',
     catchRate: 30,
-    sizeScale: 0.85,
+    heightM: 0.8,
     expYield: 140,
     moves: ['Confusion', 'Fairy Wind', 'Starfall', 'Light Screen'],
     learnableMoves: [
@@ -4996,7 +5010,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 120,
     rarity: 'rare',
     catchRate: 15,
-    sizeScale: 1.25,
+    heightM: 1.6,
     expYield: 230,
     moves: ['Starfall', 'Moonblast', 'Dazzling Gleam', 'Calm Mind'],
     learnableMoves: [
@@ -5029,7 +5043,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 30,
     rarity: 'uncommon',
     catchRate: 25,
-    sizeScale: 0.65,
+    heightM: 0.5,
     expYield: 80,
     moves: ['Comet Tap', 'Rock Throw', 'Stealth Rock', 'Ancient Power'],
     learnableMoves: [
@@ -5062,7 +5076,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 46,
     rarity: 'rare',
     catchRate: 12,
-    sizeScale: 1.7,
+    heightM: 2.8,
     expYield: 245,
     moves: ['Starfall', 'Eclipse Void', 'Boulder Crash', 'Iron Defense'],
     learnableMoves: [
@@ -5095,7 +5109,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 62,
     rarity: 'uncommon',
     catchRate: 35,
-    sizeScale: 0.6,
+    heightM: 0.5,
     expYield: 70,
     moves: ['Lick', 'Shadow Sneak', 'Sand Attack', 'Hex'],
     learnableMoves: [
@@ -5128,7 +5142,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 76,
     rarity: 'rare',
     catchRate: 20,
-    sizeScale: 1.45,
+    heightM: 2.2,
     expYield: 220,
     moves: ['Poltergeist', 'Shadow Ball', 'Sand Tomb', 'Shore Up'],
     learnableMoves: [
@@ -5161,7 +5175,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 70,
     rarity: 'common',
     catchRate: 55,
-    sizeScale: 0.65,
+    heightM: 0.6,
     expYield: 70,
     moves: ['Tackle', 'Bite', 'Water Pulse', 'Snarl'],
     learnableMoves: [
@@ -5194,7 +5208,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 112,
     rarity: 'uncommon',
     catchRate: 25,
-    sizeScale: 1.6,
+    heightM: 2.4,
     expYield: 230,
     moves: ['Crunch', 'Aqua Blade', 'Sucker Punch', 'Tidal Slash'],
     learnableMoves: [
@@ -5227,7 +5241,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 52,
     rarity: 'common',
     catchRate: 60,
-    sizeScale: 0.55,
+    heightM: 0.4,
     expYield: 60,
     moves: ['Ember', 'String Shot', 'Bug Bite', 'Tackle'],
     learnableMoves: [
@@ -5260,7 +5274,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 124,
     rarity: 'uncommon',
     catchRate: 25,
-    sizeScale: 1.3,
+    heightM: 1.2,
     expYield: 210,
     moves: ['Heat Wave', 'Silver Wind', 'Signal Beam', 'Will-O-Wisp'],
     learnableMoves: [
@@ -5293,7 +5307,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 62,
     rarity: 'common',
     catchRate: 55,
-    sizeScale: 0.6,
+    heightM: 0.6,
     expYield: 65,
     moves: ['Tackle', 'Quick Attack', 'Mach Punch', 'Growl'],
     learnableMoves: [
@@ -5326,7 +5340,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 96,
     rarity: 'uncommon',
     catchRate: 25,
-    sizeScale: 1.4,
+    heightM: 1.8,
     expYield: 225,
     moves: ['Power Jab', 'Iron Fist', 'Body Slam', 'Close Combat'],
     learnableMoves: [
@@ -5358,7 +5372,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 58,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 0.65,
+    heightM: 0.6,
     expYield: 70,
     moves: ['Dragon Breath', 'Mud-Slap', 'Bite', 'Sand Attack'],
     learnableMoves: [
@@ -5391,7 +5405,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 74,
     rarity: 'rare',
     catchRate: 10,
-    sizeScale: 1.1,
+    heightM: 1.1,
     expYield: 150,
     moves: ['Dragon Claw', 'Bulldoze', 'Sand Tomb', 'Crunch'],
     learnableMoves: [
@@ -5424,7 +5438,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 104,
     rarity: 'rare',
     catchRate: 3,
-    sizeScale: 1.9,
+    heightM: 2.4,
     expYield: 300,
     moves: ['Dragon Claw', 'Earthquake', 'Outrage', 'Rock Slide'],
     learnableMoves: [
@@ -5457,7 +5471,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 124,
     rarity: 'legendary',
     catchRate: 3,
-    sizeScale: 1.45,
+    heightM: 3.2,
     expYield: 310,
     moves: ['Frost Bite', 'Glacier Crash', 'Dragon Rush', 'Sky Pierce'],
     learnableMoves: [
@@ -5488,7 +5502,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 124,
     rarity: 'legendary',
     catchRate: 3,
-    sizeScale: 1.45,
+    heightM: 3,
     expYield: 320,
     moves: ['Mind Crush', 'Spectral Burn', 'Shadow Ball'],
     learnableMoves: [
@@ -5519,7 +5533,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 150,
     rarity: 'legendary',
     catchRate: 3,
-    sizeScale: 1.2,
+    heightM: 2,
     expYield: 320,
     moves: ['Thunder Claw', 'Volt Crash', 'Fairy Wind'],
     learnableMoves: [
@@ -5549,7 +5563,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 192,
     rarity: 'legendary',
     catchRate: 3,
-    sizeScale: 1.5,
+    heightM: 4,
     expYield: 360,
     moves: ['Eclipse Void', 'Dragon Rush', 'Draco Impact'],
     learnableMoves: [
@@ -5581,7 +5595,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 126,
     rarity: 'legendary',
     catchRate: 3,
-    sizeScale: 1.4,
+    heightM: 2.6,
     expYield: 320,
     moves: ['Champion Punch', 'Flare Blitz', 'Mach Punch'],
     learnableMoves: [
@@ -5612,7 +5626,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 150,
     rarity: 'legendary',
     catchRate: 3,
-    sizeScale: 1.35,
+    heightM: 2.2,
     expYield: 320,
     moves: ['Volt Crash', 'Thunder Claw', 'Flame Dash'],
     learnableMoves: [
@@ -5643,7 +5657,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 120,
     rarity: 'legendary',
     catchRate: 3,
-    sizeScale: 1.4,
+    heightM: 3,
     expYield: 320,
     moves: ['Steel Slash', 'Shadow Strike', 'Shadow Sneak'],
     learnableMoves: [
@@ -5674,7 +5688,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 130,
     rarity: 'legendary',
     catchRate: 3,
-    sizeScale: 1.45,
+    heightM: 2.6,
     expYield: 340,
     moves: ['Celestial Burst', 'Draco Impact', 'Mach Punch'],
     learnableMoves: [
@@ -5702,6 +5716,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       baseSpd: 158,
       onEnter: { clearNegativeStages: true, lowerFoes: { stat: 'def', stages: 1 } },
       sprite: { front: 'zenryu_majin_front', back: 'zenryu_majin_back' },
+      heightM: 2.8,
     },
   },
   {
@@ -5716,7 +5731,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 134,
     rarity: 'legendary',
     catchRate: 3,
-    sizeScale: 1.45,
+    heightM: 3.5,
     expYield: 330,
     moves: ['Ice Shard', 'Dragon Breath', 'Snarl'],
     learnableMoves: [
@@ -5749,6 +5764,7 @@ export const SPECIES: readonly SpeciesDef[] = [
       types: ['Dragon', 'Dark'],
       onEnter: { clearNegativeStages: true, lowerFoes: { stat: 'spd', stages: 1 } },
       sprite: { front: 'hyoryu_majin_front', back: 'hyoryu_majin_back' },
+      heightM: 3.8,
     },
   },
   {
@@ -5763,7 +5779,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 128,
     rarity: 'legendary',
     catchRate: 3,
-    sizeScale: 1.5,
+    heightM: 3.2,
     expYield: 330,
     moves: ['Shadow Sneak', 'Bite', 'Night Slash'],
     learnableMoves: [
@@ -5798,7 +5814,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 120,
     rarity: 'mythical',
     catchRate: 3,
-    sizeScale: 1.15,
+    heightM: 1.2,
     expYield: 350,
     moves: ['Starfall', 'Psych Wave', 'Calm Mind'],
     learnableMoves: [
@@ -5833,7 +5849,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 120,
     rarity: 'mythical',
     catchRate: 3,
-    sizeScale: 1.35,
+    heightM: 2.2,
     expYield: 350,
     moves: ['Eclipse Void', 'Dark Pulse', 'Nasty Plot'],
     learnableMoves: [
@@ -5868,7 +5884,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 66,
     rarity: 'mythical',
     catchRate: 3,
-    sizeScale: 0.7,
+    heightM: 0.5,
     expYield: 64,
     moves: ['Tackle', 'Growl', 'Quick Attack', 'Ember'],
     learnableMoves: [
@@ -5902,7 +5918,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 70,
     rarity: 'mythical',
     catchRate: 3,
-    sizeScale: 1.05,
+    heightM: 1.3,
     expYield: 150,
     moves: ['Tackle', 'Mach Punch', 'Bulk Up', 'Low Kick'],
     learnableMoves: [
@@ -5937,7 +5953,7 @@ export const SPECIES: readonly SpeciesDef[] = [
     baseSpd: 95,
     rarity: 'mythical',
     catchRate: 3,
-    sizeScale: 1.35,
+    heightM: 2.6,
     expYield: 300,
     moves: ['Body Slam', 'Iron Fist', 'Bulk Up', 'Resilient Strike'],
     learnableMoves: [
@@ -6018,6 +6034,7 @@ export const SPECIES: readonly SpeciesDef[] = [
         types: ['Normal', 'Psychic'],
         onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.25 },
         sprite: { front: 'ravatar_avatar_front', back: 'ravatar_avatar_back' },
+        heightM: 3,
       },
     ],
   },

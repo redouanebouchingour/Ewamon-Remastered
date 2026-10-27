@@ -56,7 +56,7 @@ export const CHARACTER = Object.freeze({
   heightM: 1.55,
   /** Nameplate / emote anchor: this much above the look's top (m). */
   headMarginM: 0.18,
-  /** Contact decal diameter (m) (the creature decal is 1.1 m × sizeScale). */
+  /** Contact decal diameter (m) (a creature's is `BILLBOARD.decalOfWidth` × its card width). */
   decalM: 0.85,
   /** Ground normal probe distance (m) for the decal. */
   normalProbeM: 0.3,

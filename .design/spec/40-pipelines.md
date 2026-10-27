@@ -190,6 +190,7 @@ export interface SpriteRectV2 {
   readonly uv: readonly [number, number, number, number];    // u0, v0, u1, v1, v up — 10-render.md SpriteFrame.rect
   readonly footV: number;                                    // from the bottom of the cell; 0.08
   readonly aspect: number;                                   // w / h; 1
+  readonly bodyV?: number;                                   // amended 2026-10-27: share of the cell's height the creature fills at the binary alpha → 10-render.md SpriteFrame.bodyV
   readonly pixelScale: number;                               // output px per source px (QA only)
   readonly source: string;                                   // relative to assets-src/creatures/ (QA only)
 }
@@ -216,7 +217,7 @@ export interface ManifestAtlasV2 {
 export interface ManifestSpriteV2 {
   readonly front: SpriteRectV2;
   readonly back: SpriteRectV2;
-  readonly sizeScale: number;                                // SpeciesDef.sizeScale
+  readonly sizeScale: number;                                // the legacy row's sizeScale (2026-10-27: the client sizes by SpeciesDef.heightM; this is only the fallback for a sprite no species names)
   readonly home: string;                                     // atlas id used for the runtime single set
   readonly thumb: string;                                    // thumbs/<id>_front.webp, 128 px (20-client.md §20.10.2 rule 6)
   readonly alt?: Readonly<Record<string, { readonly front: SpriteRectV2; readonly back: SpriteRectV2 }>>;   // only for a planner-duplicated species: its rects in each a-<zoneId>-dup-N atlas (absent in the shipped build: 0 duplicates)

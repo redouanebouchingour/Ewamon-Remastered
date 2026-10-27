@@ -17,6 +17,7 @@ export interface SpriteRectV2 {
   readonly uv: readonly [number, number, number, number]; // u0, v0, u1, v1, v up — 10-render.md SpriteFrame.rect
   readonly footV: number; // from the bottom of the cell; 0.08
   readonly aspect: number; // w / h; 1
+  readonly bodyV?: number; // share of the cell's height the creature fills (binary alpha); the renderer sizes the card by it
   readonly pixelScale: number; // output px per source px (QA only)
   readonly source: string; // relative to assets-src/creatures/ (QA only)
 }
@@ -224,6 +225,7 @@ export function manifestErrors(m: unknown, opts: ValidateOptions = {}): string[]
       if (want.some((v, i) => Math.abs(v - uvT[i]!) > UV_EPS)) err(`${id}.${side}: uv inconsistent with px`);
       if (x.footV !== MANIFEST_FOOT_V) err(`${id}.${side}: footV ${String(x.footV)} !== ${MANIFEST_FOOT_V}`);
       if (!isNum(x.aspect) || Math.abs(x.aspect - pw / ph) > UV_EPS) err(`${id}.${side}: aspect`);
+      if (x.bodyV !== undefined && (!isNum(x.bodyV) || x.bodyV <= 0 || x.bodyV > 1)) err(`${id}.${side}: bodyV ${String(x.bodyV)} outside (0, 1]`);
       if (!isNum(x.pixelScale) || typeof x.source !== 'string') err(`${id}.${side}: pixelScale/source`);
     };
     for (const id of keys) {
@@ -367,7 +369,7 @@ function sortedRecord<T>(rec: Readonly<Record<string, T>>): Record<string, T> {
 }
 
 function orderedRect(r: SpriteRectV2): SpriteRectV2 {
-  return { atlas: r.atlas, px: r.px, uv: r.uv, footV: r.footV, aspect: r.aspect, pixelScale: r.pixelScale, source: r.source };
+  return { atlas: r.atlas, px: r.px, uv: r.uv, footV: r.footV, aspect: r.aspect, ...(r.bodyV !== undefined ? { bodyV: r.bodyV } : {}), pixelScale: r.pixelScale, source: r.source };
 }
 
 function orderedMap(m: ManifestMap): ManifestMap {

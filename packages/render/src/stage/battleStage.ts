@@ -30,7 +30,7 @@ import type { EffectsFlags, HarvestLevel, WeatherKind } from '../descriptors.js'
 import type { MaterialLibrary } from '../materials/library.js';
 import type { SurfaceId } from '../materials/surfaces.js';
 import { paintSurfaceColor } from '../materials/library.js';
-import { BATTLER_SEPARATION, INSPECT_AIM, INSPECT_OFFSET, RING_DIAMETER, SLOT_SPACING, TRAINER_SLOT_M, battlerSlot, forwardOfYaw, trainerSlot } from '../camera/battle.js';
+import { BATTLER_SEPARATION, INSPECT_AIM, INSPECT_DISTANCE, INSPECT_OFFSET, NOMINAL_BATTLER_HEIGHT_M, RING_DIAMETER, SLOT_SPACING, TRAINER_SLOT_M, battlerSlot, forwardOfYaw, trainerSlot } from '../camera/battle.js';
 import type { DioramaRig } from '../camera/rig.js';
 import type { BillboardPool, CreatureBillboard } from '../sprites/billboard.js';
 import { TYPE_COLORS, hexToLinearInto, validateTypeColorTable } from '../sprites/typeColors.js';
@@ -87,7 +87,7 @@ export const STAGE = Object.freeze({
   trainerSlotM: TRAINER_SLOT_M, trainerR: 0.4, ringFitR: 4.0, hallMarginM: 0.1,
   postMinScale: 0.92, postR: 0.1, pylonMinRadius: 4.05, pylonR: 0.3, spectatorMinRadius: 4.9, spectatorR: 0.45, fitStep: 0.1,
   /**
-   * Phase D6: the foot disc of a battler (the contact-shadow decal of a size-1 creature, `BILLBOARD.decalSizeM` / 2).
+   * Phase D6: the foot disc of a battler (half the 1.1 m contact-shadow decal of a creature on a 1.6 m card).
    * A doubles battler's feet stand hypot(BATTLER_SEPARATION / 2, SLOT_SPACING / 2) ≈ 2.89 m from the centre, so the disc
    * stays on the 3.5 m ring top; `fitCentre` checks the four discs against the hall floor.
    */
@@ -230,7 +230,7 @@ function sameFrame(a: SpriteDescriptor['front'], b: SpriteDescriptor['front']): 
 
 /** Same sprite frames and size (variant / alpha may differ: those are uniform writes). */
 function sameSprite(a: SpriteDescriptor, b: SpriteDescriptor): boolean {
-  return a === b || (sameFrame(a.front, b.front) && sameFrame(a.back, b.back) && a.sizeScale === b.sizeScale && a.types[0] === b.types[0]);
+  return a === b || (sameFrame(a.front, b.front) && sameFrame(a.back, b.back) && a.heightM === b.heightM && a.types[0] === b.types[0]);
 }
 
 // ---- geometry (built once; shared by every arena instance) ------------------------------------------------------------
@@ -647,7 +647,8 @@ export class Stage implements BattleStage {
     this.d.parent.add(bb.object);
     this.inspected = bb;
     _w.set(x, y + bb.heightM * INSPECT_AIM, z);
-    this.d.rig.inspect(_w, STAGE.inspectExitMs);
+    // INSPECT_DISTANCE frames a nominal 1.6 m card; a bigger card (a legendary at true size) backs the camera off with it
+    this.d.rig.inspect(_w, STAGE.inspectExitMs, Math.max(INSPECT_DISTANCE, (INSPECT_DISTANCE * bb.heightM) / NOMINAL_BATTLER_HEIGHT_M));
   }
 
   /**

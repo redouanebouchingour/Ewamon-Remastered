@@ -47,7 +47,7 @@ function desc(id: string): SpriteDescriptor {
   const f = (x: number, side: 'front' | 'back') => ({
     atlas: 'a-035', rect: [x, 0.5, x + 0.5, 1] as const, px: [x * 2048, 0, 1024, 1024] as const, footV: 0.08, aspect: 1, anim: anim(`anim-legend-${side}`),
   });
-  return { id, front: f(0.5, 'front'), back: f(0, 'back'), sizeScale: 1, types: ['Dragon'], variant: 'normal', isAlpha: false };
+  return { id, front: f(0.5, 'front'), back: f(0, 'back'), heightM: 1.376, types: ['Dragon'], variant: 'normal', isAlpha: false };
 }
 
 const rectOf = (b: { userDataRecord: { rect: { x: number; y: number; z: number; w: number } } }): number[] => {

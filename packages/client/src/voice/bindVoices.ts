@@ -43,9 +43,9 @@ export const npcPersona = (npcId: string): VoicePersona => ({ key: `npc:${npcId}
 /** the rival and the trainers in battle: seeded by the name the line shows */
 export const personPersona = (name: string): VoicePersona => ({ key: `person:${name}`, kind: 'npc' });
 
-/** A party creature: seeded by its id, the pitch by its species' size. */
+/** A party creature: seeded by its id, the pitch by its species' height. */
 export function creaturePersona(creatureId: string, speciesId: string | null): VoicePersona {
-  const size = speciesId === null ? undefined : species(speciesId)?.sizeScale;
+  const size = speciesId === null ? undefined : species(speciesId)?.heightM;
   return { key: `creature:${creatureId}`, kind: 'creature', ...(size !== undefined ? { size } : {}) };
 }
 

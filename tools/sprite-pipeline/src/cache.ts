@@ -45,6 +45,11 @@ export interface SpriteMeta {
   emissivePixels: number;
   /** Alpha bbox on the normalised 1024² canvas (thumbnail crop). */
   bbox: { x0: number; y0: number; x1: number; y1: number } | null;
+  /**
+   * The share of the cell's height the creature fills at the atlas's binary alpha (ALPHA_THRESHOLD), 0..1 (added
+   * 2026-10-27; a meta cached before then lacks it and `processSprite` measures it from the cached albedo).
+   */
+  bodyV?: number;
 }
 
 export interface SpriteArtifacts {

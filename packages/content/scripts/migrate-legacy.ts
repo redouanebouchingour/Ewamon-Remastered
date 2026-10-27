@@ -10,7 +10,8 @@
  *    evenly between 5 and min(evolution.atLevel ?? 40, 60) in legacy list order, rounded to a multiple of 3
  *    (§2.3 migration rule); duplicates and moves that name no MOVES row are dropped and listed in the header.
  *  - rarity 'epic' (13 legacy rows) → 'rare' (the spine's Rarity has no epic; roster-coverage §15).
- *  - catchRate clamped into 3..255, sizeScale into 0.5..2.2 (schema ranges); clamps are listed in the header.
+ *  - catchRate clamped into 3..255 (schema range); clamps are listed in the header. heightM (and a battle form's) comes
+ *    from .design/additions/heights.js, never the legacy sizeScale; a species without a height fails the run.
  *  - evolution: level | split (darkone by ability, dustcub by honor: the `condition: null` branch last) | null; evolvesFrom kept.
  *  - sprite ids `<id>_front` / `<id>_back` (spine §2.3 example `bramblecub_front`).
  *  - moves: id = legacy display name; priority 1 iff effect 'first'; contact = power > 0 && type ∉ non-contact set;
@@ -52,6 +53,7 @@ const ADDITIONS_FILE = resolve(HERE, '../../../.design/additions/species.js');
 const MOVE_ADDITIONS_FILE = resolve(HERE, '../../../.design/additions/moves.js');
 const PATCHES_FILE = resolve(HERE, '../../../.design/additions/patches.js');
 const ABILITY_ADDITIONS_FILE = resolve(HERE, '../../../.design/additions/abilities.js');
+const HEIGHTS_FILE = resolve(HERE, '../../../.design/additions/heights.js');
 const OUT_DIR = resolve(HERE, '../src/data');
 
 // ─── legacy shapes ──────────────────────────────────────────────────────────
@@ -436,6 +438,27 @@ function clamp(id: string, field: string, v: number, lo: number, hi: number): nu
   return c;
 }
 
+/** .design/additions/heights.js: metres per species id, and per `<species>_<form>` for a form that outgrows it. */
+const HEIGHTS: Readonly<Record<string, number>> = (() => {
+  const mod: { exports: { EWAMON_HEIGHTS?: Record<string, number> } } = { exports: {} };
+  (new Function('module', 'exports', readFileSync(HEIGHTS_FILE, 'utf8')) as (m: typeof mod, e: unknown) => void)(mod, mod.exports);
+  return mod.exports.EWAMON_HEIGHTS ?? {};
+})();
+const usedHeights = new Set<string>();
+
+function heightOf(id: string): number {
+  const h = HEIGHTS[id];
+  if (h === undefined) throw new Error(`heights: species '${id}' has no height in .design/additions/heights.js`);
+  usedHeights.add(id);
+  return h;
+}
+
+function formHeightOf(speciesId: string, formId: string): number | undefined {
+  const key = `${speciesId}_${formId}`;
+  if (HEIGHTS[key] !== undefined) usedHeights.add(key);
+  return HEIGHTS[key];
+}
+
 function migrateSpecies(s: LegacySpecies, dexNumber: number, moveIds: ReadonlySet<string>, parentOf: ReadonlyMap<string, string>): SpeciesDef {
   // Phase D3: nine families evolve by stone / trade (src/data/evolutions.ts); the legacy level still spaces the learnset
   const legacyEvolution = migrateEvolution(s);
@@ -470,7 +493,7 @@ function migrateSpecies(s: LegacySpecies, dexNumber: number, moveIds: ReadonlySe
     baseSpd: s.baseSpd,
     rarity,
     catchRate: clamp(s.id, 'catchRate', s.catchRate, 3, 255),
-    sizeScale: clamp(s.id, 'sizeScale', s.sizeScale, 0.5, 2.2),
+    heightM: heightOf(s.id),
     expYield: s.expYield,
     moves,
     learnableMoves: migrateLearnset(s.id, moves, s.learnableMoves, legacyEvolution?.atLevel ?? null, moveIds, s.learnLevels),
@@ -515,6 +538,7 @@ function migrateBattleForm(speciesId: string, f: LegacyBattleForm): BattleFormDe
       ...(f.onEnter.healFraction !== undefined ? { healFraction: f.onEnter.healFraction } : {}),
     },
     sprite: { front: `${speciesId}_${f.id}_front`, back: `${speciesId}_${f.id}_back` },
+    ...(formHeightOf(speciesId, f.id) !== undefined ? { heightM: formHeightOf(speciesId, f.id)! } : {}),
     ...(f.signatureMove !== undefined ? { signatureMove: { replaces: f.signatureMove.replaces, move: f.signatureMove.move } } : {}),
   };
 }
@@ -763,6 +787,8 @@ function main(): void {
   const speciesIds = Object.keys(legacy.EWAMON_SPECIES);
   const parentOf = buildParentOf(legacy.EWAMON_SPECIES);
   const species: SpeciesDef[] = dexOrder(speciesIds.map((id, i) => migrateSpecies(legacy.EWAMON_SPECIES[id]!, i + 1, moveSet, parentOf)));
+  const strayHeights = Object.keys(HEIGHTS).filter((k) => !usedHeights.has(k));
+  if (strayHeights.length > 0) throw new Error(`heights: no species or battle form named ${strayHeights.join(', ')}`);
 
   // abilities
   const abilityIds = Object.keys(legacy.ABILITIES).sort();

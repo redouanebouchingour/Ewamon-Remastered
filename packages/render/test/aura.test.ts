@@ -26,7 +26,7 @@ function fakeSet(id: string): AtlasSet {
 }
 function desc(id: string, x = 0.5, aura?: AuraKind): SpriteDescriptor {
   const f = (u: number) => ({ atlas: 'a-001', rect: [u, 0.5, u + 0.5, 1] as const, px: [u * 2048, 0, 1024, 1024] as const, footV: 0.08, aspect: 1 });
-  return { id, front: f(x), back: f(0), sizeScale: 1, types: ['Ghost'], variant: 'normal', isAlpha: false, ...(aura !== undefined ? { aura } : {}) };
+  return { id, front: f(x), back: f(0), heightM: 1.376, types: ['Ghost'], variant: 'normal', isAlpha: false, ...(aura !== undefined ? { aura } : {}) };
 }
 
 async function makeStage() {

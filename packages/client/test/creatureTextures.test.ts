@@ -440,7 +440,7 @@ describe('creature textures: the world views lease the side they show and releas
     spawns.remove('w1');
     expect(leases[0]!.released).toBe(true);
 
-    const den = new RaidDen({ ...common, descriptor: (sp, key) => ({ id: key, sizeScale: 1 } as never) });
+    const den = new RaidDen({ ...common, descriptor: (sp, key) => ({ id: key, heightM: 1 } as never) });
     den.sync({ id: 'r1', bossSpecies: 'legB', bossLevel: 50, phase: 0, x: 0, z: 0 });
     den.sync({ id: 'r1', bossSpecies: 'legB', bossLevel: 50, phase: 1, x: 0, z: 0 });   // a phase change keeps the boss
     expect(leases.slice(1)).toEqual([{ sp: 'legB', side: 'front', released: false }]);

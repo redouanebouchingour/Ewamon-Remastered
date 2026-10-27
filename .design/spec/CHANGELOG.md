@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-27 true creature heights. One entry. -->
+
+## 2026-10-27 · `00-spine.md` §2.3 SpeciesDef, `10-render.md` §10.4.3 / §10.4.7 / §10.7.9, `40-pipelines.md` §40.1 · every creature stands its real height
+Why: the user asked for every Ewamon to have a height judged from its look, shown in the dex and used as its size in battle and as a follower. `SpeciesDef.sizeScale` (a billboard scale, 0.5..2.2, that sized the card rather than the creature) became `heightM`, from a hand-authored table (`.design/additions/heights.js`, 0.2 m for Ampmite to 4 m for Voidraxis; a battle form that outgrows its species carries its own). The manifest records per side the share of the cell the creature fills (`bodyV`, measured at the atlas's binary alpha), and the card is `heightM / bodyV` tall, so the creature itself, front and back, stands exactly `heightM`. Followers lose the 0.72 shrink and the 1.5 m cap and walk farther back when wide; the inspector backs off for a big card; the decal keeps its share of the card's width.
+Evidence: content `heights.test.ts` (every species 0.1..10 m, no line shrinks as it evolves, a form's own height outgrows its species'); render `sprites.test.ts` (card = height / body share), `battle-trainer.test.ts` (cards 0.23 to 8.3 m; a giant's card in doubles may be covered up to 8 % by its trainer, every other case 5 %); client `spriteCatalog.test.ts`, `dexHeight.test.ts`; sprite pipeline `bodyv.test.ts`; core fuzz digests byte-identical; `pnpm check`.
+Affects: `.design/additions/heights.js` (new); `packages/core/src/types.ts`; `packages/content/{scripts/migrate-legacy.ts,src/schema.ts,src/data/species.ts}`; `packages/render/src/{contracts.ts,sprites/tables.ts,sprites/billboard.ts,stage/followers.ts,stage/battleStage.ts}`; `packages/client/src/{scene/spriteCatalog.ts,scene/RaidViews.ts,voice/*,screens/dex/DexEntry.*}`; `packages/client/public/creatures/creatures.manifest.json` (`bodyV` on every rect); `tools/sprite-pipeline/src/{pipeline,manifest,cache}.ts`.
+
 <!-- 2026-10-26 dex order. One entry. -->
 
 ## 2026-10-26 · `00-spine.md` §2.3 SpeciesDef `dexNumber` · the starters open the dex, legendaries and mythicals close it

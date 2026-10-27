@@ -115,7 +115,7 @@ function atlasSet(id: string): Parameters<BillboardPool['bindAtlas']>[0] {
 
 function desc(id: string, over: Partial<SpriteDescriptor> = {}): SpriteDescriptor {
   const f = (x: number) => ({ atlas: 'a-001', rect: [x, 0.5, x + 0.5, 1] as const, px: [x * 2048, 0, 1024, 1024] as const, footV: 0.08, aspect: 1 });
-  return { id, front: f(0.5), back: f(0), sizeScale: 1, types: ['Grass'], variant: 'normal', isAlpha: false, ...over } as SpriteDescriptor;
+  return { id, front: f(0.5), back: f(0), heightM: 1.376, types: ['Grass'], variant: 'normal', isAlpha: false, ...over } as SpriteDescriptor;
 }
 
 describe('billboard variant values (Q28)', () => {

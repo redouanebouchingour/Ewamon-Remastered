@@ -24,7 +24,7 @@ import { ARENA_BACKDROP, part3Of, rendererInternals, type Terrain, type AnimAtla
 
 interface ManifestMap { readonly url: string; readonly mips: readonly string[] }
 interface ManifestAtlas { readonly id: string; readonly species: readonly string[]; readonly size: 2048; readonly albedo: ManifestMap; readonly normal: ManifestMap; readonly emissive: ManifestMap; readonly normalScale: 0.5 | 1 }
-interface ManifestRect { readonly atlas: string; readonly px: readonly [number, number, number, number]; readonly uv: readonly [number, number, number, number]; readonly footV: number; readonly aspect: number }
+interface ManifestRect { readonly atlas: string; readonly px: readonly [number, number, number, number]; readonly uv: readonly [number, number, number, number]; readonly footV: number; readonly aspect: number; readonly bodyV?: number }
 interface ManifestAnimSide { readonly atlas: string; readonly frames: readonly (readonly [number, number, number, number])[]; readonly delays: readonly number[]; readonly staticFrame: number }
 interface ManifestAnimAtlas { readonly id: string; readonly width: number; readonly height: number; readonly cell: number; readonly albedo: ManifestMap; readonly normal: ManifestMap; readonly emissive: ManifestMap; readonly normalScale: 0.5 | 1 }
 interface ManifestSprite { readonly front: ManifestRect; readonly back: ManifestRect; readonly sizeScale: number; readonly home: string; readonly anim?: { readonly front?: ManifestAnimSide; readonly back?: ManifestAnimSide } }
@@ -65,14 +65,24 @@ function typesOf(id: string): readonly [TypeName] | readonly [TypeName, TypeName
   return t.length > 1 ? [t[0]!, t[1]!] : [t[0]!];
 }
 
+/** A sprite key's height (m): the species', or a battle form's (`<species>_<form>`) when it names its own. */
+function heightOf(key: string): number {
+  for (const s of SPECIES) {
+    if (s.id === key) return s.heightM;
+    const form = [...(s.battleForms ?? []), ...(s.battleForm ? [s.battleForm] : [])].find((f) => `${s.id}_${f.id}` === key);
+    if (form !== undefined) return form.heightM ?? s.heightM;
+  }
+  return 1.2;
+}
+
 function descriptor(man: Manifest, species: string, key: string, variant: VariantKey = 'normal', isAlpha = false, aura?: AuraKind): SpriteDescriptor {
   const sp = man.sprites[species]!;
   // the client adapter's mapping (spriteCatalog.ts): frames → rects, delays → delaysMs
   const f = (r: ManifestRect, a: ManifestAnimSide | undefined) => ({
-    atlas: r.atlas, rect: r.uv, px: r.px, footV: r.footV, aspect: r.aspect,
+    atlas: r.atlas, rect: r.uv, px: r.px, footV: r.footV, aspect: r.aspect, ...(r.bodyV !== undefined ? { bodyV: r.bodyV } : {}),
     ...(a && ANIM_ON ? { anim: { atlas: a.atlas, rects: a.frames, delaysMs: a.delays, staticFrame: a.staticFrame } } : {}),
   });
-  return { id: key, front: f(sp.front, sp.anim?.front), back: f(sp.back, sp.anim?.back), sizeScale: sp.sizeScale, types: typesOf(species), variant, isAlpha, ...(aura ? { aura } : {}) };
+  return { id: key, front: f(sp.front, sp.anim?.front), back: f(sp.back, sp.anim?.back), heightM: heightOf(species), types: typesOf(species), variant, isAlpha, ...(aura ? { aura } : {}) };
 }
 
 export async function startPart3Demo(r: Renderer, mode: string, api: Record<string, unknown>): Promise<void> {
@@ -266,20 +276,20 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
       p.actors.spawn(id, { look, name: look, guildTag: '', isLocal: false });
       p.actors.setTransform(id, pos.x, pos.z, faceCam, false, false);
     });
-    // creature billboards beside the rows (sizeScale-1 creatures are ~1 m)
+    // creature billboards beside the rows, at their true heights
     const group = new Group();
     group.name = 'sandbox:people-creatures';
     r.scene.add(group);
-    const sized = species.map((s) => ({ s, k: man.sprites[s]!.sizeScale })).sort((a, b) => a.k - b.k);
+    const sized = species.map((s) => ({ s, k: heightOf(s) })).sort((a, b) => a.k - b.k);
     const pick = [sized[0], sized[Math.floor(sized.length / 2)], sized[sized.length - 1]].filter((x): x is { s: string; k: number } => x !== undefined);
     const creatures = pick.map(({ s }, i) => {
       const bb = p.sprites.acquire(descriptor(man, s, `people:${s}`));
-      // in front of the first row, between characters: smallest, median and largest sizeScale
+      // in front of the first row, between characters: shortest, median and tallest
       const pos = at.clone().addScaledVector(right, (i - 1) * 3.5 * spacing + spacing / 2).addScaledVector(fwd, -2.4);
       bb.setPosition(pos.x, 0, pos.z);
       bb.setFacing('front');
       group.add(bb.object);
-      return { species: s, sizeScale: man.sprites[s]!.sizeScale, x: pos.x, z: pos.z };
+      return { species: s, heightM: heightOf(s), x: pos.x, z: pos.z };
     });
     p.hud.set({ nameplates: q.get('plates') === '1' ? ids.map((id) => ({ id, name: id.slice(5), guildTag: '', inBattle: false })) : [], chat: [], prompt: null, questHint: null, party: [] });
     if (q.get('walkers') === '0') { walkersOn = false; walkers.forEach((_, i) => p.actors.despawn(`walker${i}`)); }

@@ -2890,3 +2890,11 @@ the second isolated client (the component over the landing page: the foe and own
   five-leaf clover sigil draws under the foe with a crimson pillar, it drops with both blades and leaves an X (stone
   greatsword arc, red katana arc), red cracks, a black shockwave and black feathers. Lead 1100, windup 640, travel
   300 (impact at 2040), total 3200 ms; premix `sig_demon_lords_descent`; portrait `public/signature/astaroth.webp`.
+
+## True creature heights (2026-10-27)
+
+- The sprite catalog passes `heightM` (the form's when the battle form names one, else the species') and the manifest's
+  per-side `bodyV` to the renderer; a stray manifest entry no species names falls back to its legacy `sizeScale` × 1.376 m.
+- The dex entry shows the height next to the rarity (the viewed form's, × 1.12 for an Alpha).
+- A creature's voice pitch follows `heightM` (0.3 m squeaks at 1.6, 3 m and taller rumbles at 0.6).
+- The raid den's boss is 1.8 × its true height.

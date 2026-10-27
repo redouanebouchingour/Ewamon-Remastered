@@ -169,6 +169,7 @@ const BattleFormDefSchema = z.object({
     healFraction: z.number().gt(0).max(1).optional(),
   }),
   sprite: z.object({ front: z.string().min(1), back: z.string().min(1) }),
+  heightM: z.number().min(0.1).max(10).optional(),
   signatureMove: z.object({ replaces: z.string().min(1), move: z.string().min(1) }).optional(),
 });
 
@@ -184,7 +185,7 @@ export const SpeciesDefSchema: z.ZodType<SpeciesDef> = z.object({
   baseSpd: PosInt,
   rarity: RaritySchema,
   catchRate: Int.min(3).max(255),
-  sizeScale: z.number().min(0.5).max(2.2),
+  heightM: z.number().min(0.1).max(10),
   expYield: PosInt,
   moves: z.array(Id).min(1).max(4),
   learnableMoves: z.array(LearnEntrySchema).min(1),

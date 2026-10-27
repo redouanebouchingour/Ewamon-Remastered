@@ -28,6 +28,7 @@ export interface SpriteFrame {
   readonly px: readonly [number, number, number, number];     // x, y, w, h level-0 texels, y down (= .px); used only by bindSingle's crop
   readonly footV: number;                  // 0..1 from the bottom of the rect where the feet touch the ground (pipeline value 0.08)
   readonly aspect: number;                 // rect width / height in texels (1 for the 1024² normalised frames)
+  readonly bodyV?: number;                 // added 2026-10-27: the share of the rect's height the creature fills (alpha ≥ 0.5); absent = BILLBOARD.bodyV
   readonly anim?: SpriteAnim;              // amended 2026-10-06: the side's flipbook (animated legendaries / mythicals only)
 }
 /**
@@ -46,7 +47,7 @@ export interface ShinyPalette { readonly hue: number; readonly saturation: numbe
 export interface SpriteDescriptor {
   readonly id: string;                     // creature/spawn/battler id (render-side key)
   readonly front: SpriteFrame; readonly back: SpriteFrame;
-  readonly sizeScale: number;              // SpeciesDef.sizeScale 0.5..2.2
+  readonly heightM: number;                // 2026-10-27 (was sizeScale): how tall the creature stands (m), SpeciesDef.heightM
   readonly types: readonly [TypeName] | readonly [TypeName, TypeName];
   readonly variant: VariantKey;
   readonly isAlpha: boolean;

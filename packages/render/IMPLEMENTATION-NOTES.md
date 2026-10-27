@@ -2610,3 +2610,22 @@ shadow is a softer blob. First-person sees the 0–44 m cascade at 1536² up clo
   crimson banner cloth, the lava glow as accent).
 - `clover_sigil`: a flat five-leaf clover (heart leaves in the accent on a dark disc, a stem, an iron ring and a
   glowing outer ring with five studs), 5.7 m across, drawn in the floor pass a hair above the arena's runner disc.
+
+## True creature heights (2026-10-27)
+
+- `SpriteDescriptor.sizeScale` became `heightM`: how tall the creature stands (content `SpeciesDef.heightM`, or its
+  battle form's). `billboardDims` sizes the card as `heightM / bodyV` (× 1.12 alpha), where `SpriteFrame.bodyV` is the
+  share of the 1024² frame's height the creature fills at the atlas's binary alpha (manifest, per side; 0.86 when
+  absent). So the creature itself, not its card, is `heightM` tall, from the front and from the back alike; a wide
+  sprite (a serpent, a mesadrake) fills less of its card's height and gets a bigger card.
+- Ten back sprites are drawn lower and wider than their fronts (astaroth bodyV 0.43 against 0.70, malice, kygra,
+  raidori, alloylark, flowbot, devourest, resilithorn, necrogeist, bloomduck). Sized by their own share, astaroth's back
+  was a 7.4 m card, 6.4 m wide, and hid a small foe entirely in the live battle check; `cardBodyV` gives such a back the
+  front's share, so it keeps the front's scale and stands a little lower from behind (astaroth 1.97 of 3.2 m).
+- The contact decal keeps its old relation to the card (0.6875 of the card's width, 1.1 m on the old 1.6 m card).
+- Followers drop the 0.72 shrink and the 1.5 m cap: a follower is its true size. A wide one walks farther back
+  (`gapOf`: the owner's 0.45 m radius plus half its body) so a legendary never stands in its trainer.
+- The battle inspector backs off for a card past 1.6 m (2.5 m of distance per m of card, 4 m minimum).
+- `battle-trainer.test.ts` now covers cards from 0.23 m to 8.3 m (margin past the 4.65 m largest). A giant (card past the old 2.69 m) in doubles stands
+  right behind its trainer, and the avatar covers up to 6.6 % of its card there: that case is held to 8 %, every other to 5 %.
+- Doubles keep `SLOT_SPACING` 1.8 m: two wide giants side by side overlap, as two 3 m cards already did.

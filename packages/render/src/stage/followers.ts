@@ -25,8 +25,13 @@ export const FOLLOWER = Object.freeze({
   /** followers drawn at once (walker slots slot0 .. slot0 + max − 1) */
   max: 16,
   slot0: ACTOR_POOL_SIZE,
-  /** distance kept behind the owner, along the owner's path (m) */
+  /**
+   * distance kept behind the owner, along the owner's path (m): at least gapM, and for a wide creature the owner's
+   * radius plus half its body (`bodyOfWidth` of its card is body), so a big one never stands in its owner
+   */
   gapM: 1.45,
+  ownerR: 0.45,
+  bodyOfWidth: 0.86,
   /** the path history: a point every sampleM, `historyN` of them (covers 6 m) */
   sampleM: 0.2,
   historyN: 30,
@@ -35,9 +40,6 @@ export const FOLLOWER = Object.freeze({
   /** catch-up speed per metre of lag beyond the gap (m/s per m), and its cap (m/s) */
   catchPerM: 3.5,
   maxMps: 16,
-  /** drawn at this fraction of its world size, and never taller than maxHeightM */
-  sizeMul: 0.72,
-  maxHeightM: 1.5,
   /** the walking hop (m, Hz) */
   hopM: 0.07,
   hopHz: 3.4,
@@ -228,7 +230,7 @@ export class FollowerPool {
       const lag = Math.hypot(dx, dz);
       if (lag > FOLLOWER.snapM) { this.place(e, _o); continue; }
       const behind = Math.hypot(_o.x - e.pos.x, _o.z - e.pos.z);
-      const want = Math.min(FOLLOWER.maxMps, e.ownerSpeed + FOLLOWER.catchPerM * Math.max(0, behind - FOLLOWER.gapM) + (lag > 0.05 ? 0.8 : 0));
+      const want = Math.min(FOLLOWER.maxMps, e.ownerSpeed + FOLLOWER.catchPerM * Math.max(0, behind - this.gapOf(e)) + (lag > 0.05 ? 0.8 : 0));
       const step = Math.min(lag, want * dt);
       if (lag > 1e-6 && step > 0) {
         e.pos.x += (dx / lag) * step;
@@ -284,8 +286,12 @@ export class FollowerPool {
   private makeCard(d: SpriteDescriptor): CreatureBillboard {
     const bb = this.sprites.acquire(d);
     bb.setFacing('front');
-    bb.setSizeMul(Math.min(FOLLOWER.sizeMul, FOLLOWER.maxHeightM / Math.max(0.1, bb.heightM)));
     return bb;
+  }
+
+  /** How far behind its owner a follower walks (FOLLOWER.gapM, more for a wide one); its card is drawn at its true size. */
+  private gapOf(e: Entry): number {
+    return Math.max(FOLLOWER.gapM, FOLLOWER.ownerR + (FOLLOWER.bodyOfWidth * e.bb.widthM) / 2);
   }
 
   private remove(e: Entry): void {
@@ -303,7 +309,7 @@ export class FollowerPool {
     const cx = this.camera !== null ? -_dir.x : 0;
     const cz = this.camera !== null ? -_dir.z : 1;
     const l = Math.hypot(cx, cz) || 1;
-    e.pos.set(owner.x + (cx / l) * FOLLOWER.gapM * 0.7, owner.y, owner.z + (cz / l) * FOLLOWER.gapM * 0.7);
+    e.pos.set(owner.x + (cx / l) * this.gapOf(e) * 0.7, owner.y, owner.z + (cz / l) * this.gapOf(e) * 0.7);
     const g = this.owners.groundAt(e.pos.x, e.pos.z);
     if (Number.isFinite(g)) e.pos.y = g;
     e.ownerLast.copy(owner);
@@ -336,7 +342,7 @@ export class FollowerPool {
   private target(e: Entry, owner: Vector3, out: Vector3): void {
     const h = e.hist;
     let ax = owner.x; let ay = owner.y; let az = owner.z;
-    let left = FOLLOWER.gapM;
+    let left = this.gapOf(e);
     for (let k = 0; k < e.count; k++) {
       const i = ((e.head - k + FOLLOWER.historyN) % FOLLOWER.historyN) * 3;
       const bx = h[i]!; const by = h[i + 1]!; const bz = h[i + 2]!;
@@ -351,7 +357,7 @@ export class FollowerPool {
     }
     // the path is shorter than the gap: stay where the follower is unless it is ahead of the oldest point
     out.set(e.pos.x, Math.max(ay, e.pos.y), e.pos.z);
-    if (Math.hypot(owner.x - e.pos.x, owner.z - e.pos.z) > FOLLOWER.gapM) out.set(ax, ay, az);
+    if (Math.hypot(owner.x - e.pos.x, owner.z - e.pos.z) > this.gapOf(e)) out.set(ax, ay, az);
   }
 
   private normalAt(e: Entry): void {

@@ -97,7 +97,7 @@ export class RaidDen {
     const base = this.d.descriptor(info.bossSpecies, `${RAID_PREFIX}${info.id}`);
     if (base !== null) {
       this.lease = this.d.leaseSprites(info.bossSpecies, sideFor('raid'));
-      const bb = this.d.acquire({ ...base, sizeScale: base.sizeScale * RAID_DEN_SCALE });
+      const bb = this.d.acquire({ ...base, heightM: base.heightM * RAID_DEN_SCALE });
       bb.setFacing(sideFor('raid'));
       bb.setPosition(info.x, this.d.height(info.x, info.z), info.z);
       bb.object.visible = !this.hidden;

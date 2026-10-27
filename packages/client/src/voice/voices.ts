@@ -9,7 +9,7 @@
  * villager sounds the same every visit.
  *
  * Pitch and rate: a villager or a trainer gets a seeded pitch (0.85..1.2) and rate (0.92..1.1); a creature's pitch
- * follows its species' size (`sizeScale` 0.5..2.2: a small one squeaks, a big one rumbles) with a little seeded
+ * follows its species' height (`heightM`, 0.3..3 m and past: a small one squeaks, a big one rumbles) with a little seeded
  * jitter; the commentator is fixed, a touch quick.
  */
 
@@ -26,7 +26,7 @@ export interface VoicePersona {
   /** what the voice is seeded by: `npc:<id>`, `creature:<id>`, `person:<name>` (the rival, a trainer), `caster` */
   readonly key: string;
   readonly kind: VoiceKind;
-  /** a creature's species size (`sizeScale`, 0.5..2.2) */
+  /** a creature's species height (m, `heightM`) */
   readonly size?: number;
 }
 
@@ -78,10 +78,10 @@ export function pickVoice(p: VoicePersona, all: readonly VoiceInfo[]): VoicePick
       rate = 1.08;
       break;
     case 'creature': {
-      const size = clamp(p.size ?? 0.6 + a * 1.4, 0.5, 2.2);
-      // 0.5 → 1.6, 2.2 → 0.6, then ±0.08 of seeded jitter
-      pitch = clamp(1.6 - ((size - 0.5) / 1.7) * 1.0 + (a - 0.5) * 0.16, 0.5, 1.8);
-      rate = 1.12 - ((size - 0.5) / 1.7) * 0.25 + (b - 0.5) * 0.08;
+      // 0.3 m → 1.6, 3 m and taller → 0.6, then ±0.08 of seeded jitter
+      const k = clamp(((p.size ?? 0.4 + a * 2.4) - 0.3) / 2.7, 0, 1);
+      pitch = clamp(1.6 - k * 1.0 + (a - 0.5) * 0.16, 0.5, 1.8);
+      rate = 1.12 - k * 0.25 + (b - 0.5) * 0.08;
       break;
     }
     default:

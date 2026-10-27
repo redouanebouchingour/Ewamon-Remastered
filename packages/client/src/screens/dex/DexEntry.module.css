@@ -132,6 +132,18 @@
   text-transform: uppercase;
 }
 
+.height {
+  padding: var(--s-1) var(--s-3);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+
 .r_rare {
   box-shadow: inset 0 0 0 1px var(--info);
   color: var(--info);

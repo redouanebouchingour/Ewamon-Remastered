@@ -137,7 +137,7 @@ function fakeDen() {
     parent: { add: () => undefined } as unknown as RaidDenDeps['parent'],
     acquire: (d: SpriteDescriptor) => {
       const key = (d as unknown as { key: string }).key;
-      scales.push(d.sizeScale);
+      scales.push(d.heightM);
       const rec = { visible: true, pos: [0, 0, 0] as [number, number, number] };
       live.set(key, rec);
       const object = {
@@ -153,7 +153,7 @@ function fakeDen() {
     },
     descriptor: (sp, key) => {
       descriptors.push(`${sp} ${key}`);
-      return { key, speciesId: sp, sizeScale: 1.25 } as unknown as SpriteDescriptor;
+      return { key, speciesId: sp, heightM: 1.25 } as unknown as SpriteDescriptor;
     },
     leaseSprites: () => NO_LEASE,
     height: () => 1.5,

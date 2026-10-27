@@ -9,8 +9,11 @@ const DEG = Math.PI / 180;
 // ---- §10.4.3 / §10.4.5 / §10.4.7 constants ------------------------------------------------------------------
 
 export const BILLBOARD = Object.freeze({
-  /** World height of a `sizeScale 1` creature (m); H = 1.6 × sizeScale. */
-  heightM: 1.6,
+  /**
+   * The share of a 1024² frame the pipeline's normalisation fills (881 px over the longest side): the body height of an
+   * upright sprite, used when a frame carries no measured `bodyV`.
+   */
+  bodyV: 0.86,
   /** Level-0 texels per metre (1024 texels over 1.6 m). */
   texelsPerMetre: 640,
   /** `isAlpha`: quad scale ×1.12, contact decal ×1.12, `alphaGlow 1`. */
@@ -56,8 +59,8 @@ export const BILLBOARD = Object.freeze({
    * `512 / (rect width, height in uv)`.
    */
   dissolveCellsPerFrame: 512,
-  /** §10.4.7 contact decal: 1.1 m × sizeScale, opacity 0.55, radial smoothstep(0.5, 0.05). */
-  decalSizeM: 1.1,
+  /** §10.4.7 contact decal: this share of the card's width (1.1 m on the old 1.6 m card), opacity 0.55, radial smoothstep(0.5, 0.05). */
+  decalOfWidth: 0.6875,
   decalOpacity: 0.55,
   decalInner: 0.05,
   decalOuter: 0.5,
@@ -126,16 +129,36 @@ export function paletteFor(variant: VariantKey, isAlpha: boolean, out: PaletteVa
 
 export interface BillboardDims { heightM: number; widthM: number; yMin: number; yMax: number; decalM: number }
 
-/** H = 1.6 × sizeScale (× 1.12 alpha); width = H × aspect; the local origin is the foot point. */
-export function billboardDims(frame: Pick<SpriteFrame, 'footV' | 'aspect'>, sizeScale: number, isAlpha: boolean, out: BillboardDims): BillboardDims {
+/** A creature this tall (m) when its descriptor names no usable height. */
+export const FALLBACK_HEIGHT_M = 1.2;
+
+const usableBodyV = (v: number | undefined): number => (v !== undefined && v > 0 && v <= 1 ? v : BILLBOARD.bodyV);
+
+/**
+ * The body share a side's card is sized by: the front's own; the back's own, unless the back sprite is drawn lower and
+ * wider than the front (astaroth's spread wings, kygra lying flat), when it takes the front's, so a creature never
+ * draws bigger from behind than from the front (it then stands a little lower from behind, as its back art does).
+ */
+export function cardBodyV(front: Pick<SpriteFrame, 'bodyV'>, back: Pick<SpriteFrame, 'bodyV'>, side: 'front' | 'back'): number {
+  const f = usableBodyV(front.bodyV);
+  return side === 'front' ? f : Math.max(f, usableBodyV(back.bodyV));
+}
+
+/**
+ * The card is sized so the creature in it stands `creatureM` tall (× 1.12 alpha): H = creatureM / bodyV, width = H ×
+ * aspect; the local origin is the foot point. `heightM` here is the card's height, not the creature's. `bodyV` defaults
+ * to the frame's own (`cardBodyV` picks it per side).
+ */
+export function billboardDims(frame: Pick<SpriteFrame, 'footV' | 'aspect' | 'bodyV'>, creatureM: number, isAlpha: boolean, out: BillboardDims, bodyV: number | undefined = frame.bodyV): BillboardDims {
   const k = isAlpha ? BILLBOARD.alphaScale : 1;
-  const s = Number.isFinite(sizeScale) && sizeScale > 0 ? sizeScale : 1;
-  const H = BILLBOARD.heightM * s * k;
+  const m = Number.isFinite(creatureM) && creatureM > 0 ? creatureM : FALLBACK_HEIGHT_M;
+  const body = usableBodyV(bodyV);
+  const H = (m / body) * k;
   out.heightM = H;
   out.widthM = H * (frame.aspect > 0 ? frame.aspect : 1);
   out.yMin = -frame.footV * H;
   out.yMax = (1 - frame.footV) * H;
-  out.decalM = BILLBOARD.decalSizeM * s * k;
+  out.decalM = BILLBOARD.decalOfWidth * out.widthM;
   return out;
 }
 

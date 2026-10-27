@@ -19,7 +19,7 @@ function fakeDecoder(): AtlasDecoder {
 }
 const desc = (id: string): SpriteDescriptor => {
   const f = { atlas: 'a-001', rect: [0, 0.5, 0.5, 1] as const, px: [0, 0, 1024, 1024] as const, footV: 0.08, aspect: 1 };
-  return { id, front: f, back: f, sizeScale: 1, types: ['Fire'], variant: 'normal', isAlpha: false };
+  return { id, front: f, back: f, heightM: 1.376, types: ['Fire'], variant: 'normal', isAlpha: false };
 };
 
 /** An owner the test moves by hand on a sloped ground (y = 0.1 x). */

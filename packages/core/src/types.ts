@@ -67,7 +67,7 @@ export interface SpeciesDef {
   readonly baseHp: number; readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number;
   readonly rarity: Rarity;
   readonly catchRate: number;          // 3..255
-  readonly sizeScale: number;          // billboard scale, 0.5..2.2
+  readonly heightM: number;            // how tall it stands (m), 0.1..10: the dex shows it, the renderer draws it this tall
   readonly expYield: number;
   readonly moves: readonly string[];   // the default 4 at creation, length 1..4
   readonly learnableMoves: readonly LearnEntry[]; // sorted by level asc, includes `moves` at level 1
@@ -131,6 +131,8 @@ export interface BattleFormDef {
     readonly healFraction?: number;
   };
   readonly sprite: { readonly front: string; readonly back: string }; // pipeline output ids, e.g. 'hollowmane_rage_front'
+  /** How tall the form stands (m), when it outgrows the species. Absent: the species' `heightM`. */
+  readonly heightM?: number;
   /**
    * While the battler holds the form, using the known move `replaces` executes `move` instead (its own MoveDef: type,
    * power, accuracy, effect, priority); the replaced slot pays the PP, and choice lock / validation keep the slot's id.

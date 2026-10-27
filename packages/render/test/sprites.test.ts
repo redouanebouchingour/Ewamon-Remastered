@@ -11,7 +11,7 @@ import {
 } from '../src/sprites/atlas.js';
 import { BillboardPool } from '../src/sprites/billboard.js';
 import {
-  ANIM, BILLBOARD, POSES, VARIANT_KEYS, VARIANT_UNIFORMS, billboardDims, bobOffset, bobPhase, decayHurt, paletteFor, poseDurationMs, samplePose,
+  ANIM, BILLBOARD, FALLBACK_HEIGHT_M, POSES, VARIANT_KEYS, VARIANT_UNIFORMS, billboardDims, bobOffset, bobPhase, cardBodyV, decayHurt, paletteFor, poseDurationMs, samplePose,
   type PoseSample,
 } from '../src/sprites/tables.js';
 import { TYPE_COLORS, TYPE_NAMES, hexToLinearInto, validateTypeColorTable } from '../src/sprites/typeColors.js';
@@ -61,18 +61,31 @@ describe('§10.4.6 uniform tables', () => {
 });
 
 describe('§10.4.3 geometry and anchoring', () => {
-  it('H = 1.6 m × sizeScale (× 1.12 alpha), width = H × aspect, feet at the local origin', () => {
-    const d = billboardDims({ footV: 0.08, aspect: 1 }, 1, false, { heightM: 0, widthM: 0, yMin: 0, yMax: 0, decalM: 0 });
-    expect(d.heightM).toBe(1.6);
-    expect(d.widthM).toBe(1.6);
+  it('H = creature height / body share (× 1.12 alpha), width = H × aspect, feet at the local origin', () => {
+    // no measured bodyV: the normalised 0.86, so a 1.376 m creature gets the old 1.6 m card
+    const d = billboardDims({ footV: 0.08, aspect: 1 }, 1.376, false, { heightM: 0, widthM: 0, yMin: 0, yMax: 0, decalM: 0 });
+    expect(d.heightM).toBeCloseTo(1.6, 12);
+    expect(d.widthM).toBeCloseTo(1.6, 12);
     expect(d.yMin).toBeCloseTo(-0.128, 12);
     expect(d.yMax).toBeCloseTo(1.472, 12);
     expect(d.decalM).toBeCloseTo(1.1, 12);
-    const a = billboardDims({ footV: 0.08, aspect: 0.5 }, 2.2, true, d);
-    expect(a.heightM).toBeCloseTo(3.52 * 1.12, 9);
+    // a wide creature filling half its card's height: a 2 m one gets a 4 m card (× 1.12 alpha)
+    const a = billboardDims({ footV: 0.08, aspect: 0.5, bodyV: 0.5 }, 2, true, d);
+    expect(a.heightM).toBeCloseTo(4 * 1.12, 9);
     expect(a.widthM).toBeCloseTo(a.heightM * 0.5, 9);
-    expect(a.decalM).toBeCloseTo(1.1 * 2.2 * 1.12, 9);
+    expect(a.decalM).toBeCloseTo(BILLBOARD.decalOfWidth * a.widthM, 9);
+    // the creature stands exactly its height whatever its body share
+    for (const bodyV of [0.3, 0.6, 0.86, 1]) expect(billboardDims({ footV: 0.08, aspect: 1, bodyV }, 0.45, false, d).heightM * bodyV).toBeCloseTo(0.45, 12);
+    // no usable height: FALLBACK_HEIGHT_M
+    expect(billboardDims({ footV: 0.08, aspect: 1 }, Number.NaN, false, d).heightM).toBeCloseTo(FALLBACK_HEIGHT_M / BILLBOARD.bodyV, 12);
     expect(BILLBOARD.texelsPerMetre).toBe(1024 / 1.6);
+  });
+
+  it('a back sprite drawn lower and wider than its front takes the front body share (never bigger from behind)', () => {
+    expect(cardBodyV({ bodyV: 0.7 }, { bodyV: 0.43 }, 'front')).toBe(0.7);
+    expect(cardBodyV({ bodyV: 0.7 }, { bodyV: 0.43 }, 'back')).toBe(0.7);       // astaroth: its back stands 1.97 of 3.2 m
+    expect(cardBodyV({ bodyV: 0.6 }, { bodyV: 0.8 }, 'back')).toBe(0.8);        // a taller back keeps its own: still heightM tall
+    expect(cardBodyV({}, {}, 'back')).toBe(BILLBOARD.bodyV);
   });
 });
 
@@ -240,7 +253,7 @@ describe('atlas cache: refcount and dispose', () => {
 
 function desc(id: string, atlas = 'a-001', over: Partial<SpriteDescriptor> = {}): SpriteDescriptor {
   const f = (x: number) => ({ atlas, rect: [x, 0.5, x + 0.5, 1] as const, px: [x * 2048, 0, 1024, 1024] as const, footV: 0.08, aspect: 1 });
-  return { id, front: f(0.5), back: f(0), sizeScale: 1, types: ['Grass'], variant: 'normal', isAlpha: false, ...over };
+  return { id, front: f(0.5), back: f(0), heightM: 1.376, types: ['Grass'], variant: 'normal', isAlpha: false, ...over };
 }
 
 describe('§10.4.2 BillboardPool / CreatureBillboard', () => {

@@ -7,7 +7,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { LEGENDARY_IDS, MYTHICAL_IDS } from '@ewa/content';
+import { LEGENDARY_IDS, MYTHICAL_IDS, SPECIES } from '@ewa/content';
 import type { AnimAtlasSet, AtlasSet } from '@ewa/render';
 import { species as speciesDef } from '../src/data/content';
 import type { CreatureManifest } from '../src/scene/spriteCatalog';
@@ -147,5 +147,24 @@ describe.skipIf(!existsSync(REAL))('sprite catalog on the shipped manifest', () 
         for (const ms of a.delaysMs) expect([100, 125]).toContain(ms);
       }
     }
+  });
+});
+
+describe('sprite catalog: true heights', () => {
+  it("passes the species' height, a taller form's, and each side's measured body share", () => {
+    const tall = { ...rect(0.5), bodyV: 0.7 };
+    const m: CreatureManifest = {
+      ...INLINE,
+      sprites: { hyoryu: { front: tall, back: rect(0), sizeScale: 1.45, home: 'a-000' }, hyoryu_majin: { front: rect(0.5), back: rect(0), sizeScale: 1.45, home: 'a-000' }, stray: { front: rect(0.5), back: rect(0), sizeScale: 1, home: 'a-000' } },
+    };
+    const lookup = (id: string) => SPECIES.find((s) => s.id === id);
+    const cat = createSpriteCatalog(m, lookup, '/creatures/');
+    const hyoryu = lookup('hyoryu')!;
+    const d = cat.descriptor('hyoryu', 'x')!;
+    expect(d.heightM).toBe(hyoryu.heightM);
+    expect(d.front.bodyV).toBe(0.7);
+    expect(d.back.bodyV).toBeUndefined();                             // an older manifest's side: the renderer's 0.86
+    expect(cat.descriptor('hyoryu', 'y', 'normal', false, false, 'hyoryu_majin')!.heightM).toBe(hyoryu.battleForm!.heightM);
+    expect(cat.descriptor('stray', 'z')!.heightM).toBeCloseTo(1.376, 9);   // no species: the legacy sizeScale's body
   });
 });

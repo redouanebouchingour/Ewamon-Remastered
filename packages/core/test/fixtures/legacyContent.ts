@@ -210,7 +210,7 @@ export function migrateSpecies(s: LegacySpecies, dexNumber: number): SpeciesDef 
     baseSpd: s.baseSpd,
     rarity: s.rarity as Rarity,
     catchRate: s.catchRate,
-    sizeScale: s.sizeScale,
+    heightM: 1,                 // no core test reads it (the renderer and the dex do)
     expYield: s.expYield,
     moves: s.moves.slice(0, 4),
     learnableMoves: migrateLearnset(s.moves.slice(0, 4), s.learnableMoves, evolution === null ? null : evolution.atLevel),

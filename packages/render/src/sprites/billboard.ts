@@ -48,7 +48,7 @@ import {
 } from './atlas.js';
 import { OVERLAY_ALPHA_CUT, overlayMrt } from './overlayMrt.js';
 import {
-  BILLBOARD, billboardDims, bobOffset, bobPhase, decayHurt, flipbookFrame, flipbookPhase01, flipbookTotalMs, paletteFor, poseDurationMs, POSES,
+  BILLBOARD, billboardDims, bobOffset, bobPhase, cardBodyV, decayHurt, flipbookFrame, flipbookPhase01, flipbookTotalMs, paletteFor, poseDurationMs, POSES,
   samplePose, type BillboardDims, type PaletteValues, type PoseSample,
 } from './tables.js';
 import { TYPE_COLORS, hexToLinearInto, validateTypeColorTable } from './typeColors.js';
@@ -828,7 +828,7 @@ export class CreatureBillboard {
   }
 
   private applyDims(): void {
-    billboardDims(this.frame(), this.d.sizeScale, this.isAlpha, this.dims);
+    billboardDims(this.frame(), this.d.heightM, this.isAlpha, this.dims, cardBodyV(this.d.front, this.d.back, this.side));
     const ud = this.rig.ud;
     ud.size.set(this.dims.widthM * this.sizeMul, this.dims.heightM * this.sizeMul);
     ud.footV = this.frame().footV;

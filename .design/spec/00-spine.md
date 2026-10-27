@@ -166,7 +166,7 @@ export interface SpeciesDef {
   readonly baseHp: number; readonly baseAtk: number; readonly baseDef: number; readonly baseSpd: number;
   readonly rarity: Rarity;
   readonly catchRate: number;          // 3..255
-  readonly sizeScale: number;          // billboard scale, 0.5..2.2
+  readonly heightM: number;            // how tall it stands (m), 0.1..10; the dex shows it, the renderer draws it this tall <!-- amended 2026-10-27: was sizeScale 0.5..2.2 -->
   readonly expYield: number;
   readonly moves: readonly string[];   // the default 4 at creation, length 1..4
   readonly learnableMoves: readonly LearnEntry[]; // sorted by level asc, includes `moves` at level 1

@@ -54,6 +54,8 @@ interface ManifestRect {
   readonly uv: readonly [number, number, number, number];
   readonly footV: number;
   readonly aspect: number;
+  /** the share of the rect's height the creature fills (2026-10-27; absent in an older manifest) */
+  readonly bodyV?: number;
 }
 interface ManifestAnimSide {
   readonly atlas: string;
@@ -105,7 +107,8 @@ export interface SpriteCatalog {
   /** Level-0 bytes (albedo + normal + emissive, mips included when listed) of a set of atlases (static or anim), for the boot bar. */
   bytesOf(ids: readonly string[]): number;
   /**
-   * `spriteId`: a battle form's manifest entry (`<species>_<form>`) drawn in place of the species' own; size stays the species',
+   * `spriteId`: a battle form's manifest entry (`<species>_<form>`) drawn in place of the species' own, as tall as the form's
+   * `heightM` (the species' when the form names none);
    * types too unless the form names its own (hyoryu's Majin Form: Dragon/Dark, so its type colour follows).
    * A Majin / Tenjin form (`FORM_AURA`) also gets its live aura (`SpriteDescriptor.aura`).
    */
@@ -114,11 +117,14 @@ export interface SpriteCatalog {
 }
 
 function frame(r: ManifestRect, a: ManifestAnimSide | undefined): SpriteFrame {
-  const f: SpriteFrame = { atlas: r.atlas, rect: r.uv, px: r.px, footV: r.footV, aspect: r.aspect };
+  const f: SpriteFrame = { atlas: r.atlas, rect: r.uv, px: r.px, footV: r.footV, aspect: r.aspect, ...(r.bodyV !== undefined ? { bodyV: r.bodyV } : {}) };
   if (a === undefined || a.frames.length === 0) return f;
   const anim: SpriteAnim = { atlas: a.atlas, rects: a.frames, delaysMs: a.delays, staticFrame: a.staticFrame };
   return { ...f, anim };
 }
+
+/** A manifest entry no species names (a stray sprite): drawn as tall as its legacy sizeScale's body on the old 1.6 m card. */
+const LEGACY_BODY_M = 1.6 * 0.86;
 
 export function createSpriteCatalog(m: CreatureManifest, species: (id: string) => SpeciesDef | undefined, base: string = CREATURE_BASE): SpriteCatalog {
   const sets = new Map<string, AtlasSet>();
@@ -174,7 +180,7 @@ export function createSpriteCatalog(m: CreatureManifest, species: (id: string) =
       };
       const aura = auraOfSprite(speciesId, spriteId);
       return {
-        id: key, front: frame(sp.front, anim('front')), back: frame(sp.back, anim('back')), sizeScale: def?.sizeScale ?? sp.sizeScale, types, variant, isAlpha,
+        id: key, front: frame(sp.front, anim('front')), back: frame(sp.back, anim('back')), heightM: form?.heightM ?? def?.heightM ?? sp.sizeScale * LEGACY_BODY_M, types, variant, isAlpha,
         ...(isShiny ? { isShiny: true, shinyPalette: shinyPaletteOf(speciesId) } : {}), ...(aura !== undefined ? { aura } : {}),
       };
     },

@@ -282,3 +282,9 @@ The user's form-change gimmick (`.design/majin-tenjin.md`; spine §2.3 `BattleFo
   multiplies it inside the floor and `resolveCatch` passes `st.catchBonus?.[speciesId] ?? 1`. Absent or empty, the
   state shape, its digest and every catch value are unchanged (a product with 1 is exact): both fuzz digests are
   byte-identical. The server fills it for a wild species at research level 3 or more. `test/catch-bonus.test.ts` (3).
+
+## Species height (2026-10-27)
+
+`SpeciesDef.sizeScale` (a billboard scale, 0.5..2.2) became `heightM`, how tall the creature stands in metres, and a
+`BattleFormDef` may carry its own `heightM`. No battle rule reads either, so the fuzz digests are untouched; core's
+legacy fixture gives every species 1 m.
