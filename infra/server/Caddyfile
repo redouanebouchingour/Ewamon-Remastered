@@ -28,20 +28,10 @@
 	}
 }
 
-uniforcemusic.com {
+ewamon.com {
 	import ewamon
 }
 
-www.uniforcemusic.com {
-	redir https://uniforcemusic.com{uri} permanent
+www.ewamon.com {
+	redir https://ewamon.com{uri} permanent
 }
-
-# Once ewamon.com (and www) point at 85.215.92.169: uncomment, add https://ewamon.com to PUBLIC_ORIGINS in
-# /opt/ewamon/.env, then `systemctl reload caddy && ewamon-deploy`.
-#ewamon.com {
-#	import ewamon
-#}
-#
-#www.ewamon.com {
-#	redir https://ewamon.com{uri} permanent
-#}

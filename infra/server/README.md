@@ -18,10 +18,10 @@ Ubuntu 26.04, Docker + Compose, Caddy on the host (TLS), ufw (22, 80, 443 open).
 ## Deploying
 
 - **GitHub webhook** (needs repo admin): Settings → Webhooks → Add. Payload URL
-  `https://uniforcemusic.com/_deploy/github`, content type `application/json`, secret = `WEBHOOK_SECRET` from
+  `https://ewamon.com/_deploy/github`, content type `application/json`, secret = `WEBHOOK_SECRET` from
   `/opt/ewamon/hook.env`, "Just the push event". Pushes to `main` deploy.
-- **By hand over HTTPS**: `curl -X POST https://uniforcemusic.com/_deploy/run -H "Authorization: Bearer $DEPLOY_TOKEN"`
-- **Status**: `curl https://uniforcemusic.com/_deploy/status -H "Authorization: Bearer $DEPLOY_TOKEN"`
+- **By hand over HTTPS**: `curl -X POST https://ewamon.com/_deploy/run -H "Authorization: Bearer $DEPLOY_TOKEN"`
+- **Status**: `curl https://ewamon.com/_deploy/status -H "Authorization: Bearer $DEPLOY_TOKEN"`
 - **On the server**: `ewamon-deploy`, log in `/opt/ewamon/logs/deploy.log` (also `journalctl -u ewamon-deploy`).
 
 The hook only creates `/opt/ewamon/state/pending`; `ewamon-deploy.path` starts the deploy. A push during a deploy
@@ -37,11 +37,11 @@ docker compose --env-file .env exec postgres psql -U ewa -d ewa
 docker run --rm --network ewamon_default -e DATABASE_URL=postgres://ewa:$PW@postgres:5432/ewa ewamon/server pnpm grant:item ...
 ```
 
-## Adding ewamon.com
+## Domain
 
-Point `ewamon.com` and `www.ewamon.com` (A record) at 85.215.92.169, uncomment the block at the bottom of
-`/etc/caddy/Caddyfile`, add `https://ewamon.com` to `PUBLIC_ORIGINS` in `/opt/ewamon/.env`, then
-`systemctl reload caddy && ewamon-deploy`.
+Served at `ewamon.com` (`www` redirects), A records at 85.215.92.169; Caddy fetches the certificates. To change the
+domain: edit the site blocks in `/etc/caddy/Caddyfile`, set `PUBLIC_ORIGINS` and `PUBLIC_WEB_URL` in
+`/opt/ewamon/.env`, then `systemctl reload caddy && ewamon-deploy`.
 
 ## Notes
 
