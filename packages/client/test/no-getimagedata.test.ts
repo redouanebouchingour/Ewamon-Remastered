@@ -82,7 +82,8 @@ describe('no CPU pixel work on sprites (Q28)', () => {
     const offenders: string[] = [];
     for (const f of files) {
       if (!isSpriteModule(f.path, f.text)) continue;
-      if (/getContext\(|ImageData\b|drawImage\(/.test(f.text)) offenders.push(`${f.path}: 2D canvas / ImageData`);
+      // a WebGL context is not pixel work: World3D takes the WebGL2 one to recover a lost context (2026-10-27)
+      if (/getContext\((?!\s*['"]webgl2?['"])|ImageData\b|drawImage\(/.test(f.text)) offenders.push(`${f.path}: 2D canvas / ImageData`);
       // a READ of an RGBA-stride element (`px[(y * w + x) * 4 + 1]`, `data[i + 3]` not followed by `=`): pixels coming
       // back out of an image. Writes from constants are allowed (the 4×4 neutral placeholder texture in atlas.ts and the
       // quad's tangent attribute in billboard.ts fill typed arrays; neither reads a sprite).
