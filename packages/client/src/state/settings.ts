@@ -1,5 +1,5 @@
 /**
- * SettingsState (SPEC §20.8.1): persisted with zustand `persist` under 'ewa.settings' v1. Changes apply
+ * SettingsState (SPEC §20.8.1): persisted with zustand `persist` under 'ewa.settings' v2. Changes apply
  * immediately (no Save button); applySettings.ts mirrors them onto :root and into the renderer.
  */
 import { create } from 'zustand';
@@ -11,20 +11,25 @@ export type InputAction =
   | 'emote1' | 'emote2' | 'emote3' | 'emote4' | 'emote5' | 'emote6'
   | 'challenge' | 'rotateLeft' | 'rotateRight' | 'party' | 'bag' | 'journal' | 'map' | 'pvp' | 'professor' | 'buddyTalk' | 'pushToTalk' | 'pause' | 'toggleHud';
 
-/** Quality preset (render `quality.ts`); 'auto' = low on integrated Intel GPUs, else high. */
+/** Quality preset (render `quality.ts`); 'auto' = low on integrated Intel GPUs and on WebGL 2.0, else high. */
 export type GraphicsQualitySetting = 'auto' | 'low' | 'medium' | 'high';
 /**
  * Frames per second the world renders at most; 0 = the display's refresh rate, `FRAME_CAP_UNLIMITED` = as fast as the
  * GPU finishes frames (beyond the refresh rate: the extra frames are never shown, a benchmark mode).
  */
 export type FrameCap = -1 | 0 | 30 | 60;
-/** How far from the player grass tufts, flowers, pebbles and ambient motes (fireflies, pollen…) draw: 8 / 16 / 20 m, or all (render `zone/detail.ts`). */
-export type DetailDistance = 'close' | 'medium' | 'far' | 'max';
+/**
+ * How far from the player grass tufts, flowers, pebbles and ambient motes (fireflies, pollen…) draw: 8 / 16 / 20 m, or all
+ * (render `zone/detail.ts`); 'auto' = medium on the low quality preset, else all.
+ */
+export type DetailDistance = 'auto' | 'close' | 'medium' | 'far' | 'max';
 export const FRAME_CAP_UNLIMITED = -1;
 
 export interface GraphicsSettings {
   readonly reducedEffects: boolean;
   readonly renderScale: 0.75 | 1;
+  /** lowers the resolution below the render scale while frames miss the frame rate (scene/dynamicResolution.ts) */
+  readonly dynamicResolution: boolean;
   readonly quality: GraphicsQualitySetting;
   readonly frameCap: FrameCap;
   readonly detailDistance: DetailDistance;
@@ -137,7 +142,7 @@ export const DEFAULT_KEYBINDS: Keybinds = {
 export const INPUT_ACTIONS = Object.keys(DEFAULT_KEYBINDS) as InputAction[];
 
 export const DEFAULT_SETTINGS: SettingsData = {
-  graphics: { reducedEffects: false, renderScale: 1, quality: 'auto', frameCap: 60, detailDistance: 'max', showFps: false, dof: true, bloom: true, grain: true, chroma: true, shake: true, hitstop: true, slowmo: true },
+  graphics: { reducedEffects: false, renderScale: 1, dynamicResolution: true, quality: 'auto', frameCap: 60, detailDistance: 'auto', showFps: false, dof: true, bloom: true, grain: true, chroma: true, shake: true, hitstop: true, slowmo: true },
   accessibility: { reducedMotion: 'system', colorblind: 'none', uiScale: 1, battleTextSpeed: 'normal', screenFlash: true, speedrunTimer: false, battleCommentary: true, trainerBanter: true, followerChatter: true },
   audio: { master: 0.8, music: 0.7, sfx: 0.8, ui: 0.6, muteWhenHidden: true, npcVoices: false, battleVoices: false, voices: 0.8, speechInput: false },
   keybinds: DEFAULT_KEYBINDS,
@@ -214,7 +219,13 @@ export const useSettingsStore = create<SettingsState>()(
       }),
       {
         name: 'ewa.settings',
-        version: 1,
+        // 2: detail distance gained 'auto' (the new default); a stored 'max' was the old default, so it becomes 'auto'
+        version: 2,
+        migrate: (persisted, version) => {
+          const p = (persisted ?? {}) as Partial<SettingsData>;
+          if (version < 2 && p.graphics?.detailDistance === 'max') return { ...p, graphics: { ...p.graphics, detailDistance: 'auto' } } as SettingsState;
+          return p as SettingsState;
+        },
         storage: createJSONStorage(safeLocalStorage),
         partialize: (s): SettingsData => ({ graphics: s.graphics, accessibility: s.accessibility, audio: s.audio, keybinds: s.keybinds, social: s.social }),
         // a partial or older blob never drops a new default

@@ -2675,3 +2675,30 @@ shadow is a softer blob. First-person sees the 0–44 m cascade at 1536² up clo
   tide_route). It now faces the camera only once it and its owner have stood `FOLLOWER.faceFrontAfterS` = 0.3 s
   (`Entry.stillS`). This also lets the client's animated followers keep the back's flipbook while they walk away (client
   "Animated followers"). Test: `followers.test.ts` (a stuttering owner keeps the back; the face after the stand time).
+
+## Integrated GPUs and the WebGL2 fallback (2026-10-27, not in the SPEC; deviates from §10.8.2's 4-target MRT)
+
+Aim: 60 fps on an Intel 13th-gen iGPU, on WebGPU and on the WebGL2 fallback. Not measured yet (the user tests on the
+target machine).
+
+- **Scene MRT holds only what the plan reads** (`post/pipeline.ts` `sceneOutputs`): output always, normal for GTAO,
+  velocity for TRAA, mask for GTAO / DOF. `high` / `medium` keep all four; `low` writes output + velocity on webgpu and
+  output alone on webgl2 (was 4 HalfFloat targets, 32 B a pixel per overdraw). `PostNodes.outputs` names the layout and
+  `maskT` is null without a mask. A rebuild whose plan needs another layout replaces the scene pass (`PostStack.nodes` is
+  a getter now): every scene program recompiles once, a hitch on a quality switch across the line. Materials' own
+  `mrtNode` outputs for a missing target are ignored by three's `MRTNode.setup`. Heat haze without the mask also
+  shimmers the player.
+- **FXAA on `low` without TRAA** (the webgl2 fallback, or taa off): one pass over the finished sRGB image, last before
+  `output` (plan stage `fxaa`, timed as `traa`), instead of SMAA's three.
+- **`recommendedQuality`**: the WebGL2 fallback is `low` (was `medium`, which ran GTAO, DOF and bloom there).
+- **Slow cascades on `low`** (`QualityProfile.slowShadows`, `CASCADE_SCHEDULE_SLOW` `[0] [] [1] [0] [] []`): the near
+  cascade every 3rd frame, the far one every 6th, 0.5 map renders a frame (was 0.75). Each map render is a whole scene
+  traversal, the costliest per-draw CPU on WebGL2. A moving shadow lags up to two frames more.
+- **`Renderer.setResolutionScale(s)`** (0.25..1): a factor on the pixel ratio after §10.1.3's clamp. Before, the client's
+  75 % render scale multiplied the requested ratio and the preset cap swallowed it (DPR 1.25 × 0.75 on `low` = 1). The
+  client's render scale and its dynamic resolution go through it.
+- **A lost WebGL2 context is recovered** (replaces "a lost WebGL context is out of scope" above): `watchContextLost`
+  wraps three's `onDeviceLost`, which its WebGLBackend calls from `webglcontextlost`, and reports it through
+  `handleDeviceLost` like a WebGPU device loss (reason `'context-lost'`). The client's E6 recovery rebuilds the renderer
+  on the same canvas after restoring the context (client IMPLEMENTATION-NOTES). Seen in a playtest: opening a menu on
+  WebGL2 left the canvas empty. The cause of that loss is not known yet.

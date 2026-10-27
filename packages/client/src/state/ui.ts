@@ -10,6 +10,12 @@ import type { EncounterFx } from '../battle/encounter';
 import type { CalloutKind } from '../battle/timeline';
 
 /** `battleEnd` for the result card: display only (the rewards reached the session through the delta writers). */
+/** The world renderer's graphics API (render `RenderCaps.backend`) and adapter description. */
+export interface RenderApi {
+  readonly backend: 'webgpu' | 'webgl2';
+  readonly adapter: string | null;
+}
+
 export interface BattleResult {
   readonly outcome: BattleOutcome;
   readonly rewards: RewardsSummary;
@@ -198,6 +204,8 @@ export interface UiState {
   readonly leaveReason: LeaveReason;
   /** dev HUD only, written at 1 Hz */
   readonly fps: number;
+  /** the world renderer's graphics API and adapter, for Settings › Graphics (null until it booted) */
+  readonly renderApi: RenderApi | null;
   /** post-battle evolve / learn-move prompts still to show (the head is the open modal) */
   readonly prompts: readonly QueuedPrompt[];
   /** the evolution sequence playing (null = none) */
@@ -223,6 +231,7 @@ export interface UiState {
   toggleHud(): void;
   setConnection(c: Connection, attempt?: number, reason?: LeaveReason): void;
   setFps(fps: number): void;
+  setRenderApi(api: RenderApi | null): void;
   enqueuePrompt(p: QueuedPrompt): void;
   /** drops the head prompt (answered or skipped) */
   shiftPrompt(): void;
@@ -254,6 +263,7 @@ const INITIAL = {
   disconnectedAt: 0,
   leaveReason: null,
   fps: 0,
+  renderApi: null,
   prompts: [] as readonly QueuedPrompt[],
   evolution: null,
   battleIntro: null,
@@ -288,6 +298,7 @@ export const useUiStore = create<UiState>()(
       });
     },
     setFps: (fps) => set({ fps }),
+    setRenderApi: (renderApi) => set({ renderApi }),
     enqueuePrompt: (p) => set({ prompts: [...get().prompts, p] }),
     shiftPrompt: () => set({ prompts: get().prompts.slice(1) }),
     setEvolution: (evolution) => set({ evolution }),

@@ -18,7 +18,13 @@
  *   and the `RTTNode`s that `traa()`/`dof()`/`chromaticAberration()` create through `convertToTexture`
  *   own render targets nobody else frees. `PostStack` walks the retired graph and disposes them.
  * - One pipeline per renderer (§10.0.3 rule 1): rebuilds assign `pipeline.outputNode` (+ `needsUpdate`)
- *   instead of constructing a new `RenderPipeline`; the scene pass (and its 4-target MRT) is kept.
+ *   instead of constructing a new `RenderPipeline`; the scene pass is kept while its MRT layout holds.
+ * - The MRT holds only the targets the plan reads (`sceneOutputs`, performance addition 2026-10-27): normal for GTAO,
+ *   velocity for TRAA, mask for GTAO / DOF. `low` writes output + velocity (webgpu) or output alone (webgl2) instead of
+ *   4 HalfFloat targets: a quarter to a half of the scene pass's colour bandwidth, the scarce resource on integrated GPUs.
+ *   A plan that needs another layout replaces the scene pass (every scene program recompiles once).
+ * - `low` on the WebGL2 fallback (or with taa off) anti-aliases with one FXAA pass after the sRGB output instead of
+ *   SMAA's three passes.
  * - GTAO `useTemporalFiltering` is on only when TRAA is in the graph (GTAONode: "requires TRAANode").
  * - `bokehScale` is `6 px × pixelRatio` (§10.7.3 "scaled by pr"), a uniform written on `setPixelRatio`.
  * - `chromaticAberration(node, strength, null, …)`: the documented null → screen-centre default is not
@@ -33,6 +39,7 @@ import {
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { traa } from 'three/addons/tsl/display/TRAANode.js';
 import { smaa } from 'three/addons/tsl/display/SMAANode.js';
+import { fxaa } from 'three/addons/tsl/display/FXAANode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js';
 import { chromaticAberration } from 'three/addons/tsl/display/ChromaticAberrationNode.js';
@@ -56,7 +63,7 @@ export const POST_PARAMS = Object.freeze({
 
 // ---- the plan (pure) ---------------------------------------------------------------------------------
 
-export type PostStageId = 'scene' | 'gtao' | 'traa' | 'smaa' | 'bloom' | 'dof' | 'chroma' | 'aces' | 'grade' | 'vignette' | 'grain' | 'output';
+export type PostStageId = 'scene' | 'gtao' | 'traa' | 'smaa' | 'fxaa' | 'bloom' | 'dof' | 'chroma' | 'aces' | 'grade' | 'vignette' | 'grain' | 'output';
 
 export interface PostStage {
   readonly id: PostStageId;
@@ -74,19 +81,21 @@ export const ALL_PASSES_ON: PassSwitches = Object.freeze({
 
 /**
  * §10.8.1 order with §10.8.2's gating: a stage absent from the returned list is absent from the graph.
- * - GTAO iff `passes.gtao`; anti-aliasing: none iff `!passes.traa`, TRAA iff `f.taa && webgpu`, else SMAA;
+ * - GTAO iff `passes.gtao`; anti-aliasing: none iff `!passes.traa`, TRAA iff `f.taa && webgpu`, else FXAA on `low`
+ *   (after the sRGB output, the last stage before `output`), else SMAA;
  * - bloom iff `passes.bloom && f.bloom`; DOF iff `passes.dof && f.dof`; chroma iff `f.chroma`;
  * - ACES / grade / vignette iff `passes.grade`; grain iff `passes.grade && f.grain`.
  * `quality` (addition, `quality.ts`) can drop GTAO, DOF and bloom and sets the GTAO samples and resolution; `high` is the
  * SPEC graph with GTAO at 8 spp and quarter resolution (IMPLEMENTATION-NOTES "Cheaper shadows and reflections").
  */
 export function planPostGraph(f: EffectsFlags, backend: Backend, passes: PassSwitches = ALL_PASSES_ON, quality: GraphicsQuality = 'high'): PostStage[] {
-  const out: PostStage[] = [{ id: 'scene', params: { targets: 4, type: 'HalfFloat', depth: true } }];
+  const out: PostStage[] = [];
   const p = POST_PARAMS;
   const q = QUALITY_PROFILES[quality];
   const useTraa = passes.traa && f.taa && backend === 'webgpu';
+  const useFxaa = passes.traa && !useTraa && quality === 'low';
   if (passes.gtao && q.gtao) out.push({ id: 'gtao', params: { ...p.gtao, samples: q.gtaoSamples, resolutionScale: q.gtaoScale, temporal: useTraa, maskChannel: 'x' } });
-  if (passes.traa) out.push(useTraa ? { id: 'traa', params: { msaa: false } } : { id: 'smaa', params: {} });
+  if (passes.traa && !useFxaa) out.push(useTraa ? { id: 'traa', params: { msaa: false } } : { id: 'smaa', params: {} });
   if (passes.bloom && f.bloom && q.bloom) out.push({ id: 'bloom', params: { ...p.bloom } });
   if (passes.dof && f.dof && q.dof) out.push({ id: 'dof', params: { ...p.dof, maskChannel: 'y' } });
   if (f.chroma) out.push({ id: 'chroma', params: { scale: p.chroma.scale, rest: p.chroma.rest } });
@@ -96,8 +105,33 @@ export function planPostGraph(f: EffectsFlags, backend: Backend, passes: PassSwi
     out.push({ id: 'vignette', params: { strength: p.vignette } });
     if (f.grain) out.push({ id: 'grain', params: { intensity: p.grain } });
   }
+  if (useFxaa) out.push({ id: 'fxaa', params: {} });
   out.push({ id: 'output', params: { toneMapping: 'none', colorSpace: 'srgb' } });
+  const targets = sceneOutputs(out);
+  out.unshift({ id: 'scene', params: { targets: targets.length, type: 'HalfFloat', depth: true, outputs: targets.join(',') } });
   return out;
+}
+
+/** A scene-pass MRT target (§10.8.2's four; `output` always, the rest only when a stage reads them). */
+export type SceneOutput = 'output' | 'normal' | 'velocity' | 'mask';
+
+/**
+ * The scene targets `stages` read: normal ← GTAO, velocity ← TRAA, mask ← GTAO (x) / DOF (y). Heat haze reads mask.y
+ * when it is there and shimmers the player too when it is not. Order is the MRT's.
+ */
+export function sceneOutputs(stages: readonly PostStage[]): SceneOutput[] {
+  const has = (id: PostStageId): boolean => stages.some((st) => st.id === id);
+  const out: SceneOutput[] = ['output'];
+  if (has('gtao')) out.push('normal');
+  if (has('traa')) out.push('velocity');
+  if (has('gtao') || has('dof')) out.push('mask');
+  return out;
+}
+
+/** The scene targets of a realised plan (its `scene` stage). */
+function planOutputs(plan: readonly PostStage[]): string {
+  const sc = plan.find((st) => st.id === 'scene');
+  return typeof sc?.params.outputs === 'string' ? sc.params.outputs : 'output,normal,velocity,mask';
 }
 
 // ---- uniforms ------------------------------------------------------------------------------------------
@@ -163,9 +197,11 @@ export function tiltPlaneNormal(cameraWorldForward: Vector3, out: Vector3, tiltD
 // ---- realisation -----------------------------------------------------------------------------------------
 
 export interface PostNodes {
+  /** The MRT targets this scene pass writes (`sceneOutputs`), comma-joined. */
+  readonly outputs: string;
   readonly scenePass: PassNode;
-  /** The `mask` MRT texture (x: exclude from GTAO, y: DOF-sharp), read by `pillars.spec.ts`. */
-  readonly maskT: TextureNode;
+  /** The `mask` MRT texture (x: exclude from GTAO, y: DOF-sharp), read by `pillars.spec.ts`; null when no stage reads it. */
+  readonly maskT: TextureNode | null;
   readonly beautyT: TextureNode;
 }
 
@@ -180,15 +216,24 @@ function has(plan: readonly PostStage[], id: PostStageId): boolean {
   return plan.some((s) => s.id === id);
 }
 
-/** Creates the persistent scene pass with the §10.8.2 MRT (4 HalfFloat colour targets + depth). */
-export function createScenePass(scene: Scene, camera: Camera): PostNodes {
+/**
+ * Creates the persistent scene pass with the §10.8.2 MRT (HalfFloat colour targets + depth), holding only `outputs`
+ * (`sceneOutputs`; default all four). A texture fetched by name joins the render target, so only those are fetched.
+ */
+export function createScenePass(scene: Scene, camera: Camera, outputs: readonly SceneOutput[] = ['output', 'normal', 'velocity', 'mask']): PostNodes {
   const scenePass = pass(scene, camera, { depthBuffer: true });
-  scenePass.setMRT(mrt({ output, normal: normalView, velocity, mask: vec2(0, 0) }));
+  const all: Record<SceneOutput, Node> = { output, normal: normalView, velocity, mask: vec2(0, 0) };
+  const targets: Record<string, Node> = {};
+  for (const o of outputs) targets[o] = all[o];
+  scenePass.setMRT(mrt(targets));
   scenePass.name = 'ewa:scene';
+  const beautyT = scenePass.getTextureNode('output');
+  for (const o of outputs) if (o !== 'output') scenePass.getTextureNode(o);   // MRT order = the render target's
   return {
+    outputs: outputs.join(','),
     scenePass,
-    beautyT: scenePass.getTextureNode('output'),
-    maskT: scenePass.getTextureNode('mask'),
+    beautyT,
+    maskT: outputs.includes('mask') ? scenePass.getTextureNode('mask') : null,
   };
 }
 
@@ -202,23 +247,24 @@ export interface PostBuildOptions {
 export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: PostUniforms, plan: readonly PostStage[], opts: PostBuildOptions = {}): PostBuild {
   const { scenePass, beautyT: beauty, maskT } = nodes;
   const depthT = scenePass.getTextureNode('depth');
-  const normalT = scenePass.getTextureNode('normal');
-  const velT = scenePass.getTextureNode('velocity');
   const stages: { pass: BudgetPass; node: Node }[] = [];
+  // a stage whose scene target the pass lacks is left out (`PostStack` keeps the layout in step with the plan)
+  const outs = nodes.outputs.split(',');
+  const reads = (o: SceneOutput): boolean => outs.includes(o);
 
   // §10.7.8 heat haze: the scene is read through a slow shimmer (0 at rest: the lookup is the plain one), never over the
   // DOF-sharp player (mask.y)
   const hq = screenUV.mul(vec2(31, 19));
   const ht = u.hazeTime;
   const hazeOff = vec2(sin(hq.y.add(ht.mul(2.3)).add(sin(hq.x.mul(0.6).add(ht.mul(0.9))))), cos(hq.x.mul(0.8).add(ht.mul(1.6))))
-    .mul(u.haze).mul(oneMinus(maskT.y));
+    .mul(u.haze).mul(maskT === null ? float(1) : oneMinus(maskT.y));
   const hazed = beauty.sample(screenUV.add(hazeOff)) as unknown as Node<'vec4'>;
   // GTAO — the preset's resolution and samples (§10.8.3: half, 16 spp); sprites/decals (mask.x = 1) keep their own contact gradient.
   let lit: Node<'vec4'> = hazed;
   const gtao = plan.find((s) => s.id === 'gtao');
-  if (gtao) {
+  if (gtao && maskT !== null && reads('normal')) {
     const g = POST_PARAMS.gtao;
-    const aoNode = ao(depthT, normalT, camera);
+    const aoNode = ao(depthT, scenePass.getTextureNode('normal'), camera);
     aoNode.resolutionScale = typeof gtao.params.resolutionScale === 'number' ? gtao.params.resolutionScale : g.resolutionScale;
     aoNode.samples.value = typeof gtao.params.samples === 'number' ? gtao.params.samples : g.samples;
     aoNode.radius.value = g.radius;
@@ -232,7 +278,7 @@ export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: 
 
   // Anti-aliasing — TRAA on webgpu, SMAA on the webgl2 fallback (or with taa off).
   let aa: Node<'vec4'> = lit;
-  if (has(plan, 'traa')) aa = traa(lit, depthT, velT, camera) as unknown as Node<'vec4'>;
+  if (has(plan, 'traa') && reads('velocity')) aa = traa(lit, depthT, scenePass.getTextureNode('velocity'), camera) as unknown as Node<'vec4'>;
   else if (has(plan, 'smaa')) aa = smaa(lit) as unknown as Node<'vec4'>;
   if (aa !== lit) stages.push({ pass: 'traa', node: aa });
 
@@ -249,7 +295,7 @@ export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: 
 
   // Tilt-shift DOF through the sharp mask (§10.7.3): viewZNode = −d so the node's signedDist = d.
   let focused: Node<'vec4'> = bloomed;
-  if (has(plan, 'dof')) {
+  if (has(plan, 'dof') && maskT !== null) {
     const projInv = uniform(camera.projectionMatrixInverse);
     const camWorld = uniform(camera.matrixWorld);
     const viewPos = getViewPosition(screenUV, depthT as unknown as Node<'float'>, projInv) as Node<'vec3'>;
@@ -278,7 +324,12 @@ export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: 
   // zero-mean, luminance-weighted grain (grain.ts): full and reduced effects agree in exposure (FilmNode brightened ≈ 2 %)
   if (has(plan, 'grain')) rgb = (grain(vec4(rgb, 1), u.grain) as unknown as Node<'vec4'>).rgb;
 
-  const outputNode = renderOutput(vec4(rgb, 1), NoToneMapping, SRGBColorSpace);
+  let outputNode = renderOutput(vec4(rgb, 1), NoToneMapping, SRGBColorSpace) as unknown as Node;
+  // FXAA reads display-referred (sRGB) colour: it runs on the finished image, the pipeline writes it out unchanged
+  if (has(plan, 'fxaa')) {
+    outputNode = fxaa(outputNode) as unknown as Node;
+    stages.push({ pass: 'traa', node: outputNode });
+  }
   return { outputNode, plan, stages };
 }
 
@@ -305,7 +356,7 @@ export function stageTargets(nodes: PostNodes, build: PostBuild): Map<RenderTarg
   const map = new Map<RenderTarget, BudgetPass>();
   const scene = (nodes.scenePass as unknown as { renderTarget?: RenderTarget }).renderTarget;
   if (scene) map.set(scene, 'opaque');
-  const keep = new Set<Node>([nodes.scenePass, nodes.beautyT, nodes.maskT] as unknown as Node[]);
+  const keep = new Set<Node>(keepOf(nodes));
   for (const st of build.stages) {
     for (const n of collectOwnedNodes(st.node, keep)) {
       keep.add(n);
@@ -339,14 +390,21 @@ export function collectOwnedNodes(root: Node, keep: ReadonlySet<Node>): Node[] {
 
 const _camFwd = new Vector3();
 
+/** The scene pass and its texture nodes: kept (never disposed) by a graph rebuild. */
+function keepOf(nodes: PostNodes): ReadonlySet<Node> {
+  const keep = new Set<Node>([nodes.scenePass, nodes.beautyT]);
+  if (nodes.maskT !== null) keep.add(nodes.maskT);
+  return keep;
+}
+
 /** Owns the one `RenderPipeline` (§10.0.3 rule 1) and rebuilds its output on effect/pass changes. */
 export class PostStack {
   readonly pipeline: RenderPipeline;
   readonly uniforms: PostUniforms;
-  readonly nodes: PostNodes;
+  private sceneNodes: PostNodes;
   private current: PostBuild;
   private owned: Node[] = [];
-  private readonly keep: ReadonlySet<Node>;
+  private keep: ReadonlySet<Node>;
   private grade: GradePalette = GROVE_GRADE;
   private buildOpts: PostBuildOptions = {};
   private targets = new Map<RenderTarget, BudgetPass>();
@@ -363,8 +421,8 @@ export class PostStack {
   private disposed = false;
 
   constructor(
-    gpu: WebGPURenderer,
-    scene: Scene,
+    private readonly gpu: WebGPURenderer,
+    private readonly scene: Scene,
     private readonly camera: PerspectiveCamera,
     private backend: Backend,
     f: EffectsFlags,
@@ -375,22 +433,30 @@ export class PostStack {
     this.flags = f;
     this.passes = passes;
     this.quality = quality;
-    this.nodes = createScenePass(scene, camera);
-    {
-      const pass = this.nodes.scenePass as unknown as { updateBefore(frame: unknown): unknown };
-      const r = gpu as unknown as { _callDepth?: number };
-      const updateBefore = pass.updateBefore.bind(pass);
-      pass.updateBefore = (frame: unknown): unknown => {
-        if (typeof r._callDepth === 'number') this.sceneCallDepth = r._callDepth + 1;   // its renderer.render() nests one deeper
-        return updateBefore(frame);
-      };
-    }
-    this.keep = new Set<Node>([this.nodes.scenePass, this.nodes.beautyT, this.nodes.maskT]);
-    this.current = buildPostOutput(this.nodes, camera, this.uniforms, planPostGraph(f, backend, passes, quality));
+    const plan = planPostGraph(f, backend, passes, quality);
+    this.sceneNodes = this.createScene(plan);
+    this.keep = keepOf(this.sceneNodes);
+    this.current = buildPostOutput(this.sceneNodes, camera, this.uniforms, plan);
     this.owned = collectOwnedNodes(this.current.outputNode, this.keep);
-    this.targets = stageTargets(this.nodes, this.current);
+    this.targets = stageTargets(this.sceneNodes, this.current);
     this.pipeline = new RenderPipeline(gpu, this.current.outputNode);
     this.pipeline.outputColorTransform = false;   // the graph ends in renderOutput(…, NoToneMapping, SRGBColorSpace)
+  }
+
+  /** The persistent scene pass and its texture nodes (replaced when a plan needs another MRT layout). */
+  get nodes(): PostNodes { return this.sceneNodes; }
+
+  /** A scene pass with the MRT `plan` reads, its render call depth measured on every render. */
+  private createScene(plan: readonly PostStage[]): PostNodes {
+    const nodes = createScenePass(this.scene, this.camera, planOutputs(plan).split(',') as SceneOutput[]);
+    const pass = nodes.scenePass as unknown as { updateBefore(frame: unknown): unknown };
+    const r = this.gpu as unknown as { _callDepth?: number };
+    const updateBefore = pass.updateBefore.bind(pass);
+    pass.updateBefore = (frame: unknown): unknown => {
+      if (typeof r._callDepth === 'number') this.sceneCallDepth = r._callDepth + 1;   // its renderer.render() nests one deeper
+      return updateBefore(frame);
+    };
+    return nodes;
   }
 
   /** The realised stage order (for tests, the harness and the sandbox overlay). */
@@ -402,12 +468,20 @@ export class PostStack {
     this.flags = f;
     this.passes = passes;
     const retired = this.owned;
-    this.current = buildPostOutput(this.nodes, this.camera, this.uniforms, planPostGraph(f, this.backend, passes, this.quality), this.buildOpts);
+    const plan = planPostGraph(f, this.backend, passes, this.quality);
+    let retiredScene: PassNode | null = null;
+    if (planOutputs(plan) !== this.sceneNodes.outputs) {
+      retiredScene = this.sceneNodes.scenePass;
+      this.sceneNodes = this.createScene(plan);
+      this.keep = keepOf(this.sceneNodes);
+    }
+    this.current = buildPostOutput(this.sceneNodes, this.camera, this.uniforms, plan, this.buildOpts);
     this.owned = collectOwnedNodes(this.current.outputNode, this.keep);
-    this.targets = stageTargets(this.nodes, this.current);
+    this.targets = stageTargets(this.sceneNodes, this.current);
     this.pipeline.outputNode = this.current.outputNode;
     this.pipeline.needsUpdate = true;
     for (const n of retired) n.dispose();
+    retiredScene?.dispose();
   }
 
   /** The §50.2.1 row a render into `rt` belongs to (scene pass, a stage's own targets), or null (not the graph's). */
@@ -472,7 +546,7 @@ export class PostStack {
     this.disposed = true;
     for (const n of this.owned) n.dispose();
     this.owned = [];
-    this.nodes.scenePass.dispose();
+    this.sceneNodes.scenePass.dispose();
     this.pipeline.dispose();
   }
 }

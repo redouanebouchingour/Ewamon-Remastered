@@ -39,7 +39,7 @@ import type { BattleState, CreatureInstance } from '@ewa/core';
 import { BREAKDANCE_MS, FISH_REACH_M } from '@ewa/protocol';
 import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
 import { ACTOR_POOL_SIZE, createRenderer, edgePoint, headingYaw, heroSurfaces, part3Of } from '@ewa/render';
-import type { CompileProgress, CreatureBillboard, Renderer, SurfaceId, TypeName, VfxId, WeatherKind, ZoneHandle } from '@ewa/render';
+import type { CompileProgress, CreatureBillboard, DetailDistance as RenderDetailDistance, Renderer, SurfaceId, TypeName, VfxId, WeatherKind, ZoneHandle } from '@ewa/render';
 import { createAudioDirector } from '../audio/AudioDirector';
 import type { AudioDirector } from '../audio/AudioDirector';
 import { loadAudioManifest, validateAudioManifest } from '../audio/manifest';
@@ -70,6 +70,7 @@ import { useQuestTracking } from '../state/questTracking';
 import { useRealWeatherStore } from '../state/realWeather';
 import { factionSkyFor } from './factionSky';
 import { FRAME_CAP_UNLIMITED, useSettingsStore } from '../state/settings';
+import { DynamicResolution } from './dynamicResolution';
 import { setFishingActions, useFishingStore } from '../state/fishing';
 import { setStrikeHook } from '../state/npcFx';
 import { useViewStore } from '../state/view';
@@ -284,6 +285,8 @@ class World implements World3D {
   private frames = 0;
   private frameMsSum = 0;
   private frameMsMax = 0;
+  /** Settings › Graphics › Dynamic resolution (scene/dynamicResolution.ts) */
+  private readonly dynRes = new DynamicResolution();
   private readonly dev = devBuild();
   /** creature atlas residency (built at boot with the sprite pool) */
   private textures: CreatureTextures | null = null;
@@ -458,6 +461,8 @@ class World implements World3D {
       return false;
     }
     this.renderer = r;
+    useUiStore.getState().setRenderApi({ backend: r.caps.backend, adapter: r.caps.adapter });
+    if (r.caps.backend === 'webgl2') this.loseContext = this.canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context') ?? null;
     this.director = createSceneDirector({
       renderer: r,
       hud: this.hudWriter,
@@ -559,6 +564,36 @@ class World implements World3D {
 
   // ---- Phase E6: a lost GPU device -----------------------------------------------------------------------------
 
+  /**
+   * The WebGL2 fallback's `WEBGL_lose_context`, taken while the context is alive (a lost context hands out no
+   * extensions). three's `dispose` loses the context on purpose, so a rebuild on the same canvas restores it first.
+   */
+  private loseContext: { restoreContext(): void } | null = null;
+
+  /**
+   * Before a rebuild on the WebGL2 fallback: the canvas's context is lost (by the browser, or by the old renderer's
+   * dispose). A context the browser lost comes back on its own (three called `preventDefault`); one lost through the
+   * extension needs `restoreContext()`. Waits for `webglcontextrestored`, at most 5 s (the rebuild then fails and retries).
+   */
+  private async restoreWebGLContext(): Promise<void> {
+    const ext = this.loseContext;
+    if (ext === null) return;
+    // three's dispose is async and calls `loseContext()` at its end: restoring before that is undone by it
+    await new Promise((res) => setTimeout(res, 250));
+    const gl = this.canvas.getContext('webgl2');
+    if (gl === null || !gl.isContextLost()) return;
+    const restored = new Promise<void>((res) => {
+      const t = setTimeout(res, 5000);
+      this.canvas.addEventListener('webglcontextrestored', () => { clearTimeout(t); res(); }, { once: true });
+    });
+    try {
+      ext.restoreContext();
+    } catch (_e) {
+      // lost by the browser, not the extension: it restores the context itself
+    }
+    await restored;
+  }
+
   /** Observers / subscriptions bound to the current renderer (rebuilt with it). */
   private rendererOffs: (() => void)[] = [];
 
@@ -566,6 +601,8 @@ class World implements World3D {
   private readonly recovery = new DeviceRecovery({
     teardown: () => this.teardownRenderer(),
     rebuild: async () => {
+      if (this.disposed) return false;
+      await this.restoreWebGLContext();
       if (this.disposed) return false;
       const ok = await this.bootRenderer(null, false);
       if (ok) this.ready = true;
@@ -687,9 +724,38 @@ class World implements World3D {
     setWorldBoot({ label, loadedBytes: null, totalBytes: null, compile: { loaded: p.loaded, total: p.total } });
   }
 
+  /** The display's pixel ratio; the render scale applies after the quality preset's cap (`resolutionScale`). */
   private pixelRatio(): number {
-    const scale = useSettingsStore.getState().graphics.renderScale;
-    return (typeof devicePixelRatio === 'number' ? devicePixelRatio : 1) * scale;
+    return typeof devicePixelRatio === 'number' ? devicePixelRatio : 1;
+  }
+
+  /** The render scale × the dynamic resolution's current step. */
+  private resolutionScale(): number {
+    const g = useSettingsStore.getState().graphics;
+    return g.renderScale * (this.dynamicResolutionOn() ? this.dynRes.scale : 1);
+  }
+
+  /** Settings › Detail distance with 'auto' resolved: medium on the low preset, else all. */
+  private detailDistance(): RenderDetailDistance {
+    const d = useSettingsStore.getState().graphics.detailDistance;
+    if (d !== 'auto') return d;
+    return this.renderer.quality === 'low' ? 'medium' : 'max';
+  }
+
+  /**
+   * The setting, but never on the WebGL2 fallback: in a playtest on an Intel iGPU (WebGL2) the context kept getting lost
+   * after a menu opened, and re-creating every render target on each step is the suspect.
+   */
+  private dynamicResolutionOn(): boolean {
+    return useSettingsStore.getState().graphics.dynamicResolution && this.renderer.backend !== 'webgl2';
+  }
+
+  /** One drawn frame for the dynamic resolution: the interval since the last one and the tick's main-thread ms. */
+  private sampleDynamicResolution(intervalMs: number, cpuMs: number): void {
+    const g = useSettingsStore.getState().graphics;
+    if (!this.dynamicResolutionOn() || !this.zoneLoaded) return;
+    const budget = g.frameCap === 30 ? 1000 / 30 : 1000 / 60;
+    if (this.dynRes.sample(performance.now(), intervalMs, cpuMs, budget)) this.renderer.setResolutionScale?.(this.resolutionScale());
   }
 
   private observeSize(): void {
@@ -699,7 +765,8 @@ class World implements World3D {
       this.applyBattleInset();
     };
     apply();
-    this.renderer.setDetailDistance?.(useSettingsStore.getState().graphics.detailDistance);
+    this.renderer.setResolutionScale?.(this.resolutionScale());
+    this.renderer.setDetailDistance?.(this.detailDistance());
     this.rendererOffs.push(onBattlePanelTop(() => this.applyBattleInset()));
     if (typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(apply);
@@ -709,15 +776,27 @@ class World implements World3D {
     this.rendererOffs.push(
       useSettingsStore.subscribe(
         (s) => s.graphics.renderScale,
-        () => this.renderer.setPixelRatio(this.pixelRatio()),
+        () => this.renderer.setResolutionScale?.(this.resolutionScale()),
+      ),
+      useSettingsStore.subscribe(
+        (s) => s.graphics.dynamicResolution,
+        () => {
+          this.dynRes.reset();
+          this.renderer.setResolutionScale?.(this.resolutionScale());
+        },
       ),
       useSettingsStore.subscribe(
         (s) => s.graphics.quality,
-        (q) => this.renderer.setQuality?.(q),
+        (q) => {
+          this.renderer.setQuality?.(q);
+          this.dynRes.reset();
+          this.renderer.setResolutionScale?.(this.resolutionScale());
+          this.renderer.setDetailDistance?.(this.detailDistance());
+        },
       ),
       useSettingsStore.subscribe(
         (s) => s.graphics.detailDistance,
-        (d) => this.renderer.setDetailDistance?.(d),
+        () => this.renderer.setDetailDistance?.(this.detailDistance()),
       ),
     );
   }
@@ -2220,6 +2299,7 @@ class World implements World3D {
     this.renderer.frame(frameDt);
     this.listen();
     const ms = performance.now() - t0;
+    this.sampleDynamicResolution(frameDt, ms);
     this.frames++;
     this.frameMsSum += ms;
     if (ms > this.frameMsMax) this.frameMsMax = ms;
