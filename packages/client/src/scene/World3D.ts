@@ -183,6 +183,30 @@ function devBuild(): boolean {
   return Boolean(env?.DEV) || (typeof location !== 'undefined' && new URLSearchParams(location.search).get('dev') === '1');
 }
 
+/**
+ * Resolves once the GPU finished every GL command issued so far (the WebGL2 stand-in for `onSubmittedWorkDone`). A fence's
+ * status only updates between tasks, so it is polled through posted messages; a lost context (status null) counts as done.
+ */
+function glFenceDone(gl: WebGL2RenderingContext): Promise<void> {
+  const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+  if (sync === null || typeof MessageChannel === 'undefined') return Promise.resolve();
+  gl.flush();
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = (): void => {
+      const status = gl.isContextLost() ? null : (gl.getSyncParameter(sync, gl.SYNC_STATUS) as GLenum | null);
+      if (status === gl.UNSIGNALED) {
+        channel.port2.postMessage(0);
+        return;
+      }
+      if (!gl.isContextLost()) gl.deleteSync(sync);
+      channel.port1.close();
+      resolve();
+    };
+    channel.port2.postMessage(0);
+  });
+}
+
 const nextFrame = (): Promise<void> => new Promise((r) => requestAnimationFrame(() => r()));
 
 /**
@@ -1558,10 +1582,11 @@ class World implements World3D {
    * A pick on the emote wheel (G): the emote goes to the room (the others see it on this player's avatar) and plays
    * on the player's own actor at once (the server does not echo a player's own emote). The breakdance brings its
    * fanfare, the high five its slap, "you, me, battle" the spotted sting; for the dances every villager within
-   * DANCE_ALONG_M hops along. First person stays on: the eye rides the breakdancing body (render `bodyTilt`).
+   * DANCE_ALONG_M hops along. First person stays on: the eye rides the emoting head (render `emoteHead`).
    */
   private emote(n: WheelEmote): void {
-    if (!this.ready || this.worldBlocked() || this.director.battleFrame !== null) return;
+    // a battle does not hold it: the trainers stand in the ring with the crowd round them, and may cheer or taunt
+    if (!this.ready || this.inArena || this.worldBlocked({ battle: false })) return;
     this.ws.send('emote', { emote: n });
     this.renderer.actors.setEmote(this.ws.selfId, n);
     if (n === EMOTE_BREAKDANCE) this.audio.play('ui_stinger_victory_trainer', null);
@@ -1928,10 +1953,10 @@ class World implements World3D {
     return this.worldBlocked();
   }
 
-  private worldBlocked(): boolean {
+  private worldBlocked(opts: { readonly battle?: boolean } = {}): boolean {
     const ui = useUiStore.getState();
     return (
-      ui.battle !== null || ui.evolution !== null || ui.dialogue !== null || ui.modal !== 'none' || ui.chatOpen || ui.prompts.length > 0 || ui.trade !== null || ui.challenge !== null ||
+      (ui.battle !== null && opts.battle !== false) || ui.evolution !== null || ui.dialogue !== null || ui.modal !== 'none' || ui.chatOpen || ui.prompts.length > 0 || ui.trade !== null || ui.challenge !== null ||
       this.fishing.active ||
       useBuddyTalkStore.getState().creatureId !== null
     );
@@ -2154,7 +2179,9 @@ class World implements World3D {
    * Unlimited frame rate: rAF never fires faster than the display, so the next frame is a posted task once the GPU finished
    * the frame BEFORE the one just submitted (WebGPU; two frames in flight, as under rAF: the CPU encodes frame N+1 while the
    * GPU draws frame N, and the queue cannot run away), else at once. With one frame in flight the CPU and GPU took turns and
-   * Unlimited fell below the display rate. Tasks interleave with input and the browser's own rendering steps.
+   * Unlimited fell below the display rate. Tasks interleave with input and the browser's own rendering steps. WebGL2 waits
+   * on a fence the same way (`glFenceDone`): posting at once let the GL command queue run frames ahead until the driver
+   * stalled, and the world hitched.
    */
   private scheduleUnlimited(channel: MessageChannel): void {
     const gen = this.loopGen;
@@ -2162,10 +2189,11 @@ class World implements World3D {
       if (e.data === this.loopGen) this.onFrame(performance.now());
     };
     const post = (): void => channel.port2.postMessage(gen);
-    const backend = (this.renderer as Renderer | undefined)?.renderer.backend as unknown as { device?: { queue: { onSubmittedWorkDone(): Promise<void> } } } | undefined;
+    const backend = (this.renderer as Renderer | undefined)?.renderer.backend as unknown as { device?: { queue: { onSubmittedWorkDone(): Promise<void> } }; gl?: WebGL2RenderingContext | null } | undefined;
     const queue = backend?.device?.queue;
+    const gl = backend?.gl;
     const wait = this.prevWorkDone;
-    this.prevWorkDone = queue ? queue.onSubmittedWorkDone().catch(() => undefined) : null;
+    this.prevWorkDone = queue ? queue.onSubmittedWorkDone().catch(() => undefined) : gl ? glFenceDone(gl) : null;
     if (wait) void wait.then(post, post);
     else post();
   }

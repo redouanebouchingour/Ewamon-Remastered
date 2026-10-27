@@ -386,7 +386,7 @@ export interface ActorDescriptor { readonly look: string; readonly name: string;
 export interface ActorPool {
   spawn(id: string, d: ActorDescriptor): void;                 // character mesh from the look table (§10.7.7); pool of 48 rigs preallocated
   setTransform(id: string, x: number, z: number, angle: number, moving: boolean, running: boolean): void;   // y from the collider; walk/run blend by speed
-  setHidden(id: string, hidden: boolean): void;              // first-person view: hide the player's own body (render IMPLEMENTATION-NOTES)
+  setHidden(id: string, hidden: boolean): void;              // first-person view: hide the player's own body; it shows headless while it emotes (render IMPLEMENTATION-NOTES)
   setEmote(id: string, n: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14): void;    // 0 clears; 1..6 = wave happy sad alert heart cool (spine §4.1) — a 2 s card over the head; 7..14 = the emote wheel (breakdance 6 s, IMPLEMENTATION-NOTES)
   setHop(id: string, ms: number): void;                        // hop in place for ms (villagers dancing along; IMPLEMENTATION-NOTES)
   despawn(id: string): void;

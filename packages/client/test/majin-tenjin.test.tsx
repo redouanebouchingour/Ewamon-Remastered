@@ -22,6 +22,7 @@ import { ALREADY_TRANSFORMED, LINE_REASON, OTHER_ARMED, transformOffer } from '.
 import {
   BAND_STEPS, COACH_LINE, bandAccountOf, bandsHeld, currentBandStep, fieldKinds, noteBand, transformedKind, useBandTutorialStore,
 } from '../src/state/bandTutorial';
+import { useArenaStore } from '../src/state/arena';
 import { useNotificationsStore } from '../src/state/notifications';
 import { useSessionStore } from '../src/state/session';
 import { useUiStore } from '../src/state/ui';
@@ -370,5 +371,17 @@ describe('form marks', () => {
     expect(form.textContent).toContain('below half HP');
     expect(within(form).getByRole('img', { name: 'Has a Majin Form' })).toBeTruthy();
     expect(screen.getByRole('button', { name: /^Toxshade, seen, has a majin form$/ })).toBeTruthy();
+  });
+});
+
+describe('the battle key hints', () => {
+  it('offer the emote wheel (G) in a world battle, not in the arena', () => {
+    singles('toxshade', 0.5, undefined);
+    expect(screen.getByTestId('battle-ticker').textContent).toContain('GEmote');
+    cleanup();
+    useArenaStore.getState().setInArena(true);
+    singles('toxshade', 0.5, undefined);
+    expect(screen.getByTestId('battle-ticker').textContent).not.toContain('Emote');
+    useArenaStore.getState().setInArena(false);
   });
 });

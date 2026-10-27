@@ -2355,7 +2355,7 @@ the second isolated client (the component over the landing page: the foe and own
 
 - A Dance button in the key legend (`PlayShell` `WorldHint`) and G (`useShellHotkeys`, not a remappable binding) call
   `state/dance.ts`; World3D sends emote 7 and plays it on the player's own actor at once (the server does not echo a
-  player's own emote), with the trainer-victory fanfare. First person stays on while it plays and the eye rides the dancing body (render `bodyTilt`): the view spins, flips and goes upside down with it.
+  player's own emote), with the trainer-victory fanfare. First person stays on while it plays and the eye rides the dancing body's head (render `emoteHead`, every emote since 2026-10-27): the view spins, flips and goes upside down with it, and the own body shows headless while it emotes, so the hands are in view.
 - Any player's breakdance (own, or a remote's `emote` change to 7) makes every NPC / trainer actor within 30 m hop
   along (`SceneDirector.forEachStatic`, `actors.setHop`). Walking ends the dance (emotes yield to locomotion).
 
@@ -2386,6 +2386,12 @@ the second isolated client (the component over the landing page: the foe and own
   `loopGen` drops a frame posted before a stop or a visibility change. Frames beyond the refresh rate are never shown: a
   benchmark mode. Live check (dev-alt, headless Chrome at 60 Hz): 60 / Display ≈ 60 fps, Unlimited ≈ 74 fps, a 0 ms timeout
   still fires in ≈ 5 ms (p50) in all three.
+- **Unlimited on WebGL2** (2026-10-27): posting the next frame at once (no `onSubmittedWorkDone` there) let the GL
+  command queue run frames ahead until the driver stalled: the loop ran 560+ frames/s but the page presented ≈ 36 fps
+  (rAF gap p50 33 ms, p95 50 ms, spikes to 183 ms) and could starve CDP evals entirely. It now waits on a
+  `gl.fenceSync` per frame (`glFenceDone`, polled through posted messages since a fence's status only updates between
+  tasks), the same two-frames-in-flight rule. Live (dev-alt, headless Chrome, `navigator.gpu` hidden): ≈ 290 to 360
+  frames/s with presented frames flat at 16.7 ms (p50 / p95 / p99).
 - `GraphicsSettings.showFps` (default false): Settings › Graphics › Show FPS puts a mono readout ("58 fps", `FpsChip`)
   in the top bar beside the speedrun clock. World3D's once-a-second `onSecond` writes the drawn frames to
   `useUiStore.fps` when it is on (dev builds always did); with a frame cap the count is the capped rate.

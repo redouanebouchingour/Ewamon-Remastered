@@ -10,6 +10,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useBlocker } from 'react-router';
+import { blocksPanelNavigation } from '../app/navigation';
 import { useShallow } from 'zustand/react/shallow';
 import { getWorldSession } from '../net/WorldSession';
 import { useRoomState } from '../net/useRoomState';
@@ -23,7 +24,7 @@ import { Modal } from '../ui/Modal';
 import s from './WorldModals.module.css';
 
 function TradeBlocker() {
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => currentLocation.pathname !== nextLocation.pathname);
+  const blocker = useBlocker(blocksPanelNavigation);
   useEffect(() => {
     if (blocker.state === 'blocked') {
       toast('warn', 'Finish or cancel the trade first.');

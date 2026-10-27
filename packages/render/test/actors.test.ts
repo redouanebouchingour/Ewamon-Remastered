@@ -7,11 +7,11 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import {
-  AnimationClip, Bone, BufferAttribute, BufferGeometry, Group, Mesh, MeshStandardNodeMaterial, NumberKeyframeTrack, PerspectiveCamera, Skeleton,
-  SkinnedMesh, Texture, Vector3,
+  AnimationClip, Bone, BufferAttribute, BufferGeometry, Group, Mesh, MeshStandardNodeMaterial, NumberKeyframeTrack, PerspectiveCamera, QuaternionKeyframeTrack, Skeleton,
+  Quaternion, SkinnedMesh, Texture, Vector3,
 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
-import { ACTOR_POOL_SIZE, BREAKDANCE_EMOTE, BREAKDANCE_MS, CHARACTER, CharacterPool, EMOTE_CLIPS, EMOTE_POSES, emoteMs } from '../src/stage/actors.js';
+import { ACTOR_POOL_SIZE, BREAKDANCE_EMOTE, BREAKDANCE_MS, CHARACTER, FP_HEADLESS_SCALE, CharacterPool, EMOTE_CLIPS, EMOTE_POSES, emoteMs } from '../src/stage/actors.js';
 import { parseCharacterSet, resolveLook, type AccessoryTemplate, type CharacterSet, type CharacterSource, type ShapeTemplate } from '../src/stage/looks.js';
 
 const file = (url: string) => ({ url, bytes: 1, hash: 'abcdef0123456789' });
@@ -56,7 +56,13 @@ function shapeTemplate(id: string): ShapeTemplate {
 }
 
 function clips(): AnimationClip[] {
-  return ['idle', 'walk', 'run', 'cheer', 'flinch', 'use'].map((n) => new AnimationClip(n, 1, [new NumberKeyframeTrack('head.position[y]', [0, 1], [0.84, 0.9])]));
+  // like the shipped clips, every clip sways the head's rotation: the mixer rewrites it each frame (it skips a value that
+  // did not change), so procedural poses never pile up
+  const sway = Math.sin(0.01);
+  return ['idle', 'walk', 'run', 'cheer', 'flinch', 'use'].map((n) => new AnimationClip(n, 1, [
+    new NumberKeyframeTrack('head.position[y]', [0, 1], [0.84, 0.9]),
+    new QuaternionKeyframeTrack('head.quaternion', [0, 0.5, 1], [0, 0, 0, 1, 0, sway, 0, Math.cos(0.01), 0, 0, 0, 1]),
+  ]));
 }
 
 function source(over: Partial<CharacterSource> = {}): CharacterSource & { shapeCalls: string[]; disposed: number } {
@@ -283,6 +289,42 @@ describe('CharacterPool — KayKit bodies', () => {
       expect(root('a').rotation.x).toBe(0);
       expect(root('a').rotation.z).toBe(0);
     }
+    pool.dispose();
+  });
+
+  it('first person rides the emoting head (look left / right turn the view, crying looks down then up) and shows the body headless', async () => {
+    const { pool } = await readyPool();
+    pool.spawn('a', { look: 'casual_male', name: 'A', guildTag: '', isLocal: false });
+    await flush();
+    pool.setTransform('a', 0, 0, 0, false, false);
+    pool.setHidden('a', true);
+    pool.update(16);
+    const head = new Vector3(), pivot = new Vector3(), q = new Quaternion();
+    expect(pool.emoteHead('a', head, pivot, q)).toBe(0);
+    // the view's forward (the body faces +z at yaw 0) after the head's turn: left of it is +x, up is +y
+    const view = (n: 12 | 13 | 14, atMs: number): Vector3 => {
+      pool.setEmote('a', n);
+      for (let t = 0; t < atMs; t += 16) pool.update(16);
+      expect(pool.emoteHead('a', head, pivot, q), `emote ${n} weight`).toBeGreaterThan(0.9);
+      return new Vector3(0, 0, 1).applyQuaternion(q);
+    };
+    expect(view(12, 1200).x, 'look left').toBeGreaterThan(0.5);
+    expect(view(13, 1200).x, 'look right').toBeLessThan(-0.5);
+    expect(view(14, 1200).y, 'crying, face in the hands').toBeLessThan(-0.2);
+    pool.setEmote('a', 0);
+    for (let t = 0; t < 600; t += 16) pool.update(16);
+    expect(view(14, 1900).y, 'crying, the wail').toBeGreaterThan(0.2);
+    // the hands in view: the body draws while it emotes, its head shrunk away; hidden and whole again after
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the instance is private
+    const inst = (pool as any).byId.get('a').inst as { root: { visible: boolean }; head: { scale: Vector3 } };
+    expect(inst.root.visible).toBe(true);
+    expect(inst.head.scale.x).toBe(FP_HEADLESS_SCALE);
+    for (let t = 0; t < 3000; t += 16) pool.update(16);
+    expect(pool.emoteOf('a').n).toBe(0);
+    expect(inst.root.visible).toBe(false);
+    pool.setHidden('a', false);
+    pool.update(16);
+    expect(inst.head.scale.x).toBe(1);
     pool.dispose();
   });
 

@@ -12,6 +12,7 @@ import { attribute, float, mod, positionLocal, uniform, vec3 } from 'three/tsl';
 import type { Node, UniformNode } from 'three/webgpu';
 import { LAYERS, type WeatherKind } from '../descriptors.js';
 import type { SharedUniforms } from '../materials/harvest.js';
+import { overlayMrt } from '../sprites/overlayMrt.js';
 import { hexToSrgb } from './color.js';
 
 export interface WeatherParams {
@@ -94,6 +95,8 @@ const BOX_XZ = 44;        // m, centred on the camera focus
 const BOX_H = 22;         // m
 const FALL_RAIN = 11;     // m/s
 const FALL_HAIL = 7;
+const RAIN_COLOR = 0xffffff;
+const RAIN_OPACITY = 0.4;
 
 /** A deterministic hash in [0,1) — the sheet's layout must not use Math.random (§10.0.3 rule 2). */
 function hash01(i: number): number {
@@ -145,8 +148,12 @@ export class PrecipitationSheet {
     const slant = tipA.mul(this.length).mul(0.25);
     const m = new LineBasicNodeMaterial({ transparent: true, depthWrite: false });
     m.positionNode = vec3(p.x.add(shared.windDir.x.mul(slant)), y, p.z.add(shared.windDir.y.mul(slant)));
-    m.color = new Color(0xa9bccc);
-    m.opacity = 0.35;
+    m.color = new Color(RAIN_COLOR);
+    m.opacity = RAIN_OPACITY;
+    // plain white streaks: no fog, and valid MRT values (view-axis normal, mask x = 1) so GTAO never darkens them
+    // into black dashes (a line has no normal; see overlayMrt.ts)
+    m.fog = false;
+    m.mrtNode = overlayMrt(true);
     this.material = m;
 
     const obj = new LineSegments(g, m);
@@ -168,7 +175,7 @@ export class PrecipitationSheet {
       this.material.color.set(0xf4f7fa); this.material.opacity = 0.8;
     } else {
       this.speed.value = FALL_RAIN; this.length.value = 0.55;
-      this.material.color.set(0xa9bccc); this.material.opacity = 0.35;
+      this.material.color.set(RAIN_COLOR); this.material.opacity = RAIN_OPACITY;
     }
   }
 

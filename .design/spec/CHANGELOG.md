@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-27 panels always close over a battle. One entry. -->
+
+## 2026-10-27 · `20-client.md` §20.1.3 · the battle / trade blockers let a panel close; a battle's start closes the open panel
+Why: challenging a player from Social left the Social panel standing over the PvP battle, and its X and Escape did nothing: the battle blocker held every pathname change, the close to `/play` included, and reset it with "Finish the battle first". The user asked that every menu can always be closed. Both blockers now test `blocksPanelNavigation` (opening or switching a panel still waits; `/play` goes through), and PlayShell closes the open panel and the buddy talk when a battle starts.
+Evidence: client `panel-blockers.test.ts`; live on the alt pair (two accounts, a Social challenge accepted: the panel closes as the battle opens).
+Affects: `packages/client/src/{app/navigation.ts,app/PlayShell.tsx,battle/BattleOverlay.tsx,world/TradeModal.tsx}`, `packages/client/test/panel-blockers.test.ts`.
+
 <!-- 2026-10-27 kykaiser's Tenjin form. One entry. -->
 
 ## 2026-10-27 · `40-pipelines.md` §40.1 species set, accounting, §40.6 creatures ceiling; `50-verification-budget.md` budget.test row · kykaiser_tenjin, creatures/ ceiling 53 MiB

@@ -32,6 +32,7 @@ import type { Action, BandKind, BattleState, Battler, FieldRef, MoveDef } from '
 import { CONSUMABLES, ORBS } from '@ewa/content';
 import { content, displayName, move as moveDef, species } from '../data/content';
 import { COACH_LINE, TRANSFORM_KEY, bandAccountOf, useBandTutorialStore } from '../state/bandTutorial';
+import { useArenaStore } from '../state/arena';
 import { useSessionStore } from '../state/session';
 import { OPEN_MENU, useUiStore } from '../state/ui';
 import type { BattleUi } from '../state/ui';
@@ -311,6 +312,7 @@ const ROOT: readonly { readonly key: Menu | 'run'; readonly label: string }[] = 
 
 export function BattleMenu() {
   const b = useUiStore((x) => x.battle);
+  const inArena = useArenaStore((x) => x.inArena);
   const [confirmForfeit, setConfirmForfeit] = useState(false);
   const st = b?.authoritative ?? null;
   const seat = b?.seat ?? 0;
@@ -482,7 +484,7 @@ export function BattleMenu() {
     if (k === 'bag' && hardcore) return true;
     return k === 'run' ? runWhy !== null : k === 'orbs' ? !st.sides[seat].canCatch : catchWindow;
   };
-  const hints: Hint[] = !selectable
+  const commandHints: Hint[] = !selectable
     ? []
     : menu === 'root'
       ? [['1–5', 'Command']]
@@ -495,6 +497,8 @@ export function BattleMenu() {
         : forced
           ? []
           : [['Esc', 'Back']];
+  // the emote wheel stays up in a battle (G), except in the arena, which has no world round the ring
+  const hints: Hint[] = inArena ? commandHints : [...commandHints, ['G', 'Emote']];
   // the moves are home now: no Back button there (Esc still reaches the command hotkeys), only out of a target pick
   const showBack = selectable && menu !== 'root' && !forced && (menu !== 'moves' || targeting !== null);
   const showBackTo = selectable && backTo !== undefined;

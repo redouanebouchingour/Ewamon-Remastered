@@ -212,6 +212,7 @@ Binding contract: `.design/SPEC.md` §10.5, §10.6, §20.4.4, §50.2.2, §50.4.6
 | C24 | DoubleSide cards | A back face's normal is flipped, so a card with up-bent normals renders dark from behind (grass read as dark crosses). | `card(…, twoSided)`: a back-to-back twin 1 cm behind with reversed winding and the same bent normals (grass tufts, tall grass, bushes, reeds, greenery). Canopy cards stay single (their back tint is the translucency look). |
 | C25 | geometry / attributes bookkeeping | Instance attributes are freed by `Geometries`' dispose listener through the FIRST render object that initialised the geometry; sub-geometries share attributes. | Every instanced mesh has its own geometry or geometry view; views are disposed with the zone; the node leak test mirrors this bookkeeping. |
 | C26 | node attributes on dispose | Attributes a LATER pass binds (the velocity MRT's previous-instance-matrix buffers, three's wrapped instance colours — module-private maps) are never freed: measured **+141 attributes / 9.8 MB per Mirevale reload** in the browser. | `ZoneBuildDeps.releaseGpu`: the zone system collects the attribute lists of the zone's render objects before `dispose()` and deletes each from the renderer's attribute map afterwards (reads `renderer._objects._renderObjects` / `renderer._attributes`; a no-op for anything three already freed). After it: 3 browser reload cycles leave `geometries`, `programs`, `attributes`, `attributesSize` at the step-8 baseline exactly (below). |
+| C27 | bloom input = the TRAA output (§10.8.2/§10.8.3) | C16 normalised only the IBL: the visible `SkyMesh` stays at Preetham radiance (≈ 2.3 zenith / 5.9 horizon at noon), far over the 1.15 threshold, so on medium / high the whole sky bloomed into a white haze over the scene (low has no bloom). | `POST_PARAMS.bloom.skyCap = 1.0`: pixels at the far plane (depth ≥ 0.99999: the sky) enter the bloom with rgb clamped to 1.0, under the threshold. The displayed sky is unchanged; only its bloom contribution goes. |
 
 ## Deviations / interpretations
 
@@ -2326,10 +2327,14 @@ pool; `Part3.worldFx`).
   in front of the body's axis (the chibi rigs are 1.54 m tall, 0.70 m deep: just in front of the face), with a 70° /
   near 0.08 m lens; null restores the diorama lens. Only the diorama pose of a followed actor: a battle / inspector shot
   ignores it. The shake keeps its diorama angle (computed at the default zoom distance, not the 1.4 m eye distance).
-  `BasicDioramaRig` ignores it. While the followed body breakdances (`DioramaRigOptions.bodyTilt` →
-  `CharacterPool.bodyTilt`) the eye rides it: the eye offset and the look are turned by the root's rotation relative to
-  its upright facing, from the root's lifted position, so the view spins, flips and hangs upside down with the dance
-  (last frame's body pose: the camera updates before the pool). A hidden body still poses while it dances.
+  `BasicDioramaRig` ignores it. While the followed body emotes, any emote (`DioramaRigOptions.emoteHead` →
+  `CharacterPool.emoteHead`; 2026-10-27, was the breakdance only), the eye rides the head joint: the eye's offset from
+  the upright head joint and the look are turned by the head's rotation relative to its upright bind rest, from the
+  posed joint, so the view nods with a dab, turns with a look left, spins and hangs upside down with the breakdance.
+  Both ease in and out by the emote weight (last frame's body pose: the camera updates before the pool). A hidden body
+  shows while it emotes (2026-10-27, player ask: see the hands move), its head joint shrunk to `FP_HEADLESS_SCALE` so
+  the eye inside it looks out; the scale is set after the mixer and restored when the emote ends (the mixer skips an
+  unchanged value, so it would not restore it).
 - `ActorPool.setHidden(id, hidden)` (contract addition): hides one actor's body (its feet, decal and nameplate anchor
   stay); `spawn` resets it. The client hides the player's own body in first person.
 - No see-through in first person (2026-10-25, player report: a dithered hole in the roofs straight ahead). The occluder

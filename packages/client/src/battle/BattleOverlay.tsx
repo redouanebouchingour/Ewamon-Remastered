@@ -10,6 +10,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { useBlocker } from 'react-router';
+import { blocksPanelNavigation } from '../app/navigation';
 import { toast } from '../state/notifications';
 import { useUiStore } from '../state/ui';
 import s from './BattleOverlay.module.css';
@@ -49,7 +50,7 @@ function usePanelTop(ref: React.RefObject<HTMLElement | null>, active: boolean):
 }
 
 function BattleBlocker() {
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => currentLocation.pathname !== nextLocation.pathname);
+  const blocker = useBlocker(blocksPanelNavigation);
   useEffect(() => {
     if (blocker.state === 'blocked') {
       toast('warn', 'Finish the battle first.');
