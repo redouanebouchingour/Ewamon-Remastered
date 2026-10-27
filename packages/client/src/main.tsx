@@ -10,6 +10,7 @@ import './ui/global.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
+import { DisclaimerGate } from './app/Disclaimer';
 import { createAppRouter } from './app/router';
 import { ViewportGate } from './app/UnsupportedViewport';
 import { startSessionKeeper } from './net/sessionKeeper';
@@ -26,9 +27,11 @@ startSessionKeeper({
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ViewportGate>
-      <RouterProvider router={router} />
-    </ViewportGate>
+    <DisclaimerGate>
+      <ViewportGate>
+        <RouterProvider router={router} />
+      </ViewportGate>
+    </DisclaimerGate>
     <TooltipHost />
   </StrictMode>,
 );

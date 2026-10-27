@@ -1,0 +1,39 @@
+.page {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--s-6);
+}
+
+/* same broadcast card as UnsupportedViewport */
+.card {
+  position: relative;
+  max-inline-size: 560px;
+  padding: var(--s-7);
+  border-left: 10px solid var(--accent);
+  background: var(--bg-1);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+  text-align: left;
+}
+
+.title {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h1);
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.text {
+  margin-top: var(--s-3);
+  color: var(--text-1);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body-lg);
+}
+
+.button {
+  margin-top: var(--s-6);
+}
