@@ -1,0 +1,41 @@
+Image 1 shows four item icons from an indie creature-collecting RPG called Ewamon. Draw a sprite sheet of 26 NEW item icons in exactly the same pixel art style as image 1, but do not copy those designs.
+
+Pixel art style (most important): crisp hand-made pixel art icons like image 1, every icon drawn on a small pixel grid with clean square pixels. A dark outline around every icon. Flat cel shading with 2 or 3 tones per colour and hard edges, one small bright highlight. Bold simple shapes that stay readable when shown very small. No gradients, no soft airbrush shading, no blur, no painterly detail. Seen from the front or a slight 3/4 angle, like image 1.
+
+Layout: a grid of 7 columns and 4 rows. Rows 1 to 3 hold 7 icons each; row 4 holds 5 icons in its first 5 cells and its last 2 cells stay empty. Exactly one icon per cell, every icon centered in its cell and about the same size, with wide empty gaps between icons so no two icons touch. No grid lines, no cell borders, no labels, no numbers, no text or letters anywhere.
+
+Row 1, left to right:
+1. Dusk Stone: a dark violet-black stone that seems to swallow the light, a faint purple rim glow.
+2. Assault Vest: a sturdy padded vest with metal plates on the chest, dark green and grey.
+3. Black Sludge: a small glass jar of bubbling black-purple goo with a loose lid.
+4. Charcoal: a lump of black charcoal with a few glowing orange embers in it.
+5. Choice Band: a red cloth headband tied in a knot, its two ends hanging loose.
+6. Choice Scarf: a folded blue woollen scarf with a fringe.
+7. Choice Specs: a pair of thick round glasses with a dark frame.
+
+Row 2, left to right:
+8. Eviolite: a small faceted lilac crystal with a white sparkle, set on a tiny silver cap.
+9. Heavy Duty Boots: a pair of sturdy brown hiking boots with thick soles.
+10. Mirrorcoat: a small round mirror shield with a silver rim and a bright reflection.
+11. Mystic Water: a teardrop shaped blue gem pendant on a short cord.
+12. Oran Berry: a round blue berry with two green leaves on top.
+13. Sitrus Berry: a plump yellow citrus berry with a green leaf.
+14. Speed Scarf: a light green scarf flowing sideways with two wind streak lines behind it.
+
+Row 3, left to right:
+15. Weakness Policy: a rolled paper scroll tied with a red ribbon and a red wax seal.
+16. Spirit Koi Scale: a single large shimmering fish scale, white and pale blue with a soft glow.
+17. Badgermole Gem: a chunky green crystal that hums, set in a lump of brown earth.
+18. Sun Dragon Ember: a bright orange flame resting in a small round stone cradle.
+19. Sky Bison Whistle: a carved wooden whistle with a blue cord and a small cloud-swirl carving.
+20. Vial of Spirit Water: a small round vial with water swirling in four colours: blue, green, red and white.
+21. Old Rod: a simple wooden fishing rod with its line coiled and a small red float.
+
+Row 4, left to right:
+22. Bicycle: a small red bicycle seen from the side.
+23. Majin Band: a dark crimson armband with a black horned demon sigil and jagged edges.
+24. Tenjin Band: a white and gold armband with a winged halo sigil.
+25. TM disc: a plain round disc with a hole in the middle, smooth white and light grey, no marks on it.
+26. HM disc: a round disc with a hole in the middle, white with a thick gold rim, no marks on it.
+
+Background: perfectly flat solid magenta #ff00ff everywhere, the same as image 1, no shadow, no scenery. No magenta or hot pink on any item. Dark outline colour #2a2d3c. No text, no border, no watermark.

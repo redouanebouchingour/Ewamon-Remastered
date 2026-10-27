@@ -124,3 +124,20 @@ lines (59 sprites at low, including retries) about $1.50, so about $2.33 in all.
 These are concept sprites. Shipping one still follows the species checklist (`.design/additions/species.js`, the
 sprite pipeline, roster coverage spawn tables, shiny tuning) and the creature atlas byte ceiling, which has very
 little room left.
+
+## Item sprites
+
+Item art (2026-10-27) is made on sheets, not one call per item: `items/sheet-{a,b}.prompt.txt` each ask for a 7x4 grid
+of icons at 1536x1024, medium quality, with four orbs on magenta (`assets-src/imagegen/refs/orbs-ref.png`, the ported
+orb sprites enlarged 2x nearest) as the style reference. One sheet cost 1,201 to 1,237 input and 1,372 output tokens,
+about $0.06; both sheets drew every icon in its cell on the first try.
+
+1. `python pixel-tools/gen.py --size=1536x1024 --quality=medium items/sheet-a.prompt.txt <sheet.png> <orbs-ref.png>`
+2. `python pixel-tools/slice_sheet.py <sheet.png> 7 4 items/sheet-a.names.txt assets-src/imagegen/items/png` cuts it
+   into 128x128 sprites named by item id slug (`-` in the names file skips a cell). It keys only the sheet's own
+   magenta, so violet and lilac items keep their colour, and keeps one scale per sheet so sizes stay relative.
+3. `python pixel-tools/export_items.py assets-src/imagegen/items/png packages/client/public/items packages/client/src/ui/tokens.json`
+   writes lossless WebP, and tints the blank TM and HM discs into `tm_<type>` / `hm_<type>` for every type colour.
+
+The client maps an id to its file in `itemSpriteUrl` (`packages/client/src/data/content.ts`); `item-sprites.test.ts`
+fails when an item content knows has no file. A new item needs a cell on a new sheet; a new TM or HM needs nothing.

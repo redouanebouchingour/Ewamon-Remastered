@@ -1,0 +1,28 @@
+dusk_stone
+Assault Vest
+Black Sludge
+Charcoal
+Choice Band
+Choice Scarf
+Choice Specs
+Eviolite
+Heavy Duty Boots
+Mirrorcoat
+Mystic Water
+Oran Berry
+Sitrus Berry
+Speed Scarf
+Weakness Policy
+spirit_koi_scale
+badgermole_gem
+sun_dragon_ember
+sky_bison_whistle
+spirit_water_vial
+old_rod
+bike
+majin_band
+tenjin_band
+tm_disc
+hm_disc
+-
+-

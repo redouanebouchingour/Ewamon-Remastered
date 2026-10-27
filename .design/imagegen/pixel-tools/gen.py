@@ -1,7 +1,7 @@
-"""One gpt-image-2 call (1024x1024, medium) with the official openai SDK. Reads OPENAI_API_KEY from ~/.env and never
-prints it. Prints the token usage so the cost of every call is visible.
+"""One gpt-image-2 call (1024x1024, medium by default) with the official openai SDK. Reads OPENAI_API_KEY from ~/.env
+and never prints it. Prints the token usage so the cost of every call is visible.
 
-    python gen.py <prompt.txt> <out.png> [ref.png ...]
+    python gen.py [--size=1536x1024] [--quality=low] <prompt.txt> <out.png> [ref.png ...]
 
 With reference images it uses the edits endpoint (style reference, or the front sprite when drawing a back). Without
 them it uses generations with moderation "low", the only route that takes a moderation setting.
@@ -16,11 +16,13 @@ load_dotenv(Path.home() / ".env", override=False)
 if not os.environ.get("OPENAI_API_KEY"):
     sys.exit("OPENAI_API_KEY missing (put it in ~/.env)")
 
-prompt = Path(sys.argv[1]).read_text(encoding="utf8")
-out = Path(sys.argv[2])
-refs = sys.argv[3:]
+opts = dict(a[2:].split("=", 1) for a in sys.argv[1:] if a.startswith("--"))
+args = [a for a in sys.argv[1:] if not a.startswith("--")]
+prompt = Path(args[0]).read_text(encoding="utf8")
+out = Path(args[1])
+refs = args[2:]
 client = OpenAI()
-kw = dict(model="gpt-image-2", prompt=prompt, size="1024x1024", quality="medium", n=1)
+kw = dict(model="gpt-image-2", prompt=prompt, size=opts.get("size", "1024x1024"), quality=opts.get("quality", "medium"), n=1)
 if refs:
     files = [open(r, "rb") for r in refs]
     res = client.images.edit(image=files, **kw)

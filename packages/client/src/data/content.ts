@@ -139,11 +139,24 @@ export function itemInfo(id: string): ItemInfo {
   return itemMap.get(id) ?? { id, name: id, description: '', kind: 'consumable', price: null, sellPrice: 0, usableInBattle: false };
 }
 
-/** Items with their own art under `public/items/` (the orbs, ported from the old game); every other item shows its kind's icon. */
-const ITEM_SPRITES: ReadonlySet<string> = new Set(ORBS.map((o) => o.id));
+/**
+ * Item art under `public/items/` (`.design/imagegen/items/`): the orbs ported from the old game, and one sprite per
+ * other item named by its id's slug. A TM or HM shows the blank disc tinted in its move's type colour. An id content
+ * does not know has no sprite (its kind's icon shows).
+ */
+const ORB_IDS: ReadonlySet<string> = new Set(ORBS.map((o) => o.id));
+/** the move type each HM's disc takes (what the move clears: trees, boulders, deep water) */
+const HM_TYPE: Readonly<Record<string, TypeName>> = { 'HM Cut': 'Grass', 'HM Strength': 'Fighting', 'HM Surf': 'Water' };
 
 export function itemSpriteUrl(id: string): string | null {
-  return ITEM_SPRITES.has(id) ? `/items/orbs/${id}.webp` : null;
+  if (ORB_IDS.has(id)) return `/items/orbs/${id}.webp`;
+  const tm = tmMoveOf(id);
+  const tmType = tm === null ? undefined : moveMap.get(tm)?.type;
+  if (tmType !== undefined) return `/items/tm_${tmType.toLowerCase()}.webp`;
+  const hmType = HM_TYPE[id];
+  if (hmType !== undefined) return `/items/hm_${hmType.toLowerCase()}.webp`;
+  if (!itemMap.has(id)) return null;
+  return `/items/${id.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')}.webp`;
 }
 
 export const HELD_ITEMS: readonly ItemInfo[] = [...itemMap.values()].filter((i) => i.kind === 'held');

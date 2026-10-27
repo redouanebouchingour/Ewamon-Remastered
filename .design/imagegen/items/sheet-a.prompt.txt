@@ -1,0 +1,43 @@
+Image 1 shows four item icons from an indie creature-collecting RPG called Ewamon. Draw a sprite sheet of 28 NEW item icons in exactly the same pixel art style as image 1, but do not copy those designs.
+
+Pixel art style (most important): crisp hand-made pixel art icons like image 1, every icon drawn on a small pixel grid with clean square pixels. A dark outline around every icon. Flat cel shading with 2 or 3 tones per colour and hard edges, one small bright highlight. Bold simple shapes that stay readable when shown very small. No gradients, no soft airbrush shading, no blur, no painterly detail. Seen from the front or a slight 3/4 angle, like image 1.
+
+Layout: a grid of 7 columns and 4 rows, 28 icons in total, exactly one icon per cell, every icon centered in its cell and about the same size, with wide empty gaps between icons so no two icons touch. No grid lines, no cell borders, no labels, no numbers, no text or letters anywhere.
+
+Row 1, left to right:
+1. Potion: a small round glass flask with a cork, filled with red liquid.
+2. Super Potion: a slightly bigger round flask with a cork, orange liquid, a thin gold band round its neck.
+3. Hyper Potion: a faceted glass flask with a silver stopper, violet liquid.
+4. Max Potion: a tall elegant flask with a gold stopper, glowing gold liquid.
+5. Full Restore: an ornate crystal flask with a gold star on the front, white glowing liquid.
+6. Revive: a small yellow crystal shard shaped like a diamond, glowing softly.
+7. Max Revive: a large golden crystal shard with a bright core and a few light rays.
+
+Row 2, left to right:
+8. Elixir: a small slim vial with a round cap, light blue liquid.
+9. Max Ether: a tall slim vial with a silver cap, deep blue liquid with sparkles.
+10. Antidote: a small vial of green liquid with a leaf tied to its neck.
+11. Burn Heal: a small round tin of blue cooling salve with a snowflake mark on the lid.
+12. Ice Heal: a small warm amber bottle with a little flame mark on it.
+13. Paralyze Heal: a small yellow bottle with a lightning bolt mark on it.
+14. Awakening: a small teal bottle with a tiny brass bell tied to its neck.
+
+Row 3, left to right:
+15. Full Heal: a white bottle with a green leaf mark and a green cap.
+16. Rare Candy: a round wrapped sweet in a blue twist wrapper with a small gold star.
+17. Repel: a small purple pouch of herbs with a thin wisp of smoke rising from it.
+18. Lure: a small clay honey pot with golden honey dripping over its rim.
+19. Escape Rope: a coiled brown rope with a small iron hook.
+20. Nugget: a small shiny gold nugget.
+21. Big Nugget: a large lumpy gold nugget, clearly bigger than the Nugget.
+
+Row 4, left to right:
+22. Star Piece: a small five-pointed ruby red gem star.
+23. Stardust: a small cloth pouch spilling glittering pale blue sand.
+24. Ember Stone: a dark stone with glowing orange cracks, like a coal that never cools.
+25. Tide Stone: a smooth sea-blue stone with a wave swirl, a few water droplets on it.
+26. Storm Stone: a yellow and slate stone with a crackling lightning vein.
+27. Verdant Stone: a green pebble with a small leaf growing out of it.
+28. Moon Stone: a pale grey-white stone with a crescent moon shape, softly glowing.
+
+Background: perfectly flat solid magenta #ff00ff everywhere, the same as image 1, no shadow, no scenery. No magenta or hot pink on any item. Dark outline colour #2a2d3c. No text, no border, no watermark.

@@ -172,11 +172,11 @@ describe('ShopScreen haggling', () => {
 });
 
 describe('ShopScreen item art', () => {
-  it('an orb row shows its sprite; a potion keeps its kind icon', async () => {
+  it('each row shows its item sprite: the orb its ported art, the potion its own', async () => {
     renderShop({ ...DATA, stock: ['potion', 'spark_orb'], prices: { potion: 300, spark_orb: 200 }, haggle: false });
     await flush();
     const orbRow = screen.getByText('Spark Orb', { selector: 'span' }).closest('tr')!;
     expect(orbRow.querySelector('img')?.getAttribute('src')).toBe('/items/orbs/spark_orb.webp');
-    expect(screen.getByText('Potion', { selector: 'span' }).closest('tr')!.querySelector('img')).toBeNull();
+    expect(screen.getByText('Potion', { selector: 'span' }).closest('tr')!.querySelector('img')?.getAttribute('src')).toBe('/items/potion.webp');
   });
 });
