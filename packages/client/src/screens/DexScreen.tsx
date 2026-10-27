@@ -281,6 +281,7 @@ export function DexScreen() {
             size="sm"
             silhouette={r.state === 'unknown'}
             desaturate={r.state === 'seen'}
+            animated
           />
           <span>{r.state === 'unknown' ? '???' : r.sp.name}</span>
           {shinySet.has(r.sp.id) && (
@@ -677,6 +678,7 @@ export function DexScreen() {
                               size={selected === null ? 'lg' : 'sm'}
                               silhouette={st === 'unknown'}
                               desaturate={st === 'seen'}
+                              animated
                             />
                             <span className={s.name}>{st === 'unknown' ? '???' : sp.name}</span>
                             {selected === null && st !== 'unknown' && research !== null && research !== undefined && (

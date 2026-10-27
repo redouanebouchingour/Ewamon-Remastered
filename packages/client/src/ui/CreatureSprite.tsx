@@ -3,7 +3,7 @@ import { shinyPaletteOf } from '@ewa/content';
 import { formsOf } from '@ewa/core';
 import type { VariantKey } from '@ewa/core';
 import { primaryType, species, speciesName } from '../data/content';
-import { thumbUrl, useThumbSet } from '../data/thumbs';
+import { animatedThumbUrl, thumbUrl, useAnimatedThumbSet, useThumbSet } from '../data/thumbs';
 import s from './CreatureSprite.module.css';
 import { cssVars } from './cssVars';
 import { cx } from './cx';
@@ -21,21 +21,27 @@ export interface CreatureSpriteProps {
   readonly silhouette?: boolean;
   /** seen-but-not-caught dex entry */
   readonly desaturate?: boolean;
+  /** plays the animated dex thumb when the sprite has one (a front flipbook: the animated legendaries / mythicals); never for a silhouette */
+  readonly animated?: boolean;
   readonly className?: string;
 }
 
 /**
  * The pipeline thumbnail when it exists, otherwise a type-tinted monogram disc — never a broken image and
- * never the game atlases (§20.10.2 rule 6). `loading="lazy"`, `decoding="async"`.
+ * never the game atlases (§20.10.2 rule 6). `loading="lazy"`, `decoding="async"`. `animated`: the looping dex thumb
+ * in its place where the sprite has one; one that fails to load falls back to the still.
  */
-export function CreatureSprite({ speciesId, form = null, variantKey = 'normal', size = 'md', shiny = false, silhouette = false, desaturate = false, className }: CreatureSpriteProps) {
+export function CreatureSprite({ speciesId, form = null, variantKey = 'normal', size = 'md', shiny = false, silhouette = false, desaturate = false, animated = false, className }: CreatureSpriteProps) {
   const thumbs = useThumbSet();
+  const moving = useAnimatedThumbSet();
   const [failedKey, setFailedKey] = useState<string | null>(null);
+  const [failedAnimKey, setFailedAnimKey] = useState<string | null>(null);
   const name = speciesName(speciesId);
   // a form without its own thumb (the pipeline output absent) falls back to the species' one
   const formKey = form === null ? null : `${speciesId}_${form}`;
   const key = formKey !== null && thumbs.has(formKey) ? formKey : speciesId;
   const showImg = thumbs.has(key) && failedKey !== key;
+  const anim = animated && !silhouette && moving.has(key) && failedAnimKey !== key;
   const sp = form === null ? undefined : species(speciesId);
   const formType = sp === undefined ? undefined : formsOf(sp).find((f) => f.id === form)?.types?.[0];
   const pal = shiny && !silhouette ? shinyPaletteOf(speciesId) : null;
@@ -48,7 +54,11 @@ export function CreatureSprite({ speciesId, form = null, variantKey = 'normal', 
       aria-hidden
     >
       {showImg ? (
-        <img key={key} className={s.img} src={thumbUrl(key)} alt="" loading="lazy" decoding="async" onError={() => setFailedKey(key)} />
+        anim ? (
+          <img key={`${key}:anim`} className={s.img} src={animatedThumbUrl(key)} alt="" loading="lazy" decoding="async" data-animated="" onError={() => setFailedAnimKey(key)} />
+        ) : (
+          <img key={key} className={s.img} src={thumbUrl(key)} alt="" loading="lazy" decoding="async" onError={() => setFailedKey(key)} />
+        )
       ) : (
         <span className={s.monogram}>{silhouette ? '?' : name.slice(0, 1).toUpperCase()}</span>
       )}

@@ -183,6 +183,7 @@ export function DexEntry({ sp, state, research, counters, variants, alpha, shiny
             shiny={access.forms && view.shiny}
             size="xxl"
             desaturate={state === 'seen'}
+            animated
             className={cx(view.alpha && s.alphaSprite)}
           />
           {view.alpha && (
@@ -702,7 +703,7 @@ function EvoBranch({ node, current, seen, caught, conditions, onOpen }: {
         disabled={!known || id === current}
         aria-label={known ? `${node.sp.name}${id === current ? ', this entry' : ''}` : 'Unknown stage'}
       >
-        <CreatureSprite speciesId={id} size="lg" silhouette={!known} desaturate={known && !caught.includes(id)} />
+        <CreatureSprite speciesId={id} size="lg" silhouette={!known} desaturate={known && !caught.includes(id)} animated />
         <span className={s.evoName}>{known ? node.sp.name : '???'}</span>
         <span className={l.caption}>#{String(node.sp.dexNumber).padStart(3, '0')}</span>
       </button>
@@ -740,7 +741,7 @@ function Forms({ sp, forms }: { readonly sp: SpeciesDef; readonly forms: readonl
         return (
           <article key={f.id} className={s.formCard} data-type={types[0]} aria-label={f.name}>
             <div className={s.formArt}>
-              <CreatureSprite speciesId={sp.id} size="lg" />
+              <CreatureSprite speciesId={sp.id} size="lg" animated />
               <Icon name="chevronRight" size="md" className={s.evoArrow} />
               <CreatureSprite speciesId={sp.id} form={f.id} size="xl" />
             </div>

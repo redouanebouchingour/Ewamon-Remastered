@@ -13,7 +13,10 @@ pnpm exec tsx tools/sprite-pipeline/src/cli.ts bench --count 4        # KTX2 vs 
 pnpm exec vitest run tools/sprite-pipeline                            # tests (budget + encoding read the real output)
 pnpm --filter @ewa/sprite-pipeline shiny                              # shiny palettes: writes content data/shinyDerived.ts from the thumbnails
 pnpm --filter @ewa/sprite-pipeline shiny --no-write --sheet DIR --only a,b   # contact sheets: normal | 3D shader | CSS, per species
+pnpm --filter @ewa/sprite-pipeline dex-anim [id …]                    # animated dex thumbs: public/dex-anim/<id>.webp from the shipped front flipbooks
 ```
+
+Animated dex thumbs (2026-10-27): `dex-anim` cuts every front flipbook the manifest lists (or the ids given) out of its shipped albedo atlas, crops all pages to their union, resizes to 176 px and writes a looping lossy animated WebP with the flipbook's delays. It reads only shipped files, so re-run it after a build that adds or changes a flipbook (client `dexAnim.test.tsx` fails until every animated front has its file with one page per flipbook page). The files sit outside `creatures/` (a build rewrites that tree, and its bytes count against the creature ceiling); 11 files took 3.5 MB of the `total public/` line.
 
 Shiny palettes (spine §3.7a, 2026-10-26): re-run `shiny` after adding a species or a family (content `shiny.test.ts` fails until its root is derived), then look at its sheet; hand-tuning goes in content `data/shiny.ts` `SHINY_TUNING`, never in the generated file.
 

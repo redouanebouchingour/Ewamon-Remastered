@@ -14,7 +14,8 @@
     "qa": "tsx src/cli.ts qa",
     "import-legacy": "tsx src/import-legacy.ts",
     "portraits": "tsx src/portraits.ts",
-    "shiny": "tsx src/shiny.ts"
+    "shiny": "tsx src/shiny.ts",
+    "dex-anim": "tsx src/dexAnim.ts"
   },
   "dependencies": {
     "@ewa/content": "workspace:*",

@@ -2940,3 +2940,17 @@ the second isolated client (the component over the landing page: the foe and own
 - Dynamic resolution is forced off on the WebGL2 fallback (`dynamicResolutionOn`; the setting shows disabled there): in a
   playtest on an Intel iGPU under WebGL2 the context kept getting lost after opening a menu, and the resolution steps
   (every render target re-created) are the suspect.
+
+## The dex moves (2026-10-27)
+
+- `CreatureSprite animated`: where the sprite's front plays a flipbook (manifest `sprites[id].anim.front`, the 11
+  animated legendaries / mythicals), the image is `public/dex-anim/<id>.webp`, a looping animated WebP cut from that
+  flipbook (sprite pipeline `dex-anim`), in place of the still thumb. Never for a silhouette; a form without a flipbook
+  (zenryu's Majin form) keeps its own still; a file that fails to load falls back to the still.
+- `data/thumbs.ts` reads the animated set from the manifest it already fetches (`animatedFronts`,
+  `useAnimatedThumbSet`, `animatedThumbUrl`).
+- The dex passes `animated` on the entry's hero, its evolution chain and forms card, the tiles, the list rows and the
+  compare cards. Everywhere else (party, HUD, battle menus) keeps the still.
+- Live (the isolated dev pair, headless Chrome): all 11 entries load their animated file and six screenshots of the
+  hero 250 ms apart differ every time. Test: `test/dexAnim.test.tsx` (every animated front has its file with one page
+  per flipbook page, still species have none; the component's choices and its fallback).

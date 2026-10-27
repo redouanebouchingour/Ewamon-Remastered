@@ -49,7 +49,7 @@ export function CompareView({ ids, choices, onChange, onOpen, onClose }: {
       />
       {sp !== undefined && (
         <button type="button" className={s.card} data-type={sp.types[0]} onClick={() => onOpen(sp.id)} aria-label={`Open ${sp.name}`}>
-          <CreatureSprite speciesId={sp.id} size="xl" />
+          <CreatureSprite speciesId={sp.id} size="xl" animated />
           <span className={s.name}>{sp.name}</span>
           <span className={l.row}>
             {sp.types.map((t) => (
