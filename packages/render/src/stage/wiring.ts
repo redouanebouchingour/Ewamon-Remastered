@@ -91,7 +91,7 @@ function build(ctx: HostContext): Part3 {
     occluders: crowns,
     effects: () => ctx.effects(),
     feet: (id, out) => actors.feetOf(id, out),
-    bodyTilt: (id, pos, q) => actors.bodyTilt(id, pos, q),
+    emoteHead: (id, head, pivot, q) => actors.emoteHead(id, head, pivot, q),
     onSlowmo: (scale, ms) => { host.setTimeScale(scale); slowmoLeft = ms; },
   });
   const vfx = new VfxSystem({

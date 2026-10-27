@@ -45,6 +45,8 @@ export const EMOTE_MS = 2000;
 /** Emote 7, the breakdance (client NPC-voice build, IMPLEMENTATION-NOTES "Breakdance"): longer than the 2 s cards. */
 export const BREAKDANCE_EMOTE = 7;
 export const BREAKDANCE_MS = 6000;
+/** First person shows the emoting body headless (the eye sits in the head): the head joint's scale meanwhile. */
+export const FP_HEADLESS_SCALE = 0.001;
 /**
  * The emote wheel (IMPLEMENTATION-NOTES "Emote wheel"): 7 the breakdance, 8..14 high five, "you, me, battle", whip /
  * nae nae, dab, look left, look right, crying. Lengths match protocol `emoteLengthMs`.
@@ -205,6 +207,11 @@ interface Instance {
   readonly emotes: ReadonlyMap<string, AnimationAction>;
   /** Head joint y above the root in the bind pose (model units). */
   readonly headRestY: number;
+  /** The head joint's bind-pose offset (model units) and rotation, both in root space (first person rides the head). */
+  readonly headRest: Vector3;
+  readonly headRestQ: Quaternion;
+  /** The head joint is shrunk to `FP_HEADLESS_SCALE` (a first-person emote); restored before anyone else sees it. */
+  headless: boolean;
 }
 
 interface Rig {
@@ -585,7 +592,10 @@ export class CharacterPool implements ActorPool {
       r.dist2 = cam !== null ? cam.position.distanceToSquared(r.feet) : 0;
       const g = r.inst;
       if (g === null) continue;
-      const visible = !r.hidden && r.dist2 <= C.cullRangeM * C.cullRangeM;
+      // a hidden body (first person) shows while it emotes, headless, so the player sees the hands move; it still poses
+      // for the eye to ride its head (`emoteHead`)
+      const fpEmote = r.hidden && r.emote !== 0 && r.emoteW > 0.002;
+      const visible = (!r.hidden || fpEmote) && r.dist2 <= C.cullRangeM * C.cullRangeM;
       g.root.visible = visible;
       g.root.position.copy(r.feet);
       // x / z reset every frame: the breakdance tilts the root
@@ -596,8 +606,7 @@ export class CharacterPool implements ActorPool {
         g.root.position.y += Math.abs(Math.sin(r.hopT * Math.PI * HOP.hz)) * HOP.heightM * Math.min(1, r.hopLeft / 250);
       }
       if (r.acc !== null) r.acc.visible = visible && r.dist2 <= C.accessoryRangeM * C.accessoryRangeM;
-      // a hidden body that breakdances still poses: first person rides its root (`bodyTilt`)
-      if (!visible && !(r.hidden && r.emote === BREAKDANCE_EMOTE && r.emoteW > 0.002)) continue;
+      if (!visible && !fpEmote) continue;
       // a clip emote replaces the gait; a procedural one (wave, bow) poses bones over it, so the gait keeps its full weight
       // (weights summing below 1 would blend the bind T-pose in)
       const base = r.emoteAction !== null ? 1 - r.emoteW : 1;
@@ -621,6 +630,8 @@ export class CharacterPool implements ActorPool {
         else if (pose === 'lookright') this.poseLook(g, r.emoteW, t, -1);
         else if (pose === 'crying') this.poseCrying(g, r.emoteW, t);
       }
+      // after the mixer (it skips a value that did not change, so the head's scale is restored here, not left to it)
+      if (g.head !== null && fpEmote !== g.headless) { g.head.scale.setScalar(fpEmote ? FP_HEADLESS_SCALE : 1); g.headless = fpEmote; }
     }
     this.pickShadowCasters();
     if (this.dirtyDecals) { this.decals.instanceMatrix.needsUpdate = true; this.dirtyDecals = false; }
@@ -650,17 +661,26 @@ export class CharacterPool implements ActorPool {
   }
 
   /**
-   * While the actor breakdances: its root's world position and the root's rotation relative to its upright facing
-   * (first person rides it); false otherwise. The camera updates before the pool, so this is last frame's pose.
+   * While the actor emotes: its head joint's world position, where that joint sits above the feet when upright
+   * (world-sized, facing applied) and the head's rotation relative to its upright rest, eased in by the emote weight
+   * (first person rides it). Returns that weight; 0 when not emoting. The camera updates before the pool, so this is
+   * last frame's pose.
    */
-  bodyTilt(id: string, outPos: Vector3, outQ: Quaternion): boolean {
+  emoteHead(id: string, outHead: Vector3, outPivot: Vector3, outQ: Quaternion): number {
     const r = this.byId.get(id);
     const g = r?.inst ?? null;
-    if (r === undefined || g === null || r.emote !== BREAKDANCE_EMOTE || r.emoteW <= 0.002) return false;
-    g.root.getWorldPosition(outPos);
-    g.root.getWorldQuaternion(outQ);
-    outQ.multiply(_q.setFromAxisAngle(_up, -r.yaw));
-    return true;
+    if (r === undefined || g === null || g.head === null || r.emote === 0 || r.emoteW <= 0.002) return 0;
+    const w = Math.min(1, r.emoteW);
+    g.head.getWorldPosition(outHead);
+    _q.setFromAxisAngle(_up, r.yaw);
+    outPivot.copy(g.headRest).multiplyScalar(g.root.scale.x).applyQuaternion(_q);
+    // posed head × (upright head)⁻¹, the upright head being facing × bind rest
+    g.head.getWorldQuaternion(outQ);
+    outQ.multiply(_qd.copy(g.headRestQ).invert()).multiply(_q.invert());
+    // (not `slerpQuaternions(identity, outQ, w)`: that copies the identity over its own target first)
+    _qw.copy(outQ);
+    outQ.identity().slerp(_qw, w);
+    return w;
   }
 
   /** Current emote of an actor and its remaining fraction (0 = none). */
@@ -891,11 +911,16 @@ export class CharacterPool implements ActorPool {
     root.name = `ewa:actor-root:${t.id}`;
     const head = bones.get('head') ?? null;
     let headRestY = 1.24;
+    const headRest = new Vector3(0, headRestY, 0);
+    const headRestQ = new Quaternion();
     if (head !== null) {
       root.updateMatrixWorld(true);
       head.getWorldPosition(_v);
       root.getWorldPosition(_p);
       headRestY = _v.y - _p.y;
+      root.worldToLocal(headRest.copy(_v));
+      root.getWorldQuaternion(_q).invert();
+      headRestQ.copy(_q).multiply(head.getWorldQuaternion(_qd));
     }
     const mixer = new AnimationMixer(root);
     const action = (name: string, loop: boolean): AnimationAction | null => {
@@ -915,7 +940,7 @@ export class CharacterPool implements ActorPool {
       const a = action(name, false);
       if (a !== null) emotes.set(name, a);
     }
-    return { shape: t.id, root, mesh: m, head, bones, mixer, idle: action('idle', true), walk: action('walk', true), run: action('run', true), emotes, headRestY };
+    return { shape: t.id, root, mesh: m, head, bones, mixer, idle: action('idle', true), walk: action('walk', true), run: action('run', true), emotes, headRestY, headRest, headRestQ, headless: false };
   }
 
   private startEmote(r: Rig): void {

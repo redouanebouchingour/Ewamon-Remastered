@@ -2327,10 +2327,14 @@ pool; `Part3.worldFx`).
   in front of the body's axis (the chibi rigs are 1.54 m tall, 0.70 m deep: just in front of the face), with a 70° /
   near 0.08 m lens; null restores the diorama lens. Only the diorama pose of a followed actor: a battle / inspector shot
   ignores it. The shake keeps its diorama angle (computed at the default zoom distance, not the 1.4 m eye distance).
-  `BasicDioramaRig` ignores it. While the followed body breakdances (`DioramaRigOptions.bodyTilt` →
-  `CharacterPool.bodyTilt`) the eye rides it: the eye offset and the look are turned by the root's rotation relative to
-  its upright facing, from the root's lifted position, so the view spins, flips and hangs upside down with the dance
-  (last frame's body pose: the camera updates before the pool). A hidden body still poses while it dances.
+  `BasicDioramaRig` ignores it. While the followed body emotes, any emote (`DioramaRigOptions.emoteHead` →
+  `CharacterPool.emoteHead`; 2026-10-27, was the breakdance only), the eye rides the head joint: the eye's offset from
+  the upright head joint and the look are turned by the head's rotation relative to its upright bind rest, from the
+  posed joint, so the view nods with a dab, turns with a look left, spins and hangs upside down with the breakdance.
+  Both ease in and out by the emote weight (last frame's body pose: the camera updates before the pool). A hidden body
+  shows while it emotes (2026-10-27, player ask: see the hands move), its head joint shrunk to `FP_HEADLESS_SCALE` so
+  the eye inside it looks out; the scale is set after the mixer and restored when the emote ends (the mixer skips an
+  unchanged value, so it would not restore it).
 - `ActorPool.setHidden(id, hidden)` (contract addition): hides one actor's body (its feet, decal and nameplate anchor
   stay); `spawn` resets it. The client hides the player's own body in first person.
 - No see-through in first person (2026-10-25, player report: a dithered hole in the roofs straight ahead). The occluder

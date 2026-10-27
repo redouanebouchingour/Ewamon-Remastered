@@ -1574,7 +1574,7 @@ class World implements World3D {
    * A pick on the emote wheel (G): the emote goes to the room (the others see it on this player's avatar) and plays
    * on the player's own actor at once (the server does not echo a player's own emote). The breakdance brings its
    * fanfare, the high five its slap, "you, me, battle" the spotted sting; for the dances every villager within
-   * DANCE_ALONG_M hops along. First person stays on: the eye rides the breakdancing body (render `bodyTilt`).
+   * DANCE_ALONG_M hops along. First person stays on: the eye rides the emoting head (render `emoteHead`).
    */
   private emote(n: WheelEmote): void {
     // a battle does not hold it: the trainers stand in the ring with the crowd round them, and may cheer or taunt

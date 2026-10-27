@@ -152,14 +152,17 @@ export function springStep(x: number, v: number, target: number, dtS: number, ou
 
 /** Feet lookup (ActorPool.feetOf). */
 export type FeetResolver = (actorId: string, out: Vector3) => Vector3 | null;
-/** The body's root position and tilt while it breakdances (`CharacterPool.bodyTilt`); false when upright. */
-export type BodyTiltResolver = (actorId: string, outPos: Vector3, outQ: Quaternion) => boolean;
+/**
+ * The head while the body emotes (`CharacterPool.emoteHead`): the joint's world position, its upright offset above the
+ * feet and its rotation from upright; returns the emote weight (0 = upright, nothing written).
+ */
+export type EmoteHeadResolver = (actorId: string, outHead: Vector3, outPivot: Vector3, outQ: Quaternion) => number;
 
 export interface DioramaRigOptions {
   readonly effects: () => EffectsFlags;
   readonly feet?: FeetResolver;
-  /** First person rides the followed body's tilt (the breakdance); absent = always upright. */
-  readonly bodyTilt?: BodyTiltResolver;
+  /** First person rides the followed body's head through every emote; absent = always upright. */
+  readonly emoteHead?: EmoteHeadResolver;
   /** Called when a heading/zoom ease ends (§10.7.1's `csm.updateFrustums()`; the cached sun shadows need none). */
   readonly onSettled?: () => void;
   /** Slow-mo request from a `ko` cue (the host coerces it through `setTimeScale`, §10.8.4). */
@@ -179,8 +182,9 @@ const _pos = new Vector3();
 const _feet = new Vector3();
 const _spring = { x: 0, v: 0 };
 const _dolly = new Vector3();
-const _bodyPos = new Vector3();
-const _bodyQ = new Quaternion();
+const _headPos = new Vector3();
+const _headPivot = new Vector3();
+const _headQ = new Quaternion();
 const _band = new Vector3();
 const _rows = { feet: 0, top: 0, side: 0 };
 const _clear = new Vector3();
@@ -477,11 +481,12 @@ export class DioramaRig implements CameraRig {
       this.camera.position.set(this.focus.x + fx * FP_EYE_FORWARD_M, this.focus.y + FP_EYE_HEIGHT_M, this.focus.z + fz * FP_EYE_FORWARD_M);
       _pos.set(this.camera.position.x + fx * cp, this.camera.position.y + Math.sin(f.pitch), this.camera.position.z + fz * cp);
       this.camera.lookAt(_pos);
-      // a breakdancing body: the eye stays at the head and turns with it — spins, flips, upside down
-      if (this.o.bodyTilt?.(this.followed!, _bodyPos, _bodyQ) === true) {
-        _pos.set(fx * FP_EYE_FORWARD_M, FP_EYE_HEIGHT_M, fz * FP_EYE_FORWARD_M).applyQuaternion(_bodyQ);
-        this.camera.position.copy(_bodyPos).add(_pos);
-        this.camera.quaternion.premultiply(_bodyQ);
+      // an emoting body: the eye stays on the face and turns with the head (a dab's nod, a breakdance's flips)
+      const hw = this.o.emoteHead?.(this.followed!, _headPos, _headPivot, _headQ) ?? 0;
+      if (hw > 0) {
+        _pos.set(fx * FP_EYE_FORWARD_M, FP_EYE_HEIGHT_M, fz * FP_EYE_FORWARD_M).sub(_headPivot).applyQuaternion(_headQ);
+        this.camera.position.lerp(_pos.add(_headPos), hw);
+        this.camera.quaternion.premultiply(_headQ);
       }
       this.camera.updateMatrixWorld();
     }

@@ -2352,7 +2352,7 @@ the second isolated client (the component over the landing page: the foe and own
 
 - A Dance button in the key legend (`PlayShell` `WorldHint`) and G (`useShellHotkeys`, not a remappable binding) call
   `state/dance.ts`; World3D sends emote 7 and plays it on the player's own actor at once (the server does not echo a
-  player's own emote), with the trainer-victory fanfare. First person stays on while it plays and the eye rides the dancing body (render `bodyTilt`): the view spins, flips and goes upside down with it.
+  player's own emote), with the trainer-victory fanfare. First person stays on while it plays and the eye rides the dancing body's head (render `emoteHead`, every emote since 2026-10-27): the view spins, flips and goes upside down with it, and the own body shows headless while it emotes, so the hands are in view.
 - Any player's breakdance (own, or a remote's `emote` change to 7) makes every NPC / trainer actor within 30 m hop
   along (`SceneDirector.forEachStatic`, `actors.setHop`). Walking ends the dance (emotes yield to locomotion).
 
