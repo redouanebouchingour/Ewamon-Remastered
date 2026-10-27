@@ -287,8 +287,13 @@ class World implements World3D {
   private readonly dev = devBuild();
   /** creature atlas residency (built at boot with the sprite pool) */
   private textures: CreatureTextures | null = null;
-  /** the loaded zone's static set + the party's static atlases (§20.10.3 phase 3), held for the zone's life */
+  /** the loaded zone's static set (§20.10.3 phase 3), held for the zone's life */
   private zoneHold: AtlasHold | null = null;
+  /**
+   * the party's static atlases, held with the zone as a reserve hold: a flipbook on screen (the follower's, a static's)
+   * may park a benched creature's sheet when the budget is full, as in a battle
+   */
+  private partyHold: AtlasHold | null = null;
   /** the battle's team atlases and the side each stage slot shows */
   private readonly battleSprites = new BattleSprites(() => this.textures);
   /** the battle state the party strip shows while a battle is open (null = the session party) */
@@ -630,6 +635,7 @@ class World implements World3D {
     this.textures = null;
     this.battleSprites.end();
     this.zoneHold = null;
+    this.partyHold = null;
     try {
       textures?.dispose();
     } catch (e) {
@@ -1145,8 +1151,8 @@ class World implements World3D {
   }
 
   /**
-   * §20.10.3 phase 3: the zone's static set + the party's static atlases, held for the zone's life (the previous zone's
-   * hold idles as this one is taken: what both zones show never leaves the GPU), and the front flipbooks of the
+   * §20.10.3 phase 3: the zone's static set + the party's static atlases (a reserve hold, `partyHold`), held for the
+   * zone's life (the previous zone's holds idle as these are taken: what both zones show never leaves the GPU), and the front flipbooks of the
    * legendary statics standing for these flags, so they play from the first frame — returned as a short hold the
    * caller drops once the zone's statics lease them. Parallel, real byte progress from the manifest sizes.
    */
@@ -1159,7 +1165,9 @@ class World implements World3D {
       const f = wornForm(c);
       return f === null ? [c.speciesId] : [c.speciesId, `${c.speciesId}_${f.id}`];
     });
-    const statics = [...cat.zoneAtlases(zoneId), ...tex.staticAtlasesOf(party)];
+    const zoneSet = cat.zoneAtlases(zoneId);
+    const partySet = tex.staticAtlasesOf(party);
+    const statics = [...zoneSet, ...partySet];
     const near = (s: { readonly x: number; readonly z: number }): boolean => focus === null || Math.hypot(s.x - focus.x, s.z - focus.z) <= STATIC_FLIPBOOK_NEAR_M;
     const flipbooks = visibleStatics(zoneId, flags).filter(near).flatMap((s) => tex.sideAtlases(s.species, 'front'));
     const fresh = [...statics, ...flipbooks].filter((id) => !tex.isBound(id));
@@ -1171,10 +1179,12 @@ class World implements World3D {
       if (!this.firstFrame) setWorldBoot({ label: 'Loading creature sprites', loadedBytes: loaded, totalBytes: total > 0 ? total : null });
     };
     if (fresh.length > 0) setWorldBoot({ label: 'Loading creature sprites', loadedBytes: 0, totalBytes: total > 0 ? total : null });
-    const zone = tex.hold(statics, progress, this.zoneHold);
+    const zone = tex.hold(zoneSet, progress, this.zoneHold);
     this.zoneHold = zone;
+    const partyHold = tex.hold(partySet, progress, this.partyHold, { reserve: true });
+    this.partyHold = partyHold;
     const preload = tex.hold(flipbooks, progress);
-    await Promise.all([zone.ready, preload.ready]);
+    await Promise.all([zone.ready, partyHold.ready, preload.ready]);
     return preload;
   }
 
@@ -1221,6 +1231,8 @@ class World implements World3D {
     this.zone = null;
     this.zoneHold?.release();
     this.zoneHold = null;
+    this.partyHold?.release();
+    this.partyHold = null;
     this.remotes.clear();
     this.spawns?.clear();
     this.raidDen?.clear();
@@ -2328,7 +2340,7 @@ class World implements World3D {
       items: useSessionStore.getState().inventory?.items ?? {},
       authoritativeTurn: ui.battle?.authoritative.turn ?? null,
       textures: this.textureSummary(),
-      followers: this.followers === null ? null : { live: this.followers.size, self: this.followers.modeOf(selfId), selfSprite: this.followers.spriteOf(selfId) },
+      followers: this.followers === null ? null : { live: this.followers.size, self: this.followers.modeOf(selfId), selfSprite: this.followers.spriteOf(selfId), selfFlipbook: this.followers.flipbookOf(selfId) },
       field:
         this.field === null
           ? null
@@ -2412,6 +2424,8 @@ class World implements World3D {
       this.selfFollowerShown = shown;
       this.followers?.setShown(selfId, shown);
     }
+    // an animated lead plays its flipbook while it walks (none while the player battles or is indoors)
+    this.followers?.stepFlipbooks(shown, performance.now());
     // LLM feature 6: while the lead says a line, its bubble follows the follower's head
     if (useBuddyBubbleStore.getState().line !== null) {
       const at = shown && this.ready ? bubbleAnchor(this.followerPool?.billboardOf(selfId) ?? null, this.renderer.camera.camera, this.canvas.getBoundingClientRect(), this.bubbleVec) : null;
@@ -2560,6 +2574,8 @@ class World implements World3D {
       this.battleSprites.end();
       this.zoneHold?.release();
       this.zoneHold = null;
+      this.partyHold?.release();
+      this.partyHold = null;
       this.field?.dispose();
       this.followers?.clear();
       this.textures?.dispose();

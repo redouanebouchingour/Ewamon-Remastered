@@ -5,7 +5,8 @@
  *     keys say (gait 3), every message of the window carries the take-off, it lands and walks on; a replay glides; a
  *     correction off the glide line ends it and rests take-offs;
  *   - `FollowerViews`: the player's own follower holds its atlas (both sides); another trainer's shows at once when its
- *     atlas is bound, takes a front-only single otherwise, and none at all past the singles (the fallback);
+ *     atlas is bound, takes a front-only single otherwise, and none at all past the singles (the fallback); an animated
+ *     lead plays the flipbook of the side it faces once it settles (the first `FOLLOWER_FLIPBOOKS`, none while hidden or paused);
  *   - `FieldPowerSystem`: the spots are targets only for a lead with the power (and FIELD_POWERS on), unburnt brambles
  *     block prediction, E sends the power, the server's answer plays its effect; the sense trails; the chip's hints;
  *   - the chip and the party screen's field power line; the power key is bindable (F).
@@ -23,7 +24,7 @@ import { partyStrip } from '../src/scene/HudWriter';
 import { GLIDE_INTENT_STEPS, GLIDE_REST_STEPS, LocalPlayerController } from '../src/scene/LocalPlayerController';
 import type { InputPayload } from '../src/scene/LocalPlayerController';
 import type { StepCollider } from '../src/scene/collider';
-import { FollowerViews, followerSprite } from '../src/scene/FollowerViews';
+import { FOLLOWER_FLIPBOOKS, FOLLOWER_FLIP_SETTLE_MS, FollowerViews, followerSprite } from '../src/scene/FollowerViews';
 import { CreatureTextures } from '../src/scene/creatureTextures';
 import { createSpriteCatalog } from '../src/scene/spriteCatalog';
 import type { CreatureManifest } from '../src/scene/spriteCatalog';
@@ -162,7 +163,13 @@ describe('the glide in prediction', () => {
 
 const map = (u: string) => ({ url: `atlases/${u}.webp`, mips: [1, 2, 3].map((i) => `atlases/${u}.m${i}.webp`), bytes: 10 });
 const rect = (atlas: string, x: number) => ({ atlas, px: [x * 2048, 0, 1024, 1024] as const, uv: [x, 0.5, x + 0.5, 1] as const, footV: 0.08, aspect: 1 });
-const SPECIES = ['bramblecub', 'cindercap', 'glimfin', 'zaptus', 'mudbub', 'flampling', 'ravatar', 'ravatar_fire'];
+const SPECIES = ['bramblecub', 'cindercap', 'glimfin', 'zaptus', 'mudbub', 'flampling', 'ravatar', 'ravatar_fire', 'zenryu'];
+const cell = (x: number) => [x, 0, x + 0.25, 0.25] as const;
+const flip = (atlas: string) => ({ atlas, frames: [cell(0), cell(0.25), cell(0.5)], delays: [100, 100, 100], staticFrame: 0 });
+const animAtlas = (side: 'front' | 'back') => {
+  const id = `anim-zenryu-${side}`;
+  return { id, species: 'zenryu', side, width: 1024, height: 1024, cell: 512, albedo: map(`${id}.albedo`), normal: map(`${id}.normal`), emissive: map(`${id}.emissive`), normalScale: 0.5 as const };
+};
 function manifest(): CreatureManifest {
   const atlases = Array.from({ length: Math.ceil(SPECIES.length / 2) }, (_, i) => i).map((i) => {
     const id = `a-00${i}`;
@@ -173,7 +180,9 @@ function manifest(): CreatureManifest {
     const a = `a-00${Math.floor(i / 2)}`;
     sprites[sp] = { front: rect(a, (i % 2) * 0.5), back: rect(a, (i % 2) * 0.5), sizeScale: 1, home: a };
   });
-  return { version: 2, atlases, zones: { mire_route: ['a-000'] }, sprites, animAtlases: [] };
+  // zenryu animates on both sides
+  sprites['zenryu'] = { ...sprites['zenryu']!, anim: { front: flip('anim-zenryu-front'), back: flip('anim-zenryu-back') } };
+  return { version: 2, atlases, zones: { mire_route: ['a-000'] }, sprites, animAtlases: [animAtlas('front'), animAtlas('back')] };
 }
 const decoder: AtlasDecoder = { decode: async (_u, crop) => ({ width: crop ? crop[2] : 2048, height: crop ? crop[3] : 2048, close: () => {} }) };
 
@@ -249,6 +258,60 @@ describe('FollowerViews', () => {
     expect(h.pool.billboardOf('me')!.descriptor.types).toEqual(['Normal']);
     expect(h.views.spriteOf('me')).toBe('ravatar');
     h.views.clear();
+  });
+
+  it('an animated lead plays the flipbook of the side it faces: the first FOLLOWER_FLIPBOOKS only, none while hidden or paused', () => {
+    const h = followerHarness();
+    const [front, back] = ['anim-zenryu-front', 'anim-zenryu-back'];
+    let t = 0;
+    const step = (on = true, ms = 16) => h.views.stepFlipbooks(on, (t += ms));
+    h.views.setLead('me', 'zenryu', 0);
+    expect(h.views.flipbookOf('me')).toBeNull();
+    step();
+    expect(h.views.flipbookOf('me')).toBe('front');
+    expect(h.textures.refs(front)).toBe(1);
+    expect(h.textures.refs(back)).toBe(0);
+    // a glance back (a jitter against a wall): the front keeps playing, its back shows the static frame
+    const bb = h.pool.billboardOf('me')!;
+    bb.setFacing('back');
+    step(true, FOLLOWER_FLIP_SETTLE_MS / 2);
+    bb.setFacing('front');
+    step();
+    bb.setFacing('back');
+    step();                                          // the turn is seen: its clock starts
+    step(true, FOLLOWER_FLIP_SETTLE_MS - 100);
+    expect(h.views.flipbookOf('me')).toBe('front');
+    expect(h.textures.refs(back)).toBe(0);
+    // it keeps walking away from the camera: the back's flipbook, the front's idles (still bound, no upload to turn round)
+    step(true, 200);
+    expect(h.views.flipbookOf('me')).toBe('back');
+    expect(h.textures.refs(back)).toBe(1);
+    expect(h.textures.refs(front)).toBe(0);
+    expect(h.textures.isBound(front)).toBe(true);
+    // remotes: the player's own and the two nearest animate, the rest keep their static frame; a still species never leases one
+    for (const r of ['r1', 'r2', 'r3']) h.views.setLead(r, 'zenryu', 0);
+    h.views.setLead('r4', 'flampling', 0);
+    h.views.sync(['r1', 'r2', 'r3', 'r4']);
+    step();
+    expect(FOLLOWER_FLIPBOOKS).toBe(3);
+    expect(['r1', 'r2', 'r3', 'r4'].map((r) => h.views.flipbookOf(r))).toEqual(['front', 'front', null, null]);
+    expect(h.textures.refs(front)).toBe(2);
+    // a hidden follower (its trainer in a battle) lets its flipbook go at once; the next nearest moves up at the next sync
+    h.views.setShown('r1', false);
+    step();
+    expect(h.views.flipbookOf('r1')).toBeNull();
+    h.views.remove('r1');
+    h.views.sync(['r2', 'r3', 'r4']);
+    step();
+    expect(h.views.flipbookOf('r3')).toBe('front');
+    // the player battles (or walks into a hall): no follower plays one
+    step(false);
+    expect(['me', 'r2', 'r3'].map((r) => h.views.flipbookOf(r))).toEqual([null, null, null]);
+    expect(h.textures.refs(front) + h.textures.refs(back)).toBe(0);
+    step();
+    expect(h.views.flipbookOf('me')).toBe('back');
+    h.views.clear();
+    expect(h.textures.refs(front) + h.textures.refs(back)).toBe(0);
   });
 });
 

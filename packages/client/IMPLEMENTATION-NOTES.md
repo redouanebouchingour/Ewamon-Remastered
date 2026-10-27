@@ -2900,3 +2900,24 @@ the second isolated client (the component over the landing page: the foe and own
 - The raid den's boss is 1.8 × its true height.
 - `BACK_FULL_HEIGHT` (astaroth): the species' back stands its full height although its art is drawn wider than the
   front, at the user's call (2026-10-27); every other back keeps the front's scale when it is wider.
+
+## Animated followers (2026-10-27)
+
+- A lead with flipbooks (the 11 animated legendaries / mythicals) plays them while it follows, front and back
+  (`FollowerViews.stepFlipbooks`, per frame from `stepFollowers`). Until now a follower held only its static atlas
+  (`'still'`), so no creature's back ever moved outside a battle.
+- One side at a time: the follower leases the flipbook of the side its card faces (`show(…, side, 'flipbook')`). A turn
+  moves the lease only once the card has faced the new side for `FOLLOWER_FLIP_SETTLE_MS` = 1.2 s (live, a player
+  pushing against a wall flipped the card several times a second, and each flip swapped a 48 MiB flipbook); the new
+  side shows its static frame meanwhile. The new side's lease comes before the old one goes; the old side idles through
+  the grace period, so turning round again soon costs no upload when the budget has room for both. A card whose
+  flipbook is not bound yet shows its static frame and re-points once.
+- The zone's phase-3 hold is now two holds: the zone's static set (firm) and the party's static atlases (`partyHold`, a
+  reserve hold like a battle's teams). Live in an Act I zone the two held 12 sheets, 383 of the 400 MiB budget, so no
+  flipbook fit and the guard refused the follower's; now a shown flipbook parks a benched party member's sheet (never
+  one a billboard samples, the follower's own is a firm hold) and the sheet rebinds once bytes free up.
+- At most `FOLLOWER_FLIPBOOKS` = 3 followers animate (the player's own, then the nearest by the 2 Hz `sync` order); the
+  rest keep their static frame. A hidden follower lets its flipbook go, and so does every follower while the player's
+  own is hidden (battle, arena, evolution, a walk-up, a hall), so no follower flipbook competes with a battle's or parks
+  a battle's reserve atlases. The budget guard may still refuse one (static frame, retried as bytes free up).
+- Test: `test/followers.test.tsx` (the side it faces, the settle delay, the cap, hidden and paused).

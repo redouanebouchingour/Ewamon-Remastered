@@ -13,6 +13,14 @@
  * - beyond that (a crowd of trainers with leads from far zones), it does not walk with them: the graceful fallback is
  *   no follower rather than a whole atlas bound per passer-by (the texture budget belongs to the zone and the battles).
  * At most `FOLLOWER.max` followers (the player's own and the nearest remotes with a rig), re-chosen at 2 Hz.
+ *
+ * An animated lead (a legendary / mythical with flipbooks) plays them while it walks (2026-10-27): the first
+ * `FOLLOWER_FLIPBOOKS` followers (the player's own, then the nearest) lease the flipbook of the side their card faces
+ * (`stepFlipbooks`, per frame; render turns the card's back when it walks away from the camera) once the card has faced
+ * that side for `FOLLOWER_FLIP_SETTLE_MS`. The side it turned from idles through the grace period, so turning round
+ * again soon costs no upload; a hidden follower lets its flipbook go, and so does every follower while the player is in
+ * a battle or a hall. The world holds the party's static atlases as a reserve hold, so a follower's flipbook may park a
+ * benched creature's sheet when the budget is full; the guard may still refuse it (the card keeps its static frame).
  */
 import { FOLLOWER, MAX_SINGLES, VARIANT_KEYS } from '@ewa/render';
 import type { AtlasSet, FollowerPool, SpriteDescriptor, SpriteFrame } from '@ewa/render';
@@ -20,10 +28,16 @@ import { formsOf } from '@ewa/core';
 import { decodeLeadFlags } from '@ewa/protocol';
 import { species } from '../data/content';
 import type { SpriteCatalog } from './spriteCatalog';
-import type { CreatureTextures, SpriteLease } from './creatureTextures';
+import type { CreatureSide, CreatureTextures, SpriteLease } from './creatureTextures';
 
 /** Party singles followers may hold at once (render allows `MAX_SINGLES` in all). */
 export const FOLLOWER_SINGLES = 3;
+
+/** Followers that play their flipbook at once (the player's own first, then the nearest): one side is 50 to 75 MB of GPU memory. */
+export const FOLLOWER_FLIPBOOKS = 3;
+
+/** How long a follower's card faces its other side before that side's flipbook replaces the one it plays (ms). */
+export const FOLLOWER_FLIP_SETTLE_MS = 1200;
 
 export interface SingleBinder {
   bindSingle(set: AtlasSet, frame: SpriteFrame): Promise<void>;
@@ -48,6 +62,14 @@ interface Live {
   readonly sprite: string;
   readonly lease: SpriteLease;
   readonly single: { readonly atlas: string; readonly px: readonly number[] } | null;
+  /** the sprite has a flipbook (on either side) */
+  readonly animated: boolean;
+  /** its place in the last `sync` (0 = the player's own when it has a lead) */
+  rank: number;
+  /** the flipbook it plays now: the side its card faces */
+  flip: { readonly side: CreatureSide; readonly lease: SpriteLease } | null;
+  /** when its card turned from the side it plays (NaN: it faces that side) */
+  turnAt: number;
 }
 
 const VARIANTS: ReadonlySet<string> = new Set(VARIANT_KEYS);
@@ -73,6 +95,11 @@ export class FollowerViews {
   /** Live followers (tests, the dev handle). */
   get size(): number {
     return this.live.size;
+  }
+
+  /** The side whose flipbook a player's follower plays now, null when none (tests, the dev handle). */
+  flipbookOf(id: string): CreatureSide | null {
+    return this.live.get(id)?.flip?.side ?? null;
   }
 
   /** How a player's follower is drawn now: 'atlas', 'single', or null (none). */
@@ -136,7 +163,46 @@ export class FollowerViews {
       if (cur !== undefined) this.drop(id);
       this.make(id, w, id === self);
     }
+    for (let i = 0; i < want.length; i++) {
+      const l = this.live.get(want[i]!);
+      if (l !== undefined) l.rank = i;
+    }
   }
+
+  /**
+   * Per frame: each animated follower within `FOLLOWER_FLIPBOOKS` and shown leases the flipbook of the side its card
+   * faces, the new side before the old one goes. A turn moves the lease only once the card has faced the new side for
+   * `FOLLOWER_FLIP_SETTLE_MS` (a jitter against a wall or a glance back keeps the flipbook it plays; the new side's
+   * static frame shows meanwhile), so the budget, which may fit one side only, never thrashes between two uploads.
+   * `on` false (the player is in a battle, the arena, an evolution or a hall: their own follower is hidden) lets every
+   * follower flipbook go, so none competes with the battle's. Allocates only when a side changes.
+   */
+  stepFlipbooks(on: boolean, nowMs: number): void {
+    this.flipOn = on;
+    this.flipNow = nowMs;
+    this.live.forEach(this.stepFlip);
+  }
+
+  private flipOn = true;
+  private flipNow = 0;
+
+  private readonly stepFlip = (l: Live, id: string): void => {
+    const side = this.flipOn && l.animated && l.rank < FOLLOWER_FLIPBOOKS && !this.hidden.has(id) ? (this.d.pool()?.billboardOf(id)?.facing ?? null) : null;
+    const have = l.flip?.side ?? null;
+    if (side === have) {
+      l.turnAt = Number.NaN;
+      return;
+    }
+    if (side !== null && have !== null) {
+      if (Number.isNaN(l.turnAt)) l.turnAt = this.flipNow;
+      if (this.flipNow - l.turnAt < FOLLOWER_FLIP_SETTLE_MS) return;
+    }
+    l.turnAt = Number.NaN;
+    const tex = this.d.textures();
+    const old = l.flip;
+    l.flip = side === null || tex === null ? null : { side, lease: tex.show(l.sprite, side, 'flipbook') };
+    old?.lease.release();
+  };
 
   clear(): void {
     for (const id of [...this.live.keys()]) this.drop(id);
@@ -147,7 +213,10 @@ export class FollowerViews {
 
   /** The renderer went away (a lost device): the pool and its textures with it; leads are kept for the new one. */
   detach(): void {
-    for (const l of this.live.values()) l.lease.release();
+    for (const l of this.live.values()) {
+      l.lease.release();
+      l.flip?.lease.release();
+    }
     this.live.clear();
   }
 
@@ -166,7 +235,7 @@ export class FollowerViews {
     let lease: SpriteLease;
     let single: Live['single'] = null;
     if (self || tex.isBound(side.atlas)) {
-      // the static atlas both sides are drawn from, held while it walks (no flipbook: a follower stays still-framed)
+      // the static atlas both sides are drawn from, held while it walks (its flipbook: `stepFlipbooks`)
       const front = tex.show(sprite, 'front', 'still');
       const back = tex.show(sprite, 'back', 'still');
       lease = { release: () => { front.release(); back.release(); } };
@@ -184,7 +253,8 @@ export class FollowerViews {
       lease.release();
       return;
     }
-    this.live.set(id, { speciesId: w.speciesId, flags: w.flags, sprite, lease, single });
+    const animated = cat.animAtlasesOf(sprite).length > 0;
+    this.live.set(id, { speciesId: w.speciesId, flags: w.flags, sprite, lease, single, animated, rank: Number.POSITIVE_INFINITY, flip: null, turnAt: Number.NaN });
     if (this.hidden.has(id)) pool.setShown(id, false);
   }
 
@@ -194,5 +264,6 @@ export class FollowerViews {
     this.live.delete(id);
     this.d.pool()?.set(id, null);
     l.lease.release();
+    l.flip?.lease.release();
   }
 }
