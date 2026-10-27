@@ -1,0 +1,56 @@
+# Ewamon production stack (/opt/ewamon/compose.yml). Started by deploy.sh:
+#   docker compose -f /opt/ewamon/compose.yml --env-file /opt/ewamon/.env up -d
+# Every port is published on 127.0.0.1 only; Caddy on the host is the one public entry (80/443).
+
+name: ewamon
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ewa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ewa
+    volumes:
+      - pg:/var/lib/postgresql
+    ports:
+      - "127.0.0.1:5432:5432"  # for seed / grant scripts and pg_dump on the host
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ewa -d ewa"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  server:
+    image: ewamon/server:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ewa:${POSTGRES_PASSWORD}@postgres:5432/ewa
+      JWT_SECRET: ${JWT_SECRET:?}
+      CORS_ORIGINS: ${PUBLIC_ORIGINS:?}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:?}
+      TRUST_PROXY: 172.16.0.0/12  # Caddy on the host reaches the container through the docker bridge
+      NPC_TOOLS: ${NPC_TOOLS:-off}
+      LOG_LEVEL: info
+    volumes:
+      - data:/data
+    ports:
+      - "127.0.0.1:4000:4000"
+      - "127.0.0.1:2567:2567"
+    restart: unless-stopped
+
+  llm:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    command: ["-m", "/models/model.gguf", "--alias", "gemma4-e2b", "--jinja", "--reasoning-budget", "0", "-c", "8192", "--threads", "${LLM_THREADS:-2}"]
+    volumes:
+      - /opt/ewamon/models/gemma4-e2b:/models:ro
+    ports:
+      - "127.0.0.1:8081:8080"
+    restart: unless-stopped
+
+volumes:
+  pg:
+  data:

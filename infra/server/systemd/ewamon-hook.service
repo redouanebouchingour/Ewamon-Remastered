@@ -1,0 +1,18 @@
+[Unit]
+Description=Ewamon deploy webhook (127.0.0.1:9000, behind Caddy /_deploy)
+After=network.target
+
+[Service]
+User=ewahook
+Group=ewahook
+EnvironmentFile=/opt/ewamon/hook.env
+ExecStart=/usr/bin/python3 -I /opt/ewamon/hook.py
+Restart=always
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/ewamon/state
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

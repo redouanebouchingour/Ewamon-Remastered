@@ -1,0 +1,7 @@
+[Unit]
+Description=Ewamon nightly database dump
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/ewamon/backup.sh

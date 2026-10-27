@@ -1,0 +1,9 @@
+[Unit]
+Description=Ewamon deploy (pull origin/main, build, restart)
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/ewamon/deploy.sh
+TimeoutStartSec=1h

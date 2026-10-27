@@ -1,0 +1,47 @@
+# /etc/caddy/Caddyfile — the one public entry. Caddy fetches and renews the TLS certificates itself.
+
+(ewamon) {
+	encode zstd gzip
+
+	handle_path /api/* {
+		reverse_proxy 127.0.0.1:4000
+	}
+	handle_path /colyseus/* {
+		reverse_proxy 127.0.0.1:2567
+	}
+	handle_path /npc/llm/* {
+		reverse_proxy 127.0.0.1:8081 {
+			flush_interval -1
+		}
+	}
+	handle /_deploy/* {
+		reverse_proxy 127.0.0.1:9000
+	}
+	handle {
+		root * /srv/ewamon/www
+		@hashed path /assets/*
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+		@html path / /index.html
+		header @html Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+uniforcemusic.com {
+	import ewamon
+}
+
+www.uniforcemusic.com {
+	redir https://uniforcemusic.com{uri} permanent
+}
+
+# Once ewamon.com (and www) point at 85.215.92.169: uncomment, add https://ewamon.com to PUBLIC_ORIGINS in
+# /opt/ewamon/.env, then `systemctl reload caddy && ewamon-deploy`.
+#ewamon.com {
+#	import ewamon
+#}
+#
+#www.ewamon.com {
+#	redir https://ewamon.com{uri} permanent
+#}

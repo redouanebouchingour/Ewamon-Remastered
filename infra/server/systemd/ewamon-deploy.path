@@ -1,0 +1,9 @@
+[Unit]
+Description=Start an Ewamon deploy when the webhook requests one
+
+[Path]
+PathExists=/opt/ewamon/state/pending
+Unit=ewamon-deploy.service
+
+[Install]
+WantedBy=multi-user.target
