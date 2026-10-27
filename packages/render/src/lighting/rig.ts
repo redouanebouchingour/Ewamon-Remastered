@@ -1,11 +1,10 @@
 /**
  * SPEC §10.3.1 (sun + 4 cascades) and §10.3.2 (light budget and descriptor).
  *
- * - One `DirectionalLight` (sun by day, moon by night — same object, §10.3.4) with a `CSMShadowNode`, attached through
- *   `light.shadow.shadowNode`. 2026-10-25 (performance, a deviation from §10.3.1's 4 cascades at 14 / 34 / 72 / 160 m,
- *   render IMPLEMENTATION-NOTES "Cheaper shadows and reflections"): 2 cascades split at 44 / 160 m. The diorama camera
- *   (pitch −52°, 20 / 26 / 34 m) sees view depths of ~17–42 m, so one cascade covers every zoom stop and the second
- *   only the far view; the old near cascade (0–14 m, rendered every frame) held almost nothing on screen.
+ * - One `DirectionalLight` (sun by day, moon by night — same object, §10.3.4) with a `SunShadowNode` (`sunShadow.ts`),
+ *   attached through `light.shadow.shadowNode`. 2026-10-27 (performance, a deviation from §10.3.1's cascades, render
+ *   IMPLEMENTATION-NOTES "Cached sun shadows"): a static map re-rendered about once a second and an actor map for the
+ *   moving casters, instead of the 2-cascade CSM re-rendered on a stagger (2026-10-25, "Cheaper shadows and reflections").
  * - A `HemisphereLight` fill at 0.18 (§10.3.3).
  * - Punctual lights are created from `LightSource` descriptors (`createPunctuals`), parented by the
  *   caller (the zone root, so the zone's disposal owns them) and registered here so the day cycle
@@ -17,27 +16,18 @@
  *   renders a shadow map. The 2 shadow-casting spot slots a zone borrowed are gone; a `castShadow` source is a looped
  *   local light like the rest (it still counts against the content budget's 8). Each shadowed spot light was ~88
  *   lines of every lit fragment shader whether lit or not, and shader compiles were most of the load time.
- *
- * `CSMShadowNode.updateFrustums()` dereferences its `camera`, which the node only receives on its
- * first build (`setup` → `_init(builder)`); calling it before the first render throws, so
- * `updateFrustums()` here is a guarded no-op until then (implementation note).
  */
-import { DirectionalLight, HemisphereLight, Object3D, PointLight, Quaternion, SpotLight, Vector3 as V3 } from 'three/webgpu';
-import type { PerspectiveCamera, Scene, Vector3 } from 'three/webgpu';
-import { CSMShadowNode } from 'three/addons/csm/CSMShadowNode.js';
+import { DirectionalLight, HemisphereLight, Object3D, PointLight, SpotLight } from 'three/webgpu';
+import type { Scene, Vector3 } from 'three/webgpu';
+import { SunShadowNode } from './sunShadow.js';
 import { LightLayout } from './layout.js';
 import { LIGHT_BUDGET, type LightKind, type LightSource } from '../descriptors.js';
 import { isDevBuild } from '../env.js';
 
 // ---- §10.3.1 constants ---------------------------------------------------------------------------------
 
-/** `mapSize`: the near cascade's edge at `high` (`quality.ts` sets both cascades; the far one is half). */
-export const SUN_SHADOW = Object.freeze({ mapSize: 1536, bias: -0.0004, normalBias: 0.02, radius: 2 });
-/** Camera-space cascade far edges in metres (0–44: every diorama zoom stop, 44–160: the far view). */
-export const CASCADE_SPLITS_M: readonly number[] = Object.freeze([44, 160]);
-export const CSM_OPTIONS = Object.freeze({ cascades: 2, maxFar: 160, mode: 'custom' as const, lightMargin: 60 });
-/** The far cascade's map edge relative to the near one's. */
-export const FAR_CASCADE_SCALE = 0.5;
+/** `mapSize`: the static map's edge at `high` (`quality.ts` sets it and the actor map's per preset). */
+export const SUN_SHADOW = Object.freeze({ mapSize: 4096, bias: -0.0004, normalBias: 0.02, radius: 2 });
 /** §10.3.3 as amended 2026-10-06: the noon fill level (the day table's `hemi` column drives it per frame). */
 export const HEMI_INTENSITY = 0.08;
 
@@ -49,34 +39,6 @@ export const HEMI_INTENSITY = 0.08;
  * π. `LightSource.intensity` is already "candela-scaled three intensity" and is written unchanged.
  */
 export const SPEC_LIGHT_UNIT = Math.PI;
-
-/**
- * Cascade staggering (performance addition 2026-10-25, render IMPLEMENTATION-NOTES "Shadow update staggering" and
- * "Cheaper shadows and reflections"): the sun cascades a frame re-renders, by frame index mod 4. The 0–44 m cascade
- * (everything the diorama camera sees) every 2nd frame, the 44–160 m one every 4th, the 4th frame none: 0.75 map renders
- * per frame, never more than 1. Each map render is a full scene traversal (measured ~3.5 ms of main-thread time per
- * cascade on an i7-10750H). A skipped cascade keeps its map and its matrix together (three re-derives `shadow.matrix`
- * only when it renders the map), so it lags a frame or three without swimming. The visible cascade keeps the cadence
- * the old 14–34 m cascade (where the player stood at every zoom stop) already had.
- */
-export const CASCADE_SCHEDULE: readonly (readonly number[])[] = Object.freeze([[0], [1], [0], []]);
-/**
- * The `low` preset's schedule (`QualityProfile.slowShadows`): the near cascade every 3rd frame, the far one every 6th,
- * 0.5 map renders per frame. Jumps, turns and resizes still render every cascade at once.
- */
-export const CASCADE_SCHEDULE_SLOW: readonly (readonly number[])[] = Object.freeze([[0], [], [1], [0], [], []]);
-/** Every cascade renders when the camera moved more than this in one frame (a warp, a cut). */
-export const CASCADE_JUMP_M = 2;
-/** … or turned, or the sun did: `1 − |q·q'|` / `1 − d·d'` above this (≈ 0.16° of rotation). */
-export const CASCADE_TURN_EPS = 1e-6;
-
-/** §10.3.1 `customSplitsCallback`: pushes the normalised breaks 14/far, 34/far, 72/far, 1. */
-export function cascadeBreaks(far: number, breaks: number[]): number[] {
-  breaks.length = 0;
-  for (let i = 0; i < CASCADE_SPLITS_M.length - 1; i++) breaks.push(CASCADE_SPLITS_M[i]! / far);
-  breaks.push(1);
-  return breaks;
-}
 
 // ---- §10.3.2 local lights ------------------------------------------------------------------------------
 
@@ -141,45 +103,27 @@ export interface PunctualHandle {
   readonly target: Object3D | null;
 }
 
-const _p = new V3();
-const _q = new Quaternion();
-const _d = new V3();
-
 export class LightRig {
   readonly sun: DirectionalLight;
-  readonly csm: CSMShadowNode;
+  readonly sunShadow: SunShadowNode;
   readonly hemi: HemisphereLight;
   private readonly handles: PunctualHandle[] = [];
   private punctualMul = 1;
   private punctualOn = true;
   private disposed = false;
-  // cascade staggering: the frame index, and the camera / sun pose of the previous frame (NaN = refresh everything)
-  private cascadeFrame = 0;
-  private readonly lastCamPos = new V3(NaN, NaN, NaN);
-  private readonly lastCamQuat = new Quaternion();
-  private readonly lastSunDir = new V3();
-  private readonly lastProjection = [NaN, NaN, NaN, NaN, NaN];   // fov, aspect, zoom, near, far
-  // per-cascade map edges (`setSunShadowMap`), applied to the cascade lights once the CSM has created them
-  private schedule: readonly (readonly number[])[] = CASCADE_SCHEDULE;
-  private readonly mapSizes: number[] = [SUN_SHADOW.mapSize, Math.round(SUN_SHADOW.mapSize * FAR_CASCADE_SCALE)];
-  private mapsPending = true;
 
   constructor(private readonly scene: Scene) {
     const sun = new DirectionalLight(0xffffff, 1.0);   // colour/intensity driven per frame by §10.3.5
     sun.name = 'ewa:sun';
     sun.castShadow = true;
-    sun.shadow.mapSize.set(SUN_SHADOW.mapSize, SUN_SHADOW.mapSize);   // cloned per cascade by CSMShadowNode; the far one is re-sized (`applyMapSizes`)
-    sun.shadow.bias = SUN_SHADOW.bias;                                // cascade i gets bias × (i + 1)
+    sun.shadow.mapSize.set(SUN_SHADOW.mapSize, SUN_SHADOW.mapSize);   // copied into the static map (`setShadowMaps` re-sizes both)
+    sun.shadow.bias = SUN_SHADOW.bias;
     sun.shadow.normalBias = SUN_SHADOW.normalBias;
     sun.shadow.radius = SUN_SHADOW.radius;
-    const csm = new CSMShadowNode(sun, {
-      ...CSM_OPTIONS,
-      customSplitsCallback: (_cascades: number, _near: number, far: number, breaks: number[]) => { cascadeBreaks(far, breaks); },
-    });
-    csm.fade = true;
-    sun.shadow.shadowNode = csm;
+    const node = new SunShadowNode(sun);
+    sun.shadow.shadowNode = node as unknown as typeof sun.shadow.shadowNode;
     this.sun = sun;
-    this.csm = csm;
+    this.sunShadow = node;
     scene.add(sun, sun.target);
 
     this.hemi = new HemisphereLight(0x9fb8d8, 0x4a5236, HEMI_INTENSITY * SPEC_LIGHT_UNIT);
@@ -187,7 +131,7 @@ export class LightRig {
     scene.add(this.hemi);
   }
 
-  /** §10.3.1: the sun follows the camera focus so the cascades follow the player. */
+  /** §10.3.1: the sun follows the camera focus so the shadow maps follow the player. */
   setFocus(focus: Vector3): void {
     this.sun.target.position.copy(focus);
   }
@@ -207,81 +151,19 @@ export class LightRig {
     this.hemi.intensity = intensity * SPEC_LIGHT_UNIT;
   }
 
-  /**
-   * Quality presets (`quality.ts`): the near cascade's sun shadow map edge; the far cascade gets `FAR_CASCADE_SCALE` of
-   * it. The cascades clone the sun's shadow on their first render (so the sizes land on them in the next
-   * `scheduleShadows`) and `ShadowNode.renderShadow` re-sizes its map from `mapSize` every update: this applies live.
-   */
-  setSunShadowMap(size: number): void {
-    this.sun.shadow.mapSize.set(size, size);
-    for (let i = 0; i < this.mapSizes.length; i++) this.mapSizes[i] = i === 0 ? size : Math.max(1, Math.round(size * FAR_CASCADE_SCALE));
-    this.mapsPending = true;
-    this.applyMapSizes();
+  /** Quality presets (`quality.ts`): the static and actor shadow map edges. The static map re-renders. */
+  setShadowMaps(staticSize: number, actorSize: number): void {
+    this.sunShadow.setMapSizes(staticSize, actorSize);
   }
 
-  /** Quality presets: the slow cascade schedule (`CASCADE_SCHEDULE_SLOW`) or the normal one. */
-  setSlowShadows(slow: boolean): void {
-    this.schedule = slow ? CASCADE_SCHEDULE_SLOW : CASCADE_SCHEDULE;
-    this.refreshCascades();
+  /** The static shadow map re-renders on the next frame (static casters added or removed). */
+  refreshShadows(): void {
+    this.sunShadow.refresh();
   }
 
-  /** The cascade lights' map edges (`setSunShadowMap`; the far ones also once the CSM created them). */
-  cascadeMapSizes(): readonly number[] {
-    return this.cascadeLights().map((l) => l.shadow.mapSize.x);
-  }
-
-  private applyMapSizes(): void {
-    const lights = this.cascadeLights();
-    if (!this.mapsPending || lights.length === 0) return;
-    for (let i = 0; i < lights.length; i++) {
-      const s = this.mapSizes[Math.min(i, this.mapSizes.length - 1)]!;
-      lights[i]!.shadow.mapSize.set(s, s);
-    }
-    this.mapsPending = false;
-    this.refreshCascades();   // a resized map is empty until it renders
-  }
-
-  /** CSM re-split after a camera projection/basis change (resize, zoom stop, heading). No-op before the first render. */
-  updateFrustums(): void {
-    if ((this.csm as unknown as { camera: unknown }).camera == null) return;
-    this.csm.updateFrustums();
-    this.refreshCascades();
-  }
-
-  /** The CSM's per-cascade lights (created on its first build; empty before). */
-  private cascadeLights(): readonly DirectionalLight[] {
-    return (this.csm as unknown as { lights: readonly DirectionalLight[] }).lights;
-  }
-
-  /** The next `scheduleShadows` renders every cascade. */
-  refreshCascades(): void {
-    this.lastCamPos.set(NaN, NaN, NaN);
-  }
-
-  /**
-   * Per frame, before the render (`CASCADE_SCHEDULE`): sets which sun cascades re-render their map this frame. All of
-   * them when the camera jumped, turned or changed its projection, when the sun turned, or after `refreshCascades`.
-   * Zero allocation.
-   */
-  scheduleShadows(camera: PerspectiveCamera): void {
-    const lights = this.cascadeLights();
-    if (lights.length === 0) return;
-    this.applyMapSizes();
-    camera.getWorldPosition(_p);
-    camera.getWorldQuaternion(_q);
-    _d.subVectors(this.sun.position, this.sun.target.position).normalize();
-    const pr = this.lastProjection;
-    const all = !(_p.distanceTo(this.lastCamPos) <= CASCADE_JUMP_M)   // NaN (a refresh) fails the test too
-      || 1 - Math.abs(_q.dot(this.lastCamQuat)) > CASCADE_TURN_EPS
-      || 1 - _d.dot(this.lastSunDir) > CASCADE_TURN_EPS
-      || camera.fov !== pr[0] || camera.aspect !== pr[1] || camera.zoom !== pr[2] || camera.near !== pr[3] || camera.far !== pr[4];
-    this.lastCamPos.copy(_p);
-    this.lastCamQuat.copy(_q);
-    this.lastSunDir.copy(_d);
-    pr[0] = camera.fov; pr[1] = camera.aspect; pr[2] = camera.zoom; pr[3] = camera.near; pr[4] = camera.far;
-    const due = this.schedule[this.cascadeFrame % this.schedule.length]!;
-    this.cascadeFrame++;
-    for (let i = 0; i < lights.length; i++) lights[i]!.shadow.autoUpdate = all || due.includes(i);
+  /** Per frame, after the day cycle moved the sun and before the render: places the shadow maps (`SunShadowNode.track`). */
+  scheduleShadows(): void {
+    this.sunShadow.track();
   }
 
   // ---- punctual lights ------------------------------------------------------------------------------
@@ -371,7 +253,7 @@ export class LightRig {
     this.disposed = true;
     this.releasePunctuals([...this.handles]);
     this.scene.remove(this.sun, this.sun.target, this.hemi);
-    this.csm.dispose();
+    this.sunShadow.dispose();
     this.sun.dispose();
     this.hemi.dispose();
   }

@@ -160,7 +160,7 @@ export interface DioramaRigOptions {
   readonly feet?: FeetResolver;
   /** First person rides the followed body's tilt (the breakdance); absent = always upright. */
   readonly bodyTilt?: BodyTiltResolver;
-  /** Called when a heading/zoom ease ends (§10.7.1: `csm.updateFrustums()` at the end). */
+  /** Called when a heading/zoom ease ends (§10.7.1's `csm.updateFrustums()`; the cached sun shadows need none). */
   readonly onSettled?: () => void;
   /** Slow-mo request from a `ko` cue (the host coerces it through `setTimeScale`, §10.8.4). */
   readonly onSlowmo?: (scale: number, ms: number) => void;

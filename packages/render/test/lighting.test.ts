@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DirectionalLight, Group, PerspectiveCamera, PointLight, Scene, SpotLight } from 'three/webgpu';
+import { Group, PointLight, Scene, SpotLight, Vector3 } from 'three/webgpu';
 import type { LightSource } from '../src/descriptors.js';
-import { LIGHT_BUDGET } from '../src/descriptors.js';
+import { LAYERS, LIGHT_BUDGET } from '../src/descriptors.js';
 import {
-  CASCADE_JUMP_M, CASCADE_SCHEDULE, CASCADE_SPLITS_M, CSM_OPTIONS, FAR_CASCADE_SCALE, LIGHT_LAYOUT, LightRig, SPEC_LIGHT_UNIT, SPOT_PARAMS, SUN_SHADOW, assertLightBudget,
-  cascadeBreaks, flickerFactor, lightTypeFor,
+  LIGHT_LAYOUT, LightRig, SPEC_LIGHT_UNIT, SPOT_PARAMS, SUN_SHADOW, assertLightBudget, flickerFactor, lightTypeFor,
 } from '../src/lighting/rig.js';
+import { SUN_SHADOW_CACHE, SunShadowNode, staticShadowDue, sunStepRad } from '../src/lighting/sunShadow.js';
 import { heightFogFactor } from '../src/lighting/fog.js';
 import { weatherParams } from '../src/lighting/weather.js';
 import { priorSkyLuminance, skyNormalization, SKY_MAX_GAIN, SKY_REFERENCE_RADIANCE } from '../src/lighting/sky.js';
@@ -58,30 +58,26 @@ describe('§10.3.2 light budget', () => {
   });
 });
 
-describe('§10.3.1 sun cascades (2 since 2026-10-25, IMPLEMENTATION-NOTES "Cheaper shadows and reflections")', () => {
-  it('splits at 44 / 160 m over a 160 m far', () => {
-    expect(CASCADE_SPLITS_M).toEqual([44, 160]);
-    expect(CSM_OPTIONS).toMatchObject({ cascades: 2, maxFar: 160, mode: 'custom', lightMargin: 60 });
-    expect(cascadeBreaks(160, [])).toEqual([44 / 160, 1]);
-    const b = [9, 9, 9, 9, 9];
-    expect(cascadeBreaks(160, b)).toBe(b);
-    expect(b.length).toBe(2);
-    expect(SUN_SHADOW).toEqual({ mapSize: 1536, bias: -0.0004, normalBias: 0.02, radius: 2 });
-    expect(FAR_CASCADE_SCALE).toBe(0.5);
+describe('§10.3.1 cached sun shadows (IMPLEMENTATION-NOTES "Cached sun shadows", 2026-10-27)', () => {
+  it('a static map and an actor map on the one directional light; the actor map sees only the dynamic layer', () => {
+    const rig = new LightRig(new Scene());
+    expect(SUN_SHADOW).toEqual({ mapSize: 4096, bias: -0.0004, normalBias: 0.02, radius: 2 });
     expect(SPOT_PARAMS).toEqual({ angle: 0.87, penumbra: 0.5 });
-  });
-
-  it('builds a 2-cascade CSM on one directional light; the near cascade covers every diorama zoom stop', () => {
-    const scene = new Scene();
-    const rig = new LightRig(scene);
-    expect(rig.csm.cascades).toBe(2);
-    expect(rig.sun.shadow.mapSize.x).toBe(1536);
-    expect((rig.sun.shadow as unknown as { shadowNode: unknown }).shadowNode).toBe(rig.csm);
-    // the farthest ground the diorama camera sees: zoom stop 2 (34 m), pitch −52°, the top screen edge 14° above the axis
-    const h = 34 * Math.sin(52 * Math.PI / 180);
-    const top = (h / Math.sin(38 * Math.PI / 180)) * Math.cos(14 * Math.PI / 180);
-    expect(top).toBeLessThan(CASCADE_SPLITS_M[0]!);
-    rig.updateFrustums();                         // guarded before the first render (no camera yet)
+    expect(rig.sunShadow).toBeInstanceOf(SunShadowNode);
+    expect((rig.sun.shadow as unknown as { shadowNode: unknown }).shadowNode).toBe(rig.sunShadow);
+    const st = rig.sunShadow.staticLight.shadow; const ac = rig.sunShadow.actorLight.shadow;
+    expect(st.camera.right - st.camera.left).toBe(2 * SUN_SHADOW_CACHE.staticHalfM);
+    expect(ac.camera.right - ac.camera.left).toBe(2 * SUN_SHADOW_CACHE.actorHalfM);
+    expect(st.bias).toBe(SUN_SHADOW.bias);
+    expect(st.autoUpdate).toBe(false);
+    expect(ac.autoUpdate).toBe(true);
+    expect(ac.camera.layers.mask).toBe(1 << LAYERS.dynamicShadow);
+    rig.setShadowMaps(2048, 1024);
+    expect(rig.sunShadow.mapSizes()).toEqual([2048, 1024]);
+    // the fades end inside each map, and the static map covers what the diorama sees after walking up to a re-centre
+    expect(SUN_SHADOW_CACHE.staticFadeToM).toBeLessThan(SUN_SHADOW_CACHE.staticHalfM);
+    expect(SUN_SHADOW_CACHE.actorFadeToM).toBeLessThan(SUN_SHADOW_CACHE.actorHalfM);
+    expect(SUN_SHADOW_CACHE.recenterM + 30).toBeLessThanOrEqual(SUN_SHADOW_CACHE.staticFadeFromM);
     rig.dispose();
     rig.dispose();                                // idempotent
   });
@@ -96,46 +92,62 @@ describe('§10.3.1 sun cascades (2 since 2026-10-25, IMPLEMENTATION-NOTES "Cheap
     rig.dispose();
   });
 
-  it('staggers the cascades: at most 1 map a frame while the camera only walks; both on a turn, a jump or a refresh', () => {
-    const rig = new LightRig(new Scene());
-    const cascades = Array.from({ length: 2 }, () => new DirectionalLight());
-    (rig.csm as unknown as { lights: DirectionalLight[] }).lights.push(...cascades);   // the CSM creates them on its first build
-    const camera = new PerspectiveCamera(30, 16 / 9, 0.5, 400);
-    camera.position.set(0, 20, 20);
-    camera.lookAt(0, 0, 0);
-    const live = (): number[] => cascades.flatMap((l, i) => (l.shadow.autoUpdate ? [i] : []));
-    rig.scheduleShadows(camera);
-    expect(live()).toEqual([0, 1]);                                // the first frame renders everything
-    expect(rig.cascadeMapSizes()).toEqual([1536, 768]);            // the far cascade at half the near one's edge
-    const seen: number[][] = [];
-    for (let f = 1; f <= 8; f++) {
-      camera.position.x += 0.08;                                    // walking: ~5 m/s at 60 fps
-      rig.scheduleShadows(camera);
-      seen.push(live());
+  it('the sun step shrinks toward the horizon, where shadows are long', () => {
+    expect(sunStepRad(1)).toBe(0.0035);
+    expect(sunStepRad(Math.sin(30 * Math.PI / 180))).toBeCloseTo(0.0025, 10);
+    expect(sunStepRad(0)).toBe(0.0002);
+    for (const el of [5, 10, 20, 40, 60]) {
+      const s = Math.sin(el * Math.PI / 180);
+      const tipJumpM = (10 / (s * s)) * sunStepRad(s);              // a 10 m caster's shadow tip, per step
+      if (sunStepRad(s) > 0.0002) expect(tipJumpM).toBeLessThanOrEqual(0.1 + 1e-9);
     }
-    for (const s of seen) expect(s.length).toBeLessThanOrEqual(1);
-    expect(seen.flat().filter((i) => i === 0).length).toBe(4);     // 0–44 m every 2nd frame
-    expect(seen.flat().filter((i) => i === 1).length).toBe(2);     // 44–160 m every 4th
-    expect(CASCADE_SCHEDULE).toHaveLength(4);
+  });
 
-    camera.rotateY(0.01);                                           // a heading change
-    rig.scheduleShadows(camera);
-    expect(live()).toEqual([0, 1]);
-    camera.position.x += CASCADE_JUMP_M + 1;                       // a warp
-    rig.scheduleShadows(camera);
-    expect(live()).toEqual([0, 1]);
-    camera.fov = 40;                                                // a projection change
-    rig.scheduleShadows(camera);
-    expect(live()).toEqual([0, 1]);
-    rig.applyDirectional([0.3, 0.9, 0.3], [1, 1, 1], 1);           // the sun turned (a dawn / dusk swap)
-    rig.scheduleShadows(camera);
-    expect(live()).toEqual([0, 1]);
-    rig.scheduleShadows(camera);
-    expect(live().length).toBeLessThanOrEqual(1);
-    rig.setSunShadowMap(1024);                                      // a resized map is empty
-    expect(rig.cascadeMapSizes()).toEqual([1024, 512]);
-    rig.scheduleShadows(camera);
-    expect(live()).toEqual([0, 1]);
+  it('re-renders the static map when stale, old, re-centred or the sun turned; the actor map follows every frame', () => {
+    const dir = new Vector3(0.3, 0.8, 0.2).normalize();
+    const center = new Vector3(10, 0, 10);
+    const base = { dir, center, age: 0, stale: false };
+    expect(staticShadowDue(base, dir, center)).toBe(false);
+    expect(staticShadowDue({ ...base, stale: true }, dir, center)).toBe(true);
+    expect(staticShadowDue({ ...base, age: SUN_SHADOW_CACHE.maxAgeFrames }, dir, center)).toBe(true);
+    expect(staticShadowDue(base, dir, new Vector3(10 + SUN_SHADOW_CACHE.recenterM - 0.1, 5, 10))).toBe(false);
+    expect(staticShadowDue(base, dir, new Vector3(10 + SUN_SHADOW_CACHE.recenterM + 0.1, 0, 10))).toBe(true);
+    const turned = dir.clone().applyAxisAngle(new Vector3(0, 1, 0).cross(dir).normalize(), sunStepRad(dir.y) * 1.5);
+    expect(staticShadowDue(base, dir.clone().applyAxisAngle(new Vector3(0, 1, 0).cross(dir).normalize(), sunStepRad(dir.y) * 0.5), center)).toBe(false);
+    expect(staticShadowDue(base, turned, center)).toBe(true);
+
+    const rig = new LightRig(new Scene());
+    const n = rig.sunShadow;
+    const focus = new Vector3(0, 2, 0);
+    rig.setFocus(focus);
+    rig.applyDirectional([dir.x, dir.y, dir.z], [1, 1, 1], 1);
+    rig.scheduleShadows();
+    expect(n.staticRenders).toBe(1);                                // the first frame renders it
+    expect(n.staticLight.shadow.needsUpdate).toBe(true);
+    n.staticLight.shadow.needsUpdate = false;                       // (three clears it once rendered)
+    for (let f = 0; f < 30; f++) {
+      focus.x += 0.08;                                              // walking: ~5 m/s at 60 fps
+      rig.setFocus(focus);
+      rig.applyDirectional([dir.x, dir.y, dir.z], [1, 1, 1], 1);
+      rig.scheduleShadows();
+    }
+    expect(n.staticRenders).toBe(1);
+    // the actor map sits on the focus (within a texel), toward the sun
+    const ac = n.actorLight;
+    const toLight = ac.position.clone().sub(ac.target.position);
+    expect(toLight.length()).toBeCloseTo(SUN_SHADOW_CACHE.depthM, 6);
+    expect(toLight.normalize().dot(dir)).toBeCloseTo(1, 9);
+    const texel = (2 * SUN_SHADOW_CACHE.actorHalfM) / ac.shadow.mapSize.x;
+    const off = ac.target.position.clone().sub(focus);
+    expect(off.sub(dir.clone().multiplyScalar(off.dot(dir))).length()).toBeLessThan(texel * Math.SQRT2 + 1e-9);
+    for (let f = 0; f < SUN_SHADOW_CACHE.maxAgeFrames; f++) rig.scheduleShadows();
+    expect(n.staticRenders).toBe(2);                                // the age limit
+    rig.refreshShadows();
+    rig.scheduleShadows();
+    expect(n.staticRenders).toBe(3);
+    rig.applyDirectional([-dir.x, dir.y, -dir.z], [1, 1, 1], 1);    // a sun / moon swap
+    rig.scheduleShadows();
+    expect(n.staticRenders).toBe(4);
     rig.dispose();
   });
 });

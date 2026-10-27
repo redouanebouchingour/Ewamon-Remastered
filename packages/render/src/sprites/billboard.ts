@@ -510,6 +510,7 @@ export class BillboardPool implements SpritePool {
     quad.castShadow = true;
     quad.receiveShadow = true;
     quad.layers.set(LAYERS.billboards);
+    quad.layers.enable(LAYERS.dynamicShadow);   // the sun's actor shadow map (lighting/sunShadow.ts)
     quad.name = 'ewa:billboard';
     const dud: DecalUserData = { shade: 1, ewaDecal: true };
     const decal = new Mesh(this.decalGeometry, this.decalMaterial);

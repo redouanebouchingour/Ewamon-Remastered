@@ -1,7 +1,7 @@
 /**
  * Graphics quality presets (addition, IMPLEMENTATION-NOTES "Quality presets"). `high` is the §10 SPEC graph and
- * numbers except the sun shadow map and GTAO's cost (IMPLEMENTATION-NOTES "Cheaper shadows and reflections"); `medium` and `low` trade the costliest GPU work for frame time on weak GPUs (integrated Intel
- * parts first): the drawing-buffer pixel ratio, the sun's cascade resolution and cadence, GTAO, the tilt-shift DOF, bloom
+ * numbers except the sun shadows and GTAO's cost (IMPLEMENTATION-NOTES "Cheaper shadows and reflections", "Cached sun shadows"); `medium` and `low` trade the costliest GPU work for frame time on weak GPUs (integrated Intel
+ * parts first): the drawing-buffer pixel ratio, the sun's shadow map resolution, GTAO, the tilt-shift DOF, bloom
  * and the water's backdrop. Dropping GTAO / DOF also drops the scene pass's normal and mask targets
  * (`post/pipeline.ts` `sceneOutputs`).
  * Pure; the renderer applies a profile in `setQuality`, the client picks one (`recommendedQuality` for "auto").
@@ -12,10 +12,12 @@ export interface QualityProfile {
   /** Upper bound of the drawing-buffer pixel ratio (§10.1.3's 1.5 at `high`). */
   readonly pixelRatioCap: number;
   /**
-   * The near sun cascade's shadow map edge; the far cascade gets half (`FAR_CASCADE_SCALE`). 2 cascades on every preset.
-   * `high` is 1536, not §10.3.1's 2048 (render IMPLEMENTATION-NOTES "Cheaper shadows and reflections").
+   * The sun's static shadow map edge (`lighting/sunShadow.ts`: a 144 m square, re-rendered about once a second; render
+   * IMPLEMENTATION-NOTES "Cached sun shadows"). 4096 at `high` ≈ 3.5 cm a texel, the old near cascade's sharpness.
    */
   readonly sunShadowMap: number;
+  /** The sun's actor shadow map edge (a 72 m square around the focus, actors and billboards only, every frame). */
+  readonly actorShadowMap: number;
   /** GTAO in the post graph at all. */
   readonly gtao: boolean;
   /** GTAO samples per pixel (§10.8.3's 16; 8 on every preset since 2026-10-25). */
@@ -36,18 +38,12 @@ export interface QualityProfile {
    * 160 m times this. The diorama camera sits 20–34 m from the player, so below 1 the far half of the view drops a tier.
    */
   readonly lodScale: number;
-  /**
-   * The sun cascades re-render on the slow schedule (`lighting/rig.ts` `CASCADE_SCHEDULE_SLOW`): the near one every 3rd
-   * frame, the far one every 6th (0.5 map renders a frame instead of 0.75). Each map render is a whole scene traversal,
-   * the costliest per-draw CPU work on the WebGL2 fallback. A moving shadow lags a frame or two more.
-   */
-  readonly slowShadows: boolean;
 }
 
 export const QUALITY_PROFILES: Readonly<Record<GraphicsQuality, QualityProfile>> = Object.freeze({
-  high: Object.freeze({ pixelRatioCap: 1.5, sunShadowMap: 1536, gtao: true, gtaoSamples: 8, gtaoScale: 0.25, dof: true, bloom: true, waterBackdrop: true, lodScale: 1, slowShadows: false }),
-  medium: Object.freeze({ pixelRatioCap: 1.25, sunShadowMap: 1024, gtao: true, gtaoSamples: 8, gtaoScale: 0.25, dof: true, bloom: true, waterBackdrop: false, lodScale: 0.8, slowShadows: false }),
-  low: Object.freeze({ pixelRatioCap: 1, sunShadowMap: 1024, gtao: false, gtaoSamples: 8, gtaoScale: 0.25, dof: false, bloom: false, waterBackdrop: false, lodScale: 0.6, slowShadows: true }),
+  high: Object.freeze({ pixelRatioCap: 1.5, sunShadowMap: 4096, actorShadowMap: 2048, gtao: true, gtaoSamples: 8, gtaoScale: 0.25, dof: true, bloom: true, waterBackdrop: true, lodScale: 1 }),
+  medium: Object.freeze({ pixelRatioCap: 1.25, sunShadowMap: 3072, actorShadowMap: 1536, gtao: true, gtaoSamples: 8, gtaoScale: 0.25, dof: true, bloom: true, waterBackdrop: false, lodScale: 0.8 }),
+  low: Object.freeze({ pixelRatioCap: 1, sunShadowMap: 2048, actorShadowMap: 1024, gtao: false, gtaoSamples: 8, gtaoScale: 0.25, dof: false, bloom: false, waterBackdrop: false, lodScale: 0.6 }),
 });
 
 /**

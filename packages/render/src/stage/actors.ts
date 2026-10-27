@@ -654,6 +654,7 @@ export class CharacterPool implements ActorPool {
     body.bind(new Skeleton(bones));
     body.castShadow = true;
     body.receiveShadow = true;
+    body.layers.enable(LAYERS.dynamicShadow);
     body.frustumCulled = false;
     body.userData = { sharp: 1, ewaTile: 0, ewaActor: 'warmup' };
     body.name = 'ewa:actor-warmup';
@@ -847,6 +848,7 @@ export class CharacterPool implements ActorPool {
     m.material = this.material;
     m.castShadow = false;
     m.receiveShadow = true;
+    m.layers.enable(LAYERS.dynamicShadow);   // the sun's actor shadow map (lighting/sunShadow.ts)
     m.frustumCulled = true;
     m.boundingSphere = new Sphere(new Vector3(0, CHARACTER.boundsCentreY, 0), CHARACTER.boundsRadius);
     root.name = `ewa:actor-root:${t.id}`;

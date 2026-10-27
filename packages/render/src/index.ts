@@ -46,10 +46,11 @@ export { createSharedUniforms, harvestBlend, stepWetness, toHarvestLevel } from 
 
 // ---- §10.3 lighting ----
 export {
-  CASCADE_SPLITS_M, CSM_OPTIONS, LIGHT_LAYOUT, LightRig, SPOT_PARAMS, SUN_SHADOW, assertLightBudget, createLightingLayout,
+  LIGHT_LAYOUT, LightRig, SPOT_PARAMS, SUN_SHADOW, assertLightBudget, createLightingLayout,
   flickerFactor, lightTypeFor,
 } from './lighting/rig.js';
 export type { LightCounts, PunctualHandle } from './lighting/rig.js';
+export { SUN_SHADOW_CACHE, SunShadowNode, staticShadowDue, sunStepRad } from './lighting/sunShadow.js';
 export {
   DAY_KEYFRAMES, DAY_LENGTH_REAL_MS, DayCycle, GROVE_LIGHTING, MOON_SWITCH_DEG, directionalAt, isMoonLight, moonDirection, rebakeDue,
   sampleDay, sunAzimuthDeg, sunDirection, sunElevationDeg, wrapTime,

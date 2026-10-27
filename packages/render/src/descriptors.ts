@@ -102,6 +102,12 @@ export const LIGHT_BUDGET = { shadowCasters: 8, nonShadow: 24 } as const;
 export const LAYERS = Object.freeze({
   default: 0,
   /**
+   * Moving shadow casters (actors, billboards), as an extra bit next to their own layer (addition 2026-10-27, render
+   * IMPLEMENTATION-NOTES "Cached sun shadows"): the sun's actor map renders only this layer, the static map skips it.
+   * No camera renders it on its own.
+   */
+  dynamicShadow: 25,
+  /**
    * Zone meshes whose programs are not compiled yet (IMPLEMENTATION-NOTES Part 5, T4): the scene camera does not render
    * this layer (so a frame never compiles them synchronously); the renderer enables it only inside a compile prologue.
    */

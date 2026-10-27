@@ -6,12 +6,13 @@ import { PIXEL_RATIO_CAP, clampPixelRatio } from '../src/renderer.js';
 import { SUN_SHADOW } from '../src/lighting/rig.js';
 
 describe('quality presets', () => {
-  it('high is the SPEC graph; shadows and GTAO cheaper (IMPLEMENTATION-NOTES "Cheaper shadows and reflections")', () => {
+  it('high is the SPEC graph; cached sun shadows, GTAO cheaper (IMPLEMENTATION-NOTES "Cached sun shadows")', () => {
     expect(planPostGraph(ALL_EFFECTS, 'webgpu', ALL_PASSES_ON, 'high')).toEqual(planPostGraph(ALL_EFFECTS, 'webgpu'));
     expect(QUALITY_PROFILES.high.pixelRatioCap).toBe(PIXEL_RATIO_CAP);
     expect(QUALITY_PROFILES.high.sunShadowMap).toBe(SUN_SHADOW.mapSize);
-    expect(QUALITY_PROFILES.high).toMatchObject({ sunShadowMap: 1536, gtaoSamples: 8, gtaoScale: 0.25 });
-    expect(QUALITY_PROFILES.medium.sunShadowMap).toBe(1024);
+    expect(QUALITY_PROFILES.high).toMatchObject({ sunShadowMap: 4096, actorShadowMap: 2048, gtaoSamples: 8, gtaoScale: 0.25 });
+    expect(QUALITY_PROFILES.medium).toMatchObject({ sunShadowMap: 3072, actorShadowMap: 1536 });
+    expect(QUALITY_PROFILES.low).toMatchObject({ sunShadowMap: 2048, actorShadowMap: 1024 });
   });
 
   it('high and medium share the GTAO stage, so switching between them rebuilds no post graph', () => {

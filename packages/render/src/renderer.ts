@@ -599,8 +599,7 @@ class RendererHost implements Renderer, HostContext {
     // 7. lighting rig, sky + PMREM, fog node, post graph, HUD, stage, actors — all before resolve.
     if (this.materials.uniforms.occlusion !== undefined) this.materials.uniforms.occlusion.camera = this.camera3;   // M2-spawn-noon-9
     this.lighting = new LightRig(this.scene);
-    this.lighting.setSunShadowMap(QUALITY_PROFILES[this.quality].sunShadowMap);
-    this.lighting.setSlowShadows(QUALITY_PROFILES[this.quality].slowShadows);
+    this.lighting.setShadowMaps(QUALITY_PROFILES[this.quality].sunShadowMap, QUALITY_PROFILES[this.quality].actorShadowMap);
     if (this.materials.uniforms.waterBackdrop !== undefined) setWaterBackdrop(this.materials.uniforms.waterBackdrop, QUALITY_PROFILES[this.quality].waterBackdrop);
     setLodScale(QUALITY_PROFILES[this.quality].lodScale);
     this.sky = new SkyController(gpu, this.scene);
@@ -824,6 +823,7 @@ class RendererHost implements Renderer, HostContext {
 
   private ungate(o: Object3D): void {
     o.traverse((x) => { const m = this.gated.get(x); if (m !== undefined) { x.layers.mask = m; this.gated.delete(x); } });
+    this.lighting.refreshShadows();
   }
 
   private isGated(o: Object3D): boolean {
@@ -1067,6 +1067,7 @@ class RendererHost implements Renderer, HostContext {
   refreshSceneCounts(): void {
     const root = this.zoneRoot();
     this.statsRecord.materials = root ? countMaterials(root) : 0;
+    this.lighting.refreshShadows();   // the static shadow map holds the zone's casters
     countPunctualLights(this.scene, this.lightCounts);
     this.statsRecord.shadowLights = this.lightCounts.shadow;
     this.statsRecord.nonShadowLights = this.lightCounts.nonShadow;
@@ -1267,8 +1268,7 @@ class RendererHost implements Renderer, HostContext {
     const next = q === 'auto' ? recommendedQuality(this.caps) : q;
     if (next === this.quality) return;
     this.quality = next;
-    this.lighting.setSunShadowMap(QUALITY_PROFILES[next].sunShadowMap);
-    this.lighting.setSlowShadows(QUALITY_PROFILES[next].slowShadows);
+    this.lighting.setShadowMaps(QUALITY_PROFILES[next].sunShadowMap, QUALITY_PROFILES[next].actorShadowMap);
     if (this.materials.uniforms.waterBackdrop !== undefined) setWaterBackdrop(this.materials.uniforms.waterBackdrop, QUALITY_PROFILES[next].waterBackdrop);
     setLodScale(QUALITY_PROFILES[next].lodScale);
     this.post.setQuality(next);
@@ -1292,7 +1292,6 @@ class RendererHost implements Renderer, HostContext {
     const aspect = this.cssW / this.cssH;
     this.camera.setAspect(aspect);
     this.hud.resize(this.cssW, this.cssH, pr);
-    this.lighting.updateFrustums();
     this.post.setPixelRatio(pr);
     this.post.setAspect(aspect);
   }
@@ -1391,7 +1390,7 @@ class RendererHost implements Renderer, HostContext {
     this.renderClockS += scaled / 1000;
     this.day.update(dt, scaled / 1000, focus);
     this.lighting.update(this.renderClockS);
-    this.lighting.scheduleShadows(this.camera3);   // which sun cascades re-render this frame (far ones staggered)
+    this.lighting.scheduleShadows();   // the actor shadow map follows the focus; the static one re-renders when due
     this.sky.follow(this.camera3.position);
     this.precipitation.follow(focus);
     // (3) billboards and other subsystem hooks (uniform writes only)
@@ -1561,7 +1560,6 @@ export function createBudgetProbe(r: Renderer, zoneId: string, ownsRenderer = fa
       if (s.battle) rig.pushIn({ x: s.focus[0], z: s.focus[1] }, 0);
       else { rig.release(0); rig.setFocus?.(s.focus[0], 0, s.focus[1]); }
       host.setTimeOfDay(s.timeOfDay);
-      host.lighting.updateFrustums();
     },
     dispose: () => { if (ownsRenderer) r.dispose(); },
     async measurePassMs(o) {

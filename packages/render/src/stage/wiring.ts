@@ -92,7 +92,6 @@ function build(ctx: HostContext): Part3 {
     effects: () => ctx.effects(),
     feet: (id, out) => actors.feetOf(id, out),
     bodyTilt: (id, pos, q) => actors.bodyTilt(id, pos, q),
-    onSettled: () => ctx.lighting.updateFrustums(),
     onSlowmo: (scale, ms) => { host.setTimeScale(scale); slowmoLeft = ms; },
   });
   const vfx = new VfxSystem({

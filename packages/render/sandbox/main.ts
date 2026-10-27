@@ -592,7 +592,6 @@ async function main(): Promise<void> {
       rig.setFocus(x, zoneHandle ? zoneHandle.collider.sampleClamped(x, z) : 0, z);
       if (heading !== undefined) rig.setHeading(heading);
       if (zoom !== undefined) rig.setZoomStop(zoom);
-      host.lighting.updateFrustums();
     },
     zone: () => zoneHandle,
     /** The renderer (shader dumps: `renderer().renderer.debug.getShaderAsync(scene, camera, object)`). */

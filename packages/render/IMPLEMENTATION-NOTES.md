@@ -2515,6 +2515,7 @@ time by draining the queue, running one `tick()` and timing until `device.queue.
 The user's call (2026-10-25): shadows and reflections may get blockier on `high` too, judged from the default diorama
 camera only, to run on an i7-10750H + GTX 1650 at 1080p. Geometry, textures, characters, sprites and UI are unchanged.
 
+- (Superseded 2026-10-27 by "Cached sun shadows" below: no cascades at all now.)
 - **2 sun cascades instead of 4** (`lighting/rig.ts`): `CASCADE_SPLITS_M` `[44, 160]`, `CSM_OPTIONS.cascades` 2. The
   diorama camera (FOV 28°, pitch −52°, distance 20 / 26 / 34 m) sees view depths of ~17–25 / ~22–32 / ~29–42 m, so
   the old splits put everything on screen into the 14–34 m and 34–72 m cascades and the 0–14 m cascade, rendered every
@@ -2702,3 +2703,50 @@ target machine).
   `handleDeviceLost` like a WebGPU device loss (reason `'context-lost'`). The client's E6 recovery rebuilds the renderer
   on the same canvas after restoring the context (client IMPLEMENTATION-NOTES). Seen in a playtest: opening a menu on
   WebGL2 left the canvas empty. The cause of that loss is not known yet.
+
+## Cached sun shadows (2026-10-27, deviates from §10.3.1's cascaded shadow maps)
+
+The user's call: most of a zone never moves, so only the player, villagers and creatures need a shadow every frame.
+`lighting/sunShadow.ts` `SunShadowNode` replaces the 2-cascade `CSMShadowNode` (and its staggering, `CASCADE_*`,
+`CSM_OPTIONS`, `cascadeBreaks`, `updateFrustums`, `QualityProfile.slowShadows`) as the sun's `shadow.shadowNode`.
+
+- **Two maps on the one directional light**, each on a `MapLight` stand-in (the CSM's `LwLight` idea) with its own
+  `ShadowNode`. A fragment takes `min(static, actor)`.
+  - **Static map**: a world-fixed 144 m square (`SUN_SHADOW_CACHE.staticHalfM` 72) around the focus, every caster but
+    the moving ones. `autoUpdate` off; `track()` asks for a render (`shadow.needsUpdate`) only when `staticShadowDue`:
+    `refresh()` was called, 60 frames passed, the focus is 16 m from the map's centre, or the sun turned by
+    `sunStepRad(sin el)` = `clamp(0.01 sin² el, 0.0002, 0.0035)` rad. That step keeps a 10 m caster's shadow tip under
+    ~10 cm of jump per render (a tip moves `h / sin² el` m per radian), so near the horizon it renders every few frames
+    and by day the age limit comes first: about one static render a second.
+  - **Actor map**: a 72 m square (`actorHalfM` 36) on the focus, re-placed and rendered every frame. Its shadow camera
+    renders only `LAYERS.dynamicShadow` (25, new), which the actor bodies (`stage/actors.ts`, the warm-up body too) and
+    every billboard quad (`sprites/billboard.ts`) enable next to their own layer. The static map's render skips that
+    layer through a wrapped render-object function.
+  - Each map fades to lit over its last metres (horizontal distance from its centre: static 54–64 m, actor 26–32 m), so
+    no edge line shows. Both are snapped to their texel grid in light space, so a re-centred map does not shimmer.
+  - Both shadow lights sit 250 m toward the sun from their centre with a 0.5–500 m ortho camera, as the CSM's cascades
+    roughly did, so `SUN_SHADOW.bias` / `normalBias` keep their world-space size.
+- **Correctness** rests on the same three 0.186 rule as the staggering did: a shadow-casting light's `shadow.matrix`
+  is re-derived only in `ShadowNode.renderShadow`, so the static map's matrix stays paired with its texture between
+  renders. `SunShadowNode.updateBeforeType` is NONE (`ShadowBaseNode` schedules a per-render `updateBefore`, whose base
+  only warns "Abstract function"); `track()` (`LightRig.scheduleShadows`, frame step 2) does the placing.
+- **LOD in the static pass**: three picks a `THREE.LOD` level per rendering camera, and the static camera is 250 m out,
+  past every `BUILDING_LOD_LEVELS` distance. The static render turns `autoUpdate` off on every LOD in the scene for its
+  duration, so each casts from the level the scene camera chose this frame (a scene traversal, about once a second).
+- **Static refreshes**: `LightRig.refreshShadows()` from `refreshSceneCounts` (zone root set, loads, handover) and
+  from `ungate` (a compiled chunk becomes visible). Anything else that adds a static caster (a dressed arena, a door)
+  shows within the 60-frame age limit.
+- **Memory**: `MapShadowNode.setupRenderTarget` gives each map an R8 colour target (three's default is RGBA8, read only
+  by `transmitted` shadows, which are off) and a 16-bit depth (the 500 m ortho range quantises to ~8 mm, far under the
+  bias). `QualityProfile.sunShadowMap` is now the static edge and `actorShadowMap` (new) the actor edge: `high` 4096 /
+  2048 (~60 MB with the colour targets, was ~24 MB for the two cascades), `medium` 3072 / 1536 (~34 MB), `low` 2048 /
+  1024 (~15 MB, was ~10). The static texel at `high` is 3.5 cm, the actor one 3.5 cm: the old near cascade's sharpness.
+- **What changed on screen**: wind sway is frozen in static shadows between renders (the trees still sway, their
+  shadows move once a second). Shadows end 64 m from the player (the far cascade reached 160 m of view depth), which
+  only first person can see. Actors beyond 32 m of the focus (the actor pool casts up to `shadowRangeM` 45 m from the
+  camera) lose their shadow; the diorama sees ~30 m around the focus.
+- **Checked** in the sandbox (headless Chrome, M2 Max), `?demo=lineup`: WebGPU and the WebGL2 fallback (WebGPU hidden)
+  render without errors; the static map and the actor map each toggle their own shadows (static: tree, lamp, crates;
+  actor: the sheep, the NPCs); 5 static renders in 5 s at a fixed sun; 13 shadow-pass draws in a sampled frame (the actor map; not a benchmark,
+  the cascades' ~126 above was mirevale). Same view and time as on `main`: the shadows match.
+
