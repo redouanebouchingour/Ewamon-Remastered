@@ -139,6 +139,8 @@ const FP_PITCH_MAX = 1.35;
 
 /** The emote wheel's dances (the breakdance, whip / nae nae) and how far (m) from the dancer the villagers hop along. */
 const WHIP_EMOTE = 10;
+/** The whip / nae nae's song, heard from the dancer and from anyone within DANCE_ALONG_M of one. */
+const WHIP_SFX = 'emote_whip_nae_nae';
 const DANCE_ALONG_M = 30;
 /** The high five's slap lands this long after it starts (render `SILLY.highFive.slapEnd`). */
 const HIGH_FIVE_SLAP_MS = 520;
@@ -995,6 +997,7 @@ class World implements World3D {
           if (!this.ready) return;
           this.renderer.actors.setEmote(key, Math.max(0, Math.min(EMOTE_MAX, v)) as EmoteId);
           if (v === EMOTE_BREAKDANCE || v === WHIP_EMOTE) this.danceAlong(p.x, p.z, emoteLengthMs(v));
+          if (v === WHIP_EMOTE && Math.hypot(p.x - this.input.pose.x, p.z - this.input.pose.z) <= DANCE_ALONG_M) this.audio.play(WHIP_SFX, null);
         }),
       );
       d.push(
@@ -1581,7 +1584,7 @@ class World implements World3D {
   /**
    * A pick on the emote wheel (G): the emote goes to the room (the others see it on this player's avatar) and plays
    * on the player's own actor at once (the server does not echo a player's own emote). The breakdance brings its
-   * fanfare, the high five its slap, "you, me, battle" the spotted sting; for the dances every villager within
+   * fanfare, the whip / nae nae its song, the high five its slap, "you, me, battle" the spotted sting; for the dances every villager within
    * DANCE_ALONG_M hops along. First person stays on: the eye rides the emoting head (render `emoteHead`).
    */
   private emote(n: WheelEmote): void {
@@ -1590,6 +1593,7 @@ class World implements World3D {
     this.ws.send('emote', { emote: n });
     this.renderer.actors.setEmote(this.ws.selfId, n);
     if (n === EMOTE_BREAKDANCE) this.audio.play('ui_stinger_victory_trainer', null);
+    else if (n === WHIP_EMOTE) this.audio.play(WHIP_SFX, null);
     else if (n === 9) this.audio.play('spotted', null);
     else if (n === 8) setTimeout(() => { if (this.ready) this.audio.play('hit_normal', null); }, HIGH_FIVE_SLAP_MS);
     if (n === EMOTE_BREAKDANCE || n === WHIP_EMOTE) this.danceAlong(this.input.pose.x, this.input.pose.z, emoteLengthMs(n));

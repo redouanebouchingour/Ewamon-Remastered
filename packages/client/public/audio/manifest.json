@@ -624,6 +624,20 @@
       "gainDb": -8,
       "maxConcurrent": 2
     },
+    "emote_whip_nae_nae": {
+      "bus": "ui",
+      "clips": [
+        {
+          "bytes": 138013,
+          "durationSec": 6.896,
+          "hash": "f4cd2499b24cfe8f7da2c3adc12cfe3f239347667f0cccafd5855e0f5f64e5c9",
+          "url": "/audio/sfx/emote_whip_nae_nae.mp3?v=f4cd2499",
+          "urlFallback": "/audio/sfx/emote_whip_nae_nae.mp3?v=f4cd2499"
+        }
+      ],
+      "gainDb": -4,
+      "maxConcurrent": 1
+    },
     "faint": {
       "bus": "sfx",
       "clips": [
