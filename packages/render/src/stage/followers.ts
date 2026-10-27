@@ -45,6 +45,11 @@ export const FOLLOWER = Object.freeze({
   hopHz: 3.4,
   /** below this speed (m/s) it stands */
   standMps: 0.25,
+  /**
+   * it faces the camera again once it and its owner have stood this long (s): a frame on which the owner did not move
+   * (the fixed movement step and the frame rate beating) is not a stop, or a follower walking away flashes its face
+   */
+  faceFrontAfterS: 0.3,
   /** a Fire lead's light (`setLight`): twice a lantern's intensity at full dark, its range (m), its height over the follower (m) */
   lightIntensity: 60,
   lightRangeM: 14,
@@ -69,6 +74,8 @@ interface Entry {
   speed: number;
   yaw: number;
   hop: number;
+  /** how long it and its owner have stood still (s) */
+  stillS: number;
   readonly ownerLast: Vector3;
   ownerSpeed: number;
 }
@@ -156,7 +163,7 @@ export class FollowerPool {
     if (slot < 0) return false;
     const e: Entry = {
       owner, slot, bb: this.makeCard(d), frontOnly, shown: true, pos: new Vector3(), normal: new Vector3(0, 1, 0),
-      hist: new Float32Array(FOLLOWER.historyN * 3), head: 0, count: 0, placed: false, speed: 0, yaw: 0, hop: 0,
+      hist: new Float32Array(FOLLOWER.historyN * 3), head: 0, count: 0, placed: false, speed: 0, yaw: 0, hop: 0, stillS: 0,
       ownerLast: new Vector3(), ownerSpeed: 0,
     };
     e.bb.setShown(false);
@@ -248,12 +255,13 @@ export class FollowerPool {
       this.normalAt(e);
       e.bb.setGroundNormal(e.normal.x, e.normal.y, e.normal.z);
       e.bb.setPosition(e.pos.x, e.pos.y + hopY, e.pos.z);
-      // the back when it walks away from the camera
+      // the back when it walks away from the camera, its face once it and its owner have stood a moment
+      e.stillS = !walking && e.ownerSpeed < FOLLOWER.standMps ? e.stillS + dt : 0;
       if (!e.frontOnly && walking && this.camera !== null) {
         const away = Math.sin(e.yaw) * _dir.x + Math.cos(e.yaw) * _dir.z;
         if (away > 0.35) e.bb.setFacing('back');
         else if (away < -0.1) e.bb.setFacing('front');
-      } else if (!walking && e.bb.facing === 'back' && !e.frontOnly && e.ownerSpeed < FOLLOWER.standMps) {
+      } else if (e.stillS >= FOLLOWER.faceFrontAfterS && e.bb.facing === 'back' && !e.frontOnly) {
         e.bb.setFacing('front');
       }
     }
@@ -315,6 +323,7 @@ export class FollowerPool {
     e.ownerLast.copy(owner);
     e.ownerSpeed = 0;
     e.speed = 0;
+    e.stillS = 0;
     e.placed = true;
     this.record(e, e.pos);
     this.record(e, owner);

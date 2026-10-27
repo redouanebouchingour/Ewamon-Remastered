@@ -107,6 +107,30 @@ describe('FollowerPool', () => {
     expect(t.pool.billboardOf('me')!.facing).toBe('front');
   });
 
+  it('keeps its back through a frame on which the owner did not move, and shows its face once both stood a moment', () => {
+    const t = setup();
+    t.pool.set('me', desc('f:me'));
+    t.pool.update(16);
+    walk(t, 0, -1, 4.2, 1000);
+    expect(t.pool.billboardOf('me')!.facing).toBe('back');
+    // the fixed movement step beating the frame rate: every third frame the owner's feet do not move
+    const faces = new Set<string>();
+    for (let k = 0; k < 180; k++) {
+      if (k % 3 !== 0) t.owner.z -= 4.2 * 0.025;
+      t.pool.update(16.667);
+      faces.add(t.pool.billboardOf('me')!.facing);
+    }
+    expect([...faces]).toEqual(['back']);
+    // it stops: the face once it and its owner have stood FOLLOWER.faceFrontAfterS, not before
+    let frontAt = -1;
+    for (let k = 0; k < 120 && frontAt < 0; k++) {
+      t.pool.update(16.667);
+      if (t.pool.billboardOf('me')!.facing === 'front') frontAt = k;
+    }
+    expect(frontAt * 16.667).toBeGreaterThanOrEqual(FOLLOWER.faceFrontAfterS * 1000 - 20);
+    expect(frontAt * 16.667).toBeLessThan(FOLLOWER.faceFrontAfterS * 1000 + 900);
+  });
+
   it('is a walker after the character rigs; the footstep slots cover both', () => {
     const t = setup();
     t.pool.set('me', desc('f:me'));

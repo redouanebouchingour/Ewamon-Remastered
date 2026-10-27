@@ -2666,3 +2666,12 @@ shadow is a softer blob. First-person sees the 0–44 m cascade at 1536² up clo
   shares its shape with the zone's scattered bushes instead of having its own seed's shape.
 - Wind (`materials/wind.ts`): the sway and the walker push ease out past the detail distance (the same rim fade), so
   foliage outside it stands still. At max the radius is past every zone and nothing changes.
+
+## Followers keep their back while walking away (2026-10-27)
+
+- `FollowerPool` turned a follower's face to the camera on any frame where it and its owner stood still, and a frame on
+  which the owner's feet do not move comes up about once a second (the fixed movement step beating the frame rate). A
+  follower walking away flashed its front for a frame or two each time (live: 50 to 60 ms, about every second, on
+  tide_route). It now faces the camera only once it and its owner have stood `FOLLOWER.faceFrontAfterS` = 0.3 s
+  (`Entry.stillS`). This also lets the client's animated followers keep the back's flipbook while they walk away (client
+  "Animated followers"). Test: `followers.test.ts` (a stuttering owner keeps the back; the face after the stand time).
