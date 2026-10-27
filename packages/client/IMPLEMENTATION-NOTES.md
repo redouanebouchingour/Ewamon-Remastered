@@ -968,6 +968,9 @@ leave / ineligible window / reopen with a catch try / phase-4 summary / fainted 
   (`server/src/rest/routes/catalog.ts`; `server/test/history-routes.test.ts`). No new route was needed.
 - **Profile** (`screens/ProfileScreen.tsx`, shared pieces in `screens/TrainerCard.tsx`): identity card with an in-place
   editor (Title ∈ content `TITLES`, Look ∈ `BODIES` labelled "Ranger (f)" by id suffix, Motto ≤ 120), a live preview,
+  (2026-10-27: the Look select became a "Character" grid of portrait radios, `public/trainers/<body>.webp` rendered from
+  the real models by `scripts/trainer-portraits.mjs`; the identity chip shows the portrait too, and World3D re-skins
+  the player's own actor when the room's `PlayerState.body` changes, so a save shows in the world without a zone load)
   Save / Reset; stats / badges / showcase come from the player's own public profile (what others see; badges from the
   session store, which only the server writes). A new session writer `applyProfile({ title, motto, body })` takes the
   POST /profile response (identity only — not progression or inventory, so `no-client-badge` still holds).

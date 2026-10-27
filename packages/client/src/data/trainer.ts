@@ -26,6 +26,14 @@ export function bodyLabel(id: string): string {
   return BODY_CHOICES.find((b) => b.id === id)?.label ?? id;
 }
 
+/**
+ * A body's portrait under `public/trainers/` (`scripts/trainer-portraits.mjs`: the real character model, knees up), or
+ * null for an id content does not list.
+ */
+export function bodyPortrait(id: string): string | null {
+  return BODY_CHOICES.some((b) => b.id === id) ? `/trainers/${id}.webp` : null;
+}
+
 export function memberSince(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
 }

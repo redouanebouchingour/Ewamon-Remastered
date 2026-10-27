@@ -954,6 +954,14 @@ class World implements World3D {
       if (key === self()) {
         this.input.reconcile(p.x, p.z, p.angle, p.seq);
         d.push($(p).onChange(() => this.input.reconcile(p.x, p.z, p.angle, p.seq)));
+        // a new character picked on the profile (POST /profile -> the room re-reads `body`): wear it at once, not on
+        // the next zone load; spawn on a live id only rebinds the look (a first-person hide is re-applied per frame)
+        const restyle = (): void => {
+          if (!this.ready || !this.zoneLoaded || this.room !== room) return;
+          this.renderer.actors.spawn(key, { look: lookOf(p.body), name: p.name, guildTag: p.guildTag, isLocal: true });
+        };
+        d.push($(p).listen('body', restyle));
+        d.push($(p).listen('guildTag', restyle));
         return;
       }
       this.remotes.add(key, { name: p.name, look: lookOf(p.body), guildTag: p.guildTag, inBattle: p.inBattle });

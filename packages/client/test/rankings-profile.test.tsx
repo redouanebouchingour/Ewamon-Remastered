@@ -8,6 +8,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import type { RouteObject } from 'react-router';
+import { BODIES } from '@ewa/content';
 import type { LeaderboardRow } from '@ewa/protocol';
 import { routes } from '../src/app/router';
 import { ACCOUNT_LINKS } from '../src/app/TopBar';
@@ -241,7 +242,12 @@ describe('/play/profile', () => {
     expect(within(panel).getByText('0 of 30 earned')).toBeTruthy();
 
     fireEvent.change(within(panel).getByLabelText('Title'), { target: { value: 'Witness' } });
-    fireEvent.change(within(panel).getByLabelText('Look'), { target: { value: 'fisher_f' } });
+    // the character picker: one portrait radio per content body, the saved one checked
+    const characters = within(panel).getByRole('group', { name: 'Character' });
+    expect(within(characters).getAllByRole('radio')).toHaveLength(BODIES.length);
+    expect((within(characters).getByRole('radio', { name: 'Ranger (m)' }) as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(within(characters).getByRole('radio', { name: 'Fisher (f)' }));
+    expect((within(characters).getByRole('radio', { name: 'Fisher (f)' }) as HTMLInputElement).checked).toBe(true);
     fireEvent.change(within(panel).getByLabelText('Motto'), { target: { value: '  Count the morning.  ' } });
     // the identity preview follows the draft
     expect(within(panel).getByText('“Count the morning.”')).toBeTruthy();

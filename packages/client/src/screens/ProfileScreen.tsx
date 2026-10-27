@@ -1,6 +1,6 @@
 /**
- * Phase C4 `/play/profile` — the player's own trainer card. The identity (title ∈ content `TITLES`, body ∈ `BODIES`,
- * a free motto ≤ 120) is edited in place and saved with `POST /profile` through `profileAction.save` (the server
+ * Phase C4 `/play/profile`: the player's own trainer card. The identity (title ∈ content `TITLES`, body ∈ `BODIES`
+ * picked from character portraits, a free motto ≤ 120) is edited in place and saved with `POST /profile` through `profileAction.save` (the server
  * re-validates every field; the response lands through the session's `applyProfile`). The stats, badges and showcase
  * are the player's own public profile (GET /players/:me) — what other trainers see. Achievements (Phase D5): the
  * `QuestDef kind: 'achievement'` rows — earned first, then ready, then by progress; claiming happens in the journal.
@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLoaderData } from 'react-router';
 import type { profileLoader } from '../app/loaders';
 import { achievementProgress, achievementQuests, questStatus } from '../data/quests';
-import { BODY_CHOICES, TITLES } from '../data/trainer';
+import { BODY_CHOICES, TITLES, bodyPortrait } from '../data/trainer';
 import { useSessionStore } from '../state/session';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
@@ -31,6 +31,24 @@ import { NemesesSection } from './NemesesSection';
 import { RivalSection } from './RivalSection';
 
 export const MOTTO_MAX = 120;
+
+/** The character you walk the world as: one portrait per content body, native radios (arrow keys move the pick). */
+function CharacterPicker({ value, onChange }: { readonly value: string; readonly onChange: (id: string) => void }) {
+  return (
+    <fieldset className={s.characters}>
+      <legend className={s.charactersLegend}>Character</legend>
+      <div className={s.characterGrid}>
+        {BODY_CHOICES.map((b) => (
+          <label key={b.id} className={cx(s.character, value === b.id && s.characterOn)}>
+            <input className={s.characterRadio} type="radio" name="body" value={b.id} checked={value === b.id} onChange={() => onChange(b.id)} />
+            <img className={s.characterImg} src={bodyPortrait(b.id) ?? ''} alt="" loading="lazy" />
+            <span className={s.characterName}>{b.label}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
 
 function Achievements() {
   const quests = useSessionStore((st) => st.progression?.quests ?? null);
@@ -113,9 +131,9 @@ export function ProfileScreen() {
                 if (dirty) fetcher.submit({ intent: 'save', title, body, motto: motto.trim() });
               }}
             >
+              <CharacterPicker value={body} onChange={setBody} />
               <div className={s.formRow}>
                 <Select label="Title" value={title} options={titles.map((t) => ({ value: t, label: t }))} onChange={setTitle} />
-                <Select label="Look" value={body} options={BODY_CHOICES.map((b) => ({ value: b.id, label: b.label }))} onChange={setBody} />
               </div>
               <TextField label="Motto" value={motto} onChange={setMotto} maxLength={MOTTO_MAX} counterFrom={90} placeholder="A line other trainers see on your card" />
               <div className={s.formFoot}>

@@ -16,6 +16,13 @@
   font-style: italic;
 }
 
+.portrait {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
 .sm {
   inline-size: 28px;
   block-size: 28px;

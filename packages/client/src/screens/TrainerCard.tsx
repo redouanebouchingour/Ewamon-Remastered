@@ -6,7 +6,7 @@
 import type { PublicProfile } from '@ewa/protocol';
 import { BADGE_CASE } from '../data/badgeIcon';
 import { DEX_TOTAL } from '../data/content';
-import { bodyLabel, memberSince, tierLabel } from '../data/trainer';
+import { bodyLabel, bodyPortrait, memberSince, tierLabel } from '../data/trainer';
 import { CreatureCard } from '../ui/CreatureCard';
 import { EmptyState } from '../ui/EmptyState';
 import { Pill } from '../ui/Pill';
@@ -14,10 +14,12 @@ import { cx } from '../ui/cx';
 import l from './layout.module.css';
 import s from './TrainerCard.module.css';
 
-export function TrainerAvatar({ username, size = 'md' }: { readonly username: string; readonly size?: 'sm' | 'md' | 'lg' }) {
+/** With a `body` the chip shows that character's portrait; without one (lists that carry no body), the initial. */
+export function TrainerAvatar({ username, body, size = 'md' }: { readonly username: string; readonly body?: string; readonly size?: 'sm' | 'md' | 'lg' }) {
+  const portrait = body === undefined ? null : bodyPortrait(body);
   return (
     <span className={cx(s.avatar, s[size])} aria-hidden>
-      {username.slice(0, 1).toUpperCase()}
+      {portrait === null ? username.slice(0, 1).toUpperCase() : <img className={s.portrait} src={portrait} alt="" />}
     </span>
   );
 }
@@ -35,7 +37,7 @@ export interface TrainerIdentityProps {
 export function TrainerIdentity({ username, title, motto, body, guildTag, tier, you = false }: TrainerIdentityProps) {
   return (
     <header className={s.identity}>
-      <TrainerAvatar username={username} size="lg" />
+      <TrainerAvatar username={username} body={body} size="lg" />
       <div className={s.identityText}>
         <p className={s.titleLine}>{title}</p>
         <h3 className={s.name}>
