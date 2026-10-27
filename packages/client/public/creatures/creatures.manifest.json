@@ -4428,6 +4428,48 @@
         "bytes": 4212
       },
       "normalScale": 0.5
+    },
+    {
+      "id": "a-103",
+      "species": [
+        "kykaiser_tenjin"
+      ],
+      "size": 2048,
+      "slots": 2,
+      "albedo": {
+        "url": "atlases/a-103.albedo.webp",
+        "mips": [
+          "atlases/a-103.albedo.m1.webp",
+          "atlases/a-103.albedo.m2.webp",
+          "atlases/a-103.albedo.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 88,
+        "bytes": 325996
+      },
+      "normal": {
+        "url": "atlases/a-103.normal.webp",
+        "mips": [
+          "atlases/a-103.normal.m1.webp",
+          "atlases/a-103.normal.m2.webp",
+          "atlases/a-103.normal.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 92,
+        "bytes": 94640
+      },
+      "emissive": {
+        "url": "atlases/a-103.emissive.webp",
+        "mips": [
+          "atlases/a-103.emissive.m1.webp",
+          "atlases/a-103.emissive.m2.webp",
+          "atlases/a-103.emissive.m3.webp"
+        ],
+        "codec": "webp-lossless",
+        "quality": null,
+        "bytes": 8748
+      },
+      "normalScale": 0.5
     }
   ],
   "zones": {
@@ -10517,6 +10559,51 @@
       "sizeScale": 1.45,
       "home": "a-079",
       "thumb": "thumbs/kykaiser_front.webp"
+    },
+    "kykaiser_tenjin": {
+      "front": {
+        "atlas": "a-103",
+        "px": [
+          1024,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0.5,
+          0.5,
+          1,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "bodyV": 0.8604,
+        "pixelScale": 0.885427,
+        "source": "front/kykaiser_tenjin(front).png"
+      },
+      "back": {
+        "atlas": "a-103",
+        "px": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0,
+          0.5,
+          0.5,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "bodyV": 0.8418,
+        "pixelScale": 0.889899,
+        "source": "back/kykaiser_tenjin(back).png"
+      },
+      "sizeScale": 1.45,
+      "home": "a-103",
+      "thumb": "thumbs/kykaiser_tenjin_front.webp"
     },
     "lawlander": {
       "front": {
@@ -17927,7 +18014,7 @@
       "thumb": "thumbs/zenryu_majin_front.webp"
     }
   },
-  "totalBytes": 54146697,
+  "totalBytes": 54583894,
   "animAtlases": [
     {
       "id": "anim-astaroth-back",

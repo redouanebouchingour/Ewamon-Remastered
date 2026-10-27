@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-27 kykaiser's Tenjin form. One entry. -->
+
+## 2026-10-27 · `40-pipelines.md` §40.1 species set, accounting, §40.6 creatures ceiling; `50-verification-budget.md` budget.test row · kykaiser_tenjin, creatures/ ceiling 53 MiB
+Why: Kykaiser, the Water sea emperor, gains a Tenjin form, built like the others. It uses the Tenjin template (+10 atk / +30 def / +10 spd, cures its status, heals a fifth, clears its drops) in `.design/additions/species.js` and is the first Tenjin form that changes type: Water becomes Water/Steel while it holds the form (`BattleFormDef.types`, like hyoryu's Majin). The art is gpt-image-2 on the user's key, keyed by `scripts/key-forms.ts`. At the top rung the build came to 54.58 MB, 50 KB over the 52 MiB ceiling. Asked whether to raise the ceiling or let every sprite drop to q85, the user chose a raise to 53 MiB (55 574 528 B).
+Evidence: `tools/sprite-pipeline/test/{budget,zones}.test.ts` (203 entries, 104 atlases, 54.58 MB at the top rung, none duplicated, 0 actionable flags; all 103 existing atlases kept, `a-103` added); `tools/asset-audit/test/rules.test.ts` (53 MiB); server `bands.test.ts` (Kykaiser transforms with the Tenjin Band, no desync, Water/Steel in the form); client `bond.test.tsx` (cut-in portraits); content tests; `pnpm check`.
+Affects: `.design/additions/{species.js,heights.js}`; `packages/content/src/data/species.ts`; `packages/client/public/{creatures/,signature/kykaiser.webp,signature/kykaiser_tenjin.webp}`; `tools/sprite-pipeline/{src/types.ts,README.md,qa/*,test/budget.test.ts,test/zones.test.ts}`; `tools/asset-audit/{src/bytes.ts,test/rules.test.ts}`; `packages/server/test/bands.test.ts`; `assets-src/forms-pending/`; `.design/majin-tenjin.md`.
+
 <!-- 2026-10-27 astaroth's full-height back. One entry. -->
 
 ## 2026-10-27 · `10-render.md` §10.4.3 SpriteDescriptor · `backFullHeight`: a back drawn wider than its front may stand its full height

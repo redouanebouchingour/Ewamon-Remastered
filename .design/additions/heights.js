@@ -109,6 +109,7 @@ const EWAMON_HEIGHTS = {
   hollowmane_rage: 2.3,
   hyoryu_majin: 3.8,
   infernomorel_majin: 1.9,
+  kykaiser_tenjin: 2.6,
   lawlander_tenjin: 1.8,
   necrogeist_majin: 2.4,
   raidori_tenjin: 1.7,

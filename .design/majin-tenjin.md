@@ -92,7 +92,7 @@ hollowmane and castlemaw **become** Majin: their Rage art, stats and signature m
 carry over. "Rage Form" is renamed "Majin Form" in the UI. The internal id can stay `rage` to avoid churn, or be
 renamed to `majin` (sprite keys, the `form_rage` VFX, signature entries).
 
-### Tenjin (6, plus raidori since 2026-10-26)
+### Tenjin (6, plus raidori since 2026-10-26 and kykaiser since 2026-10-27)
 
 | Species | Types | Base atk/def/spd → Tenjin | Has it by Act II? | NPCs who use it |
 |---|---|---|---|---|
@@ -103,6 +103,7 @@ renamed to `majin` (sprite keys, the `form_rage` VFX, signature entries).
 | **glimmereen** | Fairy | 60/80/90 → **70/110/100** | yes (glimp, @16) | Sable's rematches (optional) |
 | **solpyre** | Fire/Flying | 110/75/105 → **120/105/115** | yes (flampling + Ember Stone) | — |
 | **raidori** (added 2026-10-26) | Electric | 120/105/100 → **130/135/110** | wild at night on galvan_route (rare), raid boss there | - |
+| **kykaiser** (added 2026-10-27) | Water → **Water/Steel** | 132/98/122 → **142/128/132** | late (kygra @45) | - |
 
 Nice pair that falls out of what's already there: **dustcub's honor split** sends the player to **lawlander (Tenjin)**
 or **badlander (Majin)**. The honor ledger still decides the evolution (as now); the form follows the species. No honor

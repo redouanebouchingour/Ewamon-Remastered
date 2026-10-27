@@ -18,7 +18,7 @@ const MiB = 1024 * 1024;
 
 /** §40.6 ceilings, bytes. */
 export const CEILINGS = Object.freeze({
-  creatures: 54_525_952, // 52 MiB since 2026-10-26 (the 34 type-gap species); 44 MiB from 2026-10-25 (the Elemutt line and ravatar's five relic forms); 41 MiB from 2026-10-24 (cryptorb, ultraze, vysion); 40 MiB from 2026-10-13 (hyoryu + its Majin form); 39.25 MiB from 2026-10-11 (Majin / Tenjin forms); 36 700 160 (35 MiB) before
+  creatures: 55_574_528, // 53 MiB since 2026-10-27 (kykaiser_tenjin); 52 MiB from 2026-10-26 (the 34 type-gap species); 44 MiB from 2026-10-25 (the Elemutt line and ravatar's five relic forms); 41 MiB from 2026-10-24 (cryptorb, ultraze, vysion); 40 MiB from 2026-10-13 (hyoryu + its Majin form); 39.25 MiB from 2026-10-11 (Majin / Tenjin forms); 36 700 160 (35 MiB) before
   creaturesAnim: 25 * MiB, // since 2026-10-26 (astaroth's flipbooks); 24 MiB before
   models: 12 * MiB,
   materials: 90 * MiB,
