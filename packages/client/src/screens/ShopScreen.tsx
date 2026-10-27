@@ -25,7 +25,7 @@ import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { Stepper } from '../ui/Field';
 import { Icon } from '../ui/Icon';
-import type { IconName } from '../ui/Icon';
+import { ItemGlyph } from '../ui/ItemGlyph';
 import { Panel } from '../ui/Panel';
 import { Pill } from '../ui/Pill';
 import { Table } from '../ui/Table';
@@ -36,7 +36,6 @@ import s from './ShopScreen.module.css';
 import { useClosePanel, useIntent } from './shared';
 
 type Tab = 'buy' | 'sell';
-const KIND_ICON: Readonly<Record<ItemInfo['kind'], IconName>> = { consumable: 'heart', orb: 'orb', held: 'bag', key: 'star' };
 
 interface Row {
   readonly info: ItemInfo;
@@ -75,7 +74,7 @@ function ItemName({ info }: { readonly info: ItemInfo }) {
   return (
     <span className={s.item}>
       <span className={s.itemIcon} data-kind={info.kind} aria-hidden>
-        <Icon name={KIND_ICON[info.kind]} size="sm" />
+        <ItemGlyph id={info.id} kind={info.kind} />
       </span>
       <span className={s.itemText}>
         <span className={s.itemName}>{info.name}</span>

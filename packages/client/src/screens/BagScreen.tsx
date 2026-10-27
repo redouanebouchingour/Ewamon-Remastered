@@ -17,15 +17,13 @@ import type { CreatureInstance } from '@ewa/core';
 import { BAG_GROUPS, groupBag, noEffectReason } from '../data/bag';
 import type { BagRow } from '../data/bag';
 import { MULTI_USE_ITEMS, displayName, itemInfo, maxHpOf, wornForm } from '../data/content';
-import type { ItemInfo } from '../data/content';
 import { useSessionStore } from '../state/session';
 import { Button } from '../ui/Button';
 import { CreatureSprite } from '../ui/CreatureSprite';
 import { EmptyState } from '../ui/EmptyState';
 import { Stepper } from '../ui/Field';
 import { HpBar } from '../ui/HpBar';
-import { Icon } from '../ui/Icon';
-import type { IconName } from '../ui/Icon';
+import { ItemGlyph } from '../ui/ItemGlyph';
 import { Modal } from '../ui/Modal';
 import { Panel } from '../ui/Panel';
 import s from './BagScreen.module.css';
@@ -33,7 +31,6 @@ import l from './layout.module.css';
 import { useClosePanel, useIntent } from './shared';
 import type { IntentFetcher } from './shared';
 
-const KIND_ICON: Readonly<Record<ItemInfo['kind'], IconName>> = { consumable: 'heart', orb: 'orb', held: 'bag', key: 'star' };
 const NO_PARTY: readonly CreatureInstance[] = [];
 
 type Picker = { readonly mode: 'use' | 'give'; readonly row: BagRow } | null;
@@ -134,7 +131,7 @@ function ItemRow({ row, holders, onPick, fetcher }: { readonly row: BagRow; read
   return (
     <li className={s.item} aria-label={`${row.info.name} ×${row.count}`}>
       <span className={s.itemIcon} data-kind={row.info.kind} aria-hidden>
-        <Icon name={KIND_ICON[row.info.kind]} size="sm" />
+        <ItemGlyph id={row.info.id} kind={row.info.kind} />
       </span>
       <span className={s.itemText}>
         <span className={s.itemName}>{row.info.name}</span>

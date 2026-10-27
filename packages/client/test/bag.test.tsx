@@ -144,6 +144,9 @@ describe('/play/bag', () => {
     expect(within(consumables).getByRole('button', { name: 'Use Repel' })).toBeTruthy();
     const orbs = within(panel).getByRole('region', { name: 'Orbs' });
     expect(within(orbs).getByText('Throw in battle')).toBeTruthy();
+    // an orb shows its own sprite; an item without art keeps its kind's icon
+    expect(within(orbs).getByRole('listitem', { name: 'Spark Orb ×10' }).querySelector('img')?.getAttribute('src')).toBe('/items/orbs/spark_orb.webp');
+    expect(within(consumables).getByRole('listitem', { name: 'Potion ×3' }).querySelector('img')).toBeNull();
     const held = within(panel).getByRole('region', { name: 'Held items' });
     expect(within(held).getByRole('button', { name: 'Give Oran Berry' })).toBeTruthy();
     // who already holds a Charcoal is shown on its row

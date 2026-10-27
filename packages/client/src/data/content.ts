@@ -139,6 +139,13 @@ export function itemInfo(id: string): ItemInfo {
   return itemMap.get(id) ?? { id, name: id, description: '', kind: 'consumable', price: null, sellPrice: 0, usableInBattle: false };
 }
 
+/** Items with their own art under `public/items/` (the orbs, ported from the old game); every other item shows its kind's icon. */
+const ITEM_SPRITES: ReadonlySet<string> = new Set(ORBS.map((o) => o.id));
+
+export function itemSpriteUrl(id: string): string | null {
+  return ITEM_SPRITES.has(id) ? `/items/orbs/${id}.webp` : null;
+}
+
 export const HELD_ITEMS: readonly ItemInfo[] = [...itemMap.values()].filter((i) => i.kind === 'held');
 
 /** Consumable effects the server applies to one creature outside battle (`POST /item/use` with a target). */

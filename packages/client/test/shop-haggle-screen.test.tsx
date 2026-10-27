@@ -170,3 +170,13 @@ describe('ShopScreen haggling', () => {
     expect(screen.queryByRole('button', { name: 'Haggle' })).toBeNull();
   });
 });
+
+describe('ShopScreen item art', () => {
+  it('an orb row shows its sprite; a potion keeps its kind icon', async () => {
+    renderShop({ ...DATA, stock: ['potion', 'spark_orb'], prices: { potion: 300, spark_orb: 200 }, haggle: false });
+    await flush();
+    const orbRow = screen.getByText('Spark Orb', { selector: 'span' }).closest('tr')!;
+    expect(orbRow.querySelector('img')?.getAttribute('src')).toBe('/items/orbs/spark_orb.webp');
+    expect(screen.getByText('Potion', { selector: 'span' }).closest('tr')!.querySelector('img')).toBeNull();
+  });
+});

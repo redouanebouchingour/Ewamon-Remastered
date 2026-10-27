@@ -33,6 +33,7 @@ export { ProgressBar } from './ProgressBar';
 export { Pill } from './Pill';
 export { Icon, ICON_NAMES } from './Icon';
 export type { IconName } from './Icon';
+export { ItemGlyph } from './ItemGlyph';
 export { KeyArt } from './KeyArt';
 export { TooltipHost } from './TooltipHost';
 export { cssVars } from './cssVars';
