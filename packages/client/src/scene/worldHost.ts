@@ -27,6 +27,7 @@ let boundCanvas: HTMLCanvasElement | null = null;
 let refs = 0;
 let disposeTimer: ReturnType<typeof setTimeout> | null = null;
 let capabilityOverride: boolean | null = null;
+let capabilityProbed: boolean | null = null;
 
 /** Part 2 registers World3D here. */
 export function setWorldFactory(f: WorldFactory | null): void {
@@ -41,8 +42,21 @@ export function worldCapability(): boolean {
   if (capabilityOverride !== null) return capabilityOverride;
   if (typeof navigator === 'undefined' || typeof document === 'undefined') return false;
   if ('gpu' in navigator) return true;
+  if (capabilityProbed === null) capabilityProbed = probeWebGL2();
+  return capabilityProbed;
+}
+
+/**
+ * Probed once and the context freed at once. The shell calls `worldCapability()` on every render, and each probe used
+ * to leave a live WebGL2 context behind: past the browser's cap (16 in Chrome) it drops the oldest one, the world's,
+ * which is how opening a menu lost the canvas on the WebGL2 fallback.
+ */
+function probeWebGL2(): boolean {
   try {
-    return document.createElement('canvas').getContext('webgl2') !== null;
+    const gl = document.createElement('canvas').getContext('webgl2');
+    if (gl === null) return false;
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return true;
   } catch (_e) {
     return false;
   }

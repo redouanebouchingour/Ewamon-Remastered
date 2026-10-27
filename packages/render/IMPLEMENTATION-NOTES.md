@@ -2713,7 +2713,8 @@ target machine).
   wraps three's `onDeviceLost`, which its WebGLBackend calls from `webglcontextlost`, and reports it through
   `handleDeviceLost` like a WebGPU device loss (reason `'context-lost'`). The client's E6 recovery rebuilds the renderer
   on the same canvas after restoring the context (client IMPLEMENTATION-NOTES). Seen in a playtest: opening a menu on
-  WebGL2 left the canvas empty. The cause of that loss is not known yet.
+  WebGL2 left the canvas empty. Cause found (client IMPLEMENTATION-NOTES): the client's WebGL2 capability probe leaked a
+  context per shell render until Chrome dropped the world's; not a renderer bug.
 
 ## Cached sun shadows (2026-10-27, deviates from §10.3.1's cascaded shadow maps)
 

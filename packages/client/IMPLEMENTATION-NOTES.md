@@ -2952,6 +2952,13 @@ the second isolated client (the component over the landing page: the foe and own
 - Dynamic resolution is forced off on the WebGL2 fallback (`dynamicResolutionOn`; the setting shows disabled there): in a
   playtest on an Intel iGPU under WebGL2 the context kept getting lost after opening a menu, and the resolution steps
   (every render target re-created) are the suspect.
+- **The cause of that loss** (found 2026-10-27): without `navigator.gpu`, `worldCapability()` created a new WebGL2
+  context on every call to probe support, and `PlayShell` / `CanvasHost` call it on every render (up to 8 times). A
+  menu opening re-renders the shell; past Chrome's 16 live contexts the browser drops the oldest, the world's. It now
+  probes once, frees the probe with `WEBGL_lose_context`, and caches the answer. Live (the isolated dev pair, headless
+  Chrome, `navigator.gpu` hidden, 24 menu opens): before, 832 contexts made and the world's lost; after, 2 (the freed
+  probe and the world's), none lost, the zone draws. Test: `test/world-capability.test.ts`. Dynamic resolution stays
+  off on WebGL2 for now (no longer the suspect; turning it back on is a separate call).
 
 ## The dex moves (2026-10-27)
 
