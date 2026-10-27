@@ -2,8 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Ewamon Remastered: an HD-2D creature-collector MMO. Three.js WebGPU client, Colyseus + PostgreSQL (PGlite in dev)
-server, pnpm workspace (`packages/*`, `tools/*`), Node >= 22.
+Ewamon Remastered: an HD-2D creature-collector MMO. Three.js WebGPU client, Colyseus + PostgreSQL server, pnpm
+workspace (`packages/*`, `tools/*`), Node >= 22.
 
 Start with `HANDOFF.md` (state, open items, dev accounts, dev tips), then `.design/SPEC.md` (binding contract,
 assembled from `.design/spec/*.md`). The old game `C:\Users\Flowmatic - Redouane\Ewamon` is a read-only reference.
@@ -11,7 +11,8 @@ assembled from `.design/spec/*.md`). The old game `C:\Users\Flowmatic - Redouane
 ## Commands
 
 - `pnpm check`: typecheck + lint + lint-rule tests + all tests + build (what CI runs, on Node 22 and 24). Green before
-  every commit to `main`.
+  every commit to `main`. Tests need Postgres: `docker compose up -d postgres` (localhost:5432, `ewa`/`ewa`); each test
+  file gets a scratch database cloned from a migrated template (`@ewa/persist` `openScratchDb`).
 - `npx vitest run packages/<pkg>` for one package, `npx vitest run <path/to/file.test.ts>` for one file. Vitest aliases
   every `@ewa/*` import to its `src/index.ts`, so tests need no build. Timing tests (`perf/tick`, `aoi-fanout`, some UI
   tests) can fail under a loaded machine and pass alone; re-run them alone before calling them broken.
@@ -20,11 +21,12 @@ assembled from `.design/spec/*.md`). The old game `C:\Users\Flowmatic - Redouane
 - `pnpm --filter @ewa/content run validate`: the content gate (every species obtainable, heightfields, interiors,
   reachability). `pnpm --filter @ewa/content zone-map <dir> <zone>` draws a top-down debug map (unreachable = magenta).
 - `pnpm dev` runs client (:5173, proxies `/api`) + server (REST :4000, WS :2567). The server needs `JWT_SECRET`
-  (>= 32 chars); without `DATABASE_URL` it uses PGlite under `packages/server/.data`. The user's playtest pair may be
-  running there: use the isolated pair `node scripts/dev-alt.mjs server|client` (4100 / 2667 / 5174, `.data-alt`).
+  (>= 32 chars); without `DATABASE_URL` it uses the dev database `postgres://ewa:ewa@localhost:5432/ewa`. The user's
+  playtest pair may be running there: use the isolated pair `node scripts/dev-alt.mjs server|client` (4100 / 2667 /
+  5174, database `ewa_alt`).
 - `pnpm --filter @ewa/render sandbox` (:5180, `?zone=<id>`, `&interior=<id>&at=arena`, `?demo=battle|arena`).
-- Dev data: `pnpm --filter @ewa/server seed:progression | grant:creature | grant:item` (usage in HANDOFF.md). PGlite
-  allows one writer: stop the dev server first, or the WAL corrupts.
+- Dev data: `pnpm --filter @ewa/server seed:progression | grant:creature | grant:item` (usage in HANDOFF.md; they take
+  `DATABASE_URL`, default the dev database).
 - `pnpm db:generate` / `pnpm db:migrate`: Drizzle migrations in `packages/persist/drizzle`.
 
 ## Architecture

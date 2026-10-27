@@ -110,9 +110,6 @@ importers:
 
   packages/persist:
     dependencies:
-      '@electric-sql/pglite':
-        specifier: ^0.5.8
-        version: 0.5.8
       '@ewa/content':
         specifier: workspace:*
         version: link:../content
@@ -3870,7 +3867,8 @@ snapshots:
 
   '@drizzle-team/brocli@0.10.2': {}
 
-  '@electric-sql/pglite@0.5.8': {}
+  '@electric-sql/pglite@0.5.8':
+    optional: true
 
   '@emnapi/runtime@1.11.3':
     dependencies:

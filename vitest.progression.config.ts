@@ -29,6 +29,7 @@ export default defineConfig({
   resolve: base.resolve,
   test: {
     include: ['packages/server/test/progression-*.test.ts'],
+    globalSetup: ['./vitest.setup-db.ts'],
     fileParallelism: false,
     sequence: { sequencer: LegOrder },
     environment: 'node',

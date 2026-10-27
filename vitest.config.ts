@@ -18,9 +18,9 @@ export default defineConfig({
     },
   },
   test: {
-    // Packages that can run against a real Postgres (DATABASE_URL) share one database, so their
-    // test files must not run in parallel workers. PGlite (the default) is per-file in-memory.
-    fileParallelism: !process.env.DATABASE_URL,
+    // Database tests open a scratch database each (@ewa/persist openScratchDb) on the Postgres of
+    // EWA_TEST_DATABASE_URL (default: the docker-compose `postgres` service); this names the run and drops its leftovers.
+    globalSetup: ['./vitest.setup-db.ts'],
     include: ['packages/*/test/**/*.test.ts', 'packages/*/test/**/*.test.tsx', 'tools/*/test/**/*.test.ts'],
     // tools/character-pipeline (the pixel-art characters) is superseded by the KayKit 3D set (render §10.7.7,
     // 2026-10-05): its output is no longer shipped, so its budget tests leave the default run

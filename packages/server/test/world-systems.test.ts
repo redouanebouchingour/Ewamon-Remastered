@@ -6,7 +6,7 @@
  *     cap; a ridden segment never touches open water, HM Surf or not;
  *   - D10 obstacles: a stamped sample is unstandable until the obstacle id is in `clearedObstacles`;
  *   - D9 `rollFishing`: water slots only, deterministic per seed, null without an eligible water slot.
- * Integration (real server + SDK client, PGlite), all in mire_route:
+ * Integration (real server + SDK client, scratch Postgres), all in mire_route:
  *   - D8 surf: HM Surf lets a player step off the boardwalk onto open water (`PlayerState.surfing`), never without it;
  *   - D9 fish: refused without the rod (`noRod`) and away from water (`noWater`); a cast from the boardwalk starts a
  *     wild battle against one of the zone's water species; a zone with water but no water slots → `nothingBites`;

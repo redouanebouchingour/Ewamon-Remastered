@@ -33,10 +33,13 @@ This file is the single entry point for whoever continues the build. Read it, th
   pose, target, dialogue, battle, toasts and party. The render sandbox is `pnpm --filter @ewa/render sandbox`
   (port 5180; `?zone=<id>`, `&interior=<pocket id>&at=arena`, `?demo=battle`, `window.__ewaSandbox`).
 - The user's playtest server/client may be running on 4000 / 2567 / 5173. Use the isolated pair `node scripts/dev-alt.mjs
-  server|client` (REST 4100, WS 2667, client 5174, PGlite `packages/server/.data-alt`; `.claude/launch.json`
+  server|client` (REST 4100, WS 2667, client 5174, database `ewa_alt` on the dev Postgres; `.claude/launch.json`
   `ewa-server-alt` / `ewa-client-alt`).
-- Dev accounts. PGlite allows **one writer**: stop the dev server first, or concurrent opens corrupt the WAL.
-  - At any story point: `DATA_DIR=./.data-alt pnpm --filter @ewa/server seed:progression <act1|act2|act3a|act3b|act3c>
+- Database: PostgreSQL only (PGlite was removed 2026-10-27). `docker compose up -d postgres` runs it on
+  localhost:5432 (`ewa`/`ewa`); `pnpm dev`, the dev scripts and `pnpm test` (a scratch database per test file) all use
+  it. Production sets `DATABASE_URL`.
+- Dev accounts (the scripts take `DATABASE_URL`, default the dev database `ewa`; the alt pair's is `ewa_alt`):
+  - At any story point: `DATABASE_URL=postgres://ewa:ewa@localhost:5432/ewa_alt pnpm --filter @ewa/server seed:progression <act1|act2|act3a|act3b|act3c>
     <username> --password <pw>`.
   - A creature: `pnpm --filter @ewa/server grant:creature <username> <species> <level> [--moves ...] [--box] [--shiny]`
     (the moves it knows at that level, dex marked caught), or `grant:creature <username> all <level> [--missing]` (one of
@@ -228,4 +231,5 @@ in the `IMPLEMENTATION-NOTES.md` sections dated 2026-10-24 (not in the SPEC: the
    see a tower run between fights or a crossing in progress (the arena start's transaction is the last guard); the
    battle camera's narrow framing shows mostly the arena floor (the bowl shows on cut-aways); no arena spectating or
    seasons; Weekly Cup wins earn nothing beyond pvp trainer exp (the old game's cup milestones were not carried).
-8. Deployment is undecided (the user's call).
+8. Deployment: a Strato VPS (4 cores, 8 GB, Ubuntu 26.04) with PostgreSQL, set up by hand (no Plesk); PGlite is
+   gone from the repo. `LLM_THREADS` defaults to 2 so llama.cpp leaves cores for the 20 Hz tick.

@@ -27,7 +27,7 @@ Inputs: `PLAN.md`; the legacy data under `.design/legacy/` (`ewamon.js` 130 spec
 @ewa/core     -> (nothing)
 @ewa/content  -> @ewa/core, zod
 @ewa/protocol -> @ewa/core, @ewa/content, @colyseus/schema
-@ewa/persist  -> @ewa/core, @ewa/content, drizzle-orm, pg, @electric-sql/pglite
+@ewa/persist  -> @ewa/core, @ewa/content, drizzle-orm, pg
 @ewa/render   -> three (only)
 @ewa/server   -> core, content, protocol, persist, colyseus, @colyseus/core, fastify, zod
 @ewa/client   -> core, content, protocol, render, react, react-dom, react-router, zustand, @colyseus/sdk
@@ -2009,7 +2009,7 @@ Every user-supplied string that reaches SQL `LIKE`/`ILIKE` goes through `escapeL
 ## §5 @ewa/persist
 
 <!-- reconciled 2026-09-18: §5 now follows packages/persist as implemented (IMPLEMENTATION-NOTES.md, 55/55 tests on PGlite and PostgreSQL 17.6); every deviation below is marked -->
-Drizzle `pg-core` schema in `packages/persist/src/schema/*.ts` (one file per area, all re-exported from `schema/index.ts`; `drizzle.config.ts` globs the folder — the code is the reference, this section documents it); verified APIs: `pgTable`, `pgEnum`, `uuid`, `text`, `varchar`, `integer`, `smallint`, `bigint`, `boolean`, `timestamp`, `jsonb`, `index`, `uniqueIndex`, `primaryKey`, `foreignKey`, `check`; `drizzle()` from `drizzle-orm/node-postgres` and `drizzle-orm/pglite`; `migrate()` from `drizzle-orm/node-postgres/migrator` and `drizzle-orm/pglite/migrator`; `db.transaction(tx => …)`; `tx.select().from(t).where(…).for('update')`.
+Drizzle `pg-core` schema in `packages/persist/src/schema/*.ts` (one file per area, all re-exported from `schema/index.ts`; `drizzle.config.ts` globs the folder — the code is the reference, this section documents it); verified APIs: `pgTable`, `pgEnum`, `uuid`, `text`, `varchar`, `integer`, `smallint`, `bigint`, `boolean`, `timestamp`, `jsonb`, `index`, `uniqueIndex`, `primaryKey`, `foreignKey`, `check`; `drizzle()` from `drizzle-orm/node-postgres`; `migrate()` from `drizzle-orm/node-postgres/migrator`; <!-- 2026-10-27 PGlite removed: PostgreSQL everywhere -->  `db.transaction(tx => …)`; `tx.select().from(t).where(…).for('update')`.
 
 ### 5.1 Tables
 
@@ -2600,8 +2600,8 @@ Lock order, global, so no two transactions can deadlock: (1) `listings` row (`FO
 
 ### 5.4 Test strategy and migrations
 
-- Unit and repository tests run on **PGlite** (`drizzle-orm/pglite`) inside vitest with an in-memory database per test file; `migrate()` from `drizzle-orm/pglite/migrator` applies the committed SQL first. No Docker, no external service.
-- `DATABASE_URL` set → the same suite runs against real Postgres via `drizzle-orm/node-postgres` (CI nightly, and required before any release). The `FOR UPDATE`/`SKIP LOCKED` tests spawn 20 concurrent transactions against one listing and assert exactly one wins and the loser sees `BidTooLow`/`ListingClosed`, never a duplicate transfer.
+- Unit and repository tests run on **PostgreSQL** via `drizzle-orm/node-postgres` inside vitest, a scratch database per test file (`openScratchDb`: a copy of a template that already holds every committed migration, dropped on close) on the server of `EWA_TEST_DATABASE_URL` (default the docker-compose `postgres` service). "+M+"
+- The `FOR UPDATE`/`SKIP LOCKED` tests spawn 20 concurrent transactions against one listing and assert exactly one wins and the loser sees `BidTooLow`/`ListingClosed`, never a duplicate transfer.
 - Migrations: `drizzle-kit generate` writes SQL into `packages/persist/drizzle/`; `packages/persist/src/migrate.ts` is the only runner (`pnpm --filter @ewa/persist migrate`), picking the driver from `DATABASE_URL` presence. Migrations are never edited after commit; a fix is a new migration.
 - Seed: `packages/server/src/seed.ts` creates three demo players with the three registration starters at level 5 (there are no `yahit/fennorange/resilian` demo trainers — those ids are legacy). It lives in the server package because creature construction (species defaults, `hp = maxHp`) needs `@ewa/core` + `@ewa/content`, which persist does not import at runtime. <!-- reconciled 2026-09-18: moved from persist per its IMPLEMENTATION-NOTES -->
 - Types persist needs from core/content (`CreatureInstance`, `MoveSlot`, `StatusId`, `Action`, `RngState`, `ZoneId`, `BadgeId`, `RewardsSummary`, `MARKET`, `RANK_TIERS`, `tierFor`, `trainerLevelFor`) are structural copies in `src/types.ts`/`src/constants.ts` marked `TODO(core|content)`; they become re-exports when both packages ship. Shapes are verbatim so the switch is mechanical.

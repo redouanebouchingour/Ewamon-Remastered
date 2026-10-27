@@ -1,5 +1,5 @@
-# Ewamon Remastered, standalone with live reload: the game server, the client (Vite dev server behind nginx) and
-# llama.cpp on the CPU for NPC talk.
+# Ewamon Remastered, standalone with live reload: Postgres, the game server, the client (Vite dev server behind nginx)
+# and llama.cpp on the CPU for NPC talk.
 #   docker compose up -d --build    →  http://localhost:8080
 # The working tree's sources are mounted read-only into the containers (their node_modules stay the image's own, built
 # for Linux): `client` reloads / hot-swaps on a client edit, `server` runs `tsx watch` and restarts on a server edit
@@ -24,16 +24,40 @@ services:
       - -c
       - "8192"
       - --threads
-      - "${LLM_THREADS:-4}"
+      - "${LLM_THREADS:-2}"
     volumes:
       - ./models/gemma4-e2b:/models:ro
+    restart: unless-stopped
+
+  # the database, also published on localhost:5432 for `pnpm dev`, the tests (each test file creates a scratch
+  # database of its own here) and the dev scripts: postgres://ewa:ewa@localhost:5432/ewa (@ewa/persist DEV_DATABASE_URL)
+  postgres:
+    image: postgres:18-alpine
+    command: ["postgres", "-c", "max_connections=300"]
+    environment:
+      POSTGRES_USER: ewa
+      POSTGRES_PASSWORD: ewa
+      POSTGRES_DB: ewa
+    volumes:
+      - ewa-pg:/var/lib/postgresql
+    ports:
+      - "127.0.0.1:${EWA_PG_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ewa -d ewa"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
     restart: unless-stopped
 
   server:
     build:
       context: .
       target: server
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
+      DATABASE_URL: postgres://ewa:ewa@postgres:5432/ewa
       JWT_SECRET: ${JWT_SECRET:-ewa-docker-local-secret-change-me-0123456789}
       CORS_ORIGINS: http://localhost:${EWA_PORT:-8080}
       PUBLIC_WEB_URL: http://localhost:${EWA_PORT:-8080}
@@ -94,3 +118,4 @@ services:
 
 volumes:
   ewa-data:
+  ewa-pg:

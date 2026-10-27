@@ -3,22 +3,21 @@
  *
  *   pnpm --filter @ewa/server grant:creature <username> <species> <level> [--moves "A,B,C,D"] [--box] [--shiny]
  *   pnpm --filter @ewa/server grant:creature <username> all <level> [--missing] [--shiny]
- *   (env: DATA_DIR — PGlite at DATA_DIR/pglite, default ./.data — or DATABASE_URL)
+ *   (env: DATABASE_URL, default the dev database of docker-compose.yml)
  *
  * The creature goes to the first free party slot (the box when the party is full or with --box), with the moves it
  * knows at that level (the server's last-four rule, `movesAtLevel`: a legendary's signature move included) unless
  * --moves names up to four moves (each must exist in content). The dex marks it caught.
  * `all` grants one of every species in dex order, into the box, in one transaction (`--missing`: only the species the
- * player owns none of). PGlite allows one process: stop the server that holds the database first, or the open fails.
+ * player owns none of).
  */
-import { resolve } from 'node:path';
 import { SPECIES, createContentIndex } from '@ewa/content';
-import { createDb, createRepos, runMigrations } from '@ewa/persist';
+import { DEV_DATABASE_URL, createDb, createRepos, runMigrations } from '@ewa/persist';
 import { newCreature } from '../src/game/creatures';
 
 function usage(msg?: string): never {
   if (msg !== undefined) console.error(`grant-creature: ${msg}`);
-  console.error('usage: grant-creature <username> <species|all> <level> [--moves "A,B,C,D"] [--box] [--shiny] [--missing]  (env: DATA_DIR | DATABASE_URL)');
+  console.error('usage: grant-creature <username> <species|all> <level> [--moves "A,B,C,D"] [--box] [--shiny] [--missing]  (env: DATABASE_URL)');
   process.exit(2);
 }
 
@@ -57,7 +56,7 @@ async function main(): Promise<void> {
   }
 
   const url = process.env['DATABASE_URL'];
-  const db = await createDb(url !== undefined ? { url } : { pgliteDir: resolve(process.env['DATA_DIR'] ?? './.data', 'pglite') });
+  const db = await createDb({ url: url ?? DEV_DATABASE_URL });
   await runMigrations(db);
   const repos = createRepos(db);
   const now = new Date();

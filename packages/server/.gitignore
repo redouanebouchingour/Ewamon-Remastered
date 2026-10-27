@@ -1,4 +1,4 @@
-# dev PGlite database (DATA_DIR default ./.data when DATABASE_URL is unset)
+# DATA_DIR (default ./.data): mail written as .eml files when SMTP is not configured; also the old PGlite databases
 .data/
 .data-alt/
 .data-alt2/

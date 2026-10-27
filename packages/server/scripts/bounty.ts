@@ -4,19 +4,17 @@
  *   pnpm --filter @ewa/server bounty wins <username> <n>   (n won fights by n different trainers, then post)
  *   pnpm --filter @ewa/server bounty post                  (post the game's bounties now, as the schedule would)
  *   pnpm --filter @ewa/server bounty list                  (the open posters)
- *   (env: DATA_DIR · PGlite at DATA_DIR/pglite, default ./.data · or DATABASE_URL)
+ *   (env: DATABASE_URL, default the dev database of docker-compose.yml)
  *
  * `wins` needs the trainer's ghost (they left the world). A running server sees new posters on its next board read
- * and its zone rooms within a minute. PGlite allows one process: stop the server that holds the database first, a
- * second writer opens silently and corrupts the WAL.
+ * and its zone rooms within a minute.
  */
-import { resolve } from 'node:path';
-import { createDb, createRepos, runMigrations } from '@ewa/persist';
+import { DEV_DATABASE_URL, createDb, createRepos, runMigrations } from '@ewa/persist';
 import { postGameBounties } from '../src/game/bounties';
 
 function usage(msg?: string): never {
   if (msg !== undefined) console.error(`bounty: ${msg}`);
-  console.error('usage: bounty wins <username> <n> | bounty post | bounty list  (env: DATA_DIR | DATABASE_URL)');
+  console.error('usage: bounty wins <username> <n> | bounty post | bounty list  (env: DATABASE_URL)');
   process.exit(2);
 }
 
@@ -24,7 +22,7 @@ async function main(): Promise<void> {
   const [cmd, name, count] = process.argv.slice(2);
   if (cmd !== 'wins' && cmd !== 'post' && cmd !== 'list') usage();
   const url = process.env['DATABASE_URL'];
-  const db = await createDb(url !== undefined ? { url } : { pgliteDir: resolve(process.env['DATA_DIR'] ?? './.data', 'pglite') });
+  const db = await createDb({ url: url ?? DEV_DATABASE_URL });
   await runMigrations(db);
   const repos = createRepos(db);
   const now = Date.now();

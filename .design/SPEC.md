@@ -408,7 +408,7 @@ Inputs: `PLAN.md`; the legacy data under `.design/legacy/` (`ewamon.js` 130 spec
 @ewa/core     -> (nothing)
 @ewa/content  -> @ewa/core, zod
 @ewa/protocol -> @ewa/core, @ewa/content, @colyseus/schema
-@ewa/persist  -> @ewa/core, @ewa/content, drizzle-orm, pg, @electric-sql/pglite
+@ewa/persist  -> @ewa/core, @ewa/content, drizzle-orm, pg
 @ewa/render   -> three (only)
 @ewa/server   -> core, content, protocol, persist, colyseus, @colyseus/core, fastify, zod
 @ewa/client   -> core, content, protocol, render, react, react-dom, react-router, zustand, @colyseus/sdk
@@ -2390,7 +2390,7 @@ Every user-supplied string that reaches SQL `LIKE`/`ILIKE` goes through `escapeL
 ## §5 @ewa/persist
 
 <!-- reconciled 2026-09-18: §5 now follows packages/persist as implemented (IMPLEMENTATION-NOTES.md, 55/55 tests on PGlite and PostgreSQL 17.6); every deviation below is marked -->
-Drizzle `pg-core` schema in `packages/persist/src/schema/*.ts` (one file per area, all re-exported from `schema/index.ts`; `drizzle.config.ts` globs the folder — the code is the reference, this section documents it); verified APIs: `pgTable`, `pgEnum`, `uuid`, `text`, `varchar`, `integer`, `smallint`, `bigint`, `boolean`, `timestamp`, `jsonb`, `index`, `uniqueIndex`, `primaryKey`, `foreignKey`, `check`; `drizzle()` from `drizzle-orm/node-postgres` and `drizzle-orm/pglite`; `migrate()` from `drizzle-orm/node-postgres/migrator` and `drizzle-orm/pglite/migrator`; `db.transaction(tx => …)`; `tx.select().from(t).where(…).for('update')`.
+Drizzle `pg-core` schema in `packages/persist/src/schema/*.ts` (one file per area, all re-exported from `schema/index.ts`; `drizzle.config.ts` globs the folder — the code is the reference, this section documents it); verified APIs: `pgTable`, `pgEnum`, `uuid`, `text`, `varchar`, `integer`, `smallint`, `bigint`, `boolean`, `timestamp`, `jsonb`, `index`, `uniqueIndex`, `primaryKey`, `foreignKey`, `check`; `drizzle()` from `drizzle-orm/node-postgres`; `migrate()` from `drizzle-orm/node-postgres/migrator`; <!-- 2026-10-27 PGlite removed: PostgreSQL everywhere -->  `db.transaction(tx => …)`; `tx.select().from(t).where(…).for('update')`.
 
 ### 5.1 Tables
 
@@ -2981,8 +2981,8 @@ Lock order, global, so no two transactions can deadlock: (1) `listings` row (`FO
 
 ### 5.4 Test strategy and migrations
 
-- Unit and repository tests run on **PGlite** (`drizzle-orm/pglite`) inside vitest with an in-memory database per test file; `migrate()` from `drizzle-orm/pglite/migrator` applies the committed SQL first. No Docker, no external service.
-- `DATABASE_URL` set → the same suite runs against real Postgres via `drizzle-orm/node-postgres` (CI nightly, and required before any release). The `FOR UPDATE`/`SKIP LOCKED` tests spawn 20 concurrent transactions against one listing and assert exactly one wins and the loser sees `BidTooLow`/`ListingClosed`, never a duplicate transfer.
+- Unit and repository tests run on **PostgreSQL** via `drizzle-orm/node-postgres` inside vitest, a scratch database per test file (`openScratchDb`: a copy of a template that already holds every committed migration, dropped on close) on the server of `EWA_TEST_DATABASE_URL` (default the docker-compose `postgres` service). "+M+"
+- The `FOR UPDATE`/`SKIP LOCKED` tests spawn 20 concurrent transactions against one listing and assert exactly one wins and the loser sees `BidTooLow`/`ListingClosed`, never a duplicate transfer.
 - Migrations: `drizzle-kit generate` writes SQL into `packages/persist/drizzle/`; `packages/persist/src/migrate.ts` is the only runner (`pnpm --filter @ewa/persist migrate`), picking the driver from `DATABASE_URL` presence. Migrations are never edited after commit; a fix is a new migration.
 - Seed: `packages/server/src/seed.ts` creates three demo players with the three registration starters at level 5 (there are no `yahit/fennorange/resilian` demo trainers — those ids are legacy). It lives in the server package because creature construction (species defaults, `hp = maxHp`) needs `@ewa/core` + `@ewa/content`, which persist does not import at runtime. <!-- reconciled 2026-09-18: moved from persist per its IMPLEMENTATION-NOTES -->
 - Types persist needs from core/content (`CreatureInstance`, `MoveSlot`, `StatusId`, `Action`, `RngState`, `ZoneId`, `BadgeId`, `RewardsSummary`, `MARKET`, `RANK_TIERS`, `tierFor`, `trainerLevelFor`) are structural copies in `src/types.ts`/`src/constants.ts` marked `TODO(core|content)`; they become re-exports when both packages ship. Shapes are verbatim so the switch is mechanical.
@@ -5744,7 +5744,7 @@ export const EnvSchema = z.object({
   PORT_WS: z.coerce.number().int().min(1).max(65535).default(2567),
   PORT_REST: z.coerce.number().int().min(1).max(65535).default(4000),
   PUBLIC_ADDRESS: z.string().min(1).optional(),                 // host[:port] the SDK should reach; required when REDIS_URL is set
-  DATABASE_URL: z.string().url().optional(),                    // absent → PGlite at DATA_DIR/pglite (dev/test only; refused in production)
+  DATABASE_URL: z.string().url().optional(),                    // absent → the dev database postgres://ewa:ewa@localhost:5432/ewa (development only; required in production) <!-- 2026-10-27 PGlite removed: PostgreSQL everywhere -->
   DATA_DIR: z.string().min(1).default('./.data'),
   REDIS_URL: z.string().url().optional(),
   JWT_SECRET: z.string().min(32),                               // ≥ 32 bytes; no default, boot fails without it
@@ -7698,7 +7698,7 @@ Inputs: `PLAN.md` (frame-budget table, milestones, verification list); `00-spine
 Two facts about the installed toolchain that shape this section:
 
 1. **Playwright is not installed.** `@playwright/test` is added as a root devDependency in M0 (`pnpm add -Dw @playwright/test`, browsers via `pnpm exec playwright install chromium`). Everything below that says "in Chromium" runs through it. Until it lands, no browser-side item in §50.5 can be ticked.
-2. **PGlite is one connection.** `@electric-sql/pglite` executes one statement stream; two transactions cannot hold conflicting `FOR UPDATE` locks at the same time. Lock tests therefore have two shapes: a *sequential* shape that runs on PGlite everywhere, and a *concurrent* shape gated on `DATABASE_URL` (`describe.skipIf(!process.env.DATABASE_URL)`). §5.4 of the spine already requires the concurrent shape before any release; this file names the files.
+2. **Tests need PostgreSQL.** Every database test runs on a scratch database of its own on a real Postgres (`docker compose up -d postgres` locally, a service container in CI), so lock tests have one shape: the concurrent one, always on. <!-- 2026-10-27 PGlite removed: PostgreSQL everywhere -->
 
 ---
 
@@ -7920,15 +7920,15 @@ Every file listed must exist with at least the assertions listed. A milestone in
 
 ### 50.4.4 `@ewa/persist` — `packages/persist/test/`
 
-All files open a fresh PGlite (`drizzle-orm/pglite`) per file and run `migrate()` from `drizzle-orm/pglite/migrator` over `packages/persist/drizzle/` first.
+All files open a scratch Postgres database per file (`openScratchDb`), a copy of a template migrated with `migrate()` from `drizzle-orm/node-postgres/migrator` over `packages/persist/drizzle/`. <!-- 2026-10-27 PGlite removed: PostgreSQL everywhere -->
 
 | File | Asserts |
 |---|---|
 | `migrate.test.ts` | Migrations apply on an empty database; applying twice is a no-op; the schema in `schema.ts` matches the migrated database (`drizzle-kit check` equivalent: every table/column/index in `schema.ts` exists). |
 | `slots.test.ts` | The `(owner_id, slot_kind, slot_index)` unique index rejects a duplicate party slot; `reorderParty` two-phase never violates it (an order that swaps slots 0 and 1 succeeds) and leaves no row in the 100..105 staging band after commit; `moveToSlot(…, 'box', 'nextBox')` picks `max + 1`; `creature_party_slot_ck` rejects party index 6, 99 and 106 and accepts 0..5 and 100..105 (spine §5.1); `swap` with a full party succeeds; `insert` into a taken party index → `PartyFull`. <!-- reconciled 2026-09-18 --> |
 | `transfer.test.ts` | `transferCreature` moves ownership and slot in one transaction; `NotOwner`, `Locked`, `PartyMinimum` thrown and nothing written (row counts and `canonicalJson` of both players' creatures unchanged); an injected failure after the owner rewrite rolls the whole transaction back; `audit_log` gets exactly one `creature.transfer` row on success; `release` of a creature that was ever listed → `InvalidArgument`. |
-| `market.test.ts` (PGlite, sequential) | `placeBid` escrows money at bid time (`players.money` decremented, previous bidder refunded; raising one's own bid needs only the difference); `BidTooLow` at `currentBid + 49`, accepted at `+ 50`; `SelfBid`; `amount ≥ buyNowPrice` → `BidAboveBuyNow`; `buyNow` transfers, pays `price − marketFee(price)` (5 %, floored), refunds the standing bidder; `buyNow` on a listing without a price → `NoBuyNow`; `cancel` with a bid → `ListingHasBids`; `closeExpired` returns unsold to the seller's box and marks `expired`, sells to the high bidder otherwise; `listings_creature_active_uq` blocks a second active listing of the same creature; `players_money_ck` rejects a raw negative write. <!-- reconciled 2026-09-18: persist §5.5 codes --> |
-| `market-concurrency.test.ts` (`describe.skipIf(!process.env.DATABASE_URL)`) | 20 concurrent `placeBid` transactions on one listing at the same amount: exactly one succeeds, 19 see `BidTooLow`; 20 concurrent `buyNow`: exactly one transfer row, 19 `ListingClosed`; `closeExpired` from 4 concurrent workers with `SKIP LOCKED` closes each listing exactly once (sum of return values equals the listing count). Runs in CI nightly against a Postgres service container and is required by the M4 gate. |
+| `market.test.ts` (sequential and concurrent) | `placeBid` escrows money at bid time (`players.money` decremented, previous bidder refunded; raising one's own bid needs only the difference); `BidTooLow` at `currentBid + 49`, accepted at `+ 50`; `SelfBid`; `amount ≥ buyNowPrice` → `BidAboveBuyNow`; `buyNow` transfers, pays `price − marketFee(price)` (5 %, floored), refunds the standing bidder; `buyNow` on a listing without a price → `NoBuyNow`; `cancel` with a bid → `ListingHasBids`; `closeExpired` returns unsold to the seller's box and marks `expired`, sells to the high bidder otherwise; `listings_creature_active_uq` blocks a second active listing of the same creature; `players_money_ck` rejects a raw negative write. <!-- reconciled 2026-09-18: persist §5.5 codes --> |
+| `market-concurrency.test.ts` (server package) | 20 concurrent `placeBid` transactions on one listing at the same amount: exactly one succeeds, 19 see `BidTooLow`; 20 concurrent `buyNow`: exactly one transfer row, 19 `ListingClosed`; `closeExpired` from 4 concurrent workers with `SKIP LOCKED` closes each listing exactly once (sum of return values equals the listing count). Runs in every `pnpm test` (CI: a Postgres service container) and is required by the M4 gate. |
 | `trade.test.ts` | Two-player trade completion: both locked in ascending uuid order (asserted via the statement log), every creature in `trade_escrow`, transfers both ways, money both ways, two `trade_history` rows; any creature not in escrow aborts everything. |
 | `inventory.test.ts` | `add` upserts and deletes the row at 0 (`all()` never lists zero quantities); going below 0 throws `InsufficientItems` and writes nothing; above 999 throws `InventoryOverflow`; `inventory_qty_ck` rejects a raw 1000; `addMany` is all-or-nothing. |
 | `public.test.ts` | `Object.keys(toPublic(row, extras))` equals `PUBLIC_PROFILE_KEYS` = exactly `[id, username, title, motto, body, rating, peakRating, tier, trainerLevel, badges, guildTag, dexCaughtCount, showcase, createdAt]` in order; adding a column to a fixture row does not appear; `guildTag` is `null` for a guildless player; `showcase` ≤ 3 with `ownerId === null`; `publicProfile(tx, id)` gathers the same. |
@@ -7953,7 +7953,7 @@ All files open a fresh PGlite (`drizzle-orm/pglite`) per file and run `migrate()
 
 ### 50.4.5 `@ewa/server` — `packages/server/test/`
 
-Server tests boot `@colyseus/core` in-process with the PGlite-backed repos and connect with `@colyseus/sdk` `Client` over a local WebSocket transport.
+Server tests boot `@colyseus/core` in-process with repos on a scratch Postgres database and connect with `@colyseus/sdk` `Client` over a local WebSocket transport.
 
 | File | Asserts |
 |---|---|
@@ -8074,7 +8074,7 @@ A milestone is done when every box is ticked by the command beside it, run from 
 - [ ] `pnpm vitest run packages/core` — all §50.4.1 files present and green; `fuzz.test.ts` ≤ 40 s; `test/fuzz-digests.json` committed with 1000 entries.
 - [ ] `pnpm vitest run packages/content` — all §50.4.2 files green; `pnpm --filter @ewa/content validate` exits 0 and writes `dist/content-report.json` with `roster.obtainable: 137`, 21 heightfield digests and `dist/heightfields/*.json`.
 - [ ] `pnpm vitest run packages/protocol` — §50.4.3 green.
-- [ ] `pnpm vitest run packages/persist` — §50.4.4 PGlite files green; `pnpm db:generate` produces no diff (schema and migrations agree); `pnpm db:migrate` on an empty `DATABASE_URL` database succeeds.
+- [ ] `pnpm vitest run packages/persist` — §50.4.4 files green (on Postgres); `pnpm db:generate` produces no diff (schema and migrations agree); `pnpm db:migrate` on an empty `DATABASE_URL` database succeeds.
 - [ ] `@playwright/test` installed; `pnpm exec playwright test packages/client/test/fuzz-browser.spec.ts` compares 1000/1000 digests — **the `PLAN.md` M0 exit criterion**.
 - [ ] `.design/spec/CHANGELOG.md` exists with the entry that created this file.
 

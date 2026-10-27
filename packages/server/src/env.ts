@@ -10,7 +10,7 @@ export const EnvSchema = z.object({
   PORT_REST: z.coerce.number().int().min(0).max(65535).default(4000),
   /** host[:port] the SDK should reach; required when REDIS_URL is set */
   PUBLIC_ADDRESS: z.string().min(1).optional(),
-  /** absent → PGlite at DATA_DIR/pglite (dev/test only; refused in production) */
+  /** absent → the dev database (@ewa/persist DEV_DATABASE_URL, development only; required in production) */
   DATABASE_URL: z.string().url().optional(),
   DATA_DIR: z.string().min(1).default('./.data'),
   REDIS_URL: z.string().url().optional(),
@@ -116,7 +116,7 @@ export function parseEnv(source: Readonly<Record<string, string | undefined>>): 
   const env = EnvSchema.parse(source);
   if (env.NODE_ENV === 'production') {
     const problems: string[] = [];
-    if (env.DATABASE_URL === undefined) problems.push('DATABASE_URL is required in production (PGlite is dev/test only)');
+    if (env.DATABASE_URL === undefined) problems.push('DATABASE_URL is required in production');
     if (env.REDIS_URL !== undefined && env.PUBLIC_ADDRESS === undefined) problems.push('PUBLIC_ADDRESS is required when REDIS_URL is set');
     if (env.ADMIN_BOOTSTRAP_USERNAME !== undefined) problems.push('ADMIN_BOOTSTRAP_USERNAME is refused in production');
     if (corsOrigins(env).includes('*')) problems.push('CORS_ORIGINS may not contain * in production');

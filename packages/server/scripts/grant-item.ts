@@ -2,19 +2,17 @@
  * Dev tool: give a player items directly in the database.
  *
  *   pnpm --filter @ewa/server grant:item <username> <item> <qty> [--set]
- *   (env: DATA_DIR — PGlite at DATA_DIR/pglite, default ./.data — or DATABASE_URL)
+ *   (env: DATABASE_URL, default the dev database of docker-compose.yml)
  *
  * Adds `qty` of `item` (a held item, consumable or orb id from content) to the player's bag; `--set` makes the bag hold
- * exactly `qty`. The bag holds at most 999 of an item (persist INVENTORY_MAX_QTY). PGlite allows one process: stop
- * the server that holds the database first — a second writer opens silently and corrupts the WAL.
+ * exactly `qty`. The bag holds at most 999 of an item (persist INVENTORY_MAX_QTY).
  */
-import { resolve } from 'node:path';
 import { createContentIndex } from '@ewa/content';
-import { createDb, createRepos, runMigrations } from '@ewa/persist';
+import { DEV_DATABASE_URL, createDb, createRepos, runMigrations } from '@ewa/persist';
 
 function usage(msg?: string): never {
   if (msg !== undefined) console.error(`grant-item: ${msg}`);
-  console.error('usage: grant-item <username> <item> <qty> [--set]  (env: DATA_DIR | DATABASE_URL)');
+  console.error('usage: grant-item <username> <item> <qty> [--set]  (env: DATABASE_URL)');
   process.exit(2);
 }
 
@@ -41,7 +39,7 @@ async function main(): Promise<void> {
   if (name === null) usage(`unknown item '${itemId}'`);
 
   const url = process.env['DATABASE_URL'];
-  const db = await createDb(url !== undefined ? { url } : { pgliteDir: resolve(process.env['DATA_DIR'] ?? './.data', 'pglite') });
+  const db = await createDb({ url: url ?? DEV_DATABASE_URL });
   await runMigrations(db);
   const repos = createRepos(db);
   const now = new Date();

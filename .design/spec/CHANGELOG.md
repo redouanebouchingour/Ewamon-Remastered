@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-27 PGlite removed. One entry. -->
+
+## 2026-10-27 · `00-spine.md` §0 package graph, §5 drizzle APIs, §5.4 tests; `30-server-netcode.md` env; `50-verification-budget.md` rule 2, §50.4.4, §50.4.5, §50.5 M1 · PostgreSQL everywhere, PGlite removed
+Why: the game goes onto a Strato VPS with a real PostgreSQL; the user asked to move the repository off PGlite. `@ewa/persist` `createDb({ url })` is node-postgres only. Development uses the docker-compose `postgres` service (`DEV_DATABASE_URL`, created when missing); tests open a scratch database per file cloned from a migrated template (`openScratchDb`), so the `FOR UPDATE` / `SKIP LOCKED` suites that were gated on `DATABASE_URL` always run. CI gets a Postgres service container.
+Evidence: `pnpm test` on the compose Postgres 18: 379 of 380 files green (persist 38 files including the concurrent market suite; server `market-concurrency.test.ts` on a pool of 32); the one failure, client `zoneSpecFor.test.ts`'s snapshot, reads no database and fails the same alone. `pnpm build`; the alt dev server boots, creates `ewa_alt` and applies 26 migrations.
+Affects: `packages/persist/src/{db.ts,scratch.ts,migrate.ts,index.ts}`, `packages/persist/test/{helpers,market,migrations}.test.ts`; `packages/server/src/{main.ts,env.ts,metrics.ts,server.ts}`, `packages/server/scripts/*.ts`, `packages/server/test/{helpers,market-concurrency}.ts`; `packages/client/test/e2e/stack.ts`; `vitest.config.ts`, `vitest.progression.config.ts`, `vitest.setup-db.ts`; `docker-compose.yml`, `Dockerfile`, `scripts/dev-alt.mjs`, `.github/workflows/ci.yml`.
+
 <!-- 2026-10-27 panels always close over a battle. One entry. -->
 
 ## 2026-10-27 · `20-client.md` §20.1.3 · the battle / trade blockers let a panel close; a battle's start closes the open panel

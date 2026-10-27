@@ -6,7 +6,7 @@ Binding spec: `.design/SPEC.md` §20 (+ spine §3.12, §4.3/§4.4/§4.7, §50.4.
 ## Run it
 
 ```
-pnpm --filter @ewa/server start      # REST :4000 + Colyseus :2567 (PGlite in packages/server/.data; first boot ~30 s)
+pnpm --filter @ewa/server start      # REST :4000 + Colyseus :2567 (the dev Postgres: `docker compose up -d postgres`)
 pnpm --filter @ewa/client dev        # http://localhost:5173  (Vite proxies /api → :4000, stripping /api)
 pnpm --filter @ewa/client tokens     # regenerate src/ui/tokens.css + tokens.ts from tokens.json (+ design checks)
 pnpm --filter @ewa/client tokens:check
@@ -1243,10 +1243,11 @@ What would close the gap: a fixed light-slot layout shared by all zones, so that
   - no background throttling — two pages run at once;
   - a 1280×800 viewport.
 - `test/e2e/stack.ts` boots a real server and client, on free ports and never the shared ones:
-  - server: `src/main.ts` through tsx, PGlite in a fresh temp `DATA_DIR`, `WORLD_WEATHER=off`, `SERVER_SEED=e2e`;
+  - server: `src/main.ts` through tsx, a fresh database on the test Postgres (`EWA_TEST_DATABASE_URL`, default the
+    docker-compose `postgres` service) and a temp `DATA_DIR`, `WORLD_WEATHER=off`, `SERVER_SEED=e2e`;
   - client: the in-process Vite dev server, HMR and the watcher off; or, for `first-frame`, `vite build` served
     statically with an `/api` proxy and `public/` served in place;
-  - `stop()` kills the server's process tree and removes the temp dir.
+  - `stop()` kills the server's process tree, drops the database and removes the temp dir.
 - `test/e2e/game.ts`: register through the form, `__ewaWorld.debug()` polling, `walkTo`, `/me` over an independent REST
   login (never the page's token family), and an A* `planPath` / `walkPath` over the zone's content walkable field.
   `walkTo` is a straight-line autopilot, and the plaza blocks the straight line from the spawn to Wynn.

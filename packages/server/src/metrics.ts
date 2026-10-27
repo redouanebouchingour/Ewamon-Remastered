@@ -236,7 +236,7 @@ export class MetricsRegistry {
     pushSample(this.tx, ms);
   }
 
-  /** the pg pool's in-use connection count (PGlite: none) */
+  /** the pg pool's in-use connection count */
   setPoolProbe(probe: (() => number) | null): void {
     this.pool = probe;
   }
@@ -269,7 +269,6 @@ export function timedDb(db: Db, metrics: MetricsRegistry, now: () => number = ()
   const pool = (db as { pool?: { totalCount: number; idleCount: number } }).pool;
   if (pool !== undefined) metrics.setPoolProbe(() => pool.totalCount - pool.idleCount);
   return {
-    kind: db.kind,
     close: () => db.close(),
     async transaction(fn) {
       const t0 = now();

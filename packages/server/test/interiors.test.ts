@@ -1,5 +1,5 @@
 /**
- * Phase A interiors on the server (real server + SDK clients, PGlite): every town building opens into a pocket hall
+ * Phase A interiors on the server (real server + SDK clients, scratch Postgres): every town building opens into a pocket hall
  * reached only through door warps (content `interiorWarps`). Pins:
  *   - door warps both ways (door → hall entry → exit → door), and walls of the hall refuse movement (stamped field);
  *   - per-player gates (`gatesClosedFor`): a closed gate refuses movement, a held flag (on join) or a trainer win

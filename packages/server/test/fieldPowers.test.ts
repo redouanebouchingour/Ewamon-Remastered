@@ -6,7 +6,7 @@
  *     positions on the glide line until the landing, nothing off it; with FIELD_POWERS off nothing changes;
  *   - an unburnt bramble's blocker (`brambleSolidsFor`) is unstandable like a shut gate;
  *   - the lead (`fieldLeadOf`), the sense list (`senseGhosts`, `hauntingNear`) and the refusal copy.
- * Integration (real server + SDK client, PGlite, FIELD_POWERS on):
+ * Integration (real server + SDK client, scratch Postgres, FIELD_POWERS on):
  *   - `PlayerState.lead` / `leadFlags` at join and after a REST reorder (`ewa:party`); `state.fieldPowers`;
  *   - burn: refused without a Fire lead, the bramble blocks until burnt, then the cache and a clear path;
  *   - dig: once per camp per UTC day (the next day digs again); dive: only out on the water;

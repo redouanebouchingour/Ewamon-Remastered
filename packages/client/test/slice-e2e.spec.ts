@@ -1,6 +1,6 @@
 /**
  * §50.4.7 `slice-e2e.spec.ts` (Phase E5) — the vertical slice end to end against a real server + client pair on
- * PGlite (`e2e/stack.ts`: free ports, a fresh temp database), two browser contexts in Chrome with WebGPU:
+ * Postgres (`e2e/stack.ts`: free ports, a fresh database), two browser contexts in Chrome with WebGPU:
  *
  * 1. both players register through the `/register` form (starter picked on its card) and land in `/play` → mirevale;
  * 2. they meet: each client holds the other's `PlayerState` as a spawned remote (same AOI cell at the spawn);

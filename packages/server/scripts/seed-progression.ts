@@ -12,28 +12,25 @@
  *   act3b   the_rift       + zenryu, glacinid, voidraxis
  *   act3c   mire_route     everything: all 33 beats, 8 statics, every league row
  *
- * Usage (stop the dev server first when it runs on PGlite — a PGlite directory has one writer):
+ * Usage (the server may keep running; keep the account logged out while seeding, a live session saves over it):
  *
  *   pnpm --filter @ewa/server seed:progression <leg> <username> [--password <pw>]
  *
- *   # e.g. the default dev server (PGlite at packages/server/.data/pglite):
+ *   # e.g. the default dev server (the dev database, postgres://ewa:ewa@localhost:5432/ewa):
  *   pnpm --filter @ewa/server seed:progression act2 ash
- *   # the alt dev server of .claude/launch.json (PGlite at packages/server/.data-alt/pglite):
- *   DATA_DIR=.data-alt pnpm --filter @ewa/server seed:progression act3a ash
- *   # Postgres:
- *   DATABASE_URL=postgres://… pnpm --filter @ewa/server seed:progression act1 ash
+ *   # the alt dev server of .claude/launch.json (database ewa_alt):
+ *   DATABASE_URL=postgres://ewa:ewa@localhost:5432/ewa_alt pnpm --filter @ewa/server seed:progression act3a ash
  *
  * `<username>` exists → its progression is REPLACED by the fixture's (party, box, bag, money, badges, story flags,
  * dex, quests, battle pass, position); the login, appearance, admin bit and history stay. `<username>` does not
  * exist → the account is created (email `<username>@dev.ewa`, password `--password` or the walk's default
- * `correct horse battery`). DATA_DIR is resolved from the package directory (pnpm --filter runs scripts there),
- * like the server's own default `./.data`. Creature ids are fresh uuids, so one fixture can seed several accounts.
+ * `correct horse battery`). Creature ids are fresh uuids, so one fixture can seed several accounts.
  */
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createDb, runMigrations } from '@ewa/persist';
+import { DEV_DATABASE_URL, createDb, runMigrations } from '@ewa/persist';
 import type { AnyDb } from '@ewa/persist';
 import { hashPassword } from '../src/rest/auth';
 
@@ -57,7 +54,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 
 function usage(msg?: string): never {
   if (msg !== undefined) console.error(`seed-progression: ${msg}`);
-  console.error(`usage: seed-progression <${LEGS.join('|')}> <username> [--password <pw>]  (env: DATA_DIR | DATABASE_URL)`);
+  console.error(`usage: seed-progression <${LEGS.join('|')}> <username> [--password <pw>]  (env: DATABASE_URL)`);
   process.exit(2);
 }
 
@@ -81,11 +78,8 @@ function parseArgs(argv: readonly string[]): { leg: Leg; username: string; passw
   return { leg: leg as Leg, username, password };
 }
 
-/** One SQL transaction over the raw client (PGlite or a pooled pg connection). */
+/** One SQL transaction over a pooled pg connection. */
 async function inTransaction<T>(db: AnyDb, fn: (q: Query) => Promise<T>): Promise<T> {
-  if (db.kind === 'pglite') {
-    return db.client.transaction(async (tx) => fn(async (text, params = []) => (await tx.query(text, params)).rows as Record<string, unknown>[]));
-  }
   const conn = await db.pool.connect();
   try {
     await conn.query('begin');
@@ -146,18 +140,10 @@ async function main(): Promise<void> {
   const src = fx.rows.players[0];
   if (src === undefined) usage(`${file} has no players row`);
 
-  const url = process.env['DATABASE_URL'];
-  let where: string;
-  let db: AnyDb;
-  if (url !== undefined && url !== '') {
-    db = await createDb({ url });
-    where = 'postgres (DATABASE_URL)';
-  } else {
-    const dir = resolve(process.env['DATA_DIR'] ?? './.data', 'pglite');
-    mkdirSync(dir, { recursive: true });
-    db = await createDb({ pgliteDir: dir });
-    where = `PGlite ${dir}`;
-  }
+  const env = process.env['DATABASE_URL'];
+  const url = env !== undefined && env !== '' ? env : DEV_DATABASE_URL;
+  const where = url === DEV_DATABASE_URL ? 'the dev database' : 'postgres (DATABASE_URL)';
+  const db: AnyDb = await createDb({ url });
   try {
     await runMigrations(db);
     const pwHash = await hashPassword(password);

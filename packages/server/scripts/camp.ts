@@ -7,18 +7,14 @@
  *                                                         from play or seed:progression)
  *   pnpm --filter @ewa/server camp away <username> <days> (their last_seen_at that many days back)
  *   pnpm --filter @ewa/server camp list                   (every held camp, its guard and trophies)
- *   (env: DATA_DIR · PGlite at DATA_DIR/pglite, default ./.data · or DATABASE_URL)
- *
- * PGlite allows one process: stop the server that holds the database first, a second writer opens silently and
- * corrupts the WAL.
+ *   (env: DATABASE_URL, default the dev database of docker-compose.yml)
  */
-import { resolve } from 'node:path';
 import { ACHIEVEMENTS } from '@ewa/content';
-import { createDb, createRepos, runMigrations } from '@ewa/persist';
+import { DEV_DATABASE_URL, createDb, createRepos, runMigrations } from '@ewa/persist';
 
 function usage(msg?: string): never {
   if (msg !== undefined) console.error(`camp: ${msg}`);
-  console.error('usage: camp trophies <username> | camp away <username> <days> | camp list  (env: DATA_DIR | DATABASE_URL)');
+  console.error('usage: camp trophies <username> | camp away <username> <days> | camp list  (env: DATABASE_URL)');
   process.exit(2);
 }
 
@@ -26,13 +22,12 @@ async function main(): Promise<void> {
   const [cmd, name, days] = process.argv.slice(2);
   if (cmd !== 'trophies' && cmd !== 'away' && cmd !== 'list') usage();
   const url = process.env['DATABASE_URL'];
-  const db = await createDb(url !== undefined ? { url } : { pgliteDir: resolve(process.env['DATA_DIR'] ?? './.data', 'pglite') });
+  const db = await createDb({ url: url ?? DEV_DATABASE_URL });
   await runMigrations(db);
   const repos = createRepos(db);
   const now = new Date();
   const raw = async (text: string, params: unknown[]): Promise<void> => {
-    if (db.kind === 'pglite') await db.client.query(text, params);
-    else await db.pool.query(text, params);
+    await db.pool.query(text, params);
   };
 
   if (cmd === 'trophies' || cmd === 'away') {

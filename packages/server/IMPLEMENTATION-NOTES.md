@@ -1507,3 +1507,19 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   nemesis, a roamer or a static keeps its own roll.
 - `GET /dex` adds `entries`, `research` and `rewards`; `POST /dex/viewed/:speciesId` sets `viewed_at`.
 - Tests: `test/research.test.ts` (9).
+
+## PGlite removed (2026-10-27)
+
+- The server always runs on PostgreSQL. `DATABASE_URL` unset in development → `@ewa/persist` `DEV_DATABASE_URL` (the
+  docker-compose `postgres` service on localhost:5432), and `main.ts` creates the database when it is missing
+  (`ensureDatabase`, development only); production still requires `DATABASE_URL`. `DATA_DIR` now only holds mail
+  files (`DATA_DIR/mail`).
+- `scripts/dev-alt.mjs`: the alt pairs use the databases `ewa_alt` / `ewa_alt2` on the same server. The dev scripts
+  (`seed:progression`, `grant:*`, `eco`, `bounty`, `camp`) take `DATABASE_URL`, default the dev database; the
+  one-writer rule of PGlite is gone, so the server may keep running (keep the account logged out while seeding).
+- Tests: `openRepos()` / `startServer()` open a scratch database each (`openScratchDb`, pool of 32), so
+  `market-concurrency.test.ts` always runs with genuine `FOR UPDATE` contention (Q7's PGlite / `DATABASE_URL` split
+  is gone) and `rawQuery` reads through the pool. `timedDb` no longer forwards `kind`. The aoi-fanout 200-join bound
+  stays at < 15 s in-process (Q17): the bots, the server and the other test files share the machine.
+- Earlier notes that mention PGlite describe the state of their date.
+

@@ -1,14 +1,16 @@
 /**
  * Phase E5 — the isolated game stack the client Playwright specs (`slice-e2e`, `no-dom-in-frame`, `first-frame`) run
- * against: a real `@ewa/server` (`src/main.ts` through tsx, PGlite in a fresh temp `DATA_DIR`, `WORLD_WEATHER=off`, a
+ * against: a real `@ewa/server` (`src/main.ts` through tsx, a fresh database on the test Postgres — `EWA_TEST_DATABASE_URL`,
+ * default the docker-compose `postgres` service — and a temp `DATA_DIR`, `WORLD_WEATHER=off`, a
  * fixed `SERVER_SEED`) and the client (the Vite dev server, or `vite build` + a static server for `first-frame`), each
  * on a free port picked at start — never the shared 4000 / 2567 / 5173 / 4100 / 2667 / 5174 other sessions hold
- * (same env contract as `scripts/dev-alt.mjs`). `stop()` kills the server's whole process tree and deletes the temp
- * data dir. Not a spec and not a vitest file: neither runner collects it.
+ * (same env contract as `scripts/dev-alt.mjs`). `stop()` kills the server's whole process tree and drops the
+ * database and the temp data dir. Not a spec and not a vitest file: neither runner collects it.
  */
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { spawnSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { createReadStream, existsSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import { createServer as createHttpServer } from 'node:http';
 import type { Server } from 'node:http';
@@ -21,6 +23,31 @@ import { fileURLToPath } from 'node:url';
 export const REPO = fileURLToPath(new URL('../../../../', import.meta.url));
 export const CLIENT_DIR = join(REPO, 'packages', 'client');
 const SERVER_DIR = join(REPO, 'packages', 'server');
+
+/** The test Postgres (same default as @ewa/persist `testDatabaseUrl`). */
+const PG_URL = process.env['EWA_TEST_DATABASE_URL'] ?? 'postgres://ewa:ewa@localhost:5432/ewa';
+
+function withDatabase(url: string, name: string): string {
+  const u = new URL(url);
+  u.pathname = `/${name}`;
+  return u.toString();
+}
+
+/**
+ * Drops the stack's database. `pg` comes from @ewa/persist's dependencies (the client package has none of its own);
+ * the server created the database on boot (development `ensureDatabase`).
+ */
+async function dropDatabase(name: string): Promise<void> {
+  const req = createRequire(join(REPO, 'packages', 'persist', 'package.json'));
+  const { Client } = req('pg') as { Client: new (o: { connectionString: string }) => { connect(): Promise<void>; query(q: string): Promise<unknown>; end(): Promise<void> } };
+  const c = new Client({ connectionString: withDatabase(PG_URL, 'postgres') });
+  await c.connect();
+  try {
+    await c.query(`drop database if exists "${name}" with (force)`);
+  } finally {
+    await c.end();
+  }
+}
 
 /** Ports other sessions / tools on this machine hold at times. */
 const RESERVED = new Set([4000, 2567, 5173, 4100, 2667, 5174, 5180, 4179, 9444, 9555]);
@@ -86,6 +113,8 @@ export async function startStack(o: StackOptions = {}): Promise<Stack> {
   const clientPort = await freePort();
   const origin = `http://127.0.0.1:${clientPort}`;
   const dataDir = mkdtempSync(join(tmpdir(), 'ewa-e2e-'));
+  // the scratch-database naming of @ewa/persist, so a vitest run's stale sweep also takes one a crashed spec left
+  const dbName = `ewa_t_${Date.now().toString(36)}_e2e${randomBytes(4).toString('hex')}`;
   const tsxCli = createRequire(import.meta.url).resolve('tsx/cli');
   let out = '';
   const server = spawn(process.execPath, [tsxCli, '--tsconfig', 'tsconfig.dev.json', 'src/main.ts'], {
@@ -96,6 +125,7 @@ export async function startStack(o: StackOptions = {}): Promise<Stack> {
       PORT_REST: String(restPort),
       PORT_WS: String(wsPort),
       DATA_DIR: dataDir,
+      DATABASE_URL: withDatabase(PG_URL, dbName),
       CORS_ORIGINS: `${origin},http://localhost:${clientPort}`,
       JWT_SECRET: 'e2e-secret-e2e-secret-e2e-secret-0123456789',
       WORLD_WEATHER: 'off',
@@ -119,9 +149,14 @@ export async function startStack(o: StackOptions = {}): Promise<Stack> {
     killTree(server);
     await new Promise((res) => setTimeout(res, 300));
     try {
+      await dropDatabase(dbName);
+    } catch {
+      // the server never got as far as creating it
+    }
+    try {
       rmSync(dataDir, { recursive: true, force: true });
     } catch {
-      // PGlite files can stay locked for a moment on Windows; the OS temp cleaner takes them
+      // files can stay locked for a moment on Windows; the OS temp cleaner takes them
     }
   };
   try {

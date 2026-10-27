@@ -1,12 +1,12 @@
 /**
- * Server test scaffolding (§50.4.5): PGlite-backed repos with the committed migration, a controllable clock,
+ * Server test scaffolding (§50.4.5): repos on a scratch Postgres database with the committed migration, a controllable clock,
  * a real booted server on ephemeral ports (Colyseus WS + Fastify REST), `@colyseus/sdk` clients.
  */
 import { Client as SdkClient } from '@colyseus/sdk';
 import type { Room as SdkRoom } from '@colyseus/sdk';
 import { createContentIndex } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
-import { createDb, createRepos, runMigrations } from '@ewa/persist';
+import { createRepos, openScratchDb } from '@ewa/persist';
 import type { AnyDb, Db, Repos } from '@ewa/persist';
 import { ZoneState } from '@ewa/protocol';
 import type { SeatReservation, ServerMessage } from '@ewa/protocol';
@@ -46,10 +46,9 @@ export function storyOnly(flags: readonly unknown[]): string[] {
   return flags.map(String).filter((f) => !f.startsWith('streak:') && !f.startsWith('visited:'));
 }
 
-/** PGlite in memory by default; node-postgres when `databaseUrl` is given (market-concurrency.test.ts). */
-export async function openRepos(databaseUrl?: string): Promise<{ db: AnyDb; repos: Repos & { readonly db: Db } }> {
-  const db = await createDb(databaseUrl !== undefined ? { url: databaseUrl, poolMax: 32 } : {});
-  await runMigrations(db);
+/** A migrated scratch database of its own (dropped on `db.close()`), pool of 32 for the concurrency suites. */
+export async function openRepos(): Promise<{ db: AnyDb; repos: Repos & { readonly db: Db } }> {
+  const db = await openScratchDb({ poolMax: 32 });
   return { db, repos: createRepos(db) };
 }
 
@@ -71,8 +70,8 @@ export interface TestServer {
 /** Tests never reach the internet: the weather lookups (Open-Meteo) fail unless a test passes its own fetch. */
 const offlineFetch: NonNullable<ServerDeps['fetch']> = () => Promise.reject(new Error('no network in tests'));
 
-export async function startServer(envOverrides: Partial<Env> = {}, opts: { readonly databaseUrl?: string; readonly fetch?: ServerDeps['fetch'] } = {}): Promise<TestServer> {
-  const { db, repos } = await openRepos(opts.databaseUrl);
+export async function startServer(envOverrides: Partial<Env> = {}, opts: { readonly fetch?: ServerDeps['fetch'] } = {}): Promise<TestServer> {
+  const { db, repos } = await openRepos();
   const time = offsetClock();
   const env = testEnv({ PORT_WS: 0, PORT_REST: 0, ...envOverrides });
   const booted = await boot({ env, repos, content, log: silentLogger(), clock: time.clock, fetch: opts.fetch ?? offlineFetch });
@@ -198,8 +197,8 @@ export async function snapshot(s: TestServer, playerId: string): Promise<string>
   return canonicalJson(out);
 }
 
-/** Raw SQL for assertions (PGlite client or pg pool) — tests only. */
+/** Raw SQL for assertions — tests only. */
 export async function rawQuery(db: AnyDb, text: string, params: unknown[] = []): Promise<Record<string, unknown>[]> {
-  const res = db.kind === 'pglite' ? await db.client.query(text, params) : await db.pool.query(text, params);
+  const res = await db.pool.query(text, params);
   return res.rows as Record<string, unknown>[];
 }

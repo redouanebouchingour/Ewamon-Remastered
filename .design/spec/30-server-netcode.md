@@ -95,7 +95,7 @@ export const EnvSchema = z.object({
   PORT_WS: z.coerce.number().int().min(1).max(65535).default(2567),
   PORT_REST: z.coerce.number().int().min(1).max(65535).default(4000),
   PUBLIC_ADDRESS: z.string().min(1).optional(),                 // host[:port] the SDK should reach; required when REDIS_URL is set
-  DATABASE_URL: z.string().url().optional(),                    // absent → PGlite at DATA_DIR/pglite (dev/test only; refused in production)
+  DATABASE_URL: z.string().url().optional(),                    // absent → the dev database postgres://ewa:ewa@localhost:5432/ewa (development only; required in production) <!-- 2026-10-27 PGlite removed: PostgreSQL everywhere -->
   DATA_DIR: z.string().min(1).default('./.data'),
   REDIS_URL: z.string().url().optional(),
   JWT_SECRET: z.string().min(32),                               // ≥ 32 bytes; no default, boot fails without it

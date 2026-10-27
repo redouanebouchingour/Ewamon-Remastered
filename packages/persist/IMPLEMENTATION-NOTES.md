@@ -83,31 +83,23 @@ catch a `PersistError` inside the transaction and carry on. The tests model this
 
 ## Tests (§5.4)
 
-`test/*.test.ts` run under the root vitest config. Each file opens one fresh in-memory PGlite and
-applies the committed migration through `drizzle-orm/pglite/migrator` (`openTestDb`). With
-`DATABASE_URL` set, the same helper opens node-postgres, truncates the persist tables, and the
-otherwise-skipped concurrency suite in `market.test.ts` runs: 20 concurrent equal bids → exactly one
-`fulfilled`, 19 `BidTooLow`; 20 concurrent `buyNow` → one sale, 19 `ListingClosed`, one
-`creature.transfer` audit row. PGlite is single-connection and cannot exercise `FOR UPDATE`
-contention, which is why that suite is gated.
-
-Run against a real database with something like
-`DATABASE_URL=postgres://user:pass@localhost:5432/ewamon_persist_test pnpm exec vitest run packages/persist`
-(the helper **truncates** the persist tables in that database — use a dedicated one).
+`test/*.test.ts` run under the root vitest config, on the Postgres of `EWA_TEST_DATABASE_URL` (default the
+docker-compose `postgres` service, `postgres://ewa:ewa@localhost:5432/ewa`). Each file opens a scratch database of its
+own (`openTestDb` → `openScratchDb`, `src/scratch.ts`): a `CREATE DATABASE … TEMPLATE ewa_tpl_<hash>` copy of a
+template that already holds every committed migration (built once per migration set, under an advisory lock, named
+by a hash over `./drizzle`), dropped again on `close()`. Files therefore keep running in parallel, and the
+concurrency suite in `market.test.ts` always runs: 20 concurrent equal bids → exactly one `fulfilled`, 19 `BidTooLow`;
+20 concurrent `buyNow` → one sale, 19 `ListingClosed`, one `creature.transfer` audit row. The root
+`vitest.setup-db.ts` names each run (`EWA_TEST_RUN`) and drops that run's leftovers, and any older than six hours,
+at the end.
 
 Not yet written: `src/seed.ts` (§5.4 demo players with the three starters) — the server package
 owns creature construction (species/moves/hp come from `@ewa/core`), so the seed waits for it.
 
 ## Verified on real Postgres (2026-09-18)
 
-The full suite (55/55, including the three `DATABASE_URL`-gated 20-way concurrency tests) passed
-against PostgreSQL 17.6 (the local `supabase-db` container, throwaway database `ewamon_persist_test`).
-The root `vitest.config.ts` disables file parallelism when `DATABASE_URL` is set because all test
-files share that one database; with PGlite (default) each file has its own in-memory instance.
-
-```bash
-DATABASE_URL=postgres://postgres:<pw>@127.0.0.1:54322/ewamon_persist_test pnpm exec vitest run packages/persist
-```
+The full suite (55/55, including the then `DATABASE_URL`-gated 20-way concurrency tests) passed against PostgreSQL
+17.6. Superseded by "PGlite removed" below: every run is on Postgres now.
 
 ## Server part 2 additions (2026-09-25)
 
@@ -385,3 +377,11 @@ No check constraint: core clamps to ±10 and the wire schema validates the range
   the first claim) and `claimedRewards`. `dex()` / `DexSummary` gained `entries` (seenAt, caughtAt, counters,
   firstSeenZone, viewedAt per species).
 - Tests: `test/dex-research.test.ts` (6, incl. the backfill statement); `migrations.test.ts` lists `dex_rewards`.
+
+## PGlite removed (2026-10-27)
+
+Production runs on a VPS with a real PostgreSQL, so the PGlite driver is gone: `createDb({ url })` is node-postgres
+only (`url` required, `kind` and the `pgliteDir` option dropped; `AnyDb` is the opened database with `drizzle` and
+`pool`). The dev database is the docker-compose `postgres` service (`DEV_DATABASE_URL`, `ensureDatabase` creates a
+missing one in development). Tests run on scratch databases (see Tests). `src/migrate.ts` without `DATABASE_URL`
+migrates the dev database instead of an in-memory PGlite.

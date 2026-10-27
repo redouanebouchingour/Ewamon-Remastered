@@ -231,8 +231,8 @@ describe('aoi fan-out (§50.4.5, §30.10.3)', () => {
           (n === 200 ? `, max raid patches/s/client ${(Math.max(...r.bots.map((b) => b.raidPatches)) / SECONDS).toFixed(2)}` : ''),
       );
       expect(report.violations).toEqual([]);
-      // every join succeeded (asserted in run()); §30.10.3 #5's 5 s is the harness's figure against a Postgres-backed
-      // server — in-process PGlite serialises every join's transactions (Q17), so the bound here is looser
+      // every join succeeded (asserted in run()); §30.10.3 #5's 5 s is the harness's figure against a dedicated
+      // server — here the bots, the server and the other test files share the machine, so the bound is looser
       if (n === 200) expect(r.joinMs).toBeLessThan(15_000);
       runs.push(r.run);
       await teardown(r.bots);

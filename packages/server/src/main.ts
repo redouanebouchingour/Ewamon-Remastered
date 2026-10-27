@@ -2,14 +2,13 @@
  * §30.0 `main.ts` — the only file with side effects at import time. env parse → db (+ migrations) →
  * createRepos → boot (Colyseus WS + Fastify REST) → signal handling.
  *
- * Dev without Docker: when DATABASE_URL is unset the database is PGlite persisted at `${DATA_DIR}/pglite`
- * (refused in production by `parseEnv`). In development a missing JWT_SECRET falls back to a fixed dev
+ * In development an unset DATABASE_URL means the dev database (`DEV_DATABASE_URL`, the docker-compose `postgres`
+ * service), and the database is created on its server when missing (production requires DATABASE_URL and an existing
+ * database, `parseEnv`). In development a missing JWT_SECRET falls back to a fixed dev
  * secret with a warning, so `pnpm dev:server` works out of the box; test/production still require it.
  */
-import { mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { createContentIndex } from '@ewa/content';
-import { createDb, createRepos, runMigrations } from '@ewa/persist';
+import { DEV_DATABASE_URL, createDb, createRepos, ensureDatabase, runMigrations } from '@ewa/persist';
 import { parseEnv } from './env';
 import { createLogger } from './log';
 import { boot } from './server';
@@ -24,12 +23,9 @@ async function main(): Promise<void> {
   const log = createLogger(env);
   if (devDefault) log.warn('JWT_SECRET unset — using the fixed development secret (never do this outside dev)');
 
-  let pgliteDir: string | undefined;
-  if (env.DATABASE_URL === undefined) {
-    pgliteDir = resolve(env.DATA_DIR, 'pglite');
-    mkdirSync(pgliteDir, { recursive: true });
-  }
-  const db = await createDb(env.DATABASE_URL !== undefined ? { url: env.DATABASE_URL } : { pgliteDir: pgliteDir! });
+  const url = env.DATABASE_URL ?? DEV_DATABASE_URL;
+  if (env.NODE_ENV === 'development') await ensureDatabase(url);
+  const db = await createDb({ url });
   await runMigrations(db);
   const repos = createRepos(db);
   const content = createContentIndex();

@@ -192,7 +192,7 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
   const jobs: { stop(): void }[] = [startMarketExpiry(deps), startLiveOpsRollover({ ...deps, bus: runtime.bus })];
   // ranked seasons: an ended season is closed (standings kept, ratings halfway back) within a minute
   if (env.SEASON_ROLLOVER === 'on') jobs.push(startSeasonRollover(deps));
-  log.info({ ws: wsPort, rest: restPort, db: env.DATABASE_URL !== undefined ? 'postgres' : 'pglite' }, 'ewa server listening');
+  log.info({ ws: wsPort, rest: restPort, db: env.DATABASE_URL !== undefined ? 'postgres' : 'postgres (dev default)' }, 'ewa server listening');
 
   let stopped = false;
   return {

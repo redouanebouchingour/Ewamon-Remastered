@@ -3,25 +3,23 @@
  *
  *   pnpm --filter @ewa/server eco take <zone> <species> <n> [--ko] [--last-week]
  *   pnpm --filter @ewa/server eco roll <zone> [n] [--night] [--water]
- *   (env: DATA_DIR · PGlite at DATA_DIR/pglite, default ./.data · or DATABASE_URL)
+ *   (env: DATABASE_URL, default the dev database of docker-compose.yml)
  *
  * `take` adds `n` catches (or knockouts, `--ko`) of `species` to the zone's tally this week (or last week). `roll` reads
  * the zone's reading now, exactly as the zone room does (game/ecosystem.ts), and rolls `n` encounters (default 2000)
  * with the room's roll (`rollWild`) on the authored table and on this week's, on the same draws, printing both counts.
- * A running server picks a take up within a minute. PGlite allows one process: stop the server that holds the
- * database first, a second writer opens silently and corrupts the WAL.
+ * A running server picks a take up within a minute.
  */
-import { resolve } from 'node:path';
 import { ZONE_ORDER, createContentIndex, ecoWeek, encounterTableFor } from '@ewa/content';
 import type { EncounterTable, ZoneId } from '@ewa/content';
 import { createRng } from '@ewa/core';
-import { createDb, createRepos, runMigrations } from '@ewa/persist';
+import { DEV_DATABASE_URL, createDb, createRepos, runMigrations } from '@ewa/persist';
 import { readEcosystem } from '../src/game/ecosystem';
 import { rollWild } from '../src/rooms/spawnDirector';
 
 function usage(msg?: string): never {
   if (msg !== undefined) console.error(`eco: ${msg}`);
-  console.error('usage: eco take <zone> <species> <n> [--ko] [--last-week] | eco roll <zone> [n] [--night] [--water]  (env: DATA_DIR | DATABASE_URL)');
+  console.error('usage: eco take <zone> <species> <n> [--ko] [--last-week] | eco roll <zone> [n] [--night] [--water]  (env: DATABASE_URL)');
   process.exit(2);
 }
 
@@ -33,7 +31,7 @@ async function main(): Promise<void> {
   const zone = zoneId as ZoneId;
   const content = createContentIndex();
   const url = process.env['DATABASE_URL'];
-  const db = await createDb(url !== undefined ? { url } : { pgliteDir: resolve(process.env['DATA_DIR'] ?? './.data', 'pglite') });
+  const db = await createDb({ url: url ?? DEV_DATABASE_URL });
   await runMigrations(db);
   const repos = createRepos(db);
   const now = Date.now();

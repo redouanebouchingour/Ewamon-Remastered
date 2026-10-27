@@ -1,5 +1,5 @@
 /**
- * §30.4 / §50.4.5 battle-room.test.ts — `BattleCoordinator` on PGlite repos with a recording host:
+ * §30.4 / §50.4.5 battle-room.test.ts — `BattleCoordinator` on scratch-database repos with a recording host:
  * battleStart/battleEvents digests match a client-side `resolveTurn` preview (desync 0), the NPC side is
  * always passed `null`, the one-transaction turn pipeline persists exactly the battle fields, catch / EXP /
  * trainer EXP / badges / flags / Elo are server-side, message → action errors, deadlines, and a failed

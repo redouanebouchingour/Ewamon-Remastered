@@ -1,11 +1,9 @@
 /**
  * §50.4.4 / §50.5 M4 market-concurrency.test.ts, driven through the server's REST routes and expiry job.
  *
- * Runs on PGlite by default (single connection: the 20 transactions are serialised, so this asserts the
- * serial outcome) and against real Postgres when `DATABASE_URL` is set (a node-postgres pool of 32: genuine
- * `FOR UPDATE` contention and `SKIP LOCKED` partitioning). The Postgres run never truncates anything — every
- * listing here is created by this file, the expiry listings with an early-2001 clock so no other test's rows
- * are due at the job's `now`.
+ * Runs on a scratch Postgres database with a node-postgres pool of 32: genuine `FOR UPDATE` contention and
+ * `SKIP LOCKED` partitioning. The expiry listings use an early-2001 clock so no other test's rows are due at the
+ * job's `now`.
  *
  * - 20 concurrent `POST /marketplace/:id/bid` at the same amount: exactly one 200, 19 × 409 BidTooLow
  * - 20 concurrent `POST /marketplace/:id/buy-now`: exactly one sale / one `creature.transfer`, 19 × 409 ListingClosed
@@ -19,12 +17,11 @@ import { silentLogger } from '../src/log';
 import { START_MONEY, api, content, rawQuery, register, startServer, uniqueName } from './helpers';
 import type { Account, TestServer } from './helpers';
 
-const DATABASE_URL = process.env['DATABASE_URL'];
 const RICH = 1_000_000;
 
 let s: TestServer;
 beforeAll(async () => {
-  s = await startServer({}, DATABASE_URL !== undefined ? { databaseUrl: DATABASE_URL } : {});
+  s = await startServer();
 }, 120_000);
 afterAll(async () => {
   await s?.stop();
@@ -45,7 +42,7 @@ async function listed(buyNowPrice: number | null): Promise<{ seller: Account; li
   return { seller, listingId: r.body.id, creatureId };
 }
 
-describe(`market concurrency (${DATABASE_URL !== undefined ? 'Postgres' : 'PGlite, serialised'})`, () => {
+describe('market concurrency', () => {
   it('20 concurrent equal bids: exactly one wins, 19 BidTooLow; only the winner is charged', async () => {
     const { listingId } = await listed(null);
     const bidders = await Promise.all(Array.from({ length: 20 }, () => rich()));

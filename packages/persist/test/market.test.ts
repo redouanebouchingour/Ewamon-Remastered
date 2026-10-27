@@ -6,7 +6,7 @@ import { auditRepo } from '../src/repos/audit';
 import { creatureRepo } from '../src/repos/creatures';
 import { marketFee, marketRepo } from '../src/repos/market';
 import type { ListingView } from '../src/types';
-import { DATABASE_URL, T0, at, mkCreature, mkPlayer, money, openTestDb, rejectsInTx } from './helpers';
+import { T0, at, mkCreature, mkPlayer, money, openTestDb, rejectsInTx } from './helpers';
 
 const HOUR = 3_600_000;
 const RICH = 1_000_000;
@@ -299,10 +299,9 @@ describe('MarketRepo.buyNow / cancel / closeExpired', () => {
 });
 
 /**
- * §5.4: FOR UPDATE / SKIP LOCKED under real contention. PGlite is single-connection so it cannot
- * exercise this; the suite runs when DATABASE_URL points at a Postgres (CI nightly / pre-release).
+ * §5.4: FOR UPDATE / SKIP LOCKED under real contention (a pool of 32 connections).
  */
-describe.skipIf(!DATABASE_URL)('MarketRepo under 20 concurrent transactions (DATABASE_URL)', () => {
+describe('MarketRepo under 20 concurrent transactions', () => {
   it('20 concurrent equal bids: exactly one wins, the rest see BidTooLow, escrow equals one bid', async () => {
     const f = await fixture(20);
     const results = await Promise.allSettled(f.bidders.map((b, i) => db.transaction((tx) => marketRepo.placeBid(tx, f.listing.id, b, 100, at(i)))));

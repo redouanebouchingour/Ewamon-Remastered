@@ -1,6 +1,7 @@
 # Ewamon Remastered, standalone with live reload: `docker compose up -d --build` (see docker-compose.yml).
 # Targets: `deps` (the workspace and its Linux node_modules; the `client` service runs the Vite dev server from it)
-# and `server` (Colyseus WS + Fastify REST under `tsx watch`, PGlite in /data). The sources are mounted at run time.
+# and `server` (Colyseus WS + Fastify REST under `tsx watch`, the compose `postgres` service as its database, mail
+# files in /data). The sources are mounted at run time.
 
 FROM node:22-bookworm-slim AS deps
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true

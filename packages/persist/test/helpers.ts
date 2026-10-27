@@ -1,13 +1,10 @@
 /**
- * Shared test scaffolding (§5.4): one fresh in-memory PGlite per test file with the committed
- * migration applied through the pglite migrator. When DATABASE_URL is set the same helpers open
- * node-postgres instead, so every test in this folder runs byte-identical against real Postgres.
+ * Shared test scaffolding (§5.4): every test file opens a scratch database of its own on the test Postgres
+ * (`openScratchDb`: a copy of the migrated template, dropped again on `close()`), so files run in parallel.
  */
-import process from 'node:process';
 import { randomUUID } from 'node:crypto';
-import { sql } from 'drizzle-orm';
-import { createDb, runMigrations } from '../src/db';
 import type { AnyDb, Tx } from '../src/db';
+import { openScratchDb } from '../src/scratch';
 import { playerRepo } from '../src/repos/players';
 import { creatureRepo } from '../src/repos/creatures';
 import type { SlotTarget } from '../src/repos/creatures';
@@ -15,47 +12,13 @@ import type { CreatureInstance } from '../src/types';
 import { isPersistError } from '../src/errors';
 import type { PersistErrorCode } from '../src/errors';
 
-export const DATABASE_URL: string | undefined = process.env['DATABASE_URL'];
-
 /** Fixed clock so every timestamp in a test is reproducible. */
 export const T0 = new Date('2026-09-18T12:00:00.000Z');
 export const at = (offsetMs: number): Date => new Date(T0.getTime() + offsetMs);
 
-const TABLES = [
-  'player_streaks',
-  'audit_log',
-  'refresh_tokens',
-  'email_tokens',
-  'bids',
-  'listings',
-  'battle_history',
-  'trade_history',
-  'battle_pass',
-  'guild_members',
-  'guilds',
-  'messages',
-  'friendships',
-  'quest_progress',
-  'dex_entries',
-  'story_flags',
-  'badges',
-  'inventory_items',
-  'creature_instances',
-  'players',
-] as const;
-
-/** Opens a database with the migration applied. Against a shared Postgres, `reset()` truncates everything first. */
-export async function openTestDb(): Promise<AnyDb> {
-  const db = await createDb(DATABASE_URL ? { url: DATABASE_URL, poolMax: 32 } : {});
-  await runMigrations(db);
-  if (DATABASE_URL) await truncateAll(db);
-  return db;
-}
-
-export async function truncateAll(db: AnyDb): Promise<void> {
-  await db.transaction(async (tx) => {
-    await tx.execute(sql.raw(`TRUNCATE TABLE ${TABLES.map((t) => `"${t}"`).join(', ')} RESTART IDENTITY CASCADE`));
-  });
+/** A fresh database with every migration applied; pool of 32 for the concurrent-transaction suites. */
+export function openTestDb(): Promise<AnyDb> {
+  return openScratchDb({ poolMax: 32 });
 }
 
 let seq = 0;

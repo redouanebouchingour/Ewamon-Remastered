@@ -11,7 +11,7 @@ guilds and a marketplace. Three.js WebGPU on the client, Colyseus + PostgreSQL o
 | `packages/core` | Pure battle rules, rng, exp — imports nothing. 1,000-battle determinism fuzz. |
 | `packages/content` | Typed game data (141 species, 197 moves, 21 zones, league, story, quests), the zone plan, heightfields and interiors; `validate()` is the build gate. |
 | `packages/protocol` | Wire schemas (zod), movement prediction, AOI. |
-| `packages/persist` | Drizzle schema + repos over PGlite (dev) or Postgres. |
+| `packages/persist` | Drizzle schema + repos over PostgreSQL. |
 | `packages/server` | Colyseus zone rooms (20 Hz), movement validation, battles, story beats, REST + JWT, trades, raids, social, market, live-ops. |
 | `packages/render` | Three.js WebGPU renderer: zone builder, interiors, terrain, post chain, battle stage, actors, camera rig. Imports only `three`. |
 | `packages/client` | React shell + 3D world: prediction, battles, HUD, screens, audio. Never imports server/persist. |
@@ -27,11 +27,13 @@ pnpm install
 ```
 
 ```bash
+docker compose up -d postgres      # the dev database on localhost:5432 (tests create scratch databases on it too)
 pnpm dev
 ```
 
-The server needs `JWT_SECRET` (≥ 32 chars) in its environment; without `DATABASE_URL` it uses PGlite under
-`packages/server/.data`. The client runs on <http://localhost:5173> and proxies `/api` to the server on :4000
+The server needs `JWT_SECRET` (≥ 32 chars) in its environment; without `DATABASE_URL` it uses the dev database
+`postgres://ewa:ewa@localhost:5432/ewa` (created when missing). `pnpm test` needs the same Postgres running
+(`EWA_TEST_DATABASE_URL` points it elsewhere). The client runs on <http://localhost:5173> and proxies `/api` to the server on :4000
 (WebSocket :2567). The render sandbox is `pnpm --filter @ewa/render sandbox` (port 5180; `?zone=mirevale`,
 `?zone=mirevale&interior=mirevale.gym&at=arena`, `?demo=battle`).
 
@@ -46,8 +48,8 @@ docker compose up -d --build        # or: pnpm docker:dev
 
 The game is on <http://localhost:8080>, with live reload: the sources are mounted into the containers. `client` is
 the Vite dev server (the page reloads / hot-swaps on a client edit), `server` runs `tsx watch` (it restarts on a server
-edit). nginx (`web`) proxies the page, `/api`, `/colyseus` and `/npc/llm`; `server` keeps PGlite in the `ewa-data`
-volume; `llm` is the llama.cpp server. A dependency change needs the command again (it rebuilds). `EWA_PORT`,
+edit). nginx (`web`) proxies the page, `/api`, `/colyseus` and `/npc/llm`; `postgres` keeps the database in the
+`ewa-pg` volume (also published on 127.0.0.1:5432; `EWA_PG_PORT` moves it); `llm` is the llama.cpp server. A dependency change needs the command again (it rebuilds). `EWA_PORT`,
 `LLM_THREADS` and `JWT_SECRET` can be set in the shell or in a `.env`.
 
 ## Check it

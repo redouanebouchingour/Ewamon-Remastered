@@ -1,17 +1,12 @@
 /**
- * The one place a driver is chosen. `createDb({ url })` opens node-postgres against `url`;
- * `createDb()` opens an in-memory PGlite (dev/test); `createDb({ pgliteDir })` a PGlite persisted on disk. Everything above this file sees only `Db`
- * and `Tx`, so repositories run byte-identical on both.
+ * The one place the driver is opened: `createDb({ url })` is node-postgres against `url`. Everything above this file
+ * sees only `Db` and `Tx`.
  */
 import { fileURLToPath } from 'node:url';
-import { PGlite } from '@electric-sql/pglite';
 import type { PgTransaction } from 'drizzle-orm/pg-core';
-import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { migrate as migratePg } from 'drizzle-orm/node-postgres/migrator';
-import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
-import type { PgliteDatabase } from 'drizzle-orm/pglite';
-import { migrate as migratePglite } from 'drizzle-orm/pglite/migrator';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
 import * as schema from './schema/index';
 
@@ -22,68 +17,42 @@ export type Schema = typeof schema;
 export type Tx = PgTransaction<any, any, any>;
 
 /** A read-only query handle: a transaction, or the root database for one-off reads. */
-export type Queryable = Tx | PgliteDatabase<Schema> | NodePgDatabase<Schema>;
+export type Queryable = Tx | NodePgDatabase<Schema>;
 
 export interface Db {
-  readonly kind: 'pg' | 'pglite';
   transaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T>;
-  /** Releases the pool / PGlite instance. Idempotent. */
+  /** Releases the pool. Idempotent. */
   close(): Promise<void>;
 }
 
-interface PgDb extends Db {
-  readonly kind: 'pg';
+/** The opened database: the `Db` interface plus the drizzle handle and the raw pool (scripts, tests, metrics). */
+export interface AnyDb extends Db {
   readonly drizzle: NodePgDatabase<Schema>;
   readonly pool: pg.Pool;
 }
-interface PgliteDb extends Db {
-  readonly kind: 'pglite';
-  readonly drizzle: PgliteDatabase<Schema>;
-  readonly client: PGlite;
-}
-export type AnyDb = PgDb | PgliteDb;
 
 export interface CreateDbOptions {
-  /** postgres:// URL. Omitted → in-memory PGlite. */
-  url?: string;
-  /** node-postgres pool size (pg only). */
+  /** postgres:// URL. */
+  url: string;
+  /** node-postgres pool size. */
   poolMax?: number;
-  /**
-   * PGlite only: a directory to persist the database in (dev servers without Docker). Omitted → in-memory.
-   * Ignored when `url` is set.
-   */
-  pgliteDir?: string;
+  /** Runs after the pool has ended (scratch databases drop themselves here). */
+  onClose?: () => Promise<void>;
 }
 
-export async function createDb(opts: CreateDbOptions = {}): Promise<AnyDb> {
-  if (opts.url) {
-    const pool = new pg.Pool({ connectionString: opts.url, max: opts.poolMax ?? 10 });
-    const db = drizzlePg({ client: pool, schema });
-    let closed = false;
-    return {
-      kind: 'pg',
-      drizzle: db,
-      pool,
-      transaction: (fn) => db.transaction((tx) => fn(tx)),
-      close: async () => {
-        if (closed) return;
-        closed = true;
-        await pool.end();
-      },
-    };
-  }
-  const client = opts.pgliteDir !== undefined ? await PGlite.create(opts.pgliteDir) : await PGlite.create();
-  const db = drizzlePglite({ client, schema });
+export async function createDb(opts: CreateDbOptions): Promise<AnyDb> {
+  const pool = new pg.Pool({ connectionString: opts.url, max: opts.poolMax ?? 10 });
+  const db = drizzle({ client: pool, schema });
   let closed = false;
   return {
-    kind: 'pglite',
     drizzle: db,
-    client,
+    pool,
     transaction: (fn) => db.transaction((tx) => fn(tx)),
     close: async () => {
       if (closed) return;
       closed = true;
-      await client.close();
+      await pool.end();
+      await opts.onClose?.();
     },
   };
 }
@@ -93,6 +62,5 @@ export const MIGRATIONS_FOLDER: string = fileURLToPath(new URL('../drizzle', imp
 
 /** Applies every committed migration under ./drizzle that has not run yet. Idempotent. */
 export async function runMigrations(db: AnyDb, migrationsFolder: string = MIGRATIONS_FOLDER): Promise<void> {
-  if (db.kind === 'pg') await migratePg(db.drizzle, { migrationsFolder });
-  else await migratePglite(db.drizzle, { migrationsFolder });
+  await migrate(db.drizzle, { migrationsFolder });
 }
