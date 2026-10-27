@@ -135,9 +135,9 @@ describe.skipIf(!existsSync(REAL))('sprite catalog on the shipped manifest', () 
         const a = d[side].anim!;
         const set = cat.animAtlas(a.atlas)!;
         expect(a.rects.length, `${id}/${side}`).toBe(a.delaysMs.length);
-        // astaroth's back loop (from the user's video) is 18 pages, its static frame the widest pose (frame-select.json)
+        // astaroth's back loop (from the user's second video, 2026-10-27) is 25 pages, its static frame the widest pose (frame-select.json)
         expect(a.rects.length, `${id}/${side}`).toBeGreaterThanOrEqual(18);
-        expect(a.staticFrame).toBe(id === 'astaroth' && side === 'back' ? 13 : 0);
+        expect(a.staticFrame).toBe(id === 'astaroth' && side === 'back' ? 21 : 0);
         expect(set.cell).toBe(512);
         expect(Math.max(set.width, set.height)).toBeLessThanOrEqual(8192);
         for (const r of a.rects) {

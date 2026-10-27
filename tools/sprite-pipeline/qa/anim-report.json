@@ -7,112 +7,119 @@
     {
       "albedo": 88,
       "normal": 92,
-      "animTotalBytes": 34543735
+      "animTotalBytes": 34792168
     },
     {
       "albedo": 85,
       "normal": 92,
-      "animTotalBytes": 31747546
+      "animTotalBytes": 31971655
     },
     {
       "albedo": 82,
       "normal": 92,
-      "animTotalBytes": 30071364
+      "animTotalBytes": 30283389
     },
     {
       "albedo": 80,
       "normal": 92,
-      "animTotalBytes": 28950429
+      "animTotalBytes": 29154552
     },
     {
       "albedo": 80,
       "normal": 90,
-      "animTotalBytes": 28139489
+      "animTotalBytes": 28338076
     },
     {
       "albedo": 80,
       "normal": 85,
-      "animTotalBytes": 26583662
+      "animTotalBytes": 26771414
     },
     {
       "albedo": 80,
       "normal": 80,
-      "animTotalBytes": 25639308
+      "animTotalBytes": 25819596
     }
   ],
-  "animTotalBytes": 25639308,
+  "animTotalBytes": 25819596,
   "sides": [
     {
       "species": "astaroth",
       "side": "back",
       "source": "back/astaroth(back).webp",
       "sourceSize": [
-        1159,
-        1159
+        1132,
+        608
       ],
-      "pages": 18,
-      "staticFrame": 13,
+      "pages": 25,
+      "staticFrame": 21,
       "delays": [
         125
       ],
-      "loopMs": 2250,
+      "loopMs": 3125,
       "staticBbox": {
         "x0": 8,
-        "y0": 530,
-        "x1": 1150,
-        "y1": 1101
+        "y0": 31,
+        "x1": 1123,
+        "y1": 591
       },
       "union": {
         "x0": 8,
-        "y0": 507,
-        "x1": 1150,
-        "y1": 1150
+        "y0": 8,
+        "x1": 1123,
+        "y1": 599
       },
       "master": {
         "size": 1024,
-        "scaleX": 0.770779,
-        "scaleY": 0.770979,
+        "scaleX": 0.789427,
+        "scaleY": 0.789661,
         "left": 72,
-        "top": 483,
+        "top": 481,
         "width": 881,
-        "height": 497,
+        "height": 467,
         "kernel": "lanczos3"
       },
       "cell": 512,
       "grid": [
-        6,
-        3
+        5,
+        5
       ],
       "atlas": [
-        3072,
-        1536
+        2560,
+        2560
       ],
       "bytes": {
-        "albedo": 201094,
-        "normal": 71496,
-        "emissive": 430,
-        "total": 273020
+        "albedo": 344200,
+        "normal": 108132,
+        "emissive": 710,
+        "total": 453042
       },
       "staticFrameBottom": 470,
       "frameBottoms": [
-        475,
-        477,
-        483,
-        487,
-        488,
-        488,
-        489,
-        488,
-        485,
-        479,
         470,
         470,
         470,
         470,
         470,
         470,
-        474,
-        474
+        470,
+        470,
+        470,
+        471,
+        473,
+        473,
+        471,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
       ],
       "emissivePixels": [
         0,
@@ -123,14 +130,21 @@
         0,
         0,
         0,
+        3,
         0,
+        2,
+        1,
+        1,
+        14,
+        4,
+        4,
         0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
+        3,
+        1,
+        2,
+        5,
+        2,
+        3,
         0,
         0
       ]
