@@ -76,13 +76,13 @@ describe('zone sets', () => {
       expect(roster.encounters.get('hollow_route')!.length).toBe(14);
       const legacy = await loadLegacyData(LEGACY_DIR);
       // 130 legacy + hollowmane, dustcub, badlander, veilpup, hollowolf, castlemaw, lawlander, hyoryu, cryptorb, ultraze, vysion
-      // (.design/additions) + the hollowmane_rage and castlemaw_rage form sprites + the 15 Majin / Tenjin form sprites (3 from
+      // (.design/additions) + the hollowmane_rage and castlemaw_rage form sprites + the 16 Majin / Tenjin form sprites (4 from
       // species.js, 12 from patches.js)
-      expect(legacy.species.size).toBe(202);
+      expect(legacy.species.size).toBe(203);
       const forms = [...legacy.species.keys()].filter((id) => /_(majin|tenjin)$/.test(id)).sort();
       expect(forms).toEqual([
-        'abysspark_tenjin', 'acier_majin', 'badlander_majin', 'clementar_majin', 'gemknight_tenjin', 'glimmereen_tenjin', 'hyoryu_majin', 'infernomorel_majin', 'lawlander_tenjin',
-        'necrogeist_majin', 'raidori_tenjin', 'solpyre_tenjin', 'thornback_tenjin', 'toxshade_majin', 'zenryu_majin',
+        'abysspark_tenjin', 'acier_majin', 'badlander_majin', 'clementar_majin', 'gemknight_tenjin', 'glimmereen_tenjin', 'hyoryu_majin', 'infernomorel_majin', 'kykaiser_tenjin',
+        'lawlander_tenjin', 'necrogeist_majin', 'raidori_tenjin', 'solpyre_tenjin', 'thornback_tenjin', 'toxshade_majin', 'zenryu_majin',
       ]);
       // a legacy species' form (patches.js) carries the legacy species' sizeScale and the patch's sprite files
       expect(legacy.species.get('zenryu_majin')).toEqual({

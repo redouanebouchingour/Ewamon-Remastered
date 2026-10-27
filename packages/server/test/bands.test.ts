@@ -5,7 +5,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { MAJIN_BAND, TENJIN_BAND, zone } from '@ewa/content';
-import { createRng, digestBattleState, resolveTurn } from '@ewa/core';
+import { createRng, digestBattleState, formTypes, resolveTurn } from '@ewa/core';
 import type { Action, BattleState } from '@ewa/core';
 import type { AnyDb, Db, Repos } from '@ewa/persist';
 import type { ServerMessage } from '@ewa/protocol';
@@ -93,6 +93,28 @@ describe('Majin / Tenjin bands', () => {
     if (c.get(res.session.id) !== null) {
       expect(c.action(pid, res.session.id, now0.turn + 1, { kind: 'move', move: firstMove(now0), transform: true })).toMatchObject({ detail: 'cannotTransform' });
     }
+  }, 120_000);
+
+  it('kykaiser goes Tenjin with the band and holds Water/Steel in the form, with no desync', async () => {
+    const h = host();
+    const c = coordinator(h);
+    const pid = await mkPlayer([{ species: 'kykaiser', level: 60 }], { [TENJIN_BAND]: 1 });
+    const trainer = zone('forgewall').trainers.find((t) => t.id === 'hollis_siege')!;
+    const res = await c.startNpc({ playerId: pid, sessionId: 's' }, { kind: 'trainer', trainer, rematch: false }, null, { x: 0, z: -6 });
+    if (!res.ok) throw new Error(res.detail);
+    const st = res.session.state;
+    const sp = content.species('kykaiser');
+    expect(formTypes(sp, st.sides[0].party[0]!)).toEqual(['Water']);
+    const a: Action = { kind: 'move', move: firstMove(st), transform: true };
+    const preview = resolveTurn(st, [a, null], content);
+    const before = (h.msgs.get(pid) ?? []).length;
+    expect(c.action(pid, res.session.id, 1, a)).toBeNull();
+    await settle(c, res.session.id);
+    const ev = (h.msgs.get(pid) ?? []).slice(before).find((m): m is Extract<ServerMessage, { type: 'battleEvents' }> => m.type === 'battleEvents')!;
+    expect(ev.stateDigest).toBe(digestBattleState(preview.state));
+    const b = (c.get(res.session.id)?.state ?? preview.state).sides[0].party[0]!;
+    expect(b.form).toBe('tenjin');
+    expect(formTypes(sp, b)).toEqual(['Water', 'Steel']);
   }, 120_000);
 
   it('without the band the transform is refused (notAllowed / cannotTransform) and the side has no bands key', async () => {

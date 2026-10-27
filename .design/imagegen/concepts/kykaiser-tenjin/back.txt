@@ -1,0 +1,6 @@
+Image 1 is Tenjin Kykaiser (front view). Image 2 is regular Kykaiser's back sprite.
+
+Draw TENJIN KYKAISER using exactly the pose, rear angle and framing of image 2 (its back sprite: seen from behind, the long mane of fins sweeping to the left, the big finned tail curling out to the left, one long arm blade held out to the lower right, the crown seen from behind at the upper right). Show every change from image 1 that is visible from this side: the polished pale silver-blue steel plate with pearl-white highlights, trimmed in gold and crossed by thin gold kintsugi seams; the taller whole gold crown; the smooth pale aqua and ivory mane fins drifting upward and back; the tail fins in the same pale aqua and ivory; the long gleaming silver steel arm blade with gold edges; the thin gold halo ring with its small lens-circle floating behind the head (seen from behind). Same creature, same palette as image 1.
+
+Match the art style exactly: same pixel-art technique, chunky pixel size, outline weight and shading as image 2. Full body, centered, filling about 85% of the square canvas. Do not draw an aura, glow or flames around the creature.
+Background: one perfectly flat solid magenta #FF00FF, no gradient, no ground shadow. No magenta or hot pink in the creature. No text, no frame, no second creature. Square 1:1.

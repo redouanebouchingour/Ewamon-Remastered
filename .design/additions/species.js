@@ -407,6 +407,17 @@ const EWAMON_SPECIES_ADDITIONS = {
     frontSprite: "kykaiser(front).png",
     backSprite: "kykaiser(back).png",
     habitat: [], evolvesInto: null, evolvesAt: null, evolvesFrom: "kygra",
+    // Tenjin form (.design/majin-tenjin.md): the sea emperor enthroned, its armour mended with gold. Tenjin template
+    // +10 atk / +30 def / +10 spd; the blue plate turns to steel, so Water becomes Water/Steel (types, like hyoryu's).
+    battleForm: {
+      id: "tenjin", name: "Tenjin Form", kind: "tenjin",
+      hpBelowPct: 50,
+      types: ["Water", "Steel"],
+      baseAtk: 142, baseDef: 128, baseSpd: 132,
+      onEnter: { clearNegativeStages: true, lowerFoes: null, cureStatus: true, healFraction: 0.2 },
+      frontSprite: "kykaiser_tenjin(front).png",
+      backSprite: "kykaiser_tenjin(back).png",
+    },
   },
 
   // The type-gap lines (2026-10-26): 14 families, 34 species aimed at the thinnest types and missing combinations
