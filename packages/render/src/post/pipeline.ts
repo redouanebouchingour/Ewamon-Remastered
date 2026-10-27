@@ -33,7 +33,7 @@
 import { NoToneMapping, RenderPipeline, SRGBColorSpace, Vector3 } from 'three/webgpu';
 import type { Camera, Node, PassNode, PerspectiveCamera, RenderTarget, Scene, TextureNode, UniformNode, WebGPURenderer } from 'three/webgpu';
 import {
-  acesFilmicToneMapping, cos, dot, float, getViewPosition, mix, mrt, normalView, oneMinus, output, pass, renderOutput, screenUV, sin, uniform, vec2,
+  acesFilmicToneMapping, cos, dot, float, getViewPosition, min, mix, mrt, normalView, oneMinus, output, pass, renderOutput, screenUV, sin, uniform, vec2, vec3,
   vec4, velocity,
 } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
@@ -52,7 +52,9 @@ import { QUALITY_PROFILES, type GraphicsQuality } from '../quality.js';
 
 export const POST_PARAMS = Object.freeze({
   gtao: Object.freeze({ resolutionScale: 0.5, samples: 16, radius: 0.9, thickness: 0.6, scale: 1.0 }),
-  bloom: Object.freeze({ strength: 0.35, radius: 0.6, threshold: 1.15, smoothWidth: 0.05, resolutionScale: 0.5 }),
+  /** `skyCap`: the sky (depth at the far plane) enters the bloom clamped to this, under the threshold: Preetham radiance
+   *  runs 2–6 scene-linear at noon and would otherwise bloom the whole sky over the scene. */
+  bloom: Object.freeze({ strength: 0.35, radius: 0.6, threshold: 1.15, smoothWidth: 0.05, resolutionScale: 0.5, skyCap: 1.0 }),
   dof: Object.freeze({ tiltDeg: 24, focalLength: 6.0, bokehPx: 6, focusDistance: 0 }),
   chroma: Object.freeze({ scale: 1.1, rest: 0, superStrength: 0.012, superMs: 120 }),
   vignette: VIGNETTE.strength,
@@ -286,7 +288,9 @@ export function buildPostOutput(nodes: PostNodes, camera: PerspectiveCamera, u: 
   let bloomed: Node<'vec4'> = aa;
   if (has(plan, 'bloom')) {
     const b = POST_PARAMS.bloom;
-    const bn = bloom(aa, b.strength, b.radius, b.threshold);
+    const isSky = depthT.r.greaterThanEqual(0.99999);
+    const bloomIn = isSky.select(vec4(min(aa.rgb, vec3(b.skyCap)), aa.a), aa) as unknown as Node<'vec4'>;
+    const bn = bloom(bloomIn, b.strength, b.radius, b.threshold);
     bn.smoothWidth.value = b.smoothWidth;
     bn.setResolutionScale(b.resolutionScale);
     stages.push({ pass: 'bloom', node: bn as unknown as Node });
