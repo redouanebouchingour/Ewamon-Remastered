@@ -2900,3 +2900,22 @@ the second isolated client (the component over the landing page: the foe and own
 - The raid den's boss is 1.8 × its true height.
 - `BACK_FULL_HEIGHT` (astaroth): the species' back stands its full height although its art is drawn wider than the
   front, at the user's call (2026-10-27); every other back keeps the front's scale when it is wider.
+
+## Graphics: dynamic resolution, detail 'auto', graphics API (2026-10-27, not in the SPEC)
+
+- `scene/dynamicResolution.ts`: steps the render scale through 1 / 0.85 / 0.75 / 0.65 / 0.55 from the interval between
+  drawn frames (30-frame windows, budget 1000 / 60, or / 30 under the 30 cap). Down when a window is 12 % over budget
+  and the tick's main thread used under 80 % of it (a CPU-bound frame keeps its resolution); up after 2.5 s of good
+  windows, the wait doubling (to 40 s) when a step up is undone within 4 s. Settings › Graphics › Dynamic resolution,
+  default on. Applied with the render scale through `Renderer.setResolutionScale` (after the preset's pixel-ratio cap).
+- `graphics.detailDistance` gains `'auto'` (default): medium on the `low` preset, else max. Settings persist v2 migrates a
+  stored `'max'` (the old default) to `'auto'`.
+- Settings › Graphics shows the graphics API (WebGPU / WebGL 2.0) and the adapter, from `useUiStore.renderApi` written
+  when the renderer boots.
+- WebGL2 context loss goes through the E6 `DeviceRecovery` too. three's `dispose` calls `WEBGL_lose_context.loseContext()`
+  (async, after its other cleanup), so before a rebuild `restoreWebGLContext` waits 250 ms, then calls `restoreContext()`
+  on the extension taken at boot and waits for `webglcontextrestored` (max 5 s). Checked headless (Chrome on macOS,
+  WebGPU hidden): a forced loss in Tide Route rebuilt and reloaded the zone, no failed attempt.
+- Dynamic resolution is forced off on the WebGL2 fallback (`dynamicResolutionOn`; the setting shows disabled there): in a
+  playtest on an Intel iGPU under WebGL2 the context kept getting lost after opening a menu, and the resolution steps
+  (every render target re-created) are the suspect.

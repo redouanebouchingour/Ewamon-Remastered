@@ -10,6 +10,7 @@ import { useSearchParams } from 'react-router';
 import { TYPE_NAMES } from '@ewa/core';
 import { REDUCED_LOCKED } from '../state/effective';
 import { useEffectiveSettings } from '../state/applySettings';
+import { useUiStore } from '../state/ui';
 import { INPUT_ACTIONS, UI_SCALE, bindingConflict, isBindable, useSettingsStore } from '../state/settings';
 import type { Colorblind, DetailDistance, FrameCap, GraphicsQualitySetting, GraphicsSettings, InputAction } from '../state/settings';
 import { Button } from '../ui/Button';
@@ -40,7 +41,7 @@ const TABS: readonly { readonly key: Tab; readonly label: string }[] = [
   { key: 'world', label: 'World' },
 ];
 
-type EffectToggle = Exclude<keyof GraphicsSettings, 'reducedEffects' | 'renderScale' | 'quality' | 'frameCap' | 'detailDistance' | 'showFps'>;
+type EffectToggle = Exclude<keyof GraphicsSettings, 'reducedEffects' | 'renderScale' | 'dynamicResolution' | 'quality' | 'frameCap' | 'detailDistance' | 'showFps'>;
 const EFFECT_TOGGLES: Readonly<Record<EffectToggle, { readonly label: string; readonly description: string }>> = {
   dof: { label: 'Depth of field', description: 'Soft focus on the distance. Never blurs your creature or an active battler.' },
   bloom: { label: 'Bloom', description: 'Glow around bright light. Static, so it stays available under reduced motion.' },
@@ -102,12 +103,26 @@ function GraphicsTab() {
   const set = useSettingsStore((st) => st.set);
   const eff = useEffectiveSettings();
   const locked = new Set<string>(REDUCED_LOCKED);
+  const api = useUiStore((st) => st.renderApi);
   return (
     <div className={s.tab}>
       <div className={s.control}>
         <div>
+          <p className={s.controlLabel}>Graphics API</p>
+          <p className={l.caption}>
+            {api === null
+              ? 'Shown once the world renderer is running.'
+              : api.backend === 'webgpu'
+                ? `WebGPU${api.adapter !== null ? ` on ${api.adapter}` : ''}.`
+                : `This browser has no WebGPU, so the game runs on the WebGL 2.0 fallback${api.adapter !== null ? ` (${api.adapter})` : ''}.`}
+          </p>
+        </div>
+        <p className={l.kvValue}>{api === null ? '—' : api.backend === 'webgpu' ? 'WebGPU' : 'WebGL 2.0'}</p>
+      </div>
+      <div className={s.control}>
+        <div>
           <p className={s.controlLabel}>Quality</p>
-          <p className={l.caption}>Low renders at 1× pixel density without ambient occlusion, depth of field or bloom, with half the shadow detail and simpler trees and grass sooner. Auto picks Low on Intel integrated graphics.</p>
+          <p className={l.caption}>Low renders at 1× pixel density without ambient occlusion, depth of field or bloom, with half the shadow detail, slower shadow updates and simpler trees and grass sooner. Auto picks Low on Intel integrated graphics and on WebGL 2.0.</p>
         </div>
         <Segmented<GraphicsQualitySetting>
           label="Quality"
@@ -124,12 +139,13 @@ function GraphicsTab() {
       <div className={s.control}>
         <div>
           <p className={s.controlLabel}>Detail distance</p>
-          <p className={l.caption}>How far from you short grass, flowers, pebbles, fireflies and other drifting motes are drawn. Tall grass always shows.</p>
+          <p className={l.caption}>How far from you short grass, flowers, pebbles, fireflies and other drifting motes are drawn. Tall grass always shows. Auto is Medium on Low quality, else Max.</p>
         </div>
         <Segmented<DetailDistance>
           label="Detail distance"
           value={g.detailDistance}
           options={[
+            { value: 'auto', label: 'Auto' },
             { value: 'close', label: 'Close' },
             { value: 'medium', label: 'Medium' },
             { value: 'far', label: 'Far' },
@@ -185,6 +201,17 @@ function GraphicsTab() {
           onChange={(v) => set('graphics', { renderScale: v === '0.75' ? 0.75 : 1 })}
         />
       </div>
+      <Toggle
+        label="Dynamic resolution"
+        description={
+          api?.backend === 'webgl2'
+            ? 'Off on WebGL 2.0.'
+            : 'Lowers the resolution below the render scale while the frame rate drops (down to about half), and raises it again when there is room.'
+        }
+        checked={api?.backend === 'webgl2' ? false : g.dynamicResolution}
+        disabled={api?.backend === 'webgl2'}
+        onChange={(v) => set('graphics', { dynamicResolution: v })}
+      />
       <hr className={l.divider} />
       {(Object.keys(EFFECT_TOGGLES) as EffectToggle[]).map((k) => {
         const off = eff.reduced && locked.has(k);

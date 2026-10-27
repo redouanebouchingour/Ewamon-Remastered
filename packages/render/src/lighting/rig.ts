@@ -60,6 +60,11 @@ export const SPEC_LIGHT_UNIT = Math.PI;
  * the old 14–34 m cascade (where the player stood at every zoom stop) already had.
  */
 export const CASCADE_SCHEDULE: readonly (readonly number[])[] = Object.freeze([[0], [1], [0], []]);
+/**
+ * The `low` preset's schedule (`QualityProfile.slowShadows`): the near cascade every 3rd frame, the far one every 6th,
+ * 0.5 map renders per frame. Jumps, turns and resizes still render every cascade at once.
+ */
+export const CASCADE_SCHEDULE_SLOW: readonly (readonly number[])[] = Object.freeze([[0], [], [1], [0], [], []]);
 /** Every cascade renders when the camera moved more than this in one frame (a warp, a cut). */
 export const CASCADE_JUMP_M = 2;
 /** … or turned, or the sun did: `1 − |q·q'|` / `1 − d·d'` above this (≈ 0.16° of rotation). */
@@ -155,6 +160,7 @@ export class LightRig {
   private readonly lastSunDir = new V3();
   private readonly lastProjection = [NaN, NaN, NaN, NaN, NaN];   // fov, aspect, zoom, near, far
   // per-cascade map edges (`setSunShadowMap`), applied to the cascade lights once the CSM has created them
+  private schedule: readonly (readonly number[])[] = CASCADE_SCHEDULE;
   private readonly mapSizes: number[] = [SUN_SHADOW.mapSize, Math.round(SUN_SHADOW.mapSize * FAR_CASCADE_SCALE)];
   private mapsPending = true;
 
@@ -213,6 +219,12 @@ export class LightRig {
     this.applyMapSizes();
   }
 
+  /** Quality presets: the slow cascade schedule (`CASCADE_SCHEDULE_SLOW`) or the normal one. */
+  setSlowShadows(slow: boolean): void {
+    this.schedule = slow ? CASCADE_SCHEDULE_SLOW : CASCADE_SCHEDULE;
+    this.refreshCascades();
+  }
+
   /** The cascade lights' map edges (`setSunShadowMap`; the far ones also once the CSM created them). */
   cascadeMapSizes(): readonly number[] {
     return this.cascadeLights().map((l) => l.shadow.mapSize.x);
@@ -267,7 +279,7 @@ export class LightRig {
     this.lastCamQuat.copy(_q);
     this.lastSunDir.copy(_d);
     pr[0] = camera.fov; pr[1] = camera.aspect; pr[2] = camera.zoom; pr[3] = camera.near; pr[4] = camera.far;
-    const due = CASCADE_SCHEDULE[this.cascadeFrame % CASCADE_SCHEDULE.length]!;
+    const due = this.schedule[this.cascadeFrame % this.schedule.length]!;
     this.cascadeFrame++;
     for (let i = 0; i < lights.length; i++) lights[i]!.shadow.autoUpdate = all || due.includes(i);
   }

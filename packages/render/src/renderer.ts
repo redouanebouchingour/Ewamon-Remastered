@@ -131,6 +131,20 @@ export function watchDeviceLost(device: DeviceLostSource | null | undefined, onL
   return true;
 }
 
+/**
+ * The WebGL2 fallback's lost context: three's WebGLBackend calls `renderer.onDeviceLost` from its `webglcontextlost`
+ * listener (it also calls `preventDefault`, so the browser restores the context later). Wraps that hook; a loss after
+ * `isDisposed()` turned true (three's `dispose` calls `loseContext()`) is ignored.
+ */
+export function watchContextLost(gpu: { onDeviceLost: (info: { message?: string }) => void }, onLost: (info: DeviceLostInfo) => void, isDisposed: () => boolean): void {
+  const prev = gpu.onDeviceLost.bind(gpu);
+  gpu.onDeviceLost = (info) => {
+    prev(info);
+    if (isDisposed()) return;
+    onLost({ reason: 'context-lost', message: info?.message !== undefined && info.message !== '' ? info.message : 'WebGL context lost' });
+  };
+}
+
 /** One `onCompileProgress` report. `done` is true on the last report of a phase (with its wall time when a clock is set). */
 export interface CompileProgress {
   readonly phase: 'boot' | 'zone' | 'background';
@@ -182,6 +196,12 @@ export interface Renderer {
   setHarvestLevel(l: HarvestLevel): void;      // §10.2.6
   setEffects(f: EffectsFlags): void;           // rebuilds the post graph; §10.8.4
   setPixelRatio(r: number): void;              // re-clamped by §10.1.3
+  /**
+   * Render scale addition (performance 2026-10-27): a factor (0.25..1) on the pixel ratio AFTER §10.1.3's clamp, so it
+   * also shrinks the buffer where the quality preset's cap already holds the ratio (a 1.25 DPR display on `low`).
+   * The client's render scale × its dynamic resolution. Optional for fakes.
+   */
+  setResolutionScale?(s: number): void;
   /** Quality preset addition (`quality.ts`): pixel-ratio cap, sun cascade size, GTAO / DOF, the water backdrop. Optional for fakes. */
   setQuality?(q: GraphicsQuality | 'auto'): void;
   /** The preset in effect (`'auto'` resolved). Optional for fakes. */
@@ -405,6 +425,9 @@ export async function createRenderer(o: RendererOptions, subsystems: RendererSub
   const host = new RendererHost(gpu, backend, caps, ktx2, o, subsystems);
   // E6: a lost device stops the frames and tells the owner (subscribed before the warm-up, which can take seconds)
   if (backend === 'webgpu') watchDeviceLost((gpu.backend as unknown as BackendLike).device as DeviceLostSource | undefined, (info) => host.handleDeviceLost(info), () => host.isDisposed);
+  // … and on the WebGL2 fallback a lost context (`webglcontextlost`, which three's WebGLBackend turns into
+  // `onDeviceLost`; its own handler still logs). Our own `dispose()` loses the context on purpose, after `isDisposed`.
+  else watchContextLost(gpu as unknown as Parameters<typeof watchContextLost>[0], (info) => host.handleDeviceLost(info), () => host.isDisposed);
   // 8. (the owner may start a zone's prepare first: it builds while the warm-up compiles)
   try { o.beforeWarmUp?.(host); } catch (e) { if (isDevBuild()) console.error('@ewa/render: beforeWarmUp threw', e); }
   await host.warmUp();
@@ -526,6 +549,7 @@ class RendererHost implements Renderer, HostContext {
   private effectsFlags: EffectsFlags;
   private passes: PassSwitches = ALL_PASSES_ON;
   private requestedPr: number;
+  private resolutionScale = 1;
   quality: GraphicsQuality;
   private cssW = 1;
   private cssH = 1;
@@ -576,6 +600,7 @@ class RendererHost implements Renderer, HostContext {
     if (this.materials.uniforms.occlusion !== undefined) this.materials.uniforms.occlusion.camera = this.camera3;   // M2-spawn-noon-9
     this.lighting = new LightRig(this.scene);
     this.lighting.setSunShadowMap(QUALITY_PROFILES[this.quality].sunShadowMap);
+    this.lighting.setSlowShadows(QUALITY_PROFILES[this.quality].slowShadows);
     if (this.materials.uniforms.waterBackdrop !== undefined) setWaterBackdrop(this.materials.uniforms.waterBackdrop, QUALITY_PROFILES[this.quality].waterBackdrop);
     setLodScale(QUALITY_PROFILES[this.quality].lodScale);
     this.sky = new SkyController(gpu, this.scene);
@@ -1230,12 +1255,20 @@ class RendererHost implements Renderer, HostContext {
     this.resize(this.cssW, this.cssH);
   }
 
+  setResolutionScale(s: number): void {
+    const next = Number.isFinite(s) ? Math.min(1, Math.max(0.25, s)) : 1;
+    if (next === this.resolutionScale) return;
+    this.resolutionScale = next;
+    this.resize(this.cssW, this.cssH);
+  }
+
   setQuality(q: GraphicsQuality | 'auto'): void {
     if (this.disposed) return;
     const next = q === 'auto' ? recommendedQuality(this.caps) : q;
     if (next === this.quality) return;
     this.quality = next;
     this.lighting.setSunShadowMap(QUALITY_PROFILES[next].sunShadowMap);
+    this.lighting.setSlowShadows(QUALITY_PROFILES[next].slowShadows);
     if (this.materials.uniforms.waterBackdrop !== undefined) setWaterBackdrop(this.materials.uniforms.waterBackdrop, QUALITY_PROFILES[next].waterBackdrop);
     setLodScale(QUALITY_PROFILES[next].lodScale);
     this.post.setQuality(next);
@@ -1253,7 +1286,7 @@ class RendererHost implements Renderer, HostContext {
     if (!(cssWidth >= 1 && cssHeight >= 1)) return;
     this.cssW = Math.floor(cssWidth);
     this.cssH = Math.floor(cssHeight);
-    const pr = clampPixelRatio(this.requestedPr, this.cssW, QUALITY_PROFILES[this.quality].pixelRatioCap);
+    const pr = clampPixelRatio(this.requestedPr, this.cssW, QUALITY_PROFILES[this.quality].pixelRatioCap) * this.resolutionScale;
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(this.cssW, this.cssH, false);
     const aspect = this.cssW / this.cssH;

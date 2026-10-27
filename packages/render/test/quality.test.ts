@@ -54,7 +54,7 @@ describe('auto quality', () => {
   it('picks low on integrated Intel, medium on the WebGL2 fallback, else high', () => {
     expect(recommendedQuality({ adapter: 'intel gen-9', backend: 'webgpu' })).toBe('low');
     expect(recommendedQuality({ adapter: 'ANGLE (Intel, Intel(R) HD Graphics 520)', backend: 'webgl2' })).toBe('low');
-    expect(recommendedQuality({ adapter: null, backend: 'webgl2' })).toBe('medium');
+    expect(recommendedQuality({ adapter: null, backend: 'webgl2' })).toBe('low');
     expect(recommendedQuality({ adapter: 'apple metal-3', backend: 'webgpu' })).toBe('high');
   });
 });

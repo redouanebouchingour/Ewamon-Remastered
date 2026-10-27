@@ -1,8 +1,9 @@
 /**
  * Graphics quality presets (addition, IMPLEMENTATION-NOTES "Quality presets"). `high` is the §10 SPEC graph and
  * numbers except the sun shadow map and GTAO's cost (IMPLEMENTATION-NOTES "Cheaper shadows and reflections"); `medium` and `low` trade the costliest GPU work for frame time on weak GPUs (integrated Intel
- * parts first): the drawing-buffer pixel ratio, the sun's cascade resolution, GTAO, the tilt-shift DOF, bloom and the
- * water's backdrop.
+ * parts first): the drawing-buffer pixel ratio, the sun's cascade resolution and cadence, GTAO, the tilt-shift DOF, bloom
+ * and the water's backdrop. Dropping GTAO / DOF also drops the scene pass's normal and mask targets
+ * (`post/pipeline.ts` `sceneOutputs`).
  * Pure; the renderer applies a profile in `setQuality`, the client picks one (`recommendedQuality` for "auto").
  */
 export type GraphicsQuality = 'low' | 'medium' | 'high';
@@ -35,12 +36,18 @@ export interface QualityProfile {
    * 160 m times this. The diorama camera sits 20–34 m from the player, so below 1 the far half of the view drops a tier.
    */
   readonly lodScale: number;
+  /**
+   * The sun cascades re-render on the slow schedule (`lighting/rig.ts` `CASCADE_SCHEDULE_SLOW`): the near one every 3rd
+   * frame, the far one every 6th (0.5 map renders a frame instead of 0.75). Each map render is a whole scene traversal,
+   * the costliest per-draw CPU work on the WebGL2 fallback. A moving shadow lags a frame or two more.
+   */
+  readonly slowShadows: boolean;
 }
 
 export const QUALITY_PROFILES: Readonly<Record<GraphicsQuality, QualityProfile>> = Object.freeze({
-  high: Object.freeze({ pixelRatioCap: 1.5, sunShadowMap: 1536, gtao: true, gtaoSamples: 8, gtaoScale: 0.25, dof: true, bloom: true, waterBackdrop: true, lodScale: 1 }),
-  medium: Object.freeze({ pixelRatioCap: 1.25, sunShadowMap: 1024, gtao: true, gtaoSamples: 8, gtaoScale: 0.25, dof: true, bloom: true, waterBackdrop: false, lodScale: 0.8 }),
-  low: Object.freeze({ pixelRatioCap: 1, sunShadowMap: 1024, gtao: false, gtaoSamples: 8, gtaoScale: 0.25, dof: false, bloom: false, waterBackdrop: false, lodScale: 0.6 }),
+  high: Object.freeze({ pixelRatioCap: 1.5, sunShadowMap: 1536, gtao: true, gtaoSamples: 8, gtaoScale: 0.25, dof: true, bloom: true, waterBackdrop: true, lodScale: 1, slowShadows: false }),
+  medium: Object.freeze({ pixelRatioCap: 1.25, sunShadowMap: 1024, gtao: true, gtaoSamples: 8, gtaoScale: 0.25, dof: true, bloom: true, waterBackdrop: false, lodScale: 0.8, slowShadows: false }),
+  low: Object.freeze({ pixelRatioCap: 1, sunShadowMap: 1024, gtao: false, gtaoSamples: 8, gtaoScale: 0.25, dof: false, bloom: false, waterBackdrop: false, lodScale: 0.6, slowShadows: true }),
 });
 
 /**
@@ -55,8 +62,11 @@ export function isIntegratedIntel(adapter: string | null): boolean {
   return !/\barc\b|xe-hpg|xe2-hpg|alchemist|battlemage/.test(a);
 }
 
-/** The "auto" preset: `low` on integrated Intel, `medium` on the WebGL2 fallback, else `high`. */
+/**
+ * The "auto" preset: `low` on integrated Intel and on the WebGL2 fallback (three's WebGL backend pays far more CPU per
+ * draw, and a browser without WebGPU is usually an older or weaker machine), else `high`.
+ */
 export function recommendedQuality(caps: { readonly adapter: string | null; readonly backend: 'webgpu' | 'webgl2' }): GraphicsQuality {
   if (isIntegratedIntel(caps.adapter)) return 'low';
-  return caps.backend === 'webgl2' ? 'medium' : 'high';
+  return caps.backend === 'webgl2' ? 'low' : 'high';
 }
