@@ -119,7 +119,7 @@ Actions: mutations from screens go through `useFetcher()` with `fetcher.submit(p
 - No route element is wrapped in `<Suspense>` that covers the canvas. Panels may use `useNavigation().state === 'loading'` to render their own `Skeleton` (§20.9.13) for at most the loader's duration.
 - Panel open/close is a 160 ms opacity + 8 px translate (§20.2.6 `--motion-panel`), CSS-only, on the panel element. The old 900 ms clip-path transition does not exist.
 - Loader budget: a `/play/*` loader must resolve in ≤ 400 ms p95 on the slice (server-side p95 ≤ 150 ms + network). Above 400 ms the skeleton shows; there is no other intermediate state.
-- `useBlocker` is used in exactly two places: (a) `BattleOverlay` blocks navigation away from `/play/*` while `ui.battle !== null` and shows the "Finish the battle first" toast; (b) `TradeModal` blocks while a trade is `open`/`confirming`. Nothing else blocks.
+- `useBlocker` is used in exactly two places: (a) `BattleOverlay` blocks navigation away from `/play/*` while `ui.battle !== null` and shows the "Finish the battle first" toast; (b) `TradeModal` blocks while a trade is `open`/`confirming`. Nothing else blocks. Neither blocks a close: navigation to the bare `/play` always goes through (`blocksPanelNavigation`), and a battle's start closes the open panel itself (PlayShell), so no panel is ever left over a battle without a way out.
 - Back button: every filter, tab and selected item that survives a reload is a URL param (`?tab=`, `?q=`, `/market/:listingId`). Modal open state is not URL state.
 
 ---

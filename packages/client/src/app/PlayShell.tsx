@@ -15,7 +15,7 @@ import { EmoteWheel } from '../world/EmoteWheel';
 import { NpcStrikeFx } from '../world/NpcStrikeFx';
 import { BuddyBubble } from '../world/BuddyBubble';
 import { BuddyTalk } from '../world/BuddyTalk';
-import { openBuddyTalk, useBuddyTalkStore } from '../state/buddy';
+import { closeBuddyTalk, openBuddyTalk, useBuddyTalkStore } from '../state/buddy';
 import { startVoices } from '../voice/bindVoices';
 import { EvolutionBanner } from '../world/EvolutionBanner';
 import { HatchReveal } from '../world/HatchReveal';
@@ -88,19 +88,21 @@ function useShellHotkeys(): void {
     const onKey = (e: KeyboardEvent): void => {
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target)) return;
       const ui = useUiStore.getState();
-      if (ui.battle !== null || ui.evolution !== null || ui.modal !== 'none' || ui.dialogue !== null || ui.chatOpen || document.querySelector('[aria-modal="true"]') !== null) return;
+      if (ui.evolution !== null || ui.modal !== 'none' || ui.dialogue !== null || ui.chatOpen || document.querySelector('[aria-modal="true"]') !== null) return;
       // LLM feature 6: the talk with a party creature holds the keys (its own Escape closes it)
       if (useBuddyTalkStore.getState().creatureId !== null) return;
+      // the emote wheel (not a remappable binding: G was free); while it is up it owns G itself. A battle keeps it: the
+      // trainers stand in the ring with the crowd. The arena has no world to emote in.
+      if (e.code === 'KeyG' && !e.repeat && location.pathname === '/play' && !useArenaStore.getState().inArena) {
+        e.preventDefault();
+        useEmoteWheelStore.getState().setOpen(true);
+        return;
+      }
+      if (ui.battle !== null) return;
       const binds = useSettingsStore.getState().keybinds;
       if (binds.toggleHud.includes(e.code)) {
         e.preventDefault();
         ui.toggleHud();
-        return;
-      }
-      // the emote wheel (not a remappable binding: G was free); while it is up it owns G itself
-      if (e.code === 'KeyG' && !e.repeat && location.pathname === '/play' && ui.battle === null) {
-        e.preventDefault();
-        useEmoteWheelStore.getState().setOpen(true);
         return;
       }
       // LLM feature 6: talk to the lead walking behind you (Y)
@@ -124,6 +126,21 @@ function useShellHotkeys(): void {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [navigate, location.pathname]);
+}
+
+/**
+ * A battle takes the screen (§20.1.3): the panel open when it begins (Social after a challenge, Party, the Map…) and a
+ * talk with the lead close on their own, so nothing is left standing over the arena.
+ */
+function useBattleClosesMenus(inBattle: boolean): void {
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!inBattle) return;
+    if (useBuddyTalkStore.getState().creatureId !== null) closeBuddyTalk();
+    // only on the battle's start (the path is read, not tracked): the blocker lets this close through
+    const path = window.location.pathname;
+    if (path !== '/play' && path !== '/play/') void navigate('/play');
+  }, [inBattle, navigate]);
 }
 
 /**
@@ -194,6 +211,7 @@ export function PlayShell() {
   const inArena = useArenaStore((st) => st.inArena);
   useWorldConnection(zoneId as ZoneId);
   useShellHotkeys();
+  useBattleClosesMenus(inBattle);
   // LLM feature 10: NPC, buddy, rival and battle lines read aloud (only with Settings › Audio's voice toggles on)
   useEffect(() => startVoices(), []);
   const pendingPanel = usePendingPanel();
@@ -209,8 +227,8 @@ export function PlayShell() {
       {!hasPanel && !inBattle && !inArena && worldCapability() && <Minimap />}
       {/* followers with field powers: who walks behind the player and what that lead can do here */}
       {!hasPanel && !inBattle && !inArena && worldCapability() && <FieldPowerChip />}
-      {/* the emote wheel (G / the Emotes button), over the live world only */}
-      {!hasPanel && !inBattle && !inArena && worldCapability() && <EmoteWheel />}
+      {/* the emote wheel (G / the Emotes button), over the live world, a battle too (not the arena) */}
+      {!hasPanel && !inArena && worldCapability() && <EmoteWheel />}
       {/* Phase D12: Prof. Wynn's tutorial steps (live world only, like the minimap) */}
       {worldCapability() && !inArena && <TutorialCard />}
       {/* Majin / Tenjin: the band cards (once a band is in the inventory), state apart from the opening tutorial */}
