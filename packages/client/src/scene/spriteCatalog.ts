@@ -126,6 +126,13 @@ function frame(r: ManifestRect, a: ManifestAnimSide | undefined): SpriteFrame {
 /** A manifest entry no species names (a stray sprite): drawn as tall as its legacy sizeScale's body on the old 1.6 m card. */
 const LEGACY_BODY_M = 1.6 * 0.86;
 
+/**
+ * Species whose back stands its full height although its art is drawn wider than the front (`SpriteDescriptor
+ * .backFullHeight`): astaroth's back spreads its wings, so from behind it is 3.2 m tall and about 6.4 m wide (the
+ * user's call, 2026-10-27, over keeping the front's 3.9 m width).
+ */
+export const BACK_FULL_HEIGHT: ReadonlySet<string> = new Set(['astaroth']);
+
 export function createSpriteCatalog(m: CreatureManifest, species: (id: string) => SpeciesDef | undefined, base: string = CREATURE_BASE): SpriteCatalog {
   const sets = new Map<string, AtlasSet>();
   const bytes = new Map<string, number>();
@@ -182,6 +189,7 @@ export function createSpriteCatalog(m: CreatureManifest, species: (id: string) =
       return {
         id: key, front: frame(sp.front, anim('front')), back: frame(sp.back, anim('back')), heightM: form?.heightM ?? def?.heightM ?? sp.sizeScale * LEGACY_BODY_M, types, variant, isAlpha,
         ...(isShiny ? { isShiny: true, shinyPalette: shinyPaletteOf(speciesId) } : {}), ...(aura !== undefined ? { aura } : {}),
+        ...(BACK_FULL_HEIGHT.has(speciesId) ? { backFullHeight: true } : {}),
       };
     },
     get speciesCount() {

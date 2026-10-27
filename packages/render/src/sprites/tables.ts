@@ -138,10 +138,12 @@ const usableBodyV = (v: number | undefined): number => (v !== undefined && v > 0
  * The body share a side's card is sized by: the front's own; the back's own, unless the back sprite is drawn lower and
  * wider than the front (astaroth's spread wings, kygra lying flat), when it takes the front's, so a creature never
  * draws bigger from behind than from the front (it then stands a little lower from behind, as its back art does).
+ * `backFullHeight` (`SpriteDescriptor.backFullHeight`) opts out: the back keeps its own share and stands its full height.
  */
-export function cardBodyV(front: Pick<SpriteFrame, 'bodyV'>, back: Pick<SpriteFrame, 'bodyV'>, side: 'front' | 'back'): number {
+export function cardBodyV(front: Pick<SpriteFrame, 'bodyV'>, back: Pick<SpriteFrame, 'bodyV'>, side: 'front' | 'back', backFullHeight = false): number {
   const f = usableBodyV(front.bodyV);
-  return side === 'front' ? f : Math.max(f, usableBodyV(back.bodyV));
+  if (side === 'front') return f;
+  return backFullHeight ? usableBodyV(back.bodyV) : Math.max(f, usableBodyV(back.bodyV));
 }
 
 /**

@@ -11,7 +11,7 @@ import { LEGENDARY_IDS, MYTHICAL_IDS, SPECIES } from '@ewa/content';
 import type { AnimAtlasSet, AtlasSet } from '@ewa/render';
 import { species as speciesDef } from '../src/data/content';
 import type { CreatureManifest } from '../src/scene/spriteCatalog';
-import { FORM_AURA, auraOfSprite, bindCatalogAtlas, createSpriteCatalog, speciesAtlases } from '../src/scene/spriteCatalog';
+import { BACK_FULL_HEIGHT, FORM_AURA, auraOfSprite, bindCatalogAtlas, createSpriteCatalog, speciesAtlases } from '../src/scene/spriteCatalog';
 
 const map = (u: string) => ({ url: `atlases/${u}.webp`, mips: [1, 2, 3].map((i) => `atlases/${u}.m${i}.webp`), bytes: 10 });
 const amap = (u: string) => ({ url: `anim/${u}.webp`, mips: [1, 2, 3].map((i) => `anim/${u}.m${i}.webp`), bytes: 100 });
@@ -123,6 +123,12 @@ describe.skipIf(!existsSync(REAL))('sprite catalog on the shipped manifest', () 
     }
   });
 
+  it("astaroth's back stands its full height (BACK_FULL_HEIGHT); everyone else's back keeps the front's scale", () => {
+    expect([...BACK_FULL_HEIGHT]).toEqual(['astaroth']);
+    expect(cat.descriptor('astaroth', 't:astaroth')!.backFullHeight).toBe(true);
+    expect(cat.descriptor('kygra', 't:kygra')!.backFullHeight).toBeUndefined();
+  });
+
   it('the 10 legacy legendaries / mythicals and astaroth animate on both sides; nothing else does (hyoryu and the Elemutt line came as stills)', () => {
     const animated = Object.keys(m.sprites).filter((id) => cat.animAtlasesOf(id).length > 0).sort();
     // hyoryu (post-legacy legendary) was delivered as still sprites: it ships static until animated art exists
@@ -166,5 +172,6 @@ describe('sprite catalog: true heights', () => {
     expect(d.back.bodyV).toBeUndefined();                             // an older manifest's side: the renderer's 0.86
     expect(cat.descriptor('hyoryu', 'y', 'normal', false, false, 'hyoryu_majin')!.heightM).toBe(hyoryu.battleForm!.heightM);
     expect(cat.descriptor('stray', 'z')!.heightM).toBeCloseTo(1.376, 9);   // no species: the legacy sizeScale's body
+    expect(d.backFullHeight).toBeUndefined();
   });
 });

@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-27 astaroth's full-height back. One entry. -->
+
+## 2026-10-27 · `10-render.md` §10.4.3 SpriteDescriptor · `backFullHeight`: a back drawn wider than its front may stand its full height
+Why: the user's new animated back for Astaroth spreads its wings far wider than the front art, so the "never bigger from behind" rule drew it 1.98 m tall from behind against 3.2 m from the front. The user chose full height from both sides over matching widths. `SpriteDescriptor.backFullHeight` (set by the client's `BACK_FULL_HEIGHT`, astaroth only) makes `cardBodyV` use the back's own body share: 3.2 m tall, about 6.4 m across the wings.
+Evidence: render `sprites.test.ts` (`cardBodyV` with the flag), client `spriteCatalog.test.ts` (only astaroth carries it); the battle sandbox.
+Affects: `packages/render/src/{contracts.ts,sprites/tables.ts,sprites/billboard.ts}`, `packages/render/sandbox/part3.ts`; `packages/client/src/scene/spriteCatalog.ts`.
+
 <!-- 2026-10-27 true creature heights. One entry. -->
 
 ## 2026-10-27 · `00-spine.md` §2.3 SpeciesDef, `10-render.md` §10.4.3 / §10.4.7 / §10.7.9, `40-pipelines.md` §40.1 · every creature stands its real height

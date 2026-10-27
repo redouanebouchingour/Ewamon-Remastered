@@ -60,6 +60,11 @@ export interface SpriteDescriptor {
   readonly shinyPalette?: ShinyPalette;
   /** A battle form's live aura on the battle stage (stage/aura.ts); absent = none. Ignored outside `BattleStage.setBattler`. */
   readonly aura?: AuraKind;
+  /**
+   * Added 2026-10-27: the back stands its full `heightM` even when its art is drawn wider than the front (astaroth's
+   * spread wings), instead of keeping the front's scale (`cardBodyV`). Absent = false.
+   */
+  readonly backFullHeight?: boolean;
 }
 
 /**

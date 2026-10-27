@@ -828,7 +828,7 @@ export class CreatureBillboard {
   }
 
   private applyDims(): void {
-    billboardDims(this.frame(), this.d.heightM, this.isAlpha, this.dims, cardBodyV(this.d.front, this.d.back, this.side));
+    billboardDims(this.frame(), this.d.heightM, this.isAlpha, this.dims, cardBodyV(this.d.front, this.d.back, this.side, this.d.backFullHeight === true));
     const ud = this.rig.ud;
     ud.size.set(this.dims.widthM * this.sizeMul, this.dims.heightM * this.sizeMul);
     ud.footV = this.frame().footV;

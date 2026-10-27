@@ -2621,7 +2621,10 @@ shadow is a softer blob. First-person sees the 0–44 m cascade at 1536² up clo
 - Ten back sprites are drawn lower and wider than their fronts (astaroth bodyV 0.43 against 0.70, malice, kygra,
   raidori, alloylark, flowbot, devourest, resilithorn, necrogeist, bloomduck). Sized by their own share, astaroth's back
   was a 7.4 m card, 6.4 m wide, and hid a small foe entirely in the live battle check; `cardBodyV` gives such a back the
-  front's share, so it keeps the front's scale and stands a little lower from behind (astaroth 1.97 of 3.2 m).
+  front's share, so it keeps the front's scale and stands a little lower from behind.
+- `SpriteDescriptor.backFullHeight` opts a species out of that (the client's `BACK_FULL_HEIGHT`): astaroth, at the
+  user's call, stands its full 3.2 m from behind too, its spread wings about 6.4 m across (a 7.4 m card); a small foe
+  behind it can be hidden.
 - The contact decal keeps its old relation to the card (0.6875 of the card's width, 1.1 m on the old 1.6 m card).
 - Followers drop the 0.72 shrink and the 1.5 m cap: a follower is its true size. A wide one walks farther back
   (`gapOf`: the owner's 0.45 m radius plus half its body) so a legendary never stands in its trainer.

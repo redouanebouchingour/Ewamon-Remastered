@@ -82,7 +82,7 @@ function descriptor(man: Manifest, species: string, key: string, variant: Varian
     atlas: r.atlas, rect: r.uv, px: r.px, footV: r.footV, aspect: r.aspect, ...(r.bodyV !== undefined ? { bodyV: r.bodyV } : {}),
     ...(a && ANIM_ON ? { anim: { atlas: a.atlas, rects: a.frames, delaysMs: a.delays, staticFrame: a.staticFrame } } : {}),
   });
-  return { id: key, front: f(sp.front, sp.anim?.front), back: f(sp.back, sp.anim?.back), heightM: heightOf(species), types: typesOf(species), variant, isAlpha, ...(aura ? { aura } : {}) };
+  return { id: key, front: f(sp.front, sp.anim?.front), back: f(sp.back, sp.anim?.back), heightM: heightOf(species), types: typesOf(species), variant, isAlpha, ...(aura ? { aura } : {}), ...(species === 'astaroth' ? { backFullHeight: true } : {}) };   // backFullHeight: the client's BACK_FULL_HEIGHT
 }
 
 export async function startPart3Demo(r: Renderer, mode: string, api: Record<string, unknown>): Promise<void> {

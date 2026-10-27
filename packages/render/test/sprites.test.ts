@@ -86,6 +86,9 @@ describe('§10.4.3 geometry and anchoring', () => {
     expect(cardBodyV({ bodyV: 0.7 }, { bodyV: 0.43 }, 'back')).toBe(0.7);       // astaroth: its back stands 1.97 of 3.2 m
     expect(cardBodyV({ bodyV: 0.6 }, { bodyV: 0.8 }, 'back')).toBe(0.8);        // a taller back keeps its own: still heightM tall
     expect(cardBodyV({}, {}, 'back')).toBe(BILLBOARD.bodyV);
+    // backFullHeight (astaroth): the back keeps its own share, so it stands its full height and draws wider
+    expect(cardBodyV({ bodyV: 0.7 }, { bodyV: 0.43 }, 'back', true)).toBe(0.43);
+    expect(cardBodyV({ bodyV: 0.7 }, { bodyV: 0.43 }, 'front', true)).toBe(0.7);
   });
 });
 

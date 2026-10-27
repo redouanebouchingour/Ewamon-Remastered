@@ -2898,3 +2898,5 @@ the second isolated client (the component over the landing page: the foe and own
 - The dex entry shows the height next to the rarity (the viewed form's, × 1.12 for an Alpha).
 - A creature's voice pitch follows `heightM` (0.3 m squeaks at 1.6, 3 m and taller rumbles at 0.6).
 - The raid den's boss is 1.8 × its true height.
+- `BACK_FULL_HEIGHT` (astaroth): the species' back stands its full height although its art is drawn wider than the
+  front, at the user's call (2026-10-27); every other back keeps the front's scale when it is wider.
