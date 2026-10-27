@@ -18,7 +18,7 @@ export type GraphicsQualitySetting = 'auto' | 'low' | 'medium' | 'high';
  * GPU finishes frames (beyond the refresh rate: the extra frames are never shown, a benchmark mode).
  */
 export type FrameCap = -1 | 0 | 30 | 60;
-/** How far from the player grass tufts, flowers, pebbles and ambient motes (fireflies, pollen…) draw: 4 / 8 / 16 m, or all (render `zone/detail.ts`). */
+/** How far from the player grass tufts, flowers, pebbles and ambient motes (fireflies, pollen…) draw: 8 / 16 / 20 m, or all (render `zone/detail.ts`). */
 export type DetailDistance = 'close' | 'medium' | 'far' | 'max';
 export const FRAME_CAP_UNLIMITED = -1;
 

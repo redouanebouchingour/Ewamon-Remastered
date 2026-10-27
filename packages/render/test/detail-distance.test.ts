@@ -8,8 +8,8 @@ import { QUALITY_PROFILES } from '../src/quality.js';
 afterEach(() => { setDetailRadius(Infinity); setDetailFocus(0, 0); setLodScale(1); });
 
 describe('detail distance', () => {
-  it('maps the settings to 4 / 8 / 16 m and unlimited', () => {
-    expect(DETAIL_DISTANCE_M).toEqual({ close: 4, medium: 8, far: 16, max: Infinity });
+  it('maps the settings to 8 / 16 / 20 m and unlimited', () => {
+    expect(DETAIL_DISTANCE_M).toEqual({ close: 8, medium: 16, far: 20, max: Infinity });
   });
 
   it('writes the shader field: unlimited is a finite far radius', () => {

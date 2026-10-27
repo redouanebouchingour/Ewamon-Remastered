@@ -2633,8 +2633,8 @@ shadow is a softer blob. First-person sees the 0–44 m cascade at 1536² up clo
 ## Detail distance and LOD scale (2026-10-27, not in the SPEC; deviates from §10.5.7's fixed tier distances)
 
 - `zone/detail.ts`: a page-wide detail state the renderer writes (`setDetailDistance`, the focus each frame,
-  `QualityProfile.lodScale` on `setQuality`). Client setting Graphics › Detail distance: close 4 m, medium 8 m, far
-  16 m, max unlimited (the default, the old look).
+  `QualityProfile.lodScale` on `setQuality`). Client setting Graphics › Detail distance: close 8 m, medium 16 m, far
+  20 m, max unlimited (the default, the old look).
 - Detail kinds (`DETAIL_KINDS`: `grass_tuft`, `flower_patch`, `rock_b`) carry a per-vertex `ewaDetail` marker on their
   scatter geometry. The marker is part of the attribute layout, so only those kinds key a new node build (their
   materials were theirs alone: no extra programs elsewhere). In `scatterInstance` an instance past the radius

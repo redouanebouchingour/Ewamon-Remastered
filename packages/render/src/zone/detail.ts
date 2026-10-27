@@ -20,7 +20,7 @@ import type { UniformNode } from 'three/webgpu';
 export type DetailDistance = 'close' | 'medium' | 'far' | 'max';
 
 /** The detail radius of each setting (m); `max` draws everything. */
-export const DETAIL_DISTANCE_M: Readonly<Record<DetailDistance, number>> = Object.freeze({ close: 4, medium: 8, far: 16, max: Infinity });
+export const DETAIL_DISTANCE_M: Readonly<Record<DetailDistance, number>> = Object.freeze({ close: 8, medium: 16, far: 20, max: Infinity });
 
 /** The scatter kinds the detail distance hides (`ScatterKind.name`). */
 export const DETAIL_KINDS: ReadonlySet<string> = new Set(['grass_tuft', 'flower_patch', 'rock_b']);
