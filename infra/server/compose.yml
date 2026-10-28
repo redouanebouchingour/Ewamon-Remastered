@@ -27,6 +27,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mail:
+        condition: service_started
     environment:
       DATABASE_URL: postgres://ewa:${POSTGRES_PASSWORD}@postgres:5432/ewa
       JWT_SECRET: ${JWT_SECRET:?}
@@ -34,12 +36,32 @@ services:
       PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:?}
       TRUST_PROXY: 172.16.0.0/12  # Caddy on the host reaches the container through the docker bridge
       NPC_TOOLS: ${NPC_TOOLS:-off}
+      # the `mail` service below; plain SMTP on the compose network (it never leaves the host)
+      SMTP_URL: smtp://mail:587?ignoreTLS=true
+      MAIL_FROM: ${MAIL_FROM:-Ewamon <no-reply@ewamon.com>}
       LOG_LEVEL: info
     volumes:
       - data:/data
     ports:
       - "127.0.0.1:4000:4000"
       - "127.0.0.1:2567:2567"
+    restart: unless-stopped
+
+  # Send-only Postfix + OpenDKIM. No port is published: only containers on this network can submit, and it
+  # delivers straight to the recipients' MX over port 25. The DKIM key is generated on first start into
+  # /opt/ewamon/dkim (ewamon.com.private + ewamon.com.txt, the DNS record); keep that directory, a new key needs a
+  # new DNS record.
+  mail:
+    image: boky/postfix:5.1.0-alpine
+    hostname: mail.ewamon.com
+    environment:
+      ALLOWED_SENDER_DOMAINS: ewamon.com
+      POSTFIX_myhostname: mail.ewamon.com
+      DKIM_AUTOGENERATE: "true"
+      DKIM_SELECTOR: mail
+    volumes:
+      - /opt/ewamon/dkim:/etc/opendkim/keys
+      - mailqueue:/var/spool/postfix
     restart: unless-stopped
 
   llm:
@@ -54,3 +76,4 @@ services:
 volumes:
   pg:
   data:
+  mailqueue:

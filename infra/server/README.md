@@ -5,7 +5,8 @@ Ubuntu 26.04, Docker + Compose, Caddy on the host (TLS), ufw (22, 80, 443 open).
 
 | On the server | From here | What |
 |---|---|---|
-| `/opt/ewamon/compose.yml` | `compose.yml` | postgres, server, llm (llama.cpp, gemma4-e2b, 2 threads) |
+| `/opt/ewamon/compose.yml` | `compose.yml` | postgres, server, mail (send-only Postfix + DKIM), llm (llama.cpp, gemma4-e2b, 2 threads) |
+| `/opt/ewamon/dkim/` | (server only, generated) | DKIM key for `ewamon.com`; `ewamon.com.txt` is the DNS record |
 | `/opt/ewamon/Dockerfile` | `Dockerfile` | `server` image + `site` (the built client) on top of the repo's `deps` target |
 | `/opt/ewamon/deploy.sh` (`ewamon-deploy`) | `deploy.sh` | check out the newest tag → build → `up -d` → health check → swap `/srv/ewamon/www` |
 | `/opt/ewamon/hook.py` | `hook.py` | deploy trigger on 127.0.0.1:9000 (`ewamon-hook.service`, user `ewahook`) |
@@ -52,5 +53,31 @@ domain: edit the site blocks in `/etc/caddy/Caddyfile`, set `PUBLIC_ORIGINS` and
   logged-in player can call directly (the route's own caps are the only limit). `off` is the server's production default.
 - `/npc/llm` is public (the browser calls the model directly), so anyone can use the CPU model; it is limited only by
   its 2 threads.
-- No SMTP yet: reset/verification emails land in the `data` volume under `mail/`. Set `SMTP_URL` + `MAIL_FROM` in
-  the compose `server` environment to send them.
+## Mail
+
+The `mail` service is a send-only Postfix (`boky/postfix`) that signs with DKIM and delivers straight to the
+recipients' MX over outbound port 25. It publishes no port, and the `server` reaches it as `smtp://mail:587`. Mail
+goes out as `MAIL_FROM` (default `Ewamon <no-reply@ewamon.com>`, override it in `.env`). Nothing receives mail for
+ewamon.com here: replies and bounces go to whatever the domain's MX says.
+
+DNS (at the registrar) plus the PTR record (Strato server panel → reverse DNS for 85.215.92.169):
+
+| Type | Name | Value |
+|---|---|---|
+| A | `mail.ewamon.com` | `85.215.92.169` |
+| PTR | `85.215.92.169` | `mail.ewamon.com` (set at Strato, not in DNS) |
+| TXT | `ewamon.com` | `v=spf1 ip4:85.215.92.169 -all` (Strato's own SPF rule set to "Geen", only one SPF record is allowed) |
+| TXT | `mail._domainkey.ewamon.com` | the `p=…` record from `cat /opt/ewamon/dkim/ewamon.com.txt` |
+| TXT | `_dmarc.ewamon.com` | `v=DMARC1; p=quarantine; adkim=s; aspf=s` (Strato's own DMARC rule set to "Geen") |
+
+All of it is in the Strato panel: Domeinbeheer → ewamon.com → DNS → TXT- en CNAME-records. The zone has a wildcard
+`*.ewamon.com CNAME ewamon.com`, so a name without its own record still resolves (to the A record).
+
+```sh
+docker compose --env-file .env logs -f mail          # every delivery: status=sent / deferred / bounced
+docker compose --env-file .env exec mail postqueue -p # what's stuck in the queue
+docker compose --env-file .env exec mail postqueue -f # retry the queue now
+```
+
+Check a setup by registering with a Gmail address and choosing "Show original": SPF, DKIM and DMARC should all say
+PASS. If every delivery is `deferred` with a timeout to `:25`, the provider blocks outbound port 25.
