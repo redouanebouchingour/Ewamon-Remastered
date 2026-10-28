@@ -80,9 +80,10 @@ findings from Flowbot (rotation signs, pivots, planted feet, expressions, pitfal
 ## The NPC set (`--npc`)
 
 `--npc` on `build.mjs` / `rig.mjs` switches to people and props (2026-10-28: the Mire Route foosball club): sources in
-`scad/npc/` and `rigs/npc/`, output in `packages/client/public/npc-models/` with its own `index.json`, drawn by render
+`scad/npc/` and `rigs/npc/`, output in `packages/client/public/npc-models/` with its own `index.json` (rigs only: the
+static inputs live in `glb/npc/`, the bookkeeping in `frames.npc.json` and `rig-parts.npc.json`), drawn by render
 `stage/npcModels.ts`. Same conventions, three differences: 1 unit = 1 cm, the GLB keeps the scad origin in x / y (a
-person's feet, a table's centre; no re-centring) so the game can place models against each other, and files starting
+person's feet, a table's centre; no re-centring) so the game can place models against each other (`frames.npc.json` records `cx` / `cy` = 0), and files starting
 with `_` are shared parts that `--all` skips.
 
 - `scad/npc/_human.scad` + `rigs/npc/_human.mjs`: the shared parametric person (body, memoji head, hair / beard styles,

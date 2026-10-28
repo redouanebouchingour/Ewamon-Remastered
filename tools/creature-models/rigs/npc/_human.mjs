@@ -28,6 +28,7 @@ import { fileURLToPath } from 'node:url';
 import { NodeIO } from '@gltf-transform/core';
 import { EXTMeshoptCompression, KHRMeshQuantization } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
+import { staticGlb } from '../../src/paths.mjs';
 
 const PKG = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const ROOT = resolve(PKG, '../..');
@@ -164,7 +165,8 @@ const PARENT = {
 async function shells(id, frame) {
   await MeshoptDecoder.ready;
   const io = new NodeIO().registerExtensions([EXTMeshoptCompression, KHRMeshQuantization]).registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
-  const doc = await io.read(join(ROOT, 'packages/client/public/npc-models', `${id}.glb`));
+  // the rig's input: glb/npc/ once rigged (paths.mjs staticGlb), the public folder before
+  const doc = await io.read(staticGlb(id));
   const node = doc.getRoot().listNodes().find((x) => x.getMesh() !== null);
   const prim = node.getMesh().listPrimitives()[0];
   const m = node.getWorldMatrix();

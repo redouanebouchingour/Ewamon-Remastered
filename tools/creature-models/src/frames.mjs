@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { PKG } from './paths.mjs';
+import { NPC_SET, PKG } from './paths.mjs';
 
 /**
  * frames.json: per creature, how build.mjs placed the scad model in its GLB, so rig.mjs can map GLB vertices back to
@@ -8,7 +8,8 @@ import { PKG } from './paths.mjs';
  * floater) that became 1 m and y = 0; `cx` / `cy` the scad x / y centre the build moved to the origin; `size` the
  * scad extents and `triangles` the count, which rig.mjs checks against the GLB to catch a stale entry.
  */
-export const FRAMES = join(PKG, 'frames.json');
+/** The NPC set (`--npc`) keeps its own frames. */
+export const FRAMES = join(PKG, NPC_SET ? 'frames.npc.json' : 'frames.json');
 
 export function readFrames() {
   return existsSync(FRAMES) ? JSON.parse(readFileSync(FRAMES, 'utf8')) : {};

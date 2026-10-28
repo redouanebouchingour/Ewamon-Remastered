@@ -35,7 +35,7 @@ import { dedup, quantize, reorder, resample, weld } from '@gltf-transform/functi
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import { readFrames, updateJsonMap } from './frames.mjs';
 import { writeIndex } from './index.mjs';
-import { OUT_DIR, PKG, RIG_DIR, STATIC_DIR, staticGlb } from './paths.mjs';
+import { NPC_SET, OUT_DIR, PKG, RIG_DIR, STATIC_DIR, staticGlb } from './paths.mjs';
 
 const FPS = 30;
 const EPS = 1e-5;
@@ -52,7 +52,7 @@ function partColour(i) {
  * rig-parts.json: triangles per joint at the last rig. A re-rig after a scad change warns when a joint gains or loses
  * a lot (a recolour or a moved part that an `assign` rule no longer matches).
  */
-const PARTS = join(PKG, 'rig-parts.json');
+const PARTS = join(PKG, NPC_SET ? 'rig-parts.npc.json' : 'rig-parts.json');
 const PART_DRIFT = 0.25;
 const PART_DRIFT_MIN = 24;
 

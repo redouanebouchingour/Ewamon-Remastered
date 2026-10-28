@@ -1,0 +1,9 @@
+{
+  "fb_kaas_croissant": {"height":184.0464,"minZ":0,"cx":0,"cy":0,"size":[47.7196,33.2648,184.0464],"triangles":30030},
+  "fb_king_klinker": {"height":189.8078,"minZ":0,"cx":0,"cy":0,"size":[54.5526,36.9847,189.8078],"triangles":29224},
+  "fb_klaas_faak": {"height":192.1071,"minZ":0,"cx":0,"cy":0,"size":[54.9466,39.2425,192.1071],"triangles":30090},
+  "fb_mogu_mogu": {"height":186.1096,"minZ":0,"cx":0,"cy":0,"size":[56.8745,37.1433,186.1096],"triangles":27626},
+  "fb_mr_mercedes": {"height":195.6993,"minZ":0,"cx":0,"cy":0,"size":[56.5801,41.3198,195.6993],"triangles":34498},
+  "fb_mr_motor": {"height":192.9066,"minZ":0,"cx":0,"cy":0,"size":[57.5159,47.8847,192.9066],"triangles":32356},
+  "foosball_table": {"height":95.6,"minZ":0,"cx":0,"cy":0,"size":[194,134.1444,95.6],"triangles":20090}
+}

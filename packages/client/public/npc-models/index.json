@@ -5,37 +5,37 @@
   "models": {
     "fb_kaas_croissant": {
       "url": "fb_kaas_croissant.rig.glb",
-      "bytes": 349348,
+      "bytes": 203636,
       "rig": true
     },
     "fb_king_klinker": {
       "url": "fb_king_klinker.rig.glb",
-      "bytes": 320968,
+      "bytes": 192164,
       "rig": true
     },
     "fb_klaas_faak": {
       "url": "fb_klaas_faak.rig.glb",
-      "bytes": 322228,
+      "bytes": 192948,
       "rig": true
     },
     "fb_mogu_mogu": {
       "url": "fb_mogu_mogu.rig.glb",
-      "bytes": 312024,
+      "bytes": 183728,
       "rig": true
     },
     "fb_mr_mercedes": {
       "url": "fb_mr_mercedes.rig.glb",
-      "bytes": 379764,
+      "bytes": 227028,
       "rig": true
     },
     "fb_mr_motor": {
       "url": "fb_mr_motor.rig.glb",
-      "bytes": 361712,
+      "bytes": 215152,
       "rig": true
     },
     "foosball_table": {
       "url": "foosball_table.rig.glb",
-      "bytes": 235992,
+      "bytes": 170008,
       "rig": true
     }
   }
