@@ -14,11 +14,13 @@ import {
   BANNER_TRACKER_SLOTS,
   bannerPin,
   bannerProgress,
+  bannerForms,
   bannerUnlockHint,
   bannerUnlocked,
   pinTier,
 } from '@ewa/content';
 import type { BannerChoice, BannerCount, BannerRarity, BannerStats, BannerUnlock } from '@ewa/content';
+import type { CreatureInstance } from '@ewa/core';
 import type { RouteResponse } from '@ewa/protocol';
 import { speciesName } from '../data/content';
 import { apiFetch } from '../net/api';
@@ -27,6 +29,7 @@ import { toast } from '../state/notifications';
 import { useSessionStore } from '../state/session';
 import { Button } from '../ui/Button';
 import { CreatureSprite } from '../ui/CreatureSprite';
+import { FormSigil } from '../ui/FormSigil';
 import { EmptyState } from '../ui/EmptyState';
 import { Icon } from '../ui/Icon';
 import { ProgressBar } from '../ui/ProgressBar';
@@ -43,12 +46,65 @@ type Tab = 'frame' | 'backdrop' | 'pins' | 'trackers' | 'partner';
 const RARITY_LABEL: Readonly<Record<BannerRarity, string>> = { common: 'Common', rare: 'Rare', epic: 'Epic', legendary: 'Legendary', mythic: 'Mythic' };
 
 const same = (a: BannerChoice, b: BannerChoice): boolean =>
-  a.frame === b.frame && a.backdrop === b.backdrop && a.featuredId === b.featuredId && a.pins.join() === b.pins.join() && a.trackers.join() === b.trackers.join();
+  a.frame === b.frame && a.backdrop === b.backdrop && a.featuredId === b.featuredId && a.featuredForm === b.featuredForm && a.pins.join() === b.pins.join() && a.trackers.join() === b.trackers.join();
 
 /** Adds or removes `id`, keeping the order picked; a full list takes nothing more. */
 function toggle(list: readonly string[], id: string, max: number): string[] {
   if (list.includes(id)) return list.filter((x) => x !== id);
   return list.length >= max ? [...list] : [...list, id];
+}
+
+const BAND_NAME = { majin: 'Majin Band', tenjin: 'Tenjin Band' } as const;
+
+/**
+ * The chosen partner's Majin / Tenjin forms (content `bannerForms`): its own look or a form, each form open while the
+ * trainer holds that band. Nothing when the partner is the party lead or its species has no such form.
+ */
+function FormPicker({ draft, party, stats, onPick }: { readonly draft: BannerChoice; readonly party: readonly CreatureInstance[]; readonly stats: BannerStats; onPick(form: string | null): void }) {
+  const partner = party.find((c) => c.id === draft.featuredId);
+  const forms = partner === undefined ? [] : bannerForms(partner.speciesId);
+  if (partner === undefined || forms.length === 0) return null;
+  const bands = stats.bands ?? [];
+  return (
+    <section className={s.formPick} aria-label="Partner form">
+      <h4 className={s.formTitle}>Form</h4>
+      <ul className={s.grid}>
+        <li>
+          <button type="button" className={cx(s.option, draft.featuredForm === null && s.on)} aria-pressed={draft.featuredForm === null} onClick={() => onPick(null)}>
+            <CreatureSprite speciesId={partner.speciesId} variantKey={partner.variantKey} shiny={partner.isShiny === true} size="sm" />
+            <span className={s.optText}>
+              <span className={s.optName}>Own look</span>
+              <span className={l.caption}>{speciesName(partner.speciesId)}</span>
+            </span>
+          </button>
+        </li>
+        {forms.map((f) => {
+          const open = f.kind !== undefined && bands.includes(f.kind);
+          return (
+            <li key={f.id}>
+              <button type="button" className={cx(s.option, draft.featuredForm === f.id && s.on)} data-band={f.kind} aria-pressed={draft.featuredForm === f.id} disabled={!open} onClick={() => onPick(f.id)}>
+                <CreatureSprite speciesId={partner.speciesId} form={f.id} variantKey={partner.variantKey} shiny={partner.isShiny === true} size="sm" />
+                <span className={s.optText}>
+                  <span className={s.optName}>{f.name}</span>
+                  <span className={s.band} data-band={f.kind}>
+                    {f.kind !== undefined && <FormSigil kind={f.kind} size="sm" />}
+                    {f.kind === 'majin' ? 'Majin' : 'Tenjin'}
+                  </span>
+                  {!open && f.kind !== undefined && (
+                    <span className={s.lock}>
+                      <span className={s.hint}>
+                        <Icon name="lock" size="sm" /> Needs the {BAND_NAME[f.kind]}
+                      </span>
+                    </span>
+                  )}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
 }
 
 function Lock({ unlock, stats }: { readonly unlock: BannerUnlock; readonly stats: BannerStats }) {
@@ -105,6 +161,7 @@ export function BannerEditor({ username, title, guildTag, tier }: BannerEditorPr
       pins: draft.pins.map((id) => ({ id, tier: Math.max(1, pinTier(bannerPin(id)!, stats)) })),
       trackers: draft.trackers.map((id) => ({ id, value: stats[id as BannerCount] })),
       featured: members.find((c) => c.id === draft.featuredId) ?? members[0] ?? null,
+      featuredForm: members.some((c) => c.id === draft.featuredId) ? draft.featuredForm : null,
     };
   }, [draft, stats, party, username, title, guildTag, tier]);
 
@@ -264,7 +321,7 @@ export function BannerEditor({ username, title, guildTag, tier }: BannerEditorPr
             ) : (
               <ul className={s.grid}>
                 <li>
-                  <button type="button" className={cx(s.option, draft.featuredId === null && s.on)} aria-pressed={draft.featuredId === null} onClick={() => set({ featuredId: null })}>
+                  <button type="button" className={cx(s.option, draft.featuredId === null && s.on)} aria-pressed={draft.featuredId === null} onClick={() => set({ featuredId: null, featuredForm: null })}>
                     <span className={s.slot} aria-hidden>
                       <Icon name="party" size="sm" />
                     </span>
@@ -276,7 +333,7 @@ export function BannerEditor({ username, title, guildTag, tier }: BannerEditorPr
                 </li>
                 {party.map((c) => (
                   <li key={c.id}>
-                    <button type="button" className={cx(s.option, draft.featuredId === c.id && s.on)} aria-pressed={draft.featuredId === c.id} onClick={() => set({ featuredId: c.id })}>
+                    <button type="button" className={cx(s.option, draft.featuredId === c.id && s.on)} aria-pressed={draft.featuredId === c.id} onClick={() => set({ featuredId: c.id, featuredForm: draft.featuredId === c.id ? draft.featuredForm : null })}>
                       <CreatureSprite speciesId={c.speciesId} variantKey={c.variantKey} shiny={c.isShiny === true} size="sm" />
                       <span className={s.optText}>
                         <span className={s.optName}>{c.nickname ?? speciesName(c.speciesId)}</span>
@@ -287,6 +344,7 @@ export function BannerEditor({ username, title, guildTag, tier }: BannerEditorPr
                 ))}
               </ul>
             ))}
+          {tab === 'partner' && <FormPicker draft={draft} party={party ?? []} stats={stats} onPick={(featuredForm) => set({ featuredForm })} />}
         </div>
         <div className={s.foot}>
           <span className={l.caption}>{dirty ? 'Unsaved changes' : 'Saved'}</span>

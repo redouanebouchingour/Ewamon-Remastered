@@ -1,0 +1,1 @@
+ALTER TABLE "player_banners" ADD COLUMN "featured_form" varchar(32);

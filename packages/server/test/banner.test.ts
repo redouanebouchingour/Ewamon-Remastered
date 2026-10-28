@@ -2,13 +2,15 @@
  * Trainer banners (content `data/banners.ts`, game/banner.ts, routes/banner.ts): GET /banner gives the default and the
  * server's counts; POST /banner refuses a locked frame, backdrop or pin and a creature that is not the trainer's, and
  * saves the rest (audit row); GET /players/:username carries the banner as shown, the featured creature falling back to
- * the party lead; the zone room's `PlayerState.flair` follows the frame's rarity, on join and after a save.
+ * the party lead; the zone room's `PlayerState.flair` follows the frame's rarity, on join and after a save; a partner
+ * shown in its Majin / Tenjin form needs that band in the bag and is shown so only while it stays the partner.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { DEFAULT_BANNER } from '@ewa/content';
+import { DEFAULT_BANNER, MAJIN_BAND, bannerForms } from '@ewa/content';
 import { BannerRes, PublicProfileSchema } from '@ewa/protocol';
+import { newCreature } from '../src/game/creatures';
 import { CHAMPION_FLAG } from '../src/rooms/battleSession';
-import { api, enter, rawQuery, register, startServer, waitFor } from './helpers';
+import { api, content, enter, rawQuery, register, startServer, waitFor } from './helpers';
 import type { Account, TestServer } from './helpers';
 
 let s: TestServer;
@@ -79,6 +81,35 @@ describe('POST /banner', () => {
     expect(pub.banner).toMatchObject({ frame: DEFAULT_BANNER.frame, backdrop: DEFAULT_BANNER.backdrop, pins: [] });
     const other = PublicProfileSchema.parse((await api(s, 'GET', `/players/${b.username}`, a.access)).body);
     expect(other.banner?.featured?.speciesId).toBe('glimfin');
+  });
+});
+
+describe('a partner in its Majin / Tenjin form', () => {
+  it('needs the band, a band form of the partner own species, and shows while the partner stands', async () => {
+    const c = await register(s);
+    const form = bannerForms('infernomorel')[0]!.id;
+    const partner = await s.repos.db.transaction(async (tx) => (await s.repos.creatures.insert(tx, newCreature(content, 'infernomorel', 30, { ownerId: c.id }), { kind: 'party', index: 1 })).id);
+    const lead = (await s.repos.db.transaction((tx) => s.repos.creatures.party(tx, c.id)))[0]!.id;
+    expect(BannerRes.parse((await api(s, 'GET', '/banner', c.access)).body).stats.bands).toEqual([]);
+    const locked = await api(s, 'POST', '/banner', c.access, choice({ featuredId: partner, featuredForm: form }));
+    expect(locked).toMatchObject({ status: 403, body: { code: 'bannerLocked', reason: 'formLocked' } });
+    await s.repos.db.transaction((tx) => s.repos.inventory.add(tx, c.id, MAJIN_BAND, 1));
+    expect(BannerRes.parse((await api(s, 'GET', '/banner', c.access)).body).stats.bands).toEqual(['majin']);
+    // another species' form, and a form without a chosen partner, are refused
+    expect((await api(s, 'POST', '/banner', c.access, choice({ featuredId: lead, featuredForm: form }))).body).toMatchObject({ code: 'bannerLocked', reason: 'unknownForm' });
+    expect((await api(s, 'POST', '/banner', c.access, choice({ featuredForm: form }))).body).toMatchObject({ code: 'bannerLocked', reason: 'formNeedsPartner' });
+    const ok = await api(s, 'POST', '/banner', c.access, choice({ featuredId: partner, featuredForm: form }));
+    expect(ok.status).toBe(200);
+    expect(BannerRes.parse(ok.body).choice.featuredForm).toBe(form);
+    let pub = PublicProfileSchema.parse((await api(s, 'GET', `/players/${c.username}`, b.access)).body);
+    expect(pub.banner).toMatchObject({ featured: { id: partner }, featuredForm: form });
+    // the band leaves the bag: the partner shows its own look
+    await s.repos.db.transaction((tx) => s.repos.inventory.add(tx, c.id, MAJIN_BAND, -1));
+    pub = PublicProfileSchema.parse((await api(s, 'GET', `/players/${c.username}`, b.access)).body);
+    expect(pub.banner).toMatchObject({ featured: { id: partner }, featuredForm: null });
+    // an older client's save (no featuredForm) is its own look
+    const { featuredForm: _drop, ...old } = choice({ featuredId: partner });
+    expect(BannerRes.parse((await api(s, 'POST', '/banner', c.access, old)).body).choice.featuredForm).toBeNull();
   });
 });
 

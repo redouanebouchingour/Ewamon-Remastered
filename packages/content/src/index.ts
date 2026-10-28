@@ -188,6 +188,8 @@ export {
   BANNER_TRACKER_SLOTS,
   DEFAULT_BANNER,
   bannerBackdrop,
+  bannerFormRefusal,
+  bannerForms,
   bannerFrame,
   bannerPin,
   bannerProgress,

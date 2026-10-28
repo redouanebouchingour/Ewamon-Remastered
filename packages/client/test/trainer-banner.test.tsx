@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 /**
  * Trainer banners: the card renders the frame's rarity, the pins at their tier and the trackers with their values; an
- * older server's profile (no `banner`) shows the default banner; every pin's top tier is the brightest metal.
+ * older server's profile (no `banner`) shows the default banner; every pin's top tier is the brightest metal; a partner
+ * in its Majin / Tenjin form shows the form's name with its band's sigil.
  */
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { bannerForms } from '@ewa/content';
+import type { CreatureInstance } from '@ewa/core';
 import type { PublicProfile } from '@ewa/protocol';
 import { TrainerBanner, bannerModelOf, pinMetal } from '../src/screens/TrainerBanner';
 
@@ -43,6 +46,19 @@ describe('TrainerBanner', () => {
     expect(pins.getByLabelText('Champion')).toBeTruthy();
     expect(within(screen.getByLabelText('Trackers')).getByText('1,234')).toBeTruthy();
     expect(screen.getByText('No partner')).toBeTruthy();
+  });
+
+  it('shows a partner in its Majin form with the form name and the band sigil', () => {
+    const form = bannerForms('infernomorel')[0]!;
+    const featured = { id: 'c1', ownerId: null, speciesId: 'infernomorel', nickname: null, level: 40, exp: 0, hp: 1, moves: [], status: [], ability: 'x', heldItem: null, variantKey: 'normal', isAlpha: false, caughtAt: null, ribbons: [], favorite: false, locked: false } as CreatureInstance;
+    const model = bannerModelOf(pub({ banner: { frame: 'standard', backdrop: 'midnight', pins: [], trackers: [], featured, featuredForm: form.id } }));
+    expect(model.featuredForm).toBe(form.id);
+    render(<TrainerBanner model={model} />);
+    const label = screen.getByText(form.name);
+    expect(label.getAttribute('data-band')).toBe('majin');
+    expect(within(label).getByTestId('formsigil').getAttribute('data-kind')).toBe('majin');
+    // an older server's banner (no featuredForm) shows the partner's own look
+    expect(bannerModelOf(pub({ banner: { frame: 'standard', backdrop: 'midnight', pins: [], trackers: [], featured } })).featuredForm).toBeNull();
   });
 
   it('falls back to the default banner for a profile without one', () => {

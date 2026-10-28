@@ -16,6 +16,8 @@ export const playerBanners = pgTable('player_banners', {
   pins: jsonb('pins').$type<string[]>().notNull().default([]),
   trackers: jsonb('trackers').$type<string[]>().notNull().default([]),
   featuredId: uuid('featured_id').references(() => creatureInstances.id, { onDelete: 'set null' }),
+  /** migration 0028: the featured creature's Majin / Tenjin form id, null for its own look */
+  featuredForm: varchar('featured_form', { length: 32 }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

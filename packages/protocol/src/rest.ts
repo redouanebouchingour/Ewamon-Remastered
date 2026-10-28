@@ -95,6 +95,8 @@ export const BannerChoiceSchema = z.object({
   pins: z.array(z.string().min(1).max(32)).max(3),
   trackers: z.array(z.string().min(1).max(32)).max(3),
   featuredId: Uuid.nullable(),
+  /** the featured creature's Majin / Tenjin form (content `bannerForms`), null its own look; absent from an older client */
+  featuredForm: z.string().min(1).max(32).nullable().default(null),
 });
 export type BannerChoiceView = z.infer<typeof BannerChoiceSchema>;
 /** content `BannerStats`: what the server counts for the trainer's unlocks. */
@@ -112,6 +114,8 @@ export const BannerStatsSchema = z.object({
   champion: z.boolean(),
   seasonBest: z.number().int().min(0),
   typeCaught: z.record(z.string(), z.number().int().min(0)),
+  /** the bands held (`majin_band` / `tenjin_band`); absent from an older server */
+  bands: z.array(z.enum(['majin', 'tenjin'])).default([]),
 });
 /** `GET /banner`, `POST /banner`: the saved pick and the counts the editor shows the locks from. */
 export const BannerRes = z.object({ choice: BannerChoiceSchema, stats: BannerStatsSchema });
@@ -125,6 +129,8 @@ export const BannerViewSchema = z.object({
   pins: z.array(z.object({ id: z.string(), tier: z.number().int().min(1) })).max(3),
   trackers: z.array(z.object({ id: z.string(), value: z.number().int() })).max(3),
   featured: CreatureInstanceSchema.nullable(),
+  /** the form the featured creature is shown in (a Majin / Tenjin form id), null its own look; absent from an older server */
+  featuredForm: z.string().nullable().optional(),
 });
 export type BannerView = z.infer<typeof BannerViewSchema>;
 

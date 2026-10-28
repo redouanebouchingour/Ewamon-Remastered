@@ -617,3 +617,21 @@
     inline-size: 100%;
   }
 }
+
+/* the featured creature in its Majin / Tenjin form: the form's name under the hero, in the band's colour (FormSigil's) */
+.heroForm {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 0 var(--s-3);
+  background: rgb(13 13 15 / 0.72);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.heroForm[data-band='majin'] { color: #ff3048; }
+.heroForm[data-band='tenjin'] { color: #f5c84c; }

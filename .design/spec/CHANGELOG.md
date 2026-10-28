@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-28 a banner partner in its Majin / Tenjin form. One entry. -->
+
+## 2026-10-28 · `00-spine.md` §4.7 `POST /banner` · the featured creature may wear its Majin or Tenjin form
+Why: the user asked to choose the Majin or Tenjin form for the banner. `BannerChoice.featuredForm` (migration 0028 `player_banners.featured_form`) names a form of the featured creature's species whose `kind` is majin or tenjin (content `bannerForms`); it needs an explicit partner and the band of that kind in the bag (`BannerStats.bands`), so like every other piece of a banner it says something true. The public view shows it only while that creature is still the partner and the band still held; an older client's save (no field) is the creature's own look.
+Evidence: content `banners.test.ts` (forms per species, refusals, `bannerShown`); server `banner.test.ts` (`formLocked` without the band, `unknownForm` for another species, `formNeedsPartner`, the public view with and without the band, an older client's save); client `trainer-banner.test.tsx` (the form name with its band sigil).
+Affects: `packages/content/src/data/banners.ts`; `packages/protocol/src/rest.ts`; `packages/persist/src/{schema/banners.ts,repos/banners.ts}`, `drizzle/0028_banner_form.sql`; `packages/server/src/{game/banner.ts,rest/routes/banner.ts}`; `packages/client/src/screens/{BannerEditor,TrainerBanner}.tsx`.
+
 <!-- 2026-10-28 talking to other players, watching battles. One entry. -->
 
 ## 2026-10-28 · `00-spine.md` §4.1 `BattleSummary`, §4.4 `battleWatch`, §4.7 routes; `20-client.md` §20.4.3 spectator arena, §20.9.7; `30-server-netcode.md` §30.7.2, §30.7.2a · talking to other players and watching battles in the open world

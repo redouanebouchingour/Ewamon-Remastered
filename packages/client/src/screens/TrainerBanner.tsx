@@ -7,11 +7,12 @@
  */
 import type { ReactNode } from 'react';
 import type { CreatureInstance } from '@ewa/core';
-import { bannerBackdrop, bannerFrame, bannerPin, bannerTracker } from '@ewa/content';
+import { bannerBackdrop, bannerForms, bannerFrame, bannerPin, bannerTracker } from '@ewa/content';
 import type { PublicProfile } from '@ewa/protocol';
 import { speciesName } from '../data/content';
 import { tierLabel } from '../data/trainer';
 import { CreatureSprite } from '../ui/CreatureSprite';
+import { FormSigil } from '../ui/FormSigil';
 import { Icon } from '../ui/Icon';
 import type { IconName } from '../ui/Icon';
 import { cx } from '../ui/cx';
@@ -28,6 +29,8 @@ export interface BannerModel {
   readonly pins: readonly { readonly id: string; readonly tier: number }[];
   readonly trackers: readonly { readonly id: string; readonly value: number }[];
   readonly featured: CreatureInstance | null;
+  /** the featured creature's Majin / Tenjin form (content `bannerForms`), null its own look */
+  readonly featuredForm: string | null;
 }
 
 /** A public profile as a banner; an older server's profile (no `banner`) shows the default with the showcase lead. */
@@ -47,6 +50,7 @@ export function bannerModelOf(pub: PublicProfile): BannerModel {
       { id: 'badges', value: pub.badges.length },
     ],
     featured: (b === undefined ? pub.showcase[0] : b.featured) ?? null,
+    featuredForm: b?.featuredForm ?? null,
   };
 }
 
@@ -117,6 +121,7 @@ export function TrainerBanner({ model, size = 'md', className }: TrainerBannerPr
   const frame = bannerFrame(model.frame) ?? bannerFrame('standard')!;
   const backdrop = bannerBackdrop(model.backdrop) ?? bannerBackdrop('midnight')!;
   const f = model.featured;
+  const form = f === null || model.featuredForm === null ? undefined : bannerForms(f.speciesId).find((x) => x.id === model.featuredForm);
   return (
     <article
       className={cx(s.banner, s[size], className)}
@@ -146,10 +151,16 @@ export function TrainerBanner({ model, size = 'md', className }: TrainerBannerPr
         <div className={s.stage}>
           {f !== null ? (
             <>
-              <CreatureSprite speciesId={f.speciesId} variantKey={f.variantKey} shiny={f.isShiny === true} animated size="xxl" className={s.hero} />
+              <CreatureSprite speciesId={f.speciesId} form={form?.id ?? null} variantKey={f.variantKey} shiny={f.isShiny === true} animated size="xxl" className={s.hero} />
               <p className={s.heroName}>
                 {f.nickname ?? speciesName(f.speciesId)} <span className={s.heroLevel}>Lv {f.level}</span>
               </p>
+              {form !== undefined && (
+                <p className={s.heroForm} data-band={form.kind}>
+                  {form.kind !== undefined && <FormSigil kind={form.kind} size="sm" />}
+                  {form.name}
+                </p>
+              )}
             </>
           ) : (
             <span className={s.heroEmpty}>No partner</span>

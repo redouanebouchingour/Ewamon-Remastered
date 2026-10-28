@@ -5,8 +5,8 @@
  * something true about who wears it. Pins climb tiers as the count grows; the tier shown is always the current one.
  * Everything here is pure: the server validates a save with `bannerRefusal`, the client shows the same locks.
  */
-import type { TypeName } from '@ewa/core';
-import { TYPE_NAMES } from '@ewa/core';
+import type { BandKind, BattleFormDef, TypeName } from '@ewa/core';
+import { TYPE_NAMES, formsOf } from '@ewa/core';
 import { SPECIES } from './species';
 
 export const BANNER_RARITIES = ['common', 'rare', 'epic', 'legendary', 'mythic'] as const;
@@ -35,6 +35,8 @@ export interface BannerStats {
   readonly seasonBest: number;
   /** caught species per type (either slot) */
   readonly typeCaught: Readonly<Partial<Record<TypeName, number>>>;
+  /** the bands the trainer holds (key items `majin_band` / `tenjin_band`): a banner may show those forms */
+  readonly bands: readonly BandKind[];
 }
 
 export type BannerCount = 'badges' | 'dexCaught' | 'trainerLevel' | 'rating' | 'peakRating' | 'towerBest' | 'shinies' | 'legendaries' | 'pvpWins' | 'achievements';
@@ -82,6 +84,11 @@ export interface BannerChoice {
   readonly trackers: readonly string[];
   /** one of the trainer's creatures (party or box), or null for the lead of the party */
   readonly featuredId: string | null;
+  /**
+   * The featured creature shown in its Majin or Tenjin form (`bannerForms`): a form id of its species, or null for its
+   * own look. Needs an explicit `featuredId` and the band of that kind.
+   */
+  readonly featuredForm: string | null;
 }
 
 export const BANNER_PIN_SLOTS = 3;
@@ -175,7 +182,7 @@ export const BANNER_TRACKERS: readonly BannerTrackerDef[] = [
   { id: 'achievements', label: 'Achievements' },
 ];
 
-export const DEFAULT_BANNER: BannerChoice = { frame: 'standard', backdrop: 'midnight', pins: [], trackers: ['rating', 'dexCaught', 'badges'], featuredId: null };
+export const DEFAULT_BANNER: BannerChoice = { frame: 'standard', backdrop: 'midnight', pins: [], trackers: ['rating', 'dexCaught', 'badges'], featuredId: null, featuredForm: null };
 
 export function bannerFrame(id: string): BannerFrameDef | undefined {
   return BANNER_FRAMES.find((f) => f.id === id);
@@ -273,7 +280,22 @@ export function bannerRefusal(c: BannerChoice, s: BannerStats): string | null {
   }
   if (c.trackers.length > BANNER_TRACKER_SLOTS || new Set(c.trackers).size !== c.trackers.length) return 'trackers';
   for (const id of c.trackers) if (bannerTracker(id) === undefined) return 'unknownTracker';
+  // a form belongs to a chosen creature (its species is the server's to check, `bannerFormRefusal`)
+  if (c.featuredForm !== null && c.featuredId === null) return 'formNeedsPartner';
   return null;
+}
+
+/** The forms a banner may show a species in: its Majin and Tenjin forms (`.design/majin-tenjin.md`), none for most. */
+export function bannerForms(speciesId: string): readonly BattleFormDef[] {
+  const sp = SPECIES.find((x) => x.id === speciesId);
+  return sp === undefined ? [] : formsOf(sp).filter((f) => f.kind === 'majin' || f.kind === 'tenjin');
+}
+
+/** Why the featured creature (of `speciesId`) may not wear form `formId`: not one of its band forms, or the band is missing. */
+export function bannerFormRefusal(speciesId: string, formId: string, s: Pick<BannerStats, 'bands'>): string | null {
+  const form = bannerForms(speciesId).find((f) => f.id === formId);
+  if (form === undefined) return 'unknownForm';
+  return s.bands.includes(form.kind!) ? null : 'formLocked';
 }
 
 /**
@@ -292,5 +314,7 @@ export function bannerShown(c: BannerChoice, s: BannerStats): BannerChoice {
     }),
     trackers: c.trackers.filter((id) => bannerTracker(id) !== undefined),
     featuredId: c.featuredId,
+    // the form's species and band are checked where the creature is known (server `bannerViewOf`)
+    featuredForm: c.featuredId === null ? null : c.featuredForm,
   };
 }

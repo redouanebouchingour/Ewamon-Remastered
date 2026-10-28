@@ -215,3 +215,36 @@
     inline-size: 100%;
   }
 }
+
+/* the partner's Majin / Tenjin forms, under the partner grid */
+.formPick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  margin-block-start: var(--s-5);
+}
+
+.formTitle {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.band {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.band[data-band='majin'] { color: #ff3048; }
+.band[data-band='tenjin'] { color: #f5c84c; }

@@ -9,6 +9,8 @@ export interface SavedBanner {
   readonly pins: readonly string[];
   readonly trackers: readonly string[];
   readonly featuredId: string | null;
+  /** migration 0028: a Majin / Tenjin form id of the featured creature, null for its own look */
+  readonly featuredForm: string | null;
 }
 
 /** The counts behind a banner that no other repo reads (the server adds badges, flags, streaks, seasons, quests). */
@@ -22,11 +24,11 @@ export interface BannerCounts {
 export const bannerRepo = {
   async get(tx: Tx, playerId: string): Promise<SavedBanner | null> {
     const [r] = await tx.select().from(playerBanners).where(eq(playerBanners.playerId, playerId)).limit(1);
-    return r === undefined ? null : { frame: r.frame, backdrop: r.backdrop, pins: [...r.pins], trackers: [...r.trackers], featuredId: r.featuredId };
+    return r === undefined ? null : { frame: r.frame, backdrop: r.backdrop, pins: [...r.pins], trackers: [...r.trackers], featuredId: r.featuredId, featuredForm: r.featuredForm };
   },
 
   async set(tx: Tx, playerId: string, b: SavedBanner, now: Date): Promise<void> {
-    const row = { frame: b.frame, backdrop: b.backdrop, pins: [...b.pins], trackers: [...b.trackers], featuredId: b.featuredId, updatedAt: now };
+    const row = { frame: b.frame, backdrop: b.backdrop, pins: [...b.pins], trackers: [...b.trackers], featuredId: b.featuredId, featuredForm: b.featuredForm, updatedAt: now };
     await tx
       .insert(playerBanners)
       .values({ playerId, ...row })

@@ -6,6 +6,8 @@ import {
   BANNER_PINS,
   BANNER_TRACKERS,
   DEFAULT_BANNER,
+  bannerFormRefusal,
+  bannerForms,
   bannerFrame,
   bannerPin,
   bannerProgress,
@@ -18,7 +20,7 @@ import type { BannerStats } from '../src/index';
 
 const ZERO: BannerStats = {
   badges: 0, dexCaught: 1, trainerLevel: 1, rating: 1000, peakRating: 1000, towerBest: 0, shinies: 0, legendaries: 0, pvpWins: 0,
-  achievements: 0, champion: false, seasonBest: 0, typeCaught: { Grass: 1 },
+  achievements: 0, champion: false, seasonBest: 0, typeCaught: { Grass: 1 }, bands: [],
 };
 
 describe('banner content', () => {
@@ -55,8 +57,26 @@ describe('banner content', () => {
   });
 
   it('shows the default in place of what no longer stands', () => {
-    const shown = bannerShown({ frame: 'prismatic', backdrop: 'aurora', pins: ['shiny_hunter', 'collector'], trackers: ['shinies'], featuredId: null }, { ...ZERO, dexCaught: 30 });
-    expect(shown).toEqual({ frame: DEFAULT_BANNER.frame, backdrop: DEFAULT_BANNER.backdrop, pins: ['collector'], trackers: ['shinies'], featuredId: null });
+    const shown = bannerShown({ frame: 'prismatic', backdrop: 'aurora', pins: ['shiny_hunter', 'collector'], trackers: ['shinies'], featuredId: null, featuredForm: null }, { ...ZERO, dexCaught: 30 });
+    expect(shown).toEqual({ frame: DEFAULT_BANNER.frame, backdrop: DEFAULT_BANNER.backdrop, pins: ['collector'], trackers: ['shinies'], featuredId: null, featuredForm: null });
+  });
+
+  it('a partner may wear its Majin / Tenjin form while the trainer holds that band', () => {
+    const majin = bannerForms('infernomorel');
+    const tenjin = bannerForms('gemknight');
+    expect(majin.map((f) => f.kind)).toEqual(['majin']);
+    expect(tenjin.map((f) => f.kind)).toEqual(['tenjin']);
+    // a relic form (ravatar) or a species without a band form offers none
+    expect(bannerForms('ravatar')).toEqual([]);
+    expect(bannerForms('mossling')).toEqual([]);
+    expect(bannerFormRefusal('infernomorel', majin[0]!.id, ZERO)).toBe('formLocked');
+    expect(bannerFormRefusal('infernomorel', majin[0]!.id, { bands: ['tenjin'] })).toBe('formLocked');
+    expect(bannerFormRefusal('infernomorel', majin[0]!.id, { bands: ['majin'] })).toBeNull();
+    expect(bannerFormRefusal('gemknight', majin[0]!.id, { bands: ['majin', 'tenjin'] })).toBe('unknownForm');
+    // a form needs a chosen partner; the party lead shows its own look
+    expect(bannerRefusal({ ...DEFAULT_BANNER, featuredForm: majin[0]!.id }, ZERO)).toBe('formNeedsPartner');
+    expect(bannerShown({ ...DEFAULT_BANNER, featuredForm: majin[0]!.id }, ZERO).featuredForm).toBeNull();
+    expect(bannerShown({ ...DEFAULT_BANNER, featuredId: 'c1', featuredForm: majin[0]!.id }, ZERO).featuredForm).toBe(majin[0]!.id);
   });
 
   it('measures progress toward an unlock', () => {

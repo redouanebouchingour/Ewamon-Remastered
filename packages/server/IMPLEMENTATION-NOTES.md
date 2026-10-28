@@ -1547,3 +1547,12 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   spectator's summary never runs ahead of the truth. The feed goes to every player in the room within 40 m of the
   battle point except its fighters, judged by `PlayerState` position, not the AOI cells. Arena rooms do not implement
   `onTurn`: arena watching stays the live-board replay feed.
+
+## Banner partner in its Majin / Tenjin form (2026-10-28)
+
+- `BannerChoice.featuredForm` (migration 0028) is checked in two places: content `bannerRefusal` refuses a form without
+  an explicit partner (`formNeedsPartner`); the route checks the form against the partner's species and the band in the
+  bag (`bannerFormRefusal`: `unknownForm`, `formLocked`), since only the server knows the creature. `bannerViewOf`
+  re-checks both on every read, so a band sold or a partner traded away shows the creature's own look.
+- Only forms with `kind` majin / tenjin are offered (ravatar's relic forms and the automatic forms are not), and a
+  bandborn creature is treated like any other: the band of the form's kind is needed.

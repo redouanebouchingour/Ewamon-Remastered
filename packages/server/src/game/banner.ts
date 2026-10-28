@@ -4,9 +4,9 @@
  * achievements, owned shinies, won player battles), so a frame or a pin on someone's card is true. Read by
  * `GET/POST /banner` and `GET /players/:username`; the zone room reads the frame's rarity for the nameplate.
  */
-import { ACHIEVEMENT_IDS, BANNER_TRACKERS, DEFAULT_BANNER, LEGENDARY_IDS, MYTHICAL_IDS, SPECIES, bannerFrame, bannerPin, bannerShown, pinTier } from '@ewa/content';
+import { ACHIEVEMENT_IDS, BANNER_TRACKERS, DEFAULT_BANNER, LEGENDARY_IDS, MAJIN_BAND, MYTHICAL_IDS, SPECIES, TENJIN_BAND, bannerFormRefusal, bannerFrame, bannerPin, bannerShown, pinTier } from '@ewa/content';
 import type { BannerChoice, BannerCount, BannerStats } from '@ewa/content';
-import type { CreatureInstance, TypeName } from '@ewa/core';
+import type { BandKind, CreatureInstance, TypeName } from '@ewa/core';
 import type { Repos, SavedBanner, Tx } from '@ewa/persist';
 import { trainerLevelFor } from '@ewa/persist';
 import type { BannerView } from '@ewa/protocol';
@@ -33,6 +33,10 @@ export async function bannerStatsOf(repos: Repos, tx: Tx, playerId: string): Pro
   const flags = await repos.progress.flags(tx, playerId);
   const seasons = await repos.seasons.titles(tx, playerId);
   const claimed = await repos.progress.claimedQuestIds(tx, playerId);
+  const bag = await repos.inventory.all(tx, playerId);
+  const bands: BandKind[] = [];
+  if ((bag[MAJIN_BAND] ?? 0) > 0) bands.push('majin');
+  if ((bag[TENJIN_BAND] ?? 0) > 0) bands.push('tenjin');
   return {
     badges: (await repos.progress.badges(tx, playerId)).length,
     dexCaught: counts.caughtSpecies.length,
@@ -47,6 +51,7 @@ export async function bannerStatsOf(repos: Repos, tx: Tx, playerId: string): Pro
     champion: flags.includes(CHAMPION_FLAG),
     seasonBest: seasons.reduce((best, t) => (best === 0 || t.rank < best ? t.rank : best), 0),
     typeCaught,
+    bands,
   };
 }
 
@@ -60,13 +65,17 @@ export async function bannerViewOf(repos: Repos, tx: Tx, playerId: string): Prom
   const shown = bannerShown(choiceOf(await repos.banners.get(tx, playerId)), stats);
   // the featured creature while the trainer still owns it, else the party lead
   const picked = shown.featuredId === null ? null : await repos.creatures.byId(tx, shown.featuredId);
-  const featured = picked !== null && picked.ownerId === playerId ? picked : ((await repos.creatures.party(tx, playerId))[0] ?? null);
+  const own = picked !== null && picked.ownerId === playerId;
+  const featured = own ? picked : ((await repos.creatures.party(tx, playerId))[0] ?? null);
+  // the chosen form while it is still the chosen creature's and the band is still held; the party lead shows its own look
+  const form = own && shown.featuredForm !== null && bannerFormRefusal(picked.speciesId, shown.featuredForm, stats) === null ? shown.featuredForm : null;
   return {
     frame: shown.frame,
     backdrop: shown.backdrop,
     pins: shown.pins.map((id) => ({ id, tier: pinTier(bannerPin(id)!, stats) })),
     trackers: shown.trackers.map((id) => ({ id, value: trackerValue(stats, id as BannerCount) })),
     featured: featured === null ? null : { ...toInstance(featured), ownerId: null },
+    featuredForm: form,
   };
 }
 
