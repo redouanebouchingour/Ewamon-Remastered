@@ -13,7 +13,6 @@ import { species } from '../data/content';
 import { Button } from '../ui/Button';
 import { CreatureCard } from '../ui/CreatureCard';
 import { FormError, TextField } from '../ui/Field';
-import { Icon } from '../ui/Icon';
 import { KeyArt } from '../ui/KeyArt';
 import { NotificationHost } from '../app/NotificationHost';
 import s from './AuthScreen.module.css';
@@ -68,11 +67,9 @@ export function AuthScreen({ mode }: AuthScreenProps) {
 
   return (
     <div className={s.page} data-testid={register ? 'register' : 'login'}>
-      <KeyArt />
+      <KeyArt scene={register ? 'mirevale' : 'campfire'} />
       <Link to="/" className={s.logo}>
-        <span className={s.mark} aria-hidden>
-          <Icon name="leaf" size="sm" />
-        </span>
+        <img className={s.mark} src="/icons/emblem.png" alt="" />
         Ewamon
       </Link>
       <aside className={s.story}>

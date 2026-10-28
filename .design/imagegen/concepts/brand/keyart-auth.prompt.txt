@@ -1,0 +1,9 @@
+Wide HD-2D key art for a creature-collecting adventure game, in the style of Octopath Traveler: crisp pixel-art characters and creatures in a softly lit 3D diorama world, tilt-shift depth of field, gentle bloom, warm volumetric firelight.
+
+Scene: a quiet night camp at the edge of an ancient grove above the valley of Mirevale. A young trainer with a satchel and a short cloak, seen from behind and slightly to the side, sits on a fallen log beside a small crackling campfire, a brass lantern and a rolled bedroll next to them. The leafy green cub creature with little antlers from the reference image, drawn as a pixel-art sprite matching its reference design exactly, is curled up asleep beside the fire. Huge old trees frame the scene; their roots carry faint pale glowing veins of light. Fireflies, low mist, and far below in the valley the tiny warm lights of a sleeping village under a starry sky.
+
+Composition: the campfire, trainer and creature sit in the centre of the frame, in the lower half. The left third and the right third are darker, quieter forest shadow with little detail, so text and a form can sit over them.
+
+Palette: deep carbon blues and charcoal greys, paper-white starlight, the only warm colour is the orange of the fire and the lantern. Avoid bright saturated green.
+
+No text, no letters, no logo, no watermark, no UI elements, no border, no frame.

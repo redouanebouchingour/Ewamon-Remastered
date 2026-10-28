@@ -76,8 +76,12 @@ Env: `VITE_API_URL` (default `/api`), `VITE_WS_URL` (default `ws://localhost:256
   (`CallExpression[callee.name=/^use\w+Store$/][arguments.length=0]`) is enabled in the `ewa/client` block.
 - **D15 — thumbnails.** DOM sprites read `public/creatures/creatures.manifest.json` once; species without a thumb
   (all of them until the pipeline writes `public/creatures/`) render a type-tinted monogram instead of 130 404s.
-- **D16 — key art.** `public/keyart/*.jpg` does not exist; Landing/Auth/Boot draw an SVG scene coloured only by
-  tokens (`src/ui/KeyArt.tsx`), deterministic (fixed LCG, no `Math.random`).
+- **D16 · key art.** Since 2026-10-28 there are two painted scenes, not one: `public/keyart/mirevale.jpg` (Landing,
+  register, boot and backdrops) and `campfire.jpg` (login and the `/forgot` `/reset` `/verify` pages), 1536x1024 from
+  gpt-image (sources and prompts in `.design/imagegen/concepts/brand/`), not 1440p. `src/ui/KeyArt.tsx` still draws
+  its token-coloured SVG scene underneath, so the page shows at once and the JPEG fades in over it once loaded.
+  `keyart/og.jpg` is the 1200x630 social card. The favicon, app icons and `site.webmanifest` live in `public/icons/`
+  (a 32x32 pixel-art Bramblecub emblem, also the logo mark in the page headers).
 
 ## Server findings (not fixed here — server is committed and out of scope)
 

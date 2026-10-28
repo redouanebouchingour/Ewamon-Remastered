@@ -32,14 +32,11 @@
   color: var(--text-hi);
 }
 
+/* the emblem is 32x32 pixel art (public/icons/emblem.png): keep its pixels square at any device pixel ratio */
 .mark {
-  display: grid;
-  place-items: center;
   inline-size: 32px;
   block-size: 32px;
-  border-radius: 0;
-  background: var(--text-hi);
-  color: var(--bg-0);
+  image-rendering: pixelated;
 }
 
 .story {

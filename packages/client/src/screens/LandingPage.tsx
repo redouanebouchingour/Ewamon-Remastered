@@ -18,9 +18,7 @@ export function LandingPage() {
       <KeyArt />
       <header className={s.top}>
         <span className={s.logo}>
-          <span className={s.mark} aria-hidden>
-            <Icon name="leaf" size="sm" />
-          </span>
+          <img className={s.mark} src="/icons/emblem.png" alt="" />
           Ewamon
         </span>
         <Link to="/login" className={s.topLink}>

@@ -1,0 +1,7 @@
+Pixel art app icon for a creature-collecting game. Real low-resolution pixel art drawn on a 32 by 32 pixel grid: every art pixel is one large crisp square block, exactly 32 by 32 screen pixels, aligned to a perfect grid. No anti-aliasing, no gradients, no dithering, no soft shading, no blur.
+
+Subject: a capture orb seen straight on, filling about 80 percent of the canvas and centred. A thick round steel ring in light grey with a dark outline, and set inside the ring a large faceted gemstone in bright orange (#ff5b1f) with one lighter orange facet as a highlight and one darker red-orange facet as a shadow. A single small leaf sprout in paper white grows from the top of the ring, tilted slightly to the right. Thick near-black outline around every shape, 2 to 3 flat tones per colour, bold and readable even when shrunk to 16 pixels.
+
+Background: solid flat near-black #0d0d0f filling the whole square, edge to edge.
+
+No text, no letters, no numbers, no watermark.

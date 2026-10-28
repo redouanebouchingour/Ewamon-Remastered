@@ -1,0 +1,9 @@
+Pixel art app icon for a creature-collecting game: the face of the leafy green cub creature from the reference image, shown head-on as a bold mascot portrait. Keep its exact design: mossy leaf-green fur, the small brown antler twigs, dark eye mask, cream muzzle, determined look.
+
+Real low-resolution pixel art drawn on a 32 by 32 pixel grid: every art pixel is one large crisp square block, exactly 32 by 32 screen pixels, aligned to a perfect grid. No anti-aliasing, no gradients, no dithering, no soft shading, no blur. Thick near-black outline around the head, 2 to 3 flat tones per colour, simple shapes so it stays readable when shrunk to 16 pixels.
+
+The head is large and centred, filling about 85 percent of the canvas, the antlers reaching near the top edge.
+
+Background: a solid flat bright orange (#ff5b1f) square filling the whole canvas edge to edge, no pattern, no border.
+
+No text, no letters, no numbers, no watermark.

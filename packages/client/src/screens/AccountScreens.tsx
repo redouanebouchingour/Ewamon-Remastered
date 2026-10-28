@@ -54,11 +54,9 @@ const REFUSAL_COPY: Readonly<Record<'reset' | 'verify', Readonly<Record<TokenRef
 function AccountPage({ testId, eyebrow, headline, lede, title, children }: { readonly testId: string; readonly eyebrow: string; readonly headline: string; readonly lede: string; readonly title: string; readonly children: ReactNode }) {
   return (
     <div className={a.page} data-testid={testId}>
-      <KeyArt />
+      <KeyArt scene="campfire" />
       <Link to="/" className={a.logo}>
-        <span className={a.mark} aria-hidden>
-          <Icon name="leaf" size="sm" />
-        </span>
+        <img className={a.mark} src="/icons/emblem.png" alt="" />
         Ewamon
       </Link>
       <aside className={a.story}>

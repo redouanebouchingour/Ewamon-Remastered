@@ -1,10 +1,10 @@
 /**
- * Full-bleed key art for Landing / Auth / Boot (§20.9.1): Mirevale at night — layered hills, the glowing
- * veins of the grove, mist and fireflies. Drawn as SVG coloured only through tokens (module CSS classes), so
- * it costs no image request and follows the palette. Stand-in until the `public/keyart/` JPEG exists.
- * Star and firefly positions come from a fixed LCG: identical on every load, no Math.random.
+ * Full-bleed key art for Landing / Auth / Boot (§20.9.1): a painted `public/keyart/` JPEG (gpt-image, 2026-10-28)
+ * over an SVG of Mirevale at night (layered hills, the veins of the grove, mist and fireflies). The SVG is coloured
+ * only through tokens and costs no request, so it shows at once and stays if the JPEG fails; the JPEG fades in
+ * over it once loaded. Star and firefly positions come from a fixed LCG: identical on every load, no Math.random.
  */
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import s from './KeyArt.module.css';
 import { cx } from './cx';
 
@@ -20,16 +20,21 @@ const rand = lcg(0x5f7e44);
 const STARS = Array.from({ length: 90 }, () => ({ x: rand() * 1600, y: rand() * 420, r: 0.6 + rand() * 1.4, o: 0.25 + rand() * 0.6 }));
 const FLIES = Array.from({ length: 22 }, (_, i) => ({ x: 120 + rand() * 1360, y: 560 + rand() * 260, r: 1.4 + rand() * 2, d: i % 4 }));
 
+/** `mirevale`: the three starters on a ridge above the valley (subject right). `campfire`: a trainer and Bramblecub by a fire (subject centre). */
+export type KeyArtScene = 'mirevale' | 'campfire';
+
 export interface KeyArtProps {
   readonly className?: string;
   /** dim the scene further behind dense UI */
   readonly dim?: boolean;
+  readonly scene?: KeyArtScene;
 }
 
-export function KeyArt({ className, dim = false }: KeyArtProps) {
+export function KeyArt({ className, dim = false, scene = 'mirevale' }: KeyArtProps) {
   // unique per instance: Boot + backdrop can both be mounted, and url(#id) must not cross-reference
   const uid = `ka${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const ref = (name: string): string => `url(#${uid}-${name})`;
+  const [loaded, setLoaded] = useState<string | null>(null);
   return (
     <div className={cx(s.root, dim && s.dim, className)} aria-hidden data-testid="keyart">
       <svg className={s.svg} viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
@@ -89,6 +94,15 @@ export function KeyArt({ className, dim = false }: KeyArtProps) {
           ))}
         </g>
       </svg>
+      <img
+        key={scene}
+        className={cx(s.photo, s[scene], loaded === scene && s.shown)}
+        src={`/keyart/${scene}.jpg`}
+        alt=""
+        decoding="async"
+        fetchPriority="high"
+        onLoad={() => setLoaded(scene)}
+      />
       <div className={s.vignette} />
     </div>
   );

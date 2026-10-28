@@ -1,0 +1,9 @@
+Wide HD-2D key art for a creature-collecting adventure game, in the style of Octopath Traveler: crisp pixel-art characters and creatures standing in a softly lit 3D diorama world, tilt-shift depth of field, gentle bloom, volumetric light.
+
+Scene: the valley of Mirevale at blue hour, just after sunset. On a grassy ridge in the right half of the frame stand the three creatures from the reference images (the leafy green cub with antlers, the small blue fin creature, the mushroom-capped fire creature), drawn as pixel-art sprites that match their reference designs exactly, small within the landscape, looking out over the valley together. Below them a winding dirt road leads down to a small village with warm lantern-lit windows, a slow river with a stone bridge, and an ancient grove whose roots carry faint pale glowing veins of light across the ground. Layered distant hills fading into mist, a large crescent moon low on the right, the first stars, drifting fireflies.
+
+Composition: the left 45 percent of the image is calm open sky and dark quiet hillside with no important detail, so a large headline can sit there. Cinematic, wide, atmospheric.
+
+Palette: deep carbon blues and charcoal greys, paper-white moonlight, warm orange lantern accents only. Avoid bright saturated green; the grass reads blue-grey in the dusk.
+
+No text, no letters, no logo, no watermark, no UI elements, no border, no frame.
