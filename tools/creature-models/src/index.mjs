@@ -4,15 +4,15 @@ import { OUT_DIR } from './paths.mjs';
 
 /**
  * Rewrites creature-models/index.json from the GLBs on disk. A rigged creature (`<id>.rig.glb`, written by rig.mjs) is
- * served in place of its static `<id>.glb` and marked `rig: true`; the static GLB stays as the rig's input.
+ * served as that and marked `rig: true` (its static GLB, the rig's input, lives in STATIC_DIR); the others serve
+ * their static `<id>.glb`.
  */
 export function writeIndex() {
-  const files = readdirSync(OUT_DIR).filter((f) => f.endsWith('.glb') && !f.endsWith('.rig.glb')).sort();
-  const models = Object.fromEntries(files.map((f) => {
-    const id = f.slice(0, -4);
+  const ids = [...new Set(readdirSync(OUT_DIR).filter((f) => f.endsWith('.glb')).map((f) => f.replace(/(\.rig)?\.glb$/, '')))].sort();
+  const models = Object.fromEntries(ids.map((id) => {
     const rig = `${id}.rig.glb`;
     if (existsSync(join(OUT_DIR, rig))) return [id, { url: rig, bytes: statSync(join(OUT_DIR, rig)).size, rig: true }];
-    return [id, { url: f, bytes: statSync(join(OUT_DIR, f)).size }];
+    return [id, { url: `${id}.glb`, bytes: statSync(join(OUT_DIR, `${id}.glb`)).size }];
   }));
   writeFileSync(join(OUT_DIR, 'index.json'), `${JSON.stringify({ version: 1, heightMeters: 1, facing: '+z', models }, null, 2)}\n`);
 }

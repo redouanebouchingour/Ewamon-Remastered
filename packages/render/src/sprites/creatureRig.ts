@@ -8,12 +8,14 @@
  * - one clip per battle pose (`windup`, `lunge`, `hurt`, `recoil`, `faint`, `celebrate`, `enter`, `exit`), stretched to
  *   the pose's ms; `faint` holds its last frame, `setFaint(p)` scrubs it.
  * A missing clip falls back to the loop (the card's lift / squash / lunge still move the body as a whole).
+ * rig.mjs bakes every clip into one timeline (one track per moving channel, not one per clip) with the table of clips
+ * in its extras; `splitClips` cuts it back into the named clips when the GLB loads.
  *
  * Each body is its own clone of the template (bones, skeleton, mixer); the geometry is shared. The skinned mesh draws
  * with the pool's one model material and the card's per-object record, like a static body.
  */
-import { AnimationMixer, LoopOnce, LoopRepeat } from 'three/webgpu';
-import type { AnimationAction, AnimationClip, Material, Object3D, SkinnedMesh } from 'three/webgpu';
+import { AnimationClip, AnimationMixer, LoopOnce, LoopRepeat } from 'three/webgpu';
+import type { AnimationAction, Interpolant, KeyframeTrack, Material, Object3D, SkinnedMesh } from 'three/webgpu';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import type { BattlerPose } from '../contracts.js';
 
@@ -42,6 +44,38 @@ export const RIG = Object.freeze({
   /** The skinned bounds (computed once in the rest pose) grow by this much for the clips' reach. */
   boundsPad: 1.5,
 });
+
+/**
+ * A GLB's animations as named clips: one with a clip table in its extras (`userData.ewaClips`, `{ name: [start, end] }`
+ * in seconds, rig.mjs's one timeline) becomes one clip per entry, every track cut to that span and keyed at both ends;
+ * any other passes through.
+ */
+export function splitClips(clips: readonly AnimationClip[]): AnimationClip[] {
+  const out: AnimationClip[] = [];
+  for (const c of clips) {
+    const table = (c.userData as { ewaClips?: Record<string, readonly [number, number]> } | undefined)?.ewaClips;
+    if (table === undefined) { out.push(c); continue; }
+    for (const [name, [a, b]] of Object.entries(table)) out.push(new AnimationClip(name, b - a, c.tracks.map((tr) => cutTrack(tr, a, b))));
+  }
+  return out;
+}
+
+function cutTrack(tr: KeyframeTrack, a: number, b: number): KeyframeTrack {
+  const n = tr.getValueSize();
+  // set per track by its interpolation (three's typings leave it out)
+  const at = (tr as KeyframeTrack & { createInterpolant(): Interpolant }).createInterpolant();
+  const times: number[] = [];
+  const values: number[] = [];
+  const key = (t: number, v: ArrayLike<number>): void => { times.push(t - a); for (let k = 0; k < n; k++) values.push(v[k]!); };
+  key(a, at.evaluate(a));
+  for (let i = 0; i < tr.times.length; i++) {
+    const t = tr.times[i]!;
+    if (t > a + 1e-5 && t < b - 1e-5) key(t, tr.values.subarray(i * n, i * n + n));
+  }
+  key(b, at.evaluate(b));
+  const Track = tr.constructor as new (name: string, times: number[], values: number[]) => KeyframeTrack;
+  return new Track(tr.name, times, values);
+}
 
 /** Deterministic 0..1 per (seed, n): bodies of one species fidget apart, and tests can predict them. */
 function hash01(seed: number, n: number): number {

@@ -20,6 +20,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { BILLBOARD } from './tables.js';
 import type { BillboardUniforms } from './billboard.js';
+import { splitClips } from './creatureRig.js';
 import type { CreatureRigTemplate } from './creatureRig.js';
 
 const B = BILLBOARD;
@@ -102,7 +103,7 @@ export function createCreatureModelSource(o: CreatureModelSourceOptions): Creatu
           // a rigged GLB keeps its scene (bones + skinned mesh) as the template each creature clones
           const rigged = (m as Mesh & { isSkinnedMesh?: boolean }).isSkinnedMesh === true && gltf.animations.length > 0;
           const model: CreatureModel = rigged
-            ? { geometry: g, matrix: m.matrixWorld.clone(), rig: { scene: gltf.scene, clips: gltf.animations } }
+            ? { geometry: g, matrix: m.matrixWorld.clone(), rig: { scene: gltf.scene, clips: splitClips(gltf.animations) } }
             : { geometry: g, matrix: m.matrixWorld.clone() };
           if (disposed) { g.dispose(); return null; }
           loaded.push(model);

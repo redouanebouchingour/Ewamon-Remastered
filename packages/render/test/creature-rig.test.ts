@@ -4,9 +4,10 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-  AnimationClip, Bone, BufferAttribute, BufferGeometry, Group, Matrix4, MeshStandardNodeMaterial, NumberKeyframeTrack, Skeleton, SkinnedMesh,
+  AnimationClip, Bone, BufferAttribute, BufferGeometry, Group, Matrix4, MeshStandardNodeMaterial, NumberKeyframeTrack, QuaternionKeyframeTrack, Skeleton,
+  SkinnedMesh,
 } from 'three/webgpu';
-import { CreatureRigPlayer, RIG, type CreatureRigTemplate } from '../src/sprites/creatureRig.js';
+import { CreatureRigPlayer, RIG, splitClips, type CreatureRigTemplate } from '../src/sprites/creatureRig.js';
 import { BillboardPool } from '../src/sprites/billboard.js';
 import type { CreatureModelSource } from '../src/sprites/creatureModels.js';
 import type { SpriteDescriptor } from '../src/contracts.js';
@@ -36,6 +37,28 @@ const player = (names = ALL): CreatureRigPlayer => new CreatureRigPlayer(templat
 const step = (p: CreatureRigPlayer, s: number, moved = 0, dt = 1 / 30): void => { for (let t = 0; t < s; t += dt) p.update(dt, moved * dt); };
 
 describe('rigged creature bodies (creatureRig.ts)', () => {
+  it('splitClips cuts the one baked timeline into its named clips, every track keyed at both ends', () => {
+    // rig.mjs's layout: idle 0..2, a 0.1 s gap, lunge 2.1..2.4; the x track is sparse (resampled), the quaternion one constant
+    const all = new AnimationClip('clips', 2.4, [
+      new NumberKeyframeTrack('head.position[x]', [0, 1, 2, 2.1, 2.4], [0, 4, 0, 10, 13]),
+      new QuaternionKeyframeTrack('root.quaternion', [0], [0, 0, 0, 1]),
+    ]);
+    all.userData = { ewaClips: { idle: [0, 2], lunge: [2.1, 2.4] } };
+    const other = new AnimationClip('plain', 1, []);
+    const out = splitClips([all, other]);
+    expect(out.map((c) => c.name)).toEqual(['idle', 'lunge', 'plain']);
+    const [idle, lunge] = out;
+    expect(idle!.duration).toBeCloseTo(2);
+    expect(Array.from(idle!.tracks[0]!.times)).toEqual([0, 1, 2]);
+    expect(Array.from(idle!.tracks[0]!.values)).toEqual([0, 4, 0]);
+    expect(lunge!.duration).toBeCloseTo(0.3);
+    expect(Array.from(lunge!.tracks[0]!.values).map((v) => Math.round(v * 1e4) / 1e4)).toEqual([10, 13]);
+    // the constant track is in every clip, held at its value from start to end
+    expect(lunge!.tracks[1]!).toBeInstanceOf(QuaternionKeyframeTrack);
+    expect(Array.from(lunge!.tracks[1]!.values)).toEqual([0, 0, 0, 1, 0, 0, 0, 1]);
+    expect(out[2]).toBe(other);
+  });
+
   it('a clone of the template per body (own bones and skeleton, shared geometry), idling', () => {
     const t = template(ALL);
     const mat = new MeshStandardNodeMaterial();

@@ -2815,8 +2815,15 @@ The user's call: most of a zone never moves, so only the player, villagers and c
 - **What:** a 3D body can carry a skeleton and named animation clips. `tools/creature-models` rig.mjs turns a static
   `<id>.glb` plus `rigs/<id>.mjs` (joints, a per-triangle part rule, extra expression geometry, clips as functions of
   time) into `<id>.rig.glb`: rigid skin weights (one joint per triangle), the clips baked at 30 fps, resampled,
-  quantized + meshopt. `index.json` serves the rigged file (`rig: true`) in place of the static one. Any skinned GLB
-  with clips of these names plugs in the same way (a Blender export works too).
+  quantized + meshopt (filter mode: quaternion / exponential keys, octahedral normals). `index.json` serves the rigged
+  file (`rig: true`) in place of the static one, which then lives in `tools/creature-models/glb/` as the rig's input (not
+  shipped). Any skinned GLB with clips of these names plugs in the same way (a
+  Blender export works too).
+- **One timeline (2026-10-28):** rig.mjs bakes every clip into ONE animation, clip after clip, with `{ ewaClips: {
+  name: [start, end] } }` in its extras (three puts them in the clip's `userData`). `splitClips` (creatureRig.ts) cuts
+  it into the named clips when the GLB loads, every track keyed at both ends of its span; a GLB with ordinary separate
+  clips passes through. One track per moving channel instead of one per channel per clip took Flowbot's glTF JSON
+  from 98 KB to 15 KB and the file from 293 to 142 KiB.
 - **Clip names are the contract** (`sprites/creatureRig.ts`): `idle` and `walk` loop (walk while the feet move faster
   than `RIG.walkSpeed`, measured from `setPosition`, its rate following the speed); `idle_*` are fidgets, one every 6
   to 13 s while idling (deterministic per id); `windup`, `lunge`, `hurt`, `recoil`, `faint`, `celebrate`, `enter`,
@@ -2829,14 +2836,16 @@ The user's call: most of a zone never moves, so only the player, villagers and c
   skinning node runs before them, so the dissolve holes ride on the moving parts). The card's own lift / squash /
   lunge still move the body as a whole on top. The skinned bounds are computed once and padded × 1.5.
 - **Flowbot:** 23 joints (pelvis, legs, torso, monitor head, face, three eye sets, mouth, two 3-joint arms, six
-  lightning bolts), 13 clips, 293 KiB (the static GLB is 108 KiB; ~110 KiB is animation). Its hover drum is gone from
+  lightning bolts), 13 clips, 142 KiB (the static GLB is 108 KiB). Its hover drum is gone from
   the scad (2026-10-28, with the other creatures' platforms), so Flowbot stands on its own feet; its clips keep the
   feet planted (a stride with a hip dip for `walk`). The ^ ^ and x x eyes are extra boxes the scad never had, hidden
   at scale 1e-4 until a clip shows them.
 - **No card bob on a rigged body:** the card's idle bob (`bobOffset`) stays off a rigged body; on top of the clips'
   own motion it read as shaking.
 - **Not yet:** the skinned program is not in the warm-up frame (the first rigged body on screen compiles it); no LOD.
+- **More rigs (2026-10-28):** Joeyjab, Moflame, Puffinch, Malice and Serpyre, one per body-plan template
+  (`tools/creature-models/rigs/lib/`: biped, quadruped, bird, floater, serpent; ANIMATING.md).
 - **Tests / check:** `creature-rig.test.ts` (clone per body, walk / idle, poses, holds, fidgets, the pool swap, no
-  card bob).
+  card bob, `splitClips`).
   Sandbox `?demo=rig&species=flowbot` (a button per clip, a second one gliding round; `part3.rig.scrub(clip, t)`
   freezes a frame for screenshots).

@@ -7,6 +7,8 @@ forms), built into GLBs the client can load:
 - `packages/client/public/creature-models/<id>.glb`: one mesh, vertex colours (`COLOR_0`), 1 m tall, feet on y = 0,
   centred in x / z, facing +Z, `KHR_mesh_quantization` + `EXT_meshopt_compression` (the loader's `MeshoptDecoder`
   reads it, like the character GLBs); the colour alpha is the glow mask (below). The game scales it to `heightM`.
+- `packages/client/public/creature-models/<id>.rig.glb` for a rigged creature (below) instead: its static GLB is then
+  only the rig's input and lives in `glb/<id>.glb` here, out of the client's public folder (its byte ceiling).
 - `packages/client/public/creature-models/index.json`: every built model with its byte size.
 - `previews/<id>.png` (repo root, not tracked): sprite | model from the front | model from the back.
 
@@ -63,10 +65,14 @@ A creature with a `rigs/<id>.mjs` gets a skeleton and animation clips: `node src
 built `<id>.glb` and writes `<id>.rig.glb`, which `index.json` serves in its place (`rig: true`). `build.mjs` re-rigs
 after rebuilding such a creature. The rig works on the GLB, so it needs no OpenSCAD.
 
-`rigs/flowbot.mjs` is the worked example. A rig file authors everything in the scad's own coordinates (Z up, facing
--Y, +X the creature's left) and exports `frame` (the scad model's height and lowest z), `joints` (pivots, parents, rest
-rotation / scale), `assign(centroid, rgb)` (which joint each triangle belongs to), `extras` (boxes added to the mesh,
-e.g. alternate eyes) and `clips` (`pose(t, u)` per clip, sampled at 30 fps). The game plays the clips by name: `idle`,
+A rig file authors everything in the scad's own coordinates (Z up, facing -Y, +X the creature's left) and exports
+`joints` (pivots, parents, rest rotation / scale), `assign(centroid, rgb)` (which joint each triangle belongs to),
+`extras` (boxes and ellipsoids added to the mesh, e.g. eyelids and alternate eyes) and `clips` (`pose(t, u)` per clip,
+sampled at 30 fps). Most rigs start from a body-plan template in `rigs/lib/` (biped, quadruped, bird, floater,
+serpent: `rigs/joeyjab.mjs`, `moflame.mjs`, `puffinch.mjs`, `malice.mjs`, `serpyre.mjs`); `rigs/flowbot.mjs` is written
+by hand. How each model sits in its GLB comes from `frames.json`, which `build.mjs` keeps (`--frames` refreshes it
+without a rebuild); `rig-parts.json` keeps the triangles per joint, so a re-rig after a scad change warns when an
+`assign` rule stops matching. The game plays the clips by name: `idle`,
 `walk`, `idle_*` fidgets and one per battle pose (render IMPLEMENTATION-NOTES "Rigged creatures"). Check the result in
 the render sandbox: `?demo=rig&species=<id>`. Before rigging a new one, read [ANIMATING.md](ANIMATING.md): the
 findings from Flowbot (rotation signs, pivots, planted feet, expressions, pitfalls, how to check and film it).

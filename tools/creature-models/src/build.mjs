@@ -3,7 +3,8 @@
 //   2. The 3MF becomes a GLB: Z-up -> Y-up (faces +Z, three's front), 1 m tall, feet on y = 0, centred in x / z,
 //      vertex colours (COLOR_0 rgb, linear; alpha = the glow mask, see glowColours), normals smoothed across edges under CREASE_DEG within one colour,
 //      then weld -> reorder -> quantize -> EXT_meshopt_compression like tools/model-pipeline.
-//      Written to packages/client/public/creature-models/<id>.glb.
+//      Written to packages/client/public/creature-models/<id>.glb, or for a rigged creature (rigs/<id>.mjs) to glb/<id>.glb,
+//      the rig's input (the client then ships only the <id>.rig.glb).
 //   3. previews/<id>.png: the sprite, the model from the front and from the back, side by side.
 //
 //   node src/build.mjs <id …>      build those
@@ -11,17 +12,20 @@
 //   node src/build.mjs --no-preview <id …> | --all   skip the preview renders
 //   node src/build.mjs --glow-preview …     also .cache/glow/<id>.png: the sprite's glow mask | the model's glow
 //   node src/build.mjs --index     rewrite creature-models/index.json from the GLBs on disk
+//   node src/build.mjs --frames <id …> | --all   only record frames.json (how each model sits in its GLB; rig.mjs
+//                                  reads it), without rewriting the GLBs
 //   A creature with a rigs/<id>.mjs is re-rigged after its build (rig.mjs: skeleton + animation clips).
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Document, NodeIO } from '@gltf-transform/core';
 import { EXTMeshoptCompression, KHRMeshQuantization } from '@gltf-transform/extensions';
 import { quantize, reorder, weld } from '@gltf-transform/functions';
 import { MeshoptEncoder } from 'meshoptimizer';
 import sharp from 'sharp';
+import { frameOf, saveFrame } from './frames.mjs';
 import { writeIndex } from './index.mjs';
-import { OUT_DIR, PREVIEW_DIR, REF_DIR, RIG_DIR, ROOT, SCAD_DIR, WORK_DIR, readManifest } from './paths.mjs';
+import { OUT_DIR, PREVIEW_DIR, REF_DIR, RIG_DIR, ROOT, SCAD_DIR, STATIC_DIR, WORK_DIR, readManifest } from './paths.mjs';
 import { rig } from './rig.mjs';
 
 const CREASE_DEG = 55;
@@ -33,6 +37,7 @@ const OPENSCAD = process.env.OPENSCAD ?? 'openscad';
 
 const NO_PREVIEW = process.argv.includes('--no-preview');
 const GLOW_PREVIEW = process.argv.includes('--glow-preview');
+const FRAMES_ONLY = process.argv.includes('--frames');
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--') || a === '--all' || a === '--index');
 mkdirSync(WORK_DIR, { recursive: true });
 mkdirSync(OUT_DIR, { recursive: true });
@@ -54,7 +59,7 @@ if (args[0] === '--index') {
       console.error(`FAIL ${id}: ${e.message}`);
     }
   }
-  writeIndex();
+  if (!FRAMES_ONLY) writeIndex();
   if (failed > 0) process.exit(1);
 }
 
@@ -64,15 +69,24 @@ async function build(id) {
   const threeMf = join(WORK_DIR, `${id}.3mf`);
   runScad(['-o', threeMf, scad]);
   const mesh = read3mf(threeMf);
+  saveFrame(id, frameOf(mesh.pos, mesh.tris.length / 3, groundOf(scad)));
+  if (FRAMES_ONLY) { console.log(`frame ${id}`); return; }
   if (mesh.tris.length / 3 > MAX_TRIANGLES) throw new Error(`${mesh.tris.length / 3} triangles (max ${MAX_TRIANGLES}): lower $fn`);
   if (mesh.colorOf.some((c) => c.default)) console.warn(`warn ${id}: some geometry has no color()`);
   const { bytes, glowShare, glowOn } = await toGlb(mesh, groundOf(scad));
   if (GLOW_PREVIEW) await glowPreview(id, mesh, glowOn);
-  writeFileSync(join(OUT_DIR, `${id}.glb`), bytes);
+  const rigged = existsSync(join(RIG_DIR, `${id}.mjs`));
+  if (rigged) {
+    mkdirSync(STATIC_DIR, { recursive: true });
+    writeFileSync(join(STATIC_DIR, `${id}.glb`), bytes);
+    rmSync(join(OUT_DIR, `${id}.glb`), { force: true });
+  } else {
+    writeFileSync(join(OUT_DIR, `${id}.glb`), bytes);
+  }
   if (!NO_PREVIEW) await preview(id, scad);
   console.log(`ok ${id}: ${mesh.tris.length / 3} triangles, ${(bytes.length / 1024).toFixed(0)} KiB, glow ${(glowShare * 100).toFixed(1)} % -> previews/${id}.png`);
   // a rigged creature (rigs/<id>.mjs) re-rigs from the new static GLB
-  if (existsSync(join(RIG_DIR, `${id}.mjs`))) await rig(id);
+  if (rigged) await rig(id);
 }
 
 function runScad(extra) {

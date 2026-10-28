@@ -1,14 +1,24 @@
 # Animating an Ewamon: findings and learnings
 
-What we learned rigging and animating the first 3D Ewamon (Flowbot, 2026-10-28). Read this before rigging the next
-one. The worked example is `rigs/flowbot.mjs`; the tool is `src/rig.mjs`; the game side is
-`packages/render/src/sprites/creatureRig.ts` (render IMPLEMENTATION-NOTES "Rigged creatures").
+What we learned rigging and animating the first 3D Ewamons (Flowbot, then the first template batch: Joeyjab, Moflame,
+Puffinch, Malice and Serpyre, 2026-10-28). Read this before rigging the next one. Start from the body-plan template
+that fits (`rigs/lib/`, below) and the creature of that plan already done; `rigs/flowbot.mjs` is the hand-written
+example. The tool is `src/rig.mjs`; the game side is `packages/render/src/sprites/creatureRig.ts` (render
+IMPLEMENTATION-NOTES "Rigged creatures").
 
 ## How it fits together
 
 - `build.mjs` makes the static `<id>.glb` from the scad (one mesh, vertex colours, 1 m tall, feet on y = 0).
 - `rig.mjs <id>` reads that GLB plus `rigs/<id>.mjs` and writes `<id>.rig.glb`: a skeleton, rigid skin weights (one
   joint per triangle) and the clips baked at 30 fps. `index.json` then serves the rigged file (`rig: true`).
+- The client ships the rig only. The first rig moves the static GLB from `packages/client/public/creature-models/` to
+  `glb/<id>.glb` here, where it stays as the rig's input; `build.mjs` writes a rigged creature's static GLB there too.
+  A rig is about 1.17 × its static GLB, so rigging all 203 adds about 5.5 MiB to the public folder.
+- The clips are baked into ONE animation, clip after clip, with the table `{ name: [start, end] }` in its extras; the
+  game cuts it back into named clips when the GLB loads (`splitClips`). One track per moving channel instead of one per
+  channel per clip took Flowbot's glTF JSON from 98 KB to 15 KB. Meshopt runs in `FILTER` mode (quaternion and
+  exponential filters on the keys, octahedral normals): Flowbot's rig went from 293 to 142 KiB, a third more than its
+  static GLB (108 KiB).
 - The rig works on the GLB, not the scad, so it needs no OpenSCAD. That matters: the OpenSCAD on this machine is
   2021.01, too old for the Manifold backend and coloured 3MF that `build.mjs` needs. Rigging still works.
 - In game, each creature clones the template and an `AnimationMixer` picks the clip. Nothing else in the game had to
@@ -49,18 +59,32 @@ left (the viewer's right). Rotations are degrees in OpenSCAD `rotate([rx, ry, rz
 - `p` offsets and `r` rotations are in the joint's own rest frame. Give a tilted part (Flowbot's screen is tilted
   -14°) a rest `rot` so "squash vertically" means vertical on that part.
 
-## Calibrating `frame`
+## The frame: automatic (`frames.json`)
 
-`frame` is `{ height, minZ }` of the scad model, which the GLB normalised to 1 m. Get it from the GLB, not by
-guessing: dump the GLB's vertices grouped by colour (min / max / average per colour), find two landmarks you know in
-the scad (Flowbot: the three flag stripes 2 units apart gave the scale; the lowest thruster gave minZ), solve, and
-check it against the top of the model (or export the scad as an ASCII STL and read its min / max z). Flowbot: `height
-32.72, minZ 5.406`. Wrong numbers put every pivot in the wrong
-place, so it is worth the five minutes.
+The GLB is the scad model scaled to 1 m, its floor on y = 0 and its x / y bounding-box centre moved to the origin.
+`build.mjs` records that per creature in `frames.json` (`height`, `minZ`, `cx`, `cy`, the extents and the triangle
+count); `node src/build.mjs --frames <id …> | --all` fills it from the scads without rewriting any GLB (all 203 are in
+it). `rig.mjs` reads it, so a rig file needs no `frame` and rebuilding a model never breaks the rig's mapping.
+
+- Flowbot's hand calibration matched (32.72 / 5.406) but missed the centring: the build centres x and y, and 145 of the
+  203 models are off-centre by more than a unit (a tail, a snout). A hand `frame` without `cx` / `cy` puts every pivot
+  of those that far off.
+- `rig.mjs` warns when `frames.json` no longer matches the GLB (triangle count or extents): a scad edited and rebuilt
+  by an older build, or a frame never refreshed.
 
 ## Cutting the mesh into parts (`assign`)
 
-- `assign(centroid, rgb)` runs per triangle and returns a joint name. Colour plus position is enough for most parts.
+- `assign(centroid, rgb)` runs per triangle and returns a joint name. Colour picks out the obvious parts (gloves,
+  flames, a mane); for parts of one colour (fur all over) use the scad's own primitives.
+- **The nearest primitive wins.** The scad is a union, so every visible triangle lies on the surface of the primitive
+  it came from (normalised distance about 1) and outside all the others (more than 1). Copy the primitives' numbers
+  into a list `[[joint, distance], …]` and take `closest()` (`rigs/lib/geo.mjs`: `ellD` for ell / sphere, `capD` /
+  `capsule` for limb, `chainHit` for chain, `blobD` for blob, `petalD` for a rotated petal, `plateD` / `slabD` for
+  lib.scad's plate() / slab() outlines (wings, fins, flat bodies; pass the point in the part's frame), `subFrame` for a
+  `translate() rotate() scale()` block, `fold` / `side` for `mirror_x()` parts). Joeyjab's one fur colour splits into
+  head, body, haunches, arms, ears and four tail links this way with no hand-tuned boxes.
+- **Look at it:** `RIG_PARTS=1 node src/rig.mjs <id>` colours each joint's triangles apart; shoot it from four sides
+  (`src/check/views-steps.mjs`), then re-rig without the flag. One picture shows every boundary.
 - Use a part's own frame for the tricky bits: Flowbot's head is rotated in the scad, so the head test transforms the
   centroid into the head frame first (`headLocal`) and checks a box there. Telling eyes from mouth (same ink colour)
   was then just "above or below the eye line".
@@ -78,9 +102,19 @@ place, so it is worth the five minutes.
   2026-10-28). A hovering creature keeps its gap with `// ground: <z>` in its scad (build.mjs), not with a stand.
 - Watch the console: a joint with no geometry prints a warning. That usually means a wrong pivot or a rule that
   never matches.
+- **Model updates:** `rig-parts.json` keeps the triangles per joint from the last rig. When a re-rig after a scad change
+  moves a joint by more than a quarter (and at least 24 triangles) it warns: a recolour or a moved part that an
+  `assign` rule no longer catches. Look at the RIG_PARTS view, fix the rule, re-rig.
 
 ## Expressions: add geometry the scad never had (`extras`)
 
+- For lib.scad's `eye()` use `eyeKit()` (`rigs/lib/face.mjs`) with the numbers of the eye() call: a skin-coloured lid
+  per eye (an ellipsoid extra, `shape: 'ell'`) that closes from the top, plus ink strokes on the shut lid.
+  `face.pose('open', blink)` blinks, `'shut'` closes, `'happy'` (∩ ∩), `'dizzy'` (x x) and `'squeeze'` (> <) shut and
+  draw. It works on angry lidded eyes and socket eyes (`squash`, and `frame: subFrame(…)` for an eye inside a
+  transformed head).
+- Painted eyes and mouths (decals, Malice's glow crescents) can scale up or squash a little, never shrink far: a decal
+  is a shell of the head with the head's own surface under it removed, so shrinking it opens a hole.
 - `extras` adds boxes to the mesh in a joint's frame. Flowbot's happy `^ ^` and dizzy `x x` eyes are two thin
   ink strokes each (`strokes()` in flowbot.mjs).
 - Hide an alternate part with a rest **scale of 1e-4**, and show it from a clip. Not 0: the bind pose must be scale 1
@@ -89,6 +123,26 @@ place, so it is worth the five minutes.
   normal eyes scaled to about 0.08 vertically for two or three frames. Cheap, and it reads at game size.
 - Mouth: scaling a smile vertically towards its top line gives a flat, gritted mouth (hurt). Scaling it up is a
   bigger smile (wave, celebrate).
+
+## Body-plan templates (`rigs/lib/`)
+
+A template returns every clip of the contract for its plan, written against standard joint names; `rigDef()` drops
+pose entries for joints a creature does not have, so one template fits the whole plan. Each takes the creature's few
+numbers (hip height for the walk dip, stride, chain names, the eyeKit) and `add: { clip: (t, u) => pose }` to layer
+the creature's own touches (`merge()` adds rotations and offsets, multiplies scales). Fidgets that make the creature
+itself go in its rig file next to the template's (Joeyjab's `idle_shadowbox`). `lib/anim.mjs` holds the clip maths
+(`K`, `win`, `osc`, `wave`, `both`, `merge`).
+
+| Template | Joints | Walk | Fidgets | First done |
+| --- | --- | --- | --- | --- |
+| `biped.mjs` | root, legL/R, body, head, jaw, earL/R, arm/fore/handL/R, tail1…, lids | stride with hip dip, or `hop` | `idle_look` | Joeyjab (hop, `guard` arms) |
+| `quadruped.mjs` | root, legFL/FR/BL/BR, body, head, jaw, earL/R, tail1…, mane1…, lids | diagonal trot with dip | sniff + sneeze, wet-dog shake, wag | Moflame (`flicker` flames) |
+| `bird.mjs` | root, legL/R, body (pivot low), head, wingL/R (+2), crest1…, tail1…, trail chains, lids | waddle | flap, preen, peck | Puffinch (body is head) |
+| `floater.mjs` | root, body (bobs), head, arm/handL/R, core, tail1… (hanging wisp), wisp1…, eyes, mouth | glide, tail streaming | head spin, cackle | Malice |
+| `serpent.mjs` | root (the coil), spine1…, head, jaw, arm/foreL/R, tail1…, mane…, lids | slither wave | hiss, rear up | Serpyre |
+
+Still to write as the plans come up: insects (six legs, mandibles, wing cases), blobs (squash and stretch, no
+limbs), fish and other swimmers, big winged dragons (wing bones), long-necked quadrupeds.
 
 ## Writing clips
 
@@ -108,11 +162,17 @@ place, so it is worth the five minutes.
   - walk with straight legs swinging from the hip and dip the body by `L × (1 - cos θ)` (L = hip to sole, θ = the
     stance leg's angle) so the planted foot stays on the ground;
   - only leave the ground on purpose (celebrate hops).
+- **A forward raise flips "outwards".** `ry < 0` lifts a hanging left arm outwards, but after a forward raise (`rx`
+  comes first) the same tilt points it inwards: Joeyjab's gloves met behind its head until the cheer pose used
+  `ry > 0`. Check raised poses on the sheet.
+- **A wave over many links curls.** The amplitude grows link by link; five links at 20+ degrees roll a tail into a
+  ring (Moflame's flame tail). Keep a long chain's swing per link around 10 degrees.
+- Flicker on beats counted in `u` and wrapped (`floor(u × steps) % steps`) so a loop's last frame equals its first.
 - Give the robot character with small things: a monitor that "ratchets" in servo steps while scanning, a glitch with
   a blank screen and a reboot overshoot, bolts that flare on the hit and cut out when hurt.
-- Size: Flowbot's 13 clips are about 110 KiB of the 293 KiB file. Constant channels cost one key; `resample` drops
-  redundant keys. Watch the client's public byte ceiling (asset-audit `--bytes`); it was already over budget before
-  Flowbot.
+- Size: with the one timeline and the meshopt filters a rig is 77 to 190 KiB (Puffinch to Moflame). Constant
+  channels cost one key; `resample` drops redundant keys. Watch the client's public byte ceiling (asset-audit
+  `--bytes`); it was already over budget before Flowbot.
 
 ## Pitfalls we hit
 
@@ -133,6 +193,11 @@ place, so it is worth the five minutes.
   view).
 - The in-app Browser pane stops rendering while hidden: use headless Chrome over CDP (`scripts/cdp.mjs`, flags in
   HANDOFF.md).
+- Scripts (CDP steps for `scripts/cdp.mjs`; run your own sandbox on a free port, `npx vite --config
+  vite.sandbox.config.ts --port <p> --strictPort` in packages/render, and pass `PORT`): `src/check/sheet-steps.mjs` +
+  `sheet-compose.mjs` (the contact sheet; `HEADING` turns the creature, `DIST` / `W` / `CY` frame it),
+  `views-steps.mjs` + `tile.mjs` (four sides, for RIG_PARTS), `video-steps.mjs` (the frame-by-frame showcase). Their
+  headers list the options.
 - **Timed screenshots lie**: each capture takes 100 to 250 ms, so "a frame at 300 ms" lands much later. Use
   `window.__ewaSandbox.part3.rig.scrub(clip, t01)` to freeze an exact moment, wait ~0.4 s for TRAA to settle, then
   capture. A contact sheet of 6 frames per clip (`scrub` at 0, 0.2, ... 1) shows almost every problem at once.
@@ -148,11 +213,13 @@ place, so it is worth the five minutes.
 
 ## Checklist for the next Ewamon
 
-1. Look at its scad and sprite; decide which parts move and what would be funny or charming for it.
-2. Calibrate `frame` from the GLB (two landmarks).
-3. Joints: pivots at ball centres, parents first, the root at the feet; legs off the root if it stands.
-4. `assign`: colour + position, a local frame for rotated parts; `null` for anything it should lose.
-5. `extras` for expressions it needs (happy, dizzy, angry...), hidden at 1e-4.
-6. Clips: `idle`, `walk`, two or three `idle_*` fidgets, and the eight battle clips at their exact lengths.
-7. `node src/rig.mjs <id>`, then a scrub contact sheet in the sandbox; fix, repeat (two or three passes is normal).
+1. Look at its scad and sprite; pick the body plan and decide what would be funny or charming for it.
+2. Check it is in `frames.json` (all 203 are; after a scad change `node src/build.mjs --frames <id>`).
+3. Joints: the template's names, pivots at ball centres (the scad's limb / chain points), parents first, the root at
+   the feet; legs off the root if it stands.
+4. `assign`: colour for the obvious parts, `closest()` over the scad's primitives for the rest; check it with
+   RIG_PARTS=1 from four sides.
+5. `eyeKit()` for lib.scad eyes; other `extras` for anything else it needs, hidden at 1e-4.
+6. Clips: the template, tuned with its options and `add`, plus one or two fidgets of its own.
+7. `node src/rig.mjs <id>`, then a scrub contact sheet; fix, repeat (two or three passes is normal).
 8. `npx vitest run packages/render`, then a video for review.
