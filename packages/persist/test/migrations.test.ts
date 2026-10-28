@@ -36,6 +36,7 @@ const EXPECTED_TABLES = [
   'nemeses',
   'npc_memories',
   'npc_quests',
+  'player_blocks',
   'player_streaks',
   'players',
   'quest_progress',

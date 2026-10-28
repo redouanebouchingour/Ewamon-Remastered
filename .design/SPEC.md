@@ -2102,13 +2102,13 @@ export class BattleSummary extends Schema {
   @type('uint16') turn = 0;
   @type('float32') x = 0;            // where the arena dresses itself (pillar 7)
   @type('float32') z = 0;
-}
   // added 2026-10-28, watching battles (protocol watch.ts; appended last, earlier indexes unchanged): the creatures on the
   // field after the last turn, what each side is called (a player's name, `npc:<trainerId>`, '' wild) and side 0's heading
   // at the start (the spectator ring's battle axis). `turn` is rewritten after every committed turn.
   @type([WatchBattlerState]) field = new ArraySchema<WatchBattlerState>(); // { side, pos, species, flags (encodeLeadFlags), level, hpPct 0..100, status }
   @type(['string']) trainers = new ArraySchema<string>();
   @type('float32') angle = 0;
+}
 
 export class RaidState extends Schema {
   @type('string') id = '';
@@ -2239,8 +2239,8 @@ export type ServerMessage =
   | { readonly type: 'dm'; readonly id: number; readonly fromId: string; readonly fromName: string; readonly text: string; readonly sentAt: number } // a persisted DM pushed live (30-server-netcode.md §30.7.2)
   | { readonly type: 'storyBeat'; readonly beatId: string; readonly phase: 'start' | 'complete' }                     // §3.5 runtime: the client renders the beat's `lines` on 'start' and `after` on 'complete'
   | { readonly type: 'toast'; readonly level: 'info' | 'success' | 'warn'; readonly text: string }
-  | { readonly type: 'trainerSpotted'; readonly trainerId: string }   // amended 2026-10-20: a trainer saw the player (§30.3 trainer sight); the client walks it up and sends its interact
   | { readonly type: 'battleWatch'; readonly battleId: string; readonly turn: number; readonly events: readonly WatchEvent[] } // added 2026-10-28: a turn of a battle within 40 m, never one's own (30-server-netcode.md §30.7.2a); only what both fighters see, hp as a percentage
+  | { readonly type: 'trainerSpotted'; readonly trainerId: string }   // amended 2026-10-20: a trainer saw the player (§30.3 trainer sight); the client walks it up and sends its interact
   | { readonly type: 'realWeather'; readonly kind: WeatherKind | null }   // added 2026-10-20: weather from real life (§30.4.3a): the weather of the player's city, on joining a zone and on change; null: no city (or no answer yet). The client shows it instead of `ZoneState.weather`
   | { readonly type: 'rankedStatus'; readonly state: 'idle' | 'queued' | 'matched'; readonly rating: number; readonly waitedMs: number; readonly window: number;
       readonly opponent: { readonly name: string; readonly rating: number } | null;
@@ -2337,11 +2337,11 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `GET /messages/:username?before=&limit<=50` | — | `{ messages: MessageView[] }` | bearer |
 | `POST /messages/:username` | `{ text: 1..300 }` | `MessageView` | bearer |
 | `POST /messages/read` | `{ username }` | `204` | bearer |
-| `GET /guilds?search=` · `GET /guilds/:id` | — | `GuildView[]` / `GuildView & { members }` | bearer |
 | `GET /conversations` <!-- added 2026-10-28: talking to other players --> | - | `{ conversations: { username, lastText, lastAt, fromMe, unread, friend }[] }` (≤ 50, newest first, friends or not) | bearer |
 | `GET /social/prefs` · `POST /social/prefs` | - · `{ dmsFrom: 'everyone' \| 'friends' }` | `{ dmsFrom }` | bearer |
 | `GET /social/relation/:username` | - | `{ id, username, friend: 'none' \| 'friends' \| 'outgoing' \| 'incoming', blocked, canMessage }` | bearer |
 | `GET /social/blocks` · `POST /social/block` · `POST /social/unblock` | - · `{ username }` | `{ blocked: { id, username, blockedAt }[] }` (409 `self`, `blockLimit` at 200) | bearer |
+| `GET /guilds?search=` · `GET /guilds/:id` | — | `GuildView[]` / `GuildView & { members }` | bearer |
 | `POST /guilds` | `{ name: 3..24, tag: /^[A-Z0-9]{3,4}$/ }` (costs `GUILD.createCost` 5000, 409 `InsufficientFunds`) | `GuildCreateRes` = `GuildView & { inventoryDelta }` (`money` after the charge) | bearer |
 | `POST /guilds/:id/join` · `/leave` · `/kick` · `/promote` | `{ playerId? }` | `GuildView` | bearer |
 | `GET /leaderboard?mode=rating|dex|trainerLevel|towerStreak|daily|nuzlocke|hardcore|speedrun&page=` | - | `{ rows: LeaderboardRow[] }` (Phase D14: `towerStreak` ranks `player_streaks.best` desc, then `current`, then username, players with best > 0 only; every row carries `towerBest?` / `towerCurrent?`; `daily` (added 2026-10-20) ranks today's winners by `daily_results.turns` asc, then the earlier win, and carries `dailyTurns?` / `dailyMarks?`; `nuzlocke` / `hardcore` (added 2026-10-20) list the players holding the mode's flag: cleared runs first (earliest clear first), then runs still going, then failed ones, each by badges desc, with `challengeBadges?` / `challengeState?`; `speedrun` (added 2026-10-20) ranks the `champion` split of runs that hold the first beat's split, fastest first, with `speedrunMs?`) | bearer |

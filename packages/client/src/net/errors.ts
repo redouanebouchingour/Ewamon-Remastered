@@ -90,12 +90,12 @@ const MESSAGES: Readonly<Record<string, string>> = {
   NotGuildMember: 'You are not in that guild.',
   GuildNameTaken: 'That guild name is taken.',
   AlreadyFriends: 'You are already friends.',
-  unavailable: 'This part of the server is not live yet.',
   // talking to other players
   dmsClosed: 'This trainer is not taking messages from you.',
   requestRefused: 'This trainer is not taking friend requests from you.',
   friendLimit: 'A friend list is full.',
   blockLimit: 'Your block list is full.',
+  unavailable: 'This part of the server is not live yet.',
 };
 
 /** A 404 whose body is not the server's `{ code: 'NotFound' }`: the route itself does not exist (part-2 server routes). */

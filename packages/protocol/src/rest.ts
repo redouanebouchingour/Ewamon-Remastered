@@ -478,6 +478,41 @@ export const UsernameReq = z.object({ username: Username });
 export const UsernameParams = z.object({ username: Username });
 export const MessagesQuery = z.object({ before: IsoDate.optional(), limit: z.coerce.number().int().min(1).max(50).default(50) });
 export const MessagesRes = z.object({ messages: z.array(MessageViewSchema) });
+
+/**
+ * Talking to other players: who may send the player a DM (`players.dms_from`, migration 0026; Settings › Social).
+ * 'everyone': any player neither side has blocked; 'friends': accepted friends only. A block works both ways for DMs,
+ * friend requests, challenges and trade requests.
+ */
+export const DMS_FROM = ['everyone', 'friends'] as const;
+export type DmsFrom = (typeof DMS_FROM)[number];
+export const SocialPrefsSchema = z.object({ dmsFrom: z.enum(DMS_FROM) });
+export type SocialPrefs = z.infer<typeof SocialPrefsSchema>;
+/** `GET /social/relation/:username`: what the player card offers for that player. */
+export const RelationRes = z.object({
+  id: Uuid,
+  username: Username,
+  friend: z.enum(['none', 'friends', 'outgoing', 'incoming']),
+  /** the caller blocked them */
+  blocked: z.boolean(),
+  /** a DM from the caller would be accepted now (friends, or their DMs are open, and neither blocked the other) */
+  canMessage: z.boolean(),
+});
+export type Relation = z.infer<typeof RelationRes>;
+/** `GET /conversations`: the caller's threads, newest first (friends or not), ≤ 50. */
+export const ConversationViewSchema = z.object({
+  username: Username,
+  lastText: z.string().max(300),
+  lastAt: IsoDate,
+  fromMe: z.boolean(),
+  unread: z.number().int().min(0),
+  friend: z.boolean(),
+});
+export type ConversationView = z.infer<typeof ConversationViewSchema>;
+export const ConversationsRes = z.object({ conversations: z.array(ConversationViewSchema) });
+export const BlockViewSchema = z.object({ id: Uuid, username: Username, blockedAt: IsoDate });
+export type BlockView = z.infer<typeof BlockViewSchema>;
+export const BlockListRes = z.object({ blocked: z.array(BlockViewSchema) });
 export const SendMessageReq = z.object({ text: z.string().min(1).max(300) });
 
 // ---- guilds -------------------------------------------------------------------------------------------------------------
@@ -523,41 +558,6 @@ export const CreatureEventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('legendary'), at: IsoDate, species: z.string().max(32), caught: z.boolean() }),
   // breeding: how a hatchling's first owner got it (in place of `met`)
   z.object({ kind: z.literal('hatched'), at: IsoDate, speciesId: z.string().max(32), zoneId: z.string().max(32), parents: z.tuple([z.string().max(40), z.string().max(40)]), trainer: Name }),
-
-/**
- * Talking to other players: who may send the player a DM (`players.dms_from`, migration 0026; Settings › Social).
- * 'everyone': any player neither side has blocked; 'friends': accepted friends only. A block works both ways for DMs,
- * friend requests, challenges and trade requests.
- */
-export const DMS_FROM = ['everyone', 'friends'] as const;
-export type DmsFrom = (typeof DMS_FROM)[number];
-export const SocialPrefsSchema = z.object({ dmsFrom: z.enum(DMS_FROM) });
-export type SocialPrefs = z.infer<typeof SocialPrefsSchema>;
-/** `GET /social/relation/:username`: what the player card offers for that player. */
-export const RelationRes = z.object({
-  id: Uuid,
-  username: Username,
-  friend: z.enum(['none', 'friends', 'outgoing', 'incoming']),
-  /** the caller blocked them */
-  blocked: z.boolean(),
-  /** a DM from the caller would be accepted now (friends, or their DMs are open, and neither blocked the other) */
-  canMessage: z.boolean(),
-});
-export type Relation = z.infer<typeof RelationRes>;
-/** `GET /conversations`: the caller's threads, newest first (friends or not), ≤ 50. */
-export const ConversationViewSchema = z.object({
-  username: Username,
-  lastText: z.string().max(300),
-  lastAt: IsoDate,
-  fromMe: z.boolean(),
-  unread: z.number().int().min(0),
-  friend: z.boolean(),
-});
-export type ConversationView = z.infer<typeof ConversationViewSchema>;
-export const ConversationsRes = z.object({ conversations: z.array(ConversationViewSchema) });
-export const BlockViewSchema = z.object({ id: Uuid, username: Username, blockedAt: IsoDate });
-export type BlockView = z.infer<typeof BlockViewSchema>;
-export const BlockListRes = z.object({ blocked: z.array(BlockViewSchema) });
   // nemeses: `beaten` this creature landed the blow that ended the nemesis `name`; `caught` it was that nemesis
   z.object({ kind: z.literal('nemesis'), at: IsoDate, how: z.enum(['beaten', 'caught']), name: z.string().max(60), speciesId: z.string().max(32), rank: z.number().int().min(1).max(5), zoneId: z.string().max(32) }),
   // the bounty board: this creature led the party that brought in `target` (a ghost trainer or a nemesis) for `reward`
@@ -1490,6 +1490,13 @@ export const ROUTES = {
   messagesThread: route({ method: 'GET', path: '/messages/:username', auth: 'bearer', params: UsernameParams, query: MessagesQuery, response: MessagesRes }),
   messagesSend: route({ method: 'POST', path: '/messages/:username', auth: 'bearer', params: UsernameParams, request: SendMessageReq, response: MessageViewSchema, limit: 'message' }),
   messagesRead: route({ method: 'POST', path: '/messages/read', auth: 'bearer', request: UsernameReq, response: null }),
+  conversations: route({ method: 'GET', path: '/conversations', auth: 'bearer', response: ConversationsRes }),
+  socialPrefs: route({ method: 'GET', path: '/social/prefs', auth: 'bearer', response: SocialPrefsSchema }),
+  socialPrefsSet: route({ method: 'POST', path: '/social/prefs', auth: 'bearer', request: SocialPrefsSchema, response: SocialPrefsSchema }),
+  socialRelation: route({ method: 'GET', path: '/social/relation/:username', auth: 'bearer', params: UsernameParams, response: RelationRes }),
+  socialBlocks: route({ method: 'GET', path: '/social/blocks', auth: 'bearer', response: BlockListRes }),
+  socialBlock: route({ method: 'POST', path: '/social/block', auth: 'bearer', request: UsernameReq, response: BlockListRes, limit: 'friendReq' }),
+  socialUnblock: route({ method: 'POST', path: '/social/unblock', auth: 'bearer', request: UsernameReq, response: BlockListRes }),
   guilds: route({ method: 'GET', path: '/guilds', auth: 'bearer', query: GuildsQuery, response: GuildListRes }),
   guildDetail: route({ method: 'GET', path: '/guilds/:id', auth: 'bearer', params: GuildParams, response: GuildDetailRes }),
   guildCreate: route({ method: 'POST', path: '/guilds', auth: 'bearer', request: GuildCreateReq, response: GuildCreateRes, limit: 'guildOp' }),
@@ -1537,13 +1544,6 @@ export const ROUTES = {
   npcQuests: route({ method: 'GET', path: '/npc/quests', auth: 'bearer', response: NpcQuestsRes }),
   npcQuest: route({ method: 'GET', path: '/npc/quests/:npcId', auth: 'bearer', params: NpcQuestParams, response: NpcQuestRes }),
   npcQuestOffer: route({ method: 'POST', path: '/npc/quests/offer', auth: 'bearer', request: NpcQuestOfferReq, response: NpcQuestRes }),
-  conversations: route({ method: 'GET', path: '/conversations', auth: 'bearer', response: ConversationsRes }),
-  socialPrefs: route({ method: 'GET', path: '/social/prefs', auth: 'bearer', response: SocialPrefsSchema }),
-  socialPrefsSet: route({ method: 'POST', path: '/social/prefs', auth: 'bearer', request: SocialPrefsSchema, response: SocialPrefsSchema }),
-  socialRelation: route({ method: 'GET', path: '/social/relation/:username', auth: 'bearer', params: UsernameParams, response: RelationRes }),
-  socialBlocks: route({ method: 'GET', path: '/social/blocks', auth: 'bearer', response: BlockListRes }),
-  socialBlock: route({ method: 'POST', path: '/social/block', auth: 'bearer', request: UsernameReq, response: BlockListRes, limit: 'friendReq' }),
-  socialUnblock: route({ method: 'POST', path: '/social/unblock', auth: 'bearer', request: UsernameReq, response: BlockListRes }),
   npcQuestAnswer: route({ method: 'POST', path: '/npc/quests/answer', auth: 'bearer', request: NpcQuestAnswerReq, response: NpcQuestViewSchema }),
   npcQuestClaim: route({ method: 'POST', path: '/npc/quests/claim', auth: 'bearer', request: NpcQuestClaimReq, response: NpcQuestClaimRes }),
   bounties: route({ method: 'GET', path: '/bounties', auth: 'bearer', response: BountiesRes }),

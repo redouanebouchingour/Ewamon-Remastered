@@ -114,9 +114,9 @@ import type { CreatureInstance } from '@ewa/core';
 import type { FieldPowerRefusal } from '@ewa/protocol';
 import { POWER_OF_ACTION, fieldLeadOf, fieldRefusalText, hauntingNear, leadCan, senseGhosts } from '../game/fieldPowers';
 import type { FieldLead } from '../game/fieldPowers';
-import { PARTY_TOPIC } from '../rest/partyTopic';
 import { BLOCKS_TOPIC } from '../rest/blocksTopic';
 import type { BlocksPush } from '../rest/blocksTopic';
+import { PARTY_TOPIC } from '../rest/partyTopic';
 import { CAMP_TOPIC, raidedToday, trophyKinds } from '../game/camps';
 import { CAMP_RANGE_M, CAMP_REFUSAL_TEXT, campOf, campWelcome, challengeActive, claimRefusal, defaultCampName, nearCamp, raidRefusal } from '@ewa/content';
 import type { CampRefusal } from '@ewa/content';
@@ -367,13 +367,13 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
    * player uuid → its `ewa:dm:<id>` callback (§30.7.2: DMs pushed live while the player is in this room) and its
    * `ewa:arena:<id>` callback (arena PvP: queue status, friend invites — a ServerMessage forwarded as is)
    */
-  private readonly dmSubs = new Map<string, { readonly dm: (m: DmPush) => void; readonly arena: (m: ServerMessage) => void; readonly weather: (city: WeatherCity | null) => void }>();
   /**
    * Talking to other players: per player here, the ids they blocked or were blocked by (loaded at join, kept current by
    * `BLOCKS_TOPIC`). A block in either direction stops challenges and trade requests between the two and hides their
    * world chat from each other.
    */
   private readonly blockPeers = new Map<string, Set<string>>();
+  private readonly dmSubs = new Map<string, { readonly dm: (m: DmPush) => void; readonly arena: (m: ServerMessage) => void; readonly weather: (city: WeatherCity | null) => void }>();
   /** weather from real life: when the players' cities were last checked against the lookup cache */
   private realWeatherCheckedAt = 0;
   /** honor shapes the world: when the zone's tally was last read (and whether a read is in flight) */
@@ -513,8 +513,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     await this.sub('ewa:kick', (m: { playerId: string; exceptRoomId?: string }) => this.onKick(m));
     await this.sub(`ewa:handover:done:${this.roomId}`, (m: { playerId: string }) => this.onHandoverDone(m.playerId));
     await this.sub('ewa:profile', (m: { playerId: string }) => void this.onProfile(m.playerId));
-    // followers: a REST route changed the party (reorder, heal, evolve, deposit...): the lead walking behind may change
     await this.sub(BLOCKS_TOPIC, (m: BlocksPush) => this.onBlocks(m));
+    // followers: a REST route changed the party (reorder, heal, evolve, deposit...): the lead walking behind may change
     await this.sub(PARTY_TOPIC, (m: { playerId: string }) => {
       if (this.clientOf(m.playerId) !== undefined) void this.refreshLead(m.playerId);
     });
@@ -905,9 +905,6 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     void this.presence.subscribe(`ewa:dm:${playerId}`, dm);
     void this.presence.subscribe(arenaTopic(playerId), arena);
     void this.presence.subscribe(weatherTopic(playerId), weather);
-  }
-
-  private unsubscribePlayer(playerId: string): void {
     void this.loadBlockPeers(playerId);
   }
 
@@ -938,16 +935,19 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   /** Whether either player blocked the other (talking to other players). */
   private blockedBetween(a: string, b: string): boolean {
     return this.blockPeers.get(a)?.has(b) === true || this.blockPeers.get(b)?.has(a) === true;
+  }
+
+  private unsubscribePlayer(playerId: string): void {
     const cb = this.dmSubs.get(playerId);
     if (cb === undefined) return;
     this.dmSubs.delete(playerId);
     this.presence.unsubscribe(`ewa:dm:${playerId}`, cb.dm);
     this.presence.unsubscribe(arenaTopic(playerId), cb.arena);
     this.presence.unsubscribe(weatherTopic(playerId), cb.weather);
+    this.blockPeers.delete(playerId);
   }
 
   /**
-    this.blockPeers.delete(playerId);
    * One roaming legendary per season: while the season's roamer is on this route and nobody has caught it, an encounter
    * meets it with ROAMER_CHANCE (drawn from its own stream); null otherwise.
    */
@@ -2397,11 +2397,11 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       send: (playerId, msg) => this.sendTo(playerId, msg),
       onStart: (session) => this.onBattleStart(session),
       onEnd: (session, outcome) => this.onBattleEnd(session, outcome),
+      onTurn: (session, events) => this.onBattleTurn(session, events),
       onProgress: (playerId, p) => {
         const c = this.clientOf(playerId);
         if (c?.userData === undefined) return;
         if (p.flags !== undefined) this.applyFlags(c.userData, p.flags);
-      onTurn: (session, events) => this.onBattleTurn(session, events),
         if (p.badges !== undefined) {
           c.userData.badges = [...p.badges];
           this.applyFlags(c.userData, p.badges.map(badgeFlag));
@@ -2434,10 +2434,6 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       // Phase D13: any other battle takes a queued player out of the ranked queue
       this.dropFromRankedQueue(seat.playerId);
     }
-    this.state.battles.set(session.id, summary);
-    this.metrics.battles = this.battles.size;
-  }
-
     // watching battles: the field, what each side is called and side 0's heading (the spectator ring's battle axis)
     for (const side of [0, 1] as const) {
       const core = session.state.sides[side];
@@ -2448,10 +2444,10 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const lead = session.seats[0].playerId === null ? undefined : this.state.players.get(session.seats[0].playerId);
     summary.angle = lead?.angle ?? 0;
     this.writeWatchField(summary, session.state);
-  private onBattleEnd(session: BattleSession, outcome: Parameters<BattleHost['onEnd']>[1]): void {
-    this.state.battles.delete(session.id);
-    // Phase D14: a tower fight hands its result (already written in the end transaction) to the run
-    if (session.tower === true) void this.tower.onBattleEnd(session, outcome).catch((e: unknown) => this.deps.log.error({ err: e }, 'tower onBattleEnd failed'));
+    this.state.battles.set(session.id, summary);
+    this.metrics.battles = this.battles.size;
+  }
+
   /** Watching battles: the summary's field after a turn (only what both fighters see: watch.ts). */
   private writeWatchField(summary: BattleSummary, state: BattleState): void {
     const next = watchField(state, this.deps.content);
@@ -2491,6 +2487,10 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     });
   }
 
+  private onBattleEnd(session: BattleSession, outcome: Parameters<BattleHost['onEnd']>[1]): void {
+    this.state.battles.delete(session.id);
+    // Phase D14: a tower fight hands its result (already written in the end transaction) to the run
+    if (session.tower === true) void this.tower.onBattleEnd(session, outcome).catch((e: unknown) => this.deps.log.error({ err: e }, 'tower onBattleEnd failed'));
     for (const seat of session.seats) {
       if (seat.playerId === null) continue;
       const ps = this.state.players.get(seat.playerId);
