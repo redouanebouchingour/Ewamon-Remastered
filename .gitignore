@@ -49,3 +49,4 @@ models/**
 
 # creature-models preview renders (tools/creature-models build.mjs)
 previews/
+/table_footballers
