@@ -35,8 +35,9 @@ function who(n: WatchNames, side: 0 | 1, sp: string | null): string {
   return n.sides[side] === 'Wild' ? `the wild ${name}` : `${n.sides[side]}'s ${name}`;
 }
 
+/** "The wild ..." at the start of a line; a player's name keeps its own case ("rex's Mossling"). */
 function cap(s: string): string {
-  return s.length === 0 ? s : s[0]!.toUpperCase() + s.slice(1);
+  return s.startsWith('the ') ? `T${s.slice(1)}` : s;
 }
 
 function winnerLine(n: WatchNames, w: 0 | 1 | 'draw' | 'fled' | 'caught'): string {

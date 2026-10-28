@@ -67,6 +67,9 @@ describe('watch lines', () => {
     expect(lines).toEqual(['Rex sent out Cindercap!', "Rex's Cindercap used Ember!", 'Rex threw an orb!', 'Gotcha! It was caught!', 'Rex caught it!']);
     expect(watchLines([{ k: 'end', winner: 'draw' }], names(() => field))).toEqual(['The battle ended in a draw.']);
     expect(watchLines([{ k: 'fled', side: 0 }], names(() => field))).toEqual(['Rex ran away.']);
+    // a player's name keeps its own case at the start of a line
+    const lower = { sides: ['rex', 'Wild'] as const, species: () => 'mossling' };
+    expect(watchLines([{ k: 'move', side: 0, pos: 0, move: 'Tackle' }, { k: 'faint', side: 1, pos: 0 }], lower)).toEqual(["rex's Mossling used Tackle!", 'The wild Mossling fainted!']);
   });
 
   it('side names: a player as is, wild empty, an NPC trainer through the battle naming', () => {
