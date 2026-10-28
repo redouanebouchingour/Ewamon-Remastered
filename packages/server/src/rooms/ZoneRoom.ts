@@ -36,8 +36,8 @@ import {
 } from '@ewa/content';
 import type { BadgeId, EncounterTable, Ecosystem, Heightfield, LinkDir, PlanEllipse, RaidHotspot, RectSolid, TrainerDef, ZoneDef, ZoneId } from '@ewa/content';
 import { createRng } from '@ewa/core';
-import type { Rng, WeatherKind } from '@ewa/core';
-import { BattleSummary, CLIENT_MESSAGES, CLOSE_CODES, FISH_REACH_M, PlayerState, RaidState, SpawnState, ZoneState, emoteLengthMs, rankedWindow } from '@ewa/protocol';
+import type { BattleEvent, BattleState, Rng, WeatherKind } from '@ewa/core';
+import { BattleSummary, CLIENT_MESSAGES, NPC_TRAINER_PREFIX, SPECTATE_RANGE_M, WatchBattlerState, watchEvents, watchField, CLOSE_CODES, FISH_REACH_M, PlayerState, RaidState, SpawnState, ZoneState, emoteLengthMs, rankedWindow } from '@ewa/protocol';
 import type { ChallengeFailReason, ClientMessageType, ClientPayload, FastTravelRefusal, FishRefusal, RankedIdleReason, ServerMessage, ServerMessageOf } from '@ewa/protocol';
 import type { RoomDeps } from '../deps';
 import { censor, sanitizeChat } from '../chat/filter';
@@ -115,6 +115,8 @@ import type { FieldPowerRefusal } from '@ewa/protocol';
 import { POWER_OF_ACTION, fieldLeadOf, fieldRefusalText, hauntingNear, leadCan, senseGhosts } from '../game/fieldPowers';
 import type { FieldLead } from '../game/fieldPowers';
 import { PARTY_TOPIC } from '../rest/partyTopic';
+import { BLOCKS_TOPIC } from '../rest/blocksTopic';
+import type { BlocksPush } from '../rest/blocksTopic';
 import { CAMP_TOPIC, raidedToday, trophyKinds } from '../game/camps';
 import { CAMP_RANGE_M, CAMP_REFUSAL_TEXT, campOf, campWelcome, challengeActive, claimRefusal, defaultCampName, nearCamp, raidRefusal } from '@ewa/content';
 import type { CampRefusal } from '@ewa/content';
@@ -366,6 +368,12 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
    * `ewa:arena:<id>` callback (arena PvP: queue status, friend invites — a ServerMessage forwarded as is)
    */
   private readonly dmSubs = new Map<string, { readonly dm: (m: DmPush) => void; readonly arena: (m: ServerMessage) => void; readonly weather: (city: WeatherCity | null) => void }>();
+  /**
+   * Talking to other players: per player here, the ids they blocked or were blocked by (loaded at join, kept current by
+   * `BLOCKS_TOPIC`). A block in either direction stops challenges and trade requests between the two and hides their
+   * world chat from each other.
+   */
+  private readonly blockPeers = new Map<string, Set<string>>();
   /** weather from real life: when the players' cities were last checked against the lookup cache */
   private realWeatherCheckedAt = 0;
   /** honor shapes the world: when the zone's tally was last read (and whether a read is in flight) */
@@ -506,6 +514,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     await this.sub(`ewa:handover:done:${this.roomId}`, (m: { playerId: string }) => this.onHandoverDone(m.playerId));
     await this.sub('ewa:profile', (m: { playerId: string }) => void this.onProfile(m.playerId));
     // followers: a REST route changed the party (reorder, heal, evolve, deposit...): the lead walking behind may change
+    await this.sub(BLOCKS_TOPIC, (m: BlocksPush) => this.onBlocks(m));
     await this.sub(PARTY_TOPIC, (m: { playerId: string }) => {
       if (this.clientOf(m.playerId) !== undefined) void this.refreshLead(m.playerId);
     });
@@ -899,6 +908,36 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   }
 
   private unsubscribePlayer(playerId: string): void {
+    void this.loadBlockPeers(playerId);
+  }
+
+  private async loadBlockPeers(playerId: string): Promise<void> {
+    try {
+      const ids = await this.deps.repos.db.transaction((tx) => this.deps.repos.social.blockPeers(tx, playerId));
+      if (this.dmSubs.has(playerId)) this.blockPeers.set(playerId, new Set(ids));
+    } catch (e) {
+      this.deps.log.warn({ err: e, playerId }, 'block list load failed');
+    }
+  }
+
+  /** `POST /social/block` · `/unblock`: both players' sets, wherever they are in this room. */
+  private onBlocks(m: BlocksPush): void {
+    for (const [a, b] of [[m.blockerId, m.blockedId], [m.blockedId, m.blockerId]] as const) {
+      const set = this.blockPeers.get(a);
+      if (set === undefined) continue;
+      if (m.on) set.add(b);
+      else set.delete(b);
+    }
+    // a block takes back a pending challenge and ends a trade between them
+    if (m.on) {
+      this.challenges.consume(m.blockerId, m.blockedId, this.now());
+      this.challenges.consume(m.blockedId, m.blockerId, this.now());
+    }
+  }
+
+  /** Whether either player blocked the other (talking to other players). */
+  private blockedBetween(a: string, b: string): boolean {
+    return this.blockPeers.get(a)?.has(b) === true || this.blockPeers.get(b)?.has(a) === true;
     const cb = this.dmSubs.get(playerId);
     if (cb === undefined) return;
     this.dmSubs.delete(playerId);
@@ -908,6 +947,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   }
 
   /**
+    this.blockPeers.delete(playerId);
    * One roaming legendary per season: while the season's roamer is on this route and nobody has caught it, an encounter
    * meets it with ROAMER_CHANCE (drawn from its own stream); null otherwise.
    */
@@ -1283,7 +1323,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
         case 'rankedQueue':
           return this.onRankedQueue(client, data);
         case 'tradeRequest':
-          return this.onTrade(client, this.tradeRequestGuard(client) ?? this.trades.request(client.userData!.playerId, (data as ClientPayload<'tradeRequest'>).targetId));
+          return this.onTrade(client, this.tradeRequestGuard(client, (data as ClientPayload<'tradeRequest'>).targetId) ?? this.trades.request(client.userData!.playerId, (data as ClientPayload<'tradeRequest'>).targetId));
         case 'tradeReply': {
           const m = data as ClientPayload<'tradeReply'>;
           return this.onTrade(client, this.trades.reply(client.userData!.playerId, m.tradeId, m.accept));
@@ -1401,7 +1441,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     const clean = sanitizeChat(m.text);
     if (clean === null) return;
     const msg: ServerMessage = { type: 'chat', id: ps.id, name: ps.name, text: censor(clean) };
-    for (const viewerId of this.aoi.viewersAt(ps.x, ps.z)) this.sendTo(viewerId, msg);
+    for (const viewerId of this.aoi.viewersAt(ps.x, ps.z)) if (!this.blockedBetween(ps.id, viewerId)) this.sendTo(viewerId, msg);
   }
 
   // ─── interact ───────────────────────────────────────────────────────────────
@@ -2361,6 +2401,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
         const c = this.clientOf(playerId);
         if (c?.userData === undefined) return;
         if (p.flags !== undefined) this.applyFlags(c.userData, p.flags);
+      onTurn: (session, events) => this.onBattleTurn(session, events),
         if (p.badges !== undefined) {
           c.userData.badges = [...p.badges];
           this.applyFlags(c.userData, p.badges.map(badgeFlag));
@@ -2397,10 +2438,59 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     this.metrics.battles = this.battles.size;
   }
 
+    // watching battles: the field, what each side is called and side 0's heading (the spectator ring's battle axis)
+    for (const side of [0, 1] as const) {
+      const core = session.state.sides[side];
+      const seat = session.seats[side];
+      const name = seat.playerId !== null ? (this.state.players.get(seat.playerId)?.name ?? '') : core.kind === 'npc' && core.trainerId !== null ? `${NPC_TRAINER_PREFIX}${core.trainerId}` : '';
+      summary.trainers.push(name);
+    }
+    const lead = session.seats[0].playerId === null ? undefined : this.state.players.get(session.seats[0].playerId);
+    summary.angle = lead?.angle ?? 0;
+    this.writeWatchField(summary, session.state);
   private onBattleEnd(session: BattleSession, outcome: Parameters<BattleHost['onEnd']>[1]): void {
     this.state.battles.delete(session.id);
     // Phase D14: a tower fight hands its result (already written in the end transaction) to the run
     if (session.tower === true) void this.tower.onBattleEnd(session, outcome).catch((e: unknown) => this.deps.log.error({ err: e }, 'tower onBattleEnd failed'));
+  /** Watching battles: the summary's field after a turn (only what both fighters see: watch.ts). */
+  private writeWatchField(summary: BattleSummary, state: BattleState): void {
+    const next = watchField(state, this.deps.content);
+    const cur = summary.field;
+    while (cur.length > next.length) cur.pop();
+    next.forEach((b, i) => {
+      let row = cur.at(i);
+      if (row === undefined) {
+        row = new WatchBattlerState();
+        cur.push(row);
+      }
+      row.side = b.side;
+      row.pos = b.pos;
+      row.species = b.species;
+      row.flags = b.flags;
+      row.level = b.level;
+      row.hpPct = b.hpPct;
+      row.status = b.status;
+    });
+  }
+
+  /**
+   * Watching battles: after every committed turn the summary takes the new field and players near the ring (never the
+   * fighters) get the turn as `battleWatch`.
+   */
+  private onBattleTurn(session: BattleSession, events: readonly BattleEvent[]): void {
+    const summary = this.state.battles.get(session.id);
+    if (summary === undefined) return;
+    summary.turn = session.state.turn;
+    this.writeWatchField(summary, session.state);
+    const watch = watchEvents(session.state, events, this.deps.content);
+    if (watch.length === 0) return;
+    const fighters = new Set(session.seats.map((s) => s.playerId));
+    const msg: ServerMessage = { type: 'battleWatch', battleId: session.id, turn: session.state.turn, events: watch };
+    this.state.players.forEach((ps, id) => {
+      if (!fighters.has(id) && Math.hypot(ps.x - session.x, ps.z - session.z) <= SPECTATE_RANGE_M) this.sendTo(id, msg);
+    });
+  }
+
     for (const seat of session.seats) {
       if (seat.playerId === null) continue;
       const ps = this.state.players.get(seat.playerId);
@@ -2424,8 +2514,9 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
 
   // ─── trades (§30.8.3) ───────────────────────────────────────────────────────
 
-  private tradeRequestGuard(client: ZoneClient): { code: 'busy'; detail: string } | null {
-    return client.userData!.battleId !== null ? { code: 'busy', detail: 'inBattle' } : null;
+  private tradeRequestGuard(client: ZoneClient, targetId: string): { code: 'busy' | 'notAllowed'; detail: string } | null {
+    if (client.userData!.battleId !== null) return { code: 'busy', detail: 'inBattle' };
+    return this.blockedBetween(client.userData!.playerId, targetId) ? { code: 'notAllowed', detail: 'unavailable' } : null;
   }
 
   private onTrade(client: ZoneClient, err: { readonly code: 'notFound' | 'notAllowed' | 'busy'; readonly detail: string | null } | null): void {
@@ -2616,7 +2707,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
   private onChallenge(client: ZoneClient, m: ClientPayload<'challenge'>): void {
     const ud = client.userData!;
     if (ud.battleId !== null) return this.sendMsg(client, { type: 'error', code: 'busy', detail: 'inBattle' });
-    if (!this.challengeable(ud.playerId, m.targetId)) return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'unavailable' });
+    if (!this.challengeable(ud.playerId, m.targetId) || this.blockedBetween(ud.playerId, m.targetId)) return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'unavailable' });
     const r = this.challenges.offer(ud.playerId, m.targetId, this.now());
     if (r === 'selfChallenge') return this.sendMsg(client, { type: 'error', code: 'notAllowed', detail: 'self' });
     if (r === 'duplicate' || r === 'targetBusy') return this.sendMsg(client, { type: 'error', code: 'busy', detail: r });

@@ -188,6 +188,8 @@ export interface BattleHost {
   onStart(session: BattleSession): void;
   /** cleanup: state.battles.delete, inBattle false, battleId null, spawn release, presence */
   onEnd(session: BattleSession, outcome: BattleOutcome | 'void' | 'playerLeft'): void;
+  /** watching battles: a turn committed (`session.state` is the new state); the zone room updates its summary and feed */
+  onTurn?(session: BattleSession, events: readonly BattleEvent[]): void;
   /** refresh the room's per-player caches (flags/badges for beats and gates, inventory for surf) */
   onProgress(playerId: string, p: { readonly flags?: readonly string[]; readonly badges?: readonly BadgeId[]; readonly inventory?: Readonly<Record<string, number>> }): void;
 }
@@ -1289,6 +1291,7 @@ export class BattleCoordinator {
   private sendAfterCommit(session: BattleSession, next: BattleState, events: readonly BattleEvent[], deltas: Map<string, PlayerDelta>, now: number): void {
     const host = this.deps.host;
     const digest = digestBattleState(next);
+    host.onTurn?.(session, events);
     for (const seat of session.seats) {
       if (seat.playerId === null) continue;
       const pid = seat.playerId;

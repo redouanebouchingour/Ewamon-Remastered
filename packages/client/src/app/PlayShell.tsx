@@ -24,6 +24,8 @@ import { Minimap } from '../world/Minimap';
 import { FieldPowerChip } from '../world/FieldPowerChip';
 import { PostBattlePrompts } from '../world/PostBattlePrompts';
 import { RaidLobby } from '../world/RaidLobby';
+import { PlayerCard } from '../world/PlayerCard';
+import { WatchPanel } from '../world/WatchPanel';
 import { TowerModal, TowerStreak } from '../world/TowerModal';
 import { TradeModal } from '../world/TradeModal';
 import { BandTutorialCard } from '../world/BandTutorialCard';
@@ -248,6 +250,10 @@ export function PlayShell() {
       <MatchFoundCard />
       <TradeModal />
       <RaidLobby />
+      {/* talking to other players: the card E opens beside another trainer */}
+      <PlayerCard />
+      {/* watching battles: the scorebug of someone else's battle near the player */}
+      {!inArena && <WatchPanel />}
       {/* Phase D14: the battle tower (picker / between fights / summary) and the counter over a tower fight */}
       <TowerModal />
       <TowerStreak />

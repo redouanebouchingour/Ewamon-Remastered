@@ -148,7 +148,18 @@ export interface BattleBanner {
   readonly text: string;
 }
 
-export type ModalKind = 'none' | 'evolve' | 'learnMove' | 'trade' | 'challenge' | 'raidLobby' | 'nickname' | 'release' | 'listing' | 'tower';
+export type ModalKind = 'none' | 'evolve' | 'learnMove' | 'trade' | 'challenge' | 'raidLobby' | 'nickname' | 'release' | 'listing' | 'tower' | 'player';
+
+/** Talking to other players: the player card's payload (`ui.modal === 'player'`, opened by E beside another trainer). */
+export interface PlayerCardPayload {
+  /** the player's uuid (`room.state.players` key) */
+  readonly id: string;
+  readonly name: string;
+}
+
+export function isPlayerCardPayload(p: unknown): p is PlayerCardPayload {
+  return typeof p === 'object' && p !== null && typeof (p as { id?: unknown }).id === 'string' && typeof (p as { name?: unknown }).name === 'string';
+}
 
 /** Phase D14 — the battle tower run as the server last described it (`towerState`); null = no run to show. */
 export type TowerUi = Omit<ServerMessageOf<'towerState'>, 'type'>;

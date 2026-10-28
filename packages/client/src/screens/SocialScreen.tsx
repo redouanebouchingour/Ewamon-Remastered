@@ -2,18 +2,21 @@
  * `/play/social` (SPEC §20.9.7). Left 320 px: tabs Friends · Requests (n) · Nearby. Friends show online state and
  * unread DM counts, each row with Message · Challenge · Trade (the latter two only when that player is in this
  * zone — `room.state.players.has(id)` read through useRoomState). Right: the DM thread (`/play/social/:username`,
- * the nested route) or a prompt. `GET /friends` 404 (server part 2) → a "not live yet" state; Nearby still works
+ * the nested route) or a prompt. Talking to other players: a Messages tab lists every conversation, friends or not
+ * (GET /conversations), and a nearby trainer's Talk opens the same player card E opens beside them. `GET /friends` 404 (server part 2) → a "not live yet" state; Nearby still works
  * from the replicated room state.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Outlet, useLoaderData, useParams, useSearchParams } from 'react-router';
-import type { FriendView } from '@ewa/protocol';
+import type { ConversationView, FriendView } from '@ewa/protocol';
 import type { friendsLoader } from '../app/loaders';
 import { zoneName } from '../data/content';
+import { apiFetch } from '../net/api';
 import { getWorldSession } from '../net/WorldSession';
 import { useRoomState } from '../net/useRoomState';
 import { useNotificationsStore } from '../state/notifications';
 import { toast } from '../state/notifications';
+import { useUiStore } from '../state/ui';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { TextField } from '../ui/Field';
@@ -27,7 +30,49 @@ import s from './SocialScreen.module.css';
 import { relativeTime, useClosePanel, useIntent } from './shared';
 import { Unavailable } from './Unavailable';
 
-type Tab = 'friends' | 'requests' | 'nearby';
+type Tab = 'friends' | 'messages' | 'requests' | 'nearby';
+
+/** Every conversation, friends or not, newest first; read again when a DM arrives (the unread counts change). */
+function useConversations(on: boolean, unreadKey: string): { readonly rows: readonly ConversationView[] | null; readonly failed: boolean } {
+  const [rows, setRows] = useState<readonly ConversationView[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    if (!on) return;
+    let live = true;
+    apiFetch('conversations')
+      .then((r) => {
+        if (!live) return;
+        setRows(r.conversations);
+        setFailed(false);
+      })
+      .catch(() => {
+        if (live) setFailed(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [on, unreadKey]);
+  return { rows, failed };
+}
+
+function ConversationRow({ c, unread, active }: { readonly c: ConversationView; readonly unread: number; readonly active: boolean }) {
+  return (
+    <li className={cx(s.friend, active && s.friendActive)}>
+      <Link to={`/play/social/${c.username}`} className={s.convLink}>
+        <span className={s.friendTop}>
+          <span className={s.friendName}>{c.username}</span>
+          {c.friend && <Pill tone="info">Friend</Pill>}
+          {unread > 0 && <Pill tone="accent">{unread}</Pill>}
+          <span className={s.convTime}>{relativeTime(c.lastAt)}</span>
+        </span>
+        <span className={s.convText}>
+          {c.fromMe ? 'You: ' : ''}
+          {c.lastText}
+        </span>
+      </Link>
+    </li>
+  );
+}
 
 function useNearby(): readonly { readonly id: string; readonly name: string; readonly inBattle: boolean }[] {
   const rows = useRoomState((state, me) => {
@@ -89,6 +134,8 @@ export function SocialScreen() {
   const fetcher = useIntent('/play/social');
   const [addName, setAddName] = useState('');
   const tab = (params.get('tab') ?? 'friends') as Tab;
+  const unreadTotal = Object.values(unread).reduce((a, b) => a + b, 0);
+  const convs = useConversations(tab === 'messages', `${openThread ?? ''}:${unreadTotal}`);
 
   // after every action React Router revalidates this loader, so the lists are always the server's
   const lists = data.available ? data.data : null;
@@ -102,13 +149,28 @@ export function SocialScreen() {
             label="Social"
             tabs={[
               { key: 'friends', label: 'Friends', count: lists?.friends.length },
+              { key: 'messages', label: 'Messages', count: unreadTotal > 0 ? unreadTotal : undefined },
               { key: 'requests', label: 'Requests', count: incoming.length },
               { key: 'nearby', label: 'Nearby', count: nearby.length },
             ]}
             value={tab}
             onChange={(k) => setParams({ tab: k }, { replace: true })}
           />
-          {tab === 'nearby' ? (
+          {tab === 'messages' ? (
+            convs.failed ? (
+              <EmptyState icon="social" title="Could not load your messages" hint="Check the connection and open the tab again." />
+            ) : convs.rows === null ? (
+              <EmptyState icon="social" title="Loading messages" hint="One moment." />
+            ) : convs.rows.length === 0 ? (
+              <EmptyState icon="social" title="No messages yet" hint="Walk up to a trainer and press E to say hello, or message a friend." />
+            ) : (
+              <ul className={s.list}>
+                {convs.rows.map((c) => (
+                  <ConversationRow key={c.username} c={c} unread={unread[c.username] ?? 0} active={openThread === c.username} />
+                ))}
+              </ul>
+            )
+          ) : tab === 'nearby' ? (
             nearby.length === 0 ? (
               <EmptyState icon="party" title="Nobody nearby" hint="Other trainers in your part of the zone appear here." />
             ) : (
@@ -121,6 +183,9 @@ export function SocialScreen() {
                       {p.inBattle && <Pill tone="warn">In battle</Pill>}
                     </div>
                     <div className={s.friendActions}>
+                      <Button size="sm" variant="ghost" icon="user" onClick={() => useUiStore.getState().openModal('player', { id: p.id, name: p.name })}>
+                        Talk
+                      </Button>
                       <Button size="sm" variant="ghost" icon="sword" disabled={p.inBattle} onClick={() => sendWorld('challenge', p.id, p.name)}>
                         Challenge
                       </Button>
@@ -192,7 +257,7 @@ export function SocialScreen() {
           )}
         </div>
         <div className={s.right}>
-          {openThread !== undefined ? <Outlet /> : <EmptyState icon="social" title="Pick a conversation" hint="Choose a friend to read and send messages." />}
+          {openThread !== undefined ? <Outlet /> : <EmptyState icon="social" title="Pick a conversation" hint="Choose a friend or a conversation to read and send messages." />}
         </div>
       </div>
     </Panel>

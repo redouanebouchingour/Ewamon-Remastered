@@ -346,3 +346,12 @@ installed library that future readers should not have to re-derive. The spec its
 - Route `dexViewed` `POST /dex/viewed/:speciesId` (404 for a species not in the caller's dex). Route count 121 → 122.
 - `progressionDelta.research?: ResearchLevelUp[]` ({ speciesId, level 1..5 }), present only on a level-up.
 - `BattleStateSchema` and `ReplayStartSchema` gained the optional `catchBonus` (core `BattleState.catchBonus`).
+
+## Watching battles, talking to other players (2026-10-28)
+
+- `watch.ts` projects a battle for spectators: `watchField` (the summary's field) and `watchEvents` (a turn). Hp is a
+  percentage rounded up while standing, so 1 hp never shows as 0. A battle form travels as its slot in `formsOf`
+  inside `encodeLeadFlags`, the followers' packing, so the client resolves its sprite with `followerSprite`.
+- `BattleSummary` gained `field`, `trainers` and `angle`, appended last. `battleWatch` is the 30th server message.
+- REST: `GET /conversations`, `GET/POST /social/prefs`, `GET /social/relation/:username`, `GET /social/blocks`,
+  `POST /social/block`, `POST /social/unblock`.

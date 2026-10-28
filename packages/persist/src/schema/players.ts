@@ -39,6 +39,8 @@ export const players = pgTable(
     playStartedAt: timestamp('play_started_at', { withTimezone: true }),
     /** Weather from real life (migration 0010): the city the player picked, coordinates rounded to 0.1°; null = off */
     weatherCity: jsonb('weather_city').$type<WeatherCity>(),
+    /** Talking to other players (migration 0026): who may DM the player, 'everyone' (minus blocks) or 'friends' */
+    dmsFrom: varchar('dms_from', { length: 8 }).notNull().default('everyone'),
   },
   (t) => [
     uniqueIndex('players_username_lower_uq').on(t.usernameLower),

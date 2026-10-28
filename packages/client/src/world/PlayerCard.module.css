@@ -1,0 +1,110 @@
+/* Talking to other players: the player card (Broadcast). The trainer's identity as on the public profile (square
+ * portrait chip, condensed italic uppercase name), a one-line message composer on carbon, then the actions as an even
+ * two-column grid; orange only on Challenge, the primary. Hard edges, no radii. */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-5);
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-inline-size: 0;
+}
+
+.title {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.titleSkeleton {
+  inline-size: 140px;
+  block-size: var(--lh-body);
+}
+
+.name {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  overflow-wrap: anywhere;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h2);
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.guild {
+  color: var(--text-2);
+  font-size: var(--t-body-lg);
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.motto {
+  color: var(--text-1);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-style: italic;
+}
+
+.message {
+  padding: var(--s-4);
+  background: var(--bg-0);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+}
+
+.composer {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+}
+
+.composerSkeleton {
+  block-size: var(--control-md);
+}
+
+.grow {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+
+.confirm {
+  box-shadow: inset 0 0 0 1px var(--danger);
+  color: var(--danger);
+}
+
+.caption {
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}

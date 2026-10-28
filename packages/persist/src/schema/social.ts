@@ -73,6 +73,24 @@ export const guildMembers = pgTable(
   (t) => [primaryKey({ columns: [t.guildId, t.playerId] }), uniqueIndex('guild_members_player_uq').on(t.playerId)],
 );
 
+/**
+ * Talking to other players (migration 0026): `blocker` blocked `blocked`. A block works both ways for DMs, friend
+ * requests, challenges and trade requests (the server checks either direction); blocking ends a friendship.
+ */
+export const playerBlocks = pgTable(
+  'player_blocks',
+  {
+    blockerId: uuid('blocker_id')
+      .notNull()
+      .references(() => players.id, { onDelete: 'cascade' }),
+    blockedId: uuid('blocked_id')
+      .notNull()
+      .references(() => players.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.blockerId, t.blockedId] }), index('player_blocks_blocked_idx').on(t.blockedId), check('player_blocks_not_self_ck', sql`${t.blockerId} <> ${t.blockedId}`)],
+);
+
 export type FriendshipRow = typeof friendships.$inferSelect;
 export type MessageRow = typeof messages.$inferSelect;
 export type GuildRow = typeof guilds.$inferSelect;

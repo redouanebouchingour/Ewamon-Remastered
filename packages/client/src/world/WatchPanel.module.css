@@ -1,0 +1,225 @@
+/* Watching battles: the Watch panel (Broadcast). A sports scorebug top-centre under the top bar: a paper "Watching"
+ * block on a black strip with the matchup in condensed italic uppercase, the two sides as carbon cells (sprite, name,
+ * level, hp bar, the percentage as a tabular number), then the last lines of the fight with the newest in paper white.
+ * The canvas HUD keeps the party cards top-left and the clock top-right; the zone banner's place is free while it shows.
+ * Orange only on the final line's label. */
+
+.layer {
+  position: absolute;
+  inset-block-start: calc(var(--topbar-h) + var(--s-4));
+  inset-inline: var(--s-5);
+  z-index: var(--z-panel);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.panel {
+  inline-size: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  background: var(--glass);
+  box-shadow: inset 0 0 0 1px var(--line-1), var(--shadow-2);
+  pointer-events: auto;
+}
+
+.head {
+  display: flex;
+  align-items: stretch;
+  min-block-size: var(--control-md);
+  background: var(--bg-0);
+  box-shadow: inset 0 -1px 0 var(--line-1);
+  font-family: var(--face-display);
+  text-transform: uppercase;
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--s-5) 0 var(--s-3);
+  background: var(--text-hi);
+  color: var(--bg-0);
+  font-size: var(--t-body);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+
+.matchup {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  min-inline-size: 0;
+  padding: var(--s-2) var(--s-4);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.headName {
+  color: var(--text-hi);
+  font-size: var(--t-body-lg);
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+
+.vs {
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.turn {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--s-4);
+  box-shadow: inset 1px 0 0 var(--line-1);
+  color: var(--text-2);
+  font-size: var(--t-body);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.close {
+  margin-inline-start: auto;
+  align-self: center;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-4);
+}
+
+.far {
+  box-shadow: inset 1px 0 0 var(--line-1);
+}
+
+.trainer {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.empty {
+  color: var(--text-2);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}
+
+.mon {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.fainted {
+  opacity: 0.5;
+}
+
+.sprite {
+  flex: none;
+}
+
+.monText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-inline-size: 0;
+}
+
+.monName {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  overflow: hidden;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.level {
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  padding: 0 var(--s-2);
+  background: var(--warn-a16);
+  color: var(--warn);
+  font-size: var(--t-caption);
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.pct {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: 1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin: 0;
+  padding: var(--s-3) var(--s-4);
+  list-style: none;
+  box-shadow: inset 0 1px 0 var(--line-1);
+}
+
+.line {
+  color: var(--text-2);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+}
+
+.newest {
+  color: var(--text-hi);
+  font-weight: 600;
+}
+
+@media (max-width: 520px) {
+  .field {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .far {
+    box-shadow: inset 0 1px 0 var(--line-1);
+  }
+
+  .turn {
+    display: none;
+  }
+}

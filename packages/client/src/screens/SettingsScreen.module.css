@@ -141,3 +141,28 @@
   box-shadow: none;
   color: var(--on-accent);
 }
+
+/* talking to other players: the blocked trainers, one row each with Unblock */
+.blockList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.blockRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+}
+
+.blockName {
+  color: var(--text-hi);
+  font-weight: 600;
+}

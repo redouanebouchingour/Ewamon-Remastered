@@ -1523,3 +1523,19 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   stays at < 15 s in-process (Q17): the bots, the server and the other test files share the machine.
 - Earlier notes that mention PGlite describe the state of their date.
 
+## Talking to other players, watching battles (2026-10-28)
+
+- DMs reach a non-friend unless the recipient chose friends only (`players.dms_from`, migration 0026; the client's
+  "Direct messages from" setting existed before but nothing enforced it; the column default `'everyone'` matches the
+  client's default). A refusal is `409 dmsClosed` whether the cause is the preference or a block, and a blocked friend
+  request is `409 requestRefused`, so nobody learns they were blocked. `GET /social/relation` shows the blocked side
+  only `canMessage: false`.
+- Blocks live in the zone room as a per-player set of peers (loaded at join after the DM subscription, kept by
+  `ewa:blocks`). A challenge or trade request across a block is `error notAllowed unavailable`, the same as an
+  unavailable target; world chat between them is simply not delivered. A block also takes back a pending challenge.
+- `GET /conversations` scans the newest 2000 messages of the player and keeps one per other player: `DISTINCT ON`
+  with the player id would need the same bind parameter twice, which Postgres does not accept as the same expression.
+- Watching: `BattleHost.onTurn` runs in `sendAfterCommit` (after the commit, before the `battleEvents` go out), so a
+  spectator's summary never runs ahead of the truth. The feed goes to every player in the room within 40 m of the
+  battle point except its fighters, judged by `PlayerState` position, not the AOI cells. Arena rooms do not implement
+  `onTurn`: arena watching stays the live-board replay feed.

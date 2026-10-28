@@ -36,8 +36,8 @@ import { Group, Vector3 } from 'three/webgpu';
 import { BIKE_ITEM, BODIES, HOLLOWED_FLAG, POSTGAME_FLAG, SHADOW_MAX, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, shadowNotice, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { BattleState, CreatureInstance } from '@ewa/core';
-import { EMOTE_BREAKDANCE, EMOTE_MAX, FISH_REACH_M, emoteLengthMs } from '@ewa/protocol';
-import type { PlayerState, ServerMessage, SpawnState, ZoneState } from '@ewa/protocol';
+import { EMOTE_BREAKDANCE, EMOTE_MAX, FISH_REACH_M, SPECTATE_RANGE_M, emoteLengthMs } from '@ewa/protocol';
+import type { PlayerState, ServerMessage, SpawnState, WatchEvent, ZoneState } from '@ewa/protocol';
 import { ACTOR_POOL_SIZE, createRenderer, edgePoint, headingYaw, heroSurfaces, part3Of } from '@ewa/render';
 import type { CompileProgress, CreatureBillboard, DetailDistance as RenderDetailDistance, EmoteId, Renderer, SurfaceId, TypeName, VfxId, WeatherKind, ZoneHandle } from '@ewa/render';
 import { createAudioDirector } from '../audio/AudioDirector';
@@ -77,6 +77,7 @@ import { useViewStore } from '../state/view';
 import { setEmoteAction, type WheelEmote } from '../state/emotes';
 import { noteTutorialEvent } from '../state/tutorial';
 import { useUiStore } from '../state/ui';
+import type { PlayerCardPayload } from '../state/ui';
 import { FONT, TYPE_COLORS } from '../ui/tokens';
 import { createStepCollider } from './collider';
 import type { StepCollider } from './collider';
@@ -89,7 +90,11 @@ import type { HudNameplates } from './HudWriter';
 import { EvolutionDirector } from './EvolutionDirector';
 import { createInputCapture } from './input';
 import type { InputCapture } from './input';
-import { InteractionTargets, PLAYER_RANGE, makeInteractable } from './interaction';
+import { InteractionTargets, PLAYER_PREFIX, PLAYER_RANGE, makeInteractable } from './interaction';
+import { SpectatorViews, WATCH_PREFIX } from './SpectatorViews';
+import type { SpectatedBattle } from './SpectatorViews';
+import { applyWatchEvents, watchLines, watchSideName } from '../battle/watchLines';
+import { useWatchStore } from '../state/watch';
 import type { Interactable } from './interaction';
 import { FishingController } from './fishing';
 import { pocketActorMax } from './interiors';
@@ -330,7 +335,18 @@ class World implements World3D {
   /** the battle state the party strip shows while a battle is open (null = the session party) */
   private stripFrom: BattleState | null = null;
   private readonly selfTmp = { x: 0, z: 0 };
-  private spectatorArenas = new Map<string, { x: number; z: number }>();
+  /** watching battles: the rings of the battles near the player with their creatures (scene/SpectatorViews.ts) */
+  private spectators: SpectatorViews | null = null;
+  /** talking to other players: the remote players' `player` interactables, moved with their avatars each step */
+  private readonly playerTargets = new Map<string, Interactable>();
+  private readonly movePlayerTarget = (id: string, x: number, z: number, info: { readonly inBattle: boolean }): void => {
+    const t = this.playerTargets.get(id);
+    if (t === undefined) return;
+    t.x = x;
+    t.z = z;
+    // a fighter is watched, not talked to: the ring's Watch prompt stands there instead
+    t.enabled = !info.inBattle;
+  };
   private zone: ZoneDef | null = null;
   /** the beat whose lines the player already read before its interact was sent (its `storyBeat start` is no news) */
   private readBeat: string | null = null;
@@ -402,7 +418,13 @@ class World implements World3D {
     this.remotes = new RemoteInterpolator(
       {
         spawn: (id, name, look, guildTag) => this.ready && this.renderer.actors.spawn(id, { look, name, guildTag, isLocal: false }),
-        setTransform: (id, x, z, a, m, r) => this.ready && this.renderer.actors.setTransform(id, x, z, a, m, r),
+        setTransform: (id, x, z, a, m, r) => {
+          if (!this.ready) return;
+          // watching battles: a fighter in a ring near the player stands at the stage's trainer slot, facing the ring
+          const spot = this.spectators?.trainerSpot(id) ?? null;
+          if (spot !== null) this.renderer.actors.setTransform(id, spot.x, spot.z, spot.angle, false, false);
+          else this.renderer.actors.setTransform(id, x, z, a, m, r);
+        },
         despawn: (id) => this.ready && this.renderer.actors.despawn(id),
       },
       () => performance.now(),
@@ -565,6 +587,18 @@ class World implements World3D {
         dress: (x, z) => p3.stage.dressSpectator(x, z),
         undress: (x, z) => p3.stage.undressSpectator(x, z),
       });
+      // watching battles: other players' battles near by, their creatures standing in the ring
+      this.spectators = new SpectatorViews({
+        parent: group,
+        acquire: (d) => p3.sprites.acquire(d),
+        descriptor: (sp, key, v, a, sh, sprite) => this.catalog?.descriptor(sp, key, v, a, sh, sprite) ?? null,
+        leaseSprites: (sp, side, part) => this.leaseSprites(sp, side, part),
+        height: (x, z) => this.director.handle?.collider.sample(x, z) ?? 0,
+        dress: (x, z) => p3.stage.dressSpectator(x, z),
+        undress: (x, z) => p3.stage.undressSpectator(x, z),
+        targets: this.targets,
+        interactKey: () => this.keyLabel('interact'),
+      });
       // §20.5.6: every evolve path plays render's evolution sequence through this player (app/evolution.ts); rebuilt with
       // the renderer after a lost device (E6)
       const evoDirector = new EvolutionDirector({
@@ -683,9 +717,11 @@ class World implements World3D {
     this.spawns?.clear();
     this.legendaries?.clear();
     this.raidDen?.clear();
+    this.spectators?.clear();
     this.spawns = null;
     this.legendaries = null;
     this.raidDen = null;
+    this.spectators = null;
     // followers: the pool lived on the dead renderer (attachRoom re-feeds the leads to the rebuilt one)
     this.followers?.detach();
     this.followers = null;
@@ -992,6 +1028,10 @@ class World implements World3D {
       }
       this.remotes.add(key, { name: p.name, look: lookOf(p.body), guildTag: p.guildTag, inBattle: p.inBattle });
       this.remotes.push(key, state.tick, p.x, p.z, p.angle, p.moving, p.running);
+      // talking to other players: walk up to them like to an NPC (E opens the player card)
+      const target = makeInteractable(`${PLAYER_PREFIX}${key}`, 'player', p.x, p.z, 'Talk to', p.name, this.keyLabel('interact'));
+      this.playerTargets.set(key, target);
+      this.targets.addDynamic(target);
       d.push(
         $(p).listen('emote', (v: number) => {
           if (!this.ready) return;
@@ -1008,6 +1048,8 @@ class World implements World3D {
     d.push(
       $(state).players.onRemove((_p: PlayerState, key: string) => {
         this.remotes.remove(key);
+        this.playerTargets.delete(key);
+        this.targets.removeDynamic(`${PLAYER_PREFIX}${key}`);
         this.followers?.remove(key);
       }),
     );
@@ -1032,21 +1074,26 @@ class World implements World3D {
         this.spawns?.remove(s.id);
       }),
     );
+    // watching battles: the rings and their creatures follow the summaries (a turn rewrites `turn` and the field)
+    const battleOffs = new Map<string, () => void>();
+    d.push(() => {
+      for (const off of battleOffs.values()) off();
+      battleOffs.clear();
+    });
     d.push(
       $(state).battles.onAdd((b) => {
-        const mine = [...b.participants].includes(self());
-        if (mine || !this.ready) return;
-        if (Math.hypot(b.x - this.input.pose.x, b.z - this.input.pose.z) > 40) return;
-        this.renderer.stage.dressSpectator(b.x, b.z);
-        this.spectatorArenas.set(b.id, { x: b.x, z: b.z });
+        battleOffs.get(b.id)?.();
+        battleOffs.set(b.id, $(b).listen('turn', () => this.syncSpectators()));
+        this.syncSpectators();
       }, true),
     );
     d.push(
       $(state).battles.onRemove((b) => {
-        const a = this.spectatorArenas.get(b.id);
-        if (a === undefined || !this.ready) return;
-        this.spectatorArenas.delete(b.id);
-        part3Of(this.renderer)?.stage.undressSpectator(a.x, a.z);
+        battleOffs.get(b.id)?.();
+        battleOffs.delete(b.id);
+        this.syncSpectators();
+        const w = useWatchStore.getState();
+        if (w.battleId === b.id && w.ended === null) w.end(b.id, 'The battle is over.');
       }),
     );
     d.push(
@@ -1125,7 +1172,10 @@ class World implements World3D {
     this.remotes.clear();
     this.spawns?.clear();
     this.input.clear();
-    this.spectatorArenas.clear();
+    this.spectators?.clear();
+    for (const id of this.playerTargets.keys()) this.targets.removeDynamic(id);
+    this.playerTargets.clear();
+    if (useWatchStore.getState().battleId !== null) useWatchStore.getState().stop();
     this.followers?.clear();
   }
 
@@ -1257,6 +1307,7 @@ class World implements World3D {
     if (h !== null) this.targets.addDynamic(this.fishSpot);
     this.spawns?.reground();
     this.raidDen?.reground();
+    this.spectators?.reground();
     // followers with field powers: this zone's spots, its brambles, and the glide rule over the new collider
     this.field?.onZone(h === null ? null : z);
     this.input.glider = this.field?.glider() ?? null;
@@ -1352,6 +1403,7 @@ class World implements World3D {
     this.remotes.clear();
     this.spawns?.clear();
     this.raidDen?.clear();
+    this.spectators?.clear();
     this.backdrop?.dispose();
     this.backdrop = mountArenaBackdrop(r);
     // the ring faces the camera's current heading (the battle's push-in keeps it: no zone collider to avoid)
@@ -1478,6 +1530,9 @@ class World implements World3D {
       case 'trainerSpotted':
         this.onTrainerSpotted(m.trainerId);
         return;
+      case 'battleWatch':
+        this.onBattleWatch(m);
+        return;
       case 'rival':
         // a recurring rival: `near` the model pre-writes its taunt while the player walks; `approach` it walks up
         useRivalStore.getState().setView(m.rival);
@@ -1495,6 +1550,71 @@ class World implements World3D {
       default:
         return;
     }
+  }
+
+  /** Watching battles: the summaries as the rings read them. */
+  private spectatedBattles(): SpectatedBattle[] {
+    const out: SpectatedBattle[] = [];
+    this.room?.state.battles.forEach((b) => {
+      out.push({
+        id: b.id,
+        x: b.x,
+        z: b.z,
+        angle: b.angle,
+        participants: [...b.participants],
+        trainers: [...b.trainers],
+        field: [...b.field].map((w) => ({ side: w.side === 1 ? 1 : 0, pos: w.pos === 1 ? 1 : 0, species: w.species, flags: w.flags, level: w.level, hpPct: w.hpPct, status: w.status })),
+      });
+    });
+    return out;
+  }
+
+  /** Watching battles: the rings near the player (each summary change, and 2 Hz as the player walks). */
+  private syncSpectators(): void {
+    if (!this.ready || !this.zoneLoaded || this.inArena || this.spectators === null) return;
+    this.spectators.sync(this.spectatedBattles(), this.ws.selfId, this.input.pose.x, this.input.pose.z);
+    // the Watch panel follows its battle while the player stays near the ring
+    const w = useWatchStore.getState();
+    if (w.battleId !== null && w.ended === null && !this.spectators.ringIds.includes(w.battleId)) w.stop();
+  }
+
+  /** Watching battles: E at a ring, or Watch on a player card. */
+  startWatching(battleId: string): void {
+    const b = this.room?.state.battles.get(battleId);
+    if (b === undefined) {
+      toast('info', 'That battle is over.');
+      return;
+    }
+    if ([...b.participants].includes(this.ws.selfId)) return;
+    if (Math.hypot(b.x - this.input.pose.x, b.z - this.input.pose.z) > SPECTATE_RANGE_M) {
+      toast('info', 'Walk closer to the battle to watch it.');
+      return;
+    }
+    useWatchStore.getState().start(battleId);
+  }
+
+  /** Watching battles: a turn of a battle near the player. */
+  private onBattleWatch(m: { readonly battleId: string; readonly events: readonly WatchEvent[] }): void {
+    this.spectators?.play(m.battleId, m.events);
+    const w = useWatchStore.getState();
+    if (w.battleId !== m.battleId) return;
+    const b = this.room?.state.battles.get(m.battleId);
+    if (b === undefined) return;
+    // the field before this turn, as the patch may already hold the turn's end: words the lines with the names as they go
+    let field = [...b.field].map((f) => ({ side: f.side === 1 ? 1 : 0, pos: f.pos === 1 ? 1 : 0, species: f.species, flags: f.flags, level: f.level, hpPct: f.hpPct, status: f.status }) as const);
+    const lines = watchLines(
+      m.events,
+      {
+        sides: [watchSideName(b.trainers[0]), watchSideName(b.trainers[1])],
+        species: (side, pos) => field.find((f) => f.side === side && f.pos === pos)?.species ?? null,
+      },
+      (e) => {
+        field = applyWatchEvents(field, [e]) as typeof field;
+      },
+    );
+    w.push(m.battleId, lines);
+    const end = m.events.find((e) => e.k === 'end');
+    if (end !== undefined && lines.length > 0) w.end(m.battleId, lines[lines.length - 1]!);
   }
 
   private speakerName(id: string): string {
@@ -1904,6 +2024,17 @@ class World implements World3D {
         }
         this.ws.send('interact', { targetId: staticTargetId(t.id), kind: 'static' });
         return;
+      case 'player': {
+        // talking to other players: the player card (friend, message, challenge, trade, watch, block)
+        const id = t.id.slice(PLAYER_PREFIX.length);
+        const p = this.room?.state.players.get(id);
+        if (p === undefined) return;
+        ui.openModal('player', { id, name: p.name } satisfies PlayerCardPayload);
+        return;
+      }
+      case 'watch':
+        this.startWatching(t.id.slice(WATCH_PREFIX.length));
+        return;
       case 'raid': {
         // Phase C1: the den — join (lobby, not in yet) and open the lobby; later phases open it as a view
         const r = this.room?.state.raid ?? null;
@@ -2259,6 +2390,7 @@ class World implements World3D {
     if (this.ready && this.zoneLoaded) this.director.updatePocket(this.input.pose.x, this.input.pose.z);
     if (this.ready && this.zoneLoaded) this.prepareNearEdge();
     this.remotes.step(STEP_MS, this.input.pose.x, this.input.pose.z);
+    if (this.playerTargets.size > 0) this.remotes.forEach(this.movePlayerTarget);
     this.targets.step(this.input.pose.x, this.input.pose.z, this.worldBlocked());
     this.battle.player.step(STEP_MS);
     this.audio.step();
@@ -2328,6 +2460,7 @@ class World implements World3D {
       // a recurring rival walking off after its parting line
       this.rivalActor?.update(frameDt);
       this.field?.frame(frameDt, now);
+      this.spectators?.update(frameDt);
     }
     this.nameplateLeft -= frameDt;
     if (this.nameplateLeft <= 0) {
@@ -2602,6 +2735,7 @@ class World implements World3D {
     const sz = this.input.pose.z;
     // the legendary statics near the player play their flipbooks; the far ones let theirs go (2 Hz)
     this.legendaries?.setViewer(sx, sz);
+    this.syncSpectators();
     this.syncFollowers();
     this.stepBuddy(sx, sz);
     const list: { id: string; name: string; guildTag: string; inBattle: boolean; d: number }[] = [];

@@ -84,11 +84,21 @@ const EXAMPLES: { [K in ServerMessageType]: Extract<ServerMessage, { type: K }> 
     type: 'arenaState', matchId: 'm1', kind: 'training', level: 50, phase: 'fighting',
     players: [{ playerId: U3, name: 'me', rating: 1000 }], foeName: 'Sparring Partner', cup: null, reason: null,
   },
+  battleWatch: {
+    type: 'battleWatch', battleId: U3, turn: 3,
+    events: [
+      { k: 'move', side: 0, pos: 0, move: 'ember' },
+      { k: 'hit', side: 1, pos: 0, hpPct: 41, eff: 'super', crit: false, byMove: true },
+      { k: 'faint', side: 1, pos: 0 },
+      { k: 'in', b: { side: 1, pos: 0, species: 'dustcub', flags: 1, level: 12, hpPct: 100, status: '' } },
+      { k: 'end', winner: 0 },
+    ],
+  },
 };
 
 describe('§4.4 ServerMessage', () => {
-  it('lists the 29 variants of the §4.4 block (Phase D13 rankedStatus, Phase D14 towerState, the 4 arena messages, trainerSpotted, rival, realWeather, eggHatched, nemesisAmbush, nemesisNews, fieldPower), and SERVER_MSG names them', () => {
-    expect(SERVER_MESSAGE_TYPES).toHaveLength(29); // + rival, nemesisAmbush, nemesisNews, eggHatched, arenaStatus, arenaInvite, arenaInviteResult, arenaState, trainerSpotted, realWeather, fieldPower
+  it('lists the 30 variants of the §4.4 block (Phase D13 rankedStatus, Phase D14 towerState, the 4 arena messages, trainerSpotted, rival, realWeather, eggHatched, nemesisAmbush, nemesisNews, fieldPower, battleWatch), and SERVER_MSG names them', () => {
+    expect(SERVER_MESSAGE_TYPES).toHaveLength(30); // + battleWatch, rival, nemesisAmbush, nemesisNews, eggHatched, arenaStatus, arenaInvite, arenaInviteResult, arenaState, trainerSpotted, realWeather, fieldPower
     expect(Object.keys(SERVER_MESSAGES).sort()).toEqual([...SERVER_MESSAGE_TYPES].sort());
     expect(Object.keys(EXAMPLES).sort()).toEqual([...SERVER_MESSAGE_TYPES].sort());
     for (const t of SERVER_MESSAGE_TYPES) expect(SERVER_MSG[t]).toBe(t);

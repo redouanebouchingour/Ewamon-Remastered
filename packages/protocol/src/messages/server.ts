@@ -28,6 +28,8 @@ import type { SeatReservation } from './common';
 import { ArenaInviteMsg, ArenaInviteResultMsg, ArenaStateMsg, ArenaStatusMsg } from '../arena';
 import type { ArenaServerMessage } from '../arena';
 import { RivalMsg } from '../rival';
+import { BattleWatchMsg } from '../watch';
+import type { BattleWatchServerMessage } from '../watch';
 import type { RivalPhase, RivalView } from '../rival';
 
 // ---- companion shapes ------------------------------------------------------------------------------
@@ -179,6 +181,8 @@ export type ServerMessage =
    * `interact` for the trainer (the server starts it alone after a timeout).
    */
   | { readonly type: 'trainerSpotted'; readonly trainerId: string }
+  /** watching battles (watch.ts): a turn of a battle near the player, never one of their own */
+  | BattleWatchServerMessage
   /**
    * A recurring rival (content rival.ts): `near` the rival is on this route (the client may pre-write its taunt; nothing
    * shows yet); `approach` it stepped out at (x, z) and the server holds the player like a trainer who saw them: the
@@ -328,6 +332,7 @@ export const SERVER_MESSAGE_TYPES = [
   'arenaInvite',
   'arenaInviteResult',
   'arenaState',
+  'battleWatch',
 ] as const satisfies readonly ServerMessageType[];
 
 // ---- zod (client-side validation) -------------------------------------------------------------------------
@@ -581,6 +586,7 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
   ArenaInviteMsg,
   ArenaInviteResultMsg,
   ArenaStateMsg,
+  BattleWatchMsg,
 ]);
 
 /** Schemas by message type — the client picks one when it registers `room.onMessage(type, …)`. */
@@ -614,6 +620,7 @@ export const SERVER_MESSAGES = {
   arenaInvite: ArenaInviteMsg,
   arenaInviteResult: ArenaInviteResultMsg,
   arenaState: ArenaStateMsg,
+  battleWatch: BattleWatchMsg,
 } as const satisfies Record<ServerMessageType, z.ZodType>;
 
 export type ServerMessageParse =

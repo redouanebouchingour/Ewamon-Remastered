@@ -63,7 +63,7 @@ afterAll(async () => {
 });
 
 describe('migrations (§5.4)', () => {
-  it('creates the 18 tables of §5.1 plus email_tokens (0002), player_streaks (0004), battle_shares (0006), creature_events (0007), daily_results (0008), run_splits (0009), seasons and season_results (0011), world_honor (0012), season_factions (0013), season_legends (0014), ghosts and ghost_battles (0015), daycare and eggs (0016), nemeses (0017), eco_takes (0018), bounties (0019), camps and camp_raids (0020), npc_memories (0021), npc_quests (0022), rivals (0023), journal_entries (0024), dex_rewards (0025)', async () => {
+  it('creates the 18 tables of §5.1 plus email_tokens (0002), player_streaks (0004), battle_shares (0006), creature_events (0007), daily_results (0008), run_splits (0009), seasons and season_results (0011), world_honor (0012), season_factions (0013), season_legends (0014), ghosts and ghost_battles (0015), daycare and eggs (0016), nemeses (0017), eco_takes (0018), bounties (0019), camps and camp_raids (0020), npc_memories (0021), npc_quests (0022), rivals (0023), journal_entries (0024), dex_rewards (0025), player_blocks (0026)', async () => {
     const rows = await db.transaction(async (tx) => {
       const r = await tx.execute<{ table_name: string }>(
         sql`select table_name from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE' order by table_name`,

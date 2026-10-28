@@ -8,6 +8,10 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { TYPE_NAMES } from '@ewa/core';
+import type { BlockView } from '@ewa/protocol';
+import { apiFetch } from '../net/api';
+import { describeError } from '../net/errors';
+import { toast } from '../state/notifications';
 import { REDUCED_LOCKED } from '../state/effective';
 import { useEffectiveSettings } from '../state/applySettings';
 import { useUiStore } from '../state/ui';
@@ -503,9 +507,56 @@ function ControlsTab() {
   );
 }
 
+/**
+ * Talking to other players: who may DM the player is the server's (`players.dms_from`, GET / POST /social/prefs), so the
+ * toggle reads it on open and writes it on change; the blocked trainers come from GET /social/blocks.
+ */
+function useServerSocial(): { readonly blocked: readonly BlockView[] | null; unblock(username: string): void; setDmsFrom(v: 'everyone' | 'friends'): void } {
+  const set = useSettingsStore((st) => st.set);
+  const [blocked, setBlocked] = useState<readonly BlockView[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    apiFetch('socialPrefs')
+      .then((p) => {
+        if (live) set('social', { allowDmsFrom: p.dmsFrom });
+      })
+      .catch(() => undefined);
+    apiFetch('socialBlocks')
+      .then((r) => {
+        if (live) setBlocked(r.blocked);
+      })
+      .catch(() => {
+        if (live) setBlocked([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [set]);
+  return {
+    blocked,
+    unblock: (username) => {
+      apiFetch('socialUnblock', { body: { username: username.toLowerCase() } })
+        .then((r) => {
+          setBlocked(r.blocked);
+          toast('info', `${username} is unblocked.`);
+        })
+        .catch((e: unknown) => toast('warn', describeError(e)));
+    },
+    setDmsFrom: (v) => {
+      const before = useSettingsStore.getState().social.allowDmsFrom;
+      set('social', { allowDmsFrom: v });
+      apiFetch('socialPrefsSet', { body: { dmsFrom: v } }).catch((e: unknown) => {
+        set('social', { allowDmsFrom: before });
+        toast('warn', describeError(e));
+      });
+    },
+  };
+}
+
 function SocialTab() {
   const so = useSettingsStore((st) => st.social);
   const set = useSettingsStore((st) => st.set);
+  const server = useServerSocial();
   return (
     <div className={s.tab}>
       <Toggle label="Show world chat" checked={so.showChat} onChange={(v) => set('social', { showChat: v })} />
@@ -520,8 +571,27 @@ function SocialTab() {
             { value: 'everyone', label: 'Everyone' },
             { value: 'friends', label: 'Friends only' },
           ]}
-          onChange={(v) => set('social', { allowDmsFrom: v })}
+          onChange={(v) => server.setDmsFrom(v)}
         />
+      </div>
+      <div className={s.control}>
+        <p className={s.controlLabel}>Blocked trainers</p>
+        {server.blocked === null ? (
+          <p className={l.caption}>Loading...</p>
+        ) : server.blocked.length === 0 ? (
+          <p className={l.caption}>Nobody. Block a trainer from their card (walk up and press E).</p>
+        ) : (
+          <ul className={s.blockList}>
+            {server.blocked.map((b) => (
+              <li key={b.id} className={s.blockRow}>
+                <span className={s.blockName}>{b.username}</span>
+                <Button size="sm" variant="ghost" onClick={() => server.unblock(b.username)}>
+                  Unblock
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

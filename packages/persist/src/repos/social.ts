@@ -2,12 +2,15 @@ import { and, asc, desc, eq, ilike, isNull, lt, or, sql } from 'drizzle-orm';
 import { GUILD_CREATE_COST, GUILD_MAX_MEMBERS } from '../constants';
 import type { Tx } from '../db';
 import { fail } from '../errors';
-import { friendships, guildMembers, guilds, messages, players } from '../schema/index';
+import { friendships, guildMembers, guilds, messages, playerBlocks, players } from '../schema/index';
 import type { FriendshipRow, GuildRow } from '../schema/index';
 import type { FriendView, GuildMemberView, GuildView, MessageView } from '../types';
 import { clampInt, escapeLike } from '../util';
 import { auditRepo } from './audit';
 import { playerRepo } from './players';
+
+/** `conversations` reads at most this many of the newest messages to find the threads */
+const CONVERSATION_SCAN = 2000;
 
 export interface FriendLists {
   readonly friends: FriendView[];
@@ -173,6 +176,97 @@ export const socialRepo = {
     const out: Record<string, number> = {};
     for (const r of rows) out[r.fromId] = Number(r.n);
     return out;
+  },
+
+  /**
+   * Talking to other players: the player's threads, newest first, one per other player (friends or not): the last
+   * message, whether the player sent it, and the unread count from them. At most `limit` (1..50).
+   */
+  async conversations(
+    tx: Tx,
+    playerId: string,
+    limit: number,
+  ): Promise<{ otherId: string; username: string; lastText: string; lastAt: Date; fromMe: boolean; unread: number }[]> {
+    // the newest messages either way, one per other player (DISTINCT ON cannot take the player id as two parameters)
+    const rows = await tx
+      .select({ fromId: messages.fromId, toId: messages.toId, text: messages.text, sentAt: messages.sentAt })
+      .from(messages)
+      .where(or(eq(messages.fromId, playerId), eq(messages.toId, playerId)))
+      .orderBy(desc(messages.sentAt), desc(messages.id))
+      .limit(CONVERSATION_SCAN);
+    const last: { otherId: string; text: string; sentAt: Date; fromId: string }[] = [];
+    const seen = new Set<string>();
+    for (const r of rows) {
+      const otherId = r.fromId === playerId ? r.toId : r.fromId;
+      if (seen.has(otherId)) continue;
+      seen.add(otherId);
+      last.push({ otherId, text: r.text, sentAt: r.sentAt, fromId: r.fromId });
+    }
+    const top = last.slice(0, clampInt(limit, 1, 50));
+    const names = new Map((await playerRepo.byIds(tx, top.map((r) => r.otherId))).map((p) => [p.id, p.username]));
+    const unread = await this.unreadCounts(tx, playerId);
+    return top.flatMap((r) => {
+      const username = names.get(r.otherId);
+      return username === undefined ? [] : [{ otherId: r.otherId, username, lastText: r.text, lastAt: r.sentAt, fromMe: r.fromId === playerId, unread: unread[r.otherId] ?? 0 }];
+    });
+  },
+
+  // ---- blocks (talking to other players, migration 0026) -------------------------------------
+  /** `blockerId` blocks `blockedId` (idempotent); a friendship or pending request between them ends. */
+  async block(tx: Tx, blockerId: string, blockedId: string, now: Date): Promise<void> {
+    if (blockerId === blockedId) fail('InvalidArgument', 'cannot block yourself');
+    await tx.insert(playerBlocks).values({ blockerId, blockedId, createdAt: now }).onConflictDoNothing();
+    await tx
+      .delete(friendships)
+      .where(or(and(eq(friendships.requesterId, blockerId), eq(friendships.addresseeId, blockedId)), and(eq(friendships.requesterId, blockedId), eq(friendships.addresseeId, blockerId))));
+  },
+
+  async unblock(tx: Tx, blockerId: string, blockedId: string): Promise<void> {
+    await tx.delete(playerBlocks).where(and(eq(playerBlocks.blockerId, blockerId), eq(playerBlocks.blockedId, blockedId)));
+  },
+
+  /** Whom the player blocked, by username. */
+  async blockList(tx: Tx, blockerId: string): Promise<{ id: string; username: string; blockedAt: Date }[]> {
+    return tx
+      .select({ id: players.id, username: players.username, blockedAt: playerBlocks.createdAt })
+      .from(playerBlocks)
+      .innerJoin(players, eq(players.id, playerBlocks.blockedId))
+      .where(eq(playerBlocks.blockerId, blockerId))
+      .orderBy(asc(players.usernameLower));
+  },
+
+  /** Whether `blockerId` blocked `blockedId` (one direction). */
+  async hasBlocked(tx: Tx, blockerId: string, blockedId: string): Promise<boolean> {
+    const [r] = await tx
+      .select({ b: playerBlocks.blockerId })
+      .from(playerBlocks)
+      .where(and(eq(playerBlocks.blockerId, blockerId), eq(playerBlocks.blockedId, blockedId)))
+      .limit(1);
+    return r !== undefined;
+  },
+
+  /** Whether either player blocked the other. */
+  async blockedEither(tx: Tx, a: string, b: string): Promise<boolean> {
+    const [r] = await tx
+      .select({ b: playerBlocks.blockerId })
+      .from(playerBlocks)
+      .where(or(and(eq(playerBlocks.blockerId, a), eq(playerBlocks.blockedId, b)), and(eq(playerBlocks.blockerId, b), eq(playerBlocks.blockedId, a))))
+      .limit(1);
+    return r !== undefined;
+  },
+
+  /** Every player id `playerId` blocked or was blocked by (the zone room's challenge / trade / chat guard). */
+  async blockPeers(tx: Tx, playerId: string): Promise<string[]> {
+    const rows = await tx
+      .select({ blockerId: playerBlocks.blockerId, blockedId: playerBlocks.blockedId })
+      .from(playerBlocks)
+      .where(or(eq(playerBlocks.blockerId, playerId), eq(playerBlocks.blockedId, playerId)));
+    return [...new Set(rows.map((r) => (r.blockerId === playerId ? r.blockedId : r.blockerId)))];
+  },
+
+  /** Who may DM the player ('everyone' | 'friends'). */
+  async setDmsFrom(tx: Tx, playerId: string, dmsFrom: 'everyone' | 'friends'): Promise<void> {
+    await tx.update(players).set({ dmsFrom }).where(eq(players.id, playerId));
   },
 
   // ---- guilds ----------------------------------------------------------------------------------

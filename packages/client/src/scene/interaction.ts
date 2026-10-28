@@ -6,7 +6,7 @@
  */
 import type { HudPrompt } from './HudWriter';
 
-export type InteractableKind = 'npc' | 'trainer' | 'item' | 'lore' | 'gym' | 'healer' | 'shop' | 'warp' | 'spawn' | 'switch' | 'pc' | 'static' | 'raid' | 'obstacle' | 'fish' | 'tower' | 'bramble' | 'dig' | 'dive' | 'camp';
+export type InteractableKind = 'npc' | 'trainer' | 'item' | 'lore' | 'gym' | 'healer' | 'shop' | 'warp' | 'spawn' | 'switch' | 'pc' | 'static' | 'raid' | 'obstacle' | 'fish' | 'tower' | 'bramble' | 'dig' | 'dive' | 'camp' | 'player' | 'watch';
 
 /**
  * Client ranges stay inside the server's (3 m for npc / item / warp / switch, 4 m for a league trainer at its
@@ -32,8 +32,15 @@ export const RANGE: Readonly<Record<InteractableKind, number>> = {
   dive: 2.6,
   // camp bases: a travellers' camp's fire (server CAMP_RANGE_M = 5; content CAMP_PROMPT_M = 4)
   camp: 4,
+  // talking to other players: walk up to another trainer (E opens the player card; nothing on the server needs range)
+  player: 3,
+  // watching battles: a spectator ring's centre (protocol WATCH_RANGE_M; SpectatorViews passes it)
+  watch: 9,
 };
+/** `C` challenges the nearest player within this (the walk-up challenge). */
 export const PLAYER_RANGE = 6;
+/** talking to other players: a remote player's interactable id is this + their uuid */
+export const PLAYER_PREFIX = 'player:';
 
 export interface Interactable {
   readonly id: string;

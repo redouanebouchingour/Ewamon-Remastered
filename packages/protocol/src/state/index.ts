@@ -1,7 +1,7 @@
 export { PlayerState, LEAD_VARIANTS, decodeLeadFlags, encodeLeadFlags } from './PlayerState';
 export type { LeadVariant } from './PlayerState';
 export { SpawnState } from './SpawnState';
-export { BattleSummary } from './BattleSummary';
+export { BattleSummary, WatchBattlerState } from './BattleSummary';
 export { RaidState } from './RaidState';
 export { ZoneState } from './ZoneState';
 export { ArenaState } from './ArenaState';

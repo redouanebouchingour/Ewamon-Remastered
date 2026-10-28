@@ -2983,3 +2983,17 @@ the second isolated client (the component over the landing page: the foe and own
 - Live (the isolated dev pair, headless Chrome): all 11 entries load their animated file and six screenshots of the
   hero 250 ms apart differ every time. Test: `test/dexAnim.test.tsx` (every animated front has its file with one page
   per flipbook page, still species have none; the component's choices and its fallback).
+
+## Talking to other players, watching battles (2026-10-28)
+
+- Every remote player is a dynamic `player` interactable (3 m) moved with its interpolated avatar each fixed step and
+  disabled while they battle (the ring's `watch` prompt takes over). E opens `world/PlayerCard.tsx`; the card reads its
+  live facts (in battle, which battle, range to it) from the room through `useRoomState` and closes when they leave.
+- `scene/SpectatorViews.ts` replaced the inline `dressSpectator` calls. The rings are re-synced on every summary
+  add / remove / `turn` change and at 2 Hz with the nameplates, so walking up to a battle that started far away now
+  dresses it (before, a ring was decided once, at the summary's arrival). A ring stays up to 44 m (4 m slack).
+- The fighters' avatars are moved to the stage's trainer slots inside the remote sink (`setTransform`), so the
+  interpolator's own state is untouched and they step back as soon as the ring goes.
+- The Watch panel words a turn with the field as it was before the turn, applying switch-ins as the lines go: the
+  summary patch can arrive before the `battleWatch` message, so the room's field may already hold the turn's end.
+- Spectator creatures lease their full atlases (like the raid den), not singles like followers: rings are few.

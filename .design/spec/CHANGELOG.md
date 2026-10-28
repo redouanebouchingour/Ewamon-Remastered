@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-28 talking to other players, watching battles. One entry. -->
+
+## 2026-10-28 · `00-spine.md` §4.1 `BattleSummary`, §4.4 `battleWatch`, §4.7 routes; `20-client.md` §20.4.3 spectator arena, §20.9.7; `30-server-netcode.md` §30.7.2, §30.7.2a · talking to other players and watching battles in the open world
+Why: the user asked to interact with other players the way one does with NPCs (add them, battle them, message them and more) and for open-world spectating: the ring of someone else's battle showed no creatures. Another trainer is now an interactable whose card holds every action; DMs reach non-friends unless the recipient chose friends only (the client's "Direct messages from" setting existed but nothing enforced it), and blocks make that safe. A spectator ring shows the creatures on the field, the fighters at their slots and a Watch panel; the feed carries only what both fighters already see (hp as a percentage), so watching tells a spectator nothing hidden.
+Evidence: server `talk-watch.test.ts` (open and friends-only DMs, relation and conversations, blocks over REST and in the room, the summary field and the `battleWatch` feed to a nearby player but not the fighters) and the updated `social.test.ts`; protocol `watch.test.ts`; client `watch.test.ts` (the lines, the store, the rings against fake render deps).
+Affects: `packages/protocol/src/{watch.ts,state/BattleSummary.ts,messages/server.ts,rest.ts}`; `packages/persist/src/{schema/social.ts,schema/players.ts,repos/social.ts}`, `drizzle/0026_player_blocks.sql`; `packages/server/src/{rest/routes/social.ts,rest/blocksTopic.ts,rooms/ZoneRoom.ts,rooms/battleSession.ts}`; `packages/client/src/{scene/SpectatorViews.ts,scene/World3D.ts,scene/interaction.ts,world/PlayerCard.tsx,world/WatchPanel.tsx,battle/watchLines.ts,state/watch.ts,screens/SocialScreen.tsx,screens/SettingsScreen.tsx}`.
+
 <!-- 2026-10-27 PGlite removed. One entry. -->
 
 ## 2026-10-27 · `00-spine.md` §0 package graph, §5 drizzle APIs, §5.4 tests; `30-server-netcode.md` env; `50-verification-budget.md` rule 2, §50.4.4, §50.4.5, §50.5 M1 · PostgreSQL everywhere, PGlite removed

@@ -183,6 +183,13 @@
       "when": 1792971553623,
       "tag": "0025_dex_research",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793179865803,
+      "tag": "0026_player_blocks",
+      "breakpoints": true
     }
   ]
 }

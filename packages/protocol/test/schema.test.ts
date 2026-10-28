@@ -80,7 +80,7 @@ describe('§4.1 field layout', () => {
     expect(fieldNames(SpawnState)).toEqual([
       'id', 'speciesId', 'level', 'x', 'z', 'variantKey', 'isAlpha', 'engagedBy', 'despawnAtTick', 'isShiny',
     ]);
-    expect(fieldNames(BattleSummary)).toEqual(['id', 'participants', 'format', 'turn', 'x', 'z']);
+    expect(fieldNames(BattleSummary)).toEqual(['id', 'participants', 'format', 'turn', 'x', 'z', 'field', 'trainers', 'angle']);
     expect(fieldNames(RaidState)).toEqual([
       'id', 'bossSpecies', 'bossLevel', 'hpPct', 'phase', 'roundEndsInMs', 'damageBoard', 'x', 'z',
     ]);
@@ -158,7 +158,7 @@ describe('§4.1 encode/decode round-trip (broadcast fields)', () => {
     expect(client.weather).toBe('rain');
     expect(client.harvestState).toBe('thinning');
     expect(client.battles.get('battle-1')?.toJSON()).toEqual({
-      id: 'battle-1', participants: [UUID_A, UUID_B], format: 'pvp', turn: 9, x: 12.5, z: -3,
+      id: 'battle-1', participants: [UUID_A, UUID_B], format: 'pvp', turn: 9, x: 12.5, z: -3, field: [], trainers: [], angle: 0,
     });
     expect(client.raid?.toJSON()).toEqual({
       id: 'raid-1', bossSpecies: 'noxmyth', bossLevel: 60, hpPct: 0.5, phase: 2, roundEndsInMs: 17000,

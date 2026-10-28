@@ -8,6 +8,8 @@
 import type { PlayerRow, Tx } from '@ewa/persist';
 import { GUILD_CREATE_COST } from '@ewa/persist';
 import {
+  BlockListRes,
+  ConversationsRes,
   FriendListsSchema,
   GuildCreateReq,
   GuildCreateRes,
@@ -20,15 +22,32 @@ import {
   MessageViewSchema,
   MessagesQuery,
   MessagesRes,
+  RelationRes,
   SendMessageReq,
+  SocialPrefsSchema,
   UsernameParams,
   UsernameReq,
 } from '@ewa/protocol';
 import type { FriendView, GuildView, MessageView } from '@ewa/protocol';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { DM_MAX, containsBlocked, sanitizeChat } from '../../chat/filter';
+import { BLOCKS_TOPIC } from '../blocksTopic';
+import type { BlocksPush } from '../blocksTopic';
 import { HttpError, inventoryDeltaBody, iso, out, rateLimit, requireAuth } from '../http';
 import type { RestDeps } from '../http';
+
+/** Talking to other players: ≤ 200 blocked players each (409 blockLimit). */
+export const BLOCK_LIMIT = 200;
+const CONVERSATION_LIMIT = 50;
+
+/**
+ * Whether `from` may DM `to` now: neither blocked the other, and they are friends or `to` takes DMs from everyone.
+ * A refusal reads the same (409 dmsClosed) whichever the reason, so nobody learns they were blocked.
+ */
+async function mayMessage(deps: RestDeps, tx: Tx, from: string, to: PlayerRow): Promise<boolean> {
+  if (await deps.repos.social.blockedEither(tx, from, to.id)) return false;
+  return to.dmsFrom === 'everyone' || (await deps.repos.social.areFriends(tx, from, to.id));
+}
 
 /** §30.7.1: ≤ 100 accepted friends per player (409 friendLimit). */
 export const FRIEND_LIMIT = 100;
@@ -112,6 +131,8 @@ export function registerSocialRoutes(app: FastifyInstance, deps: RestDeps): void
     const now = new Date(clock());
     await repos.db.transaction(async (tx) => {
       const other = await target(tx, username, me);
+      // a block either way refuses the request with a code that does not say who blocked whom
+      if (await repos.social.blockedEither(tx, me, other.id)) throw new HttpError(409, 'requestRefused');
       if ((await friendCount(tx, me)) >= FRIEND_LIMIT || (await friendCount(tx, other.id)) >= FRIEND_LIMIT) throw new HttpError(409, 'friendLimit');
       await repos.social.requestFriend(tx, me, other.id, now);
     });
@@ -179,7 +200,10 @@ export function registerSocialRoutes(app: FastifyInstance, deps: RestDeps): void
     return out(deps, MessagesRes, { messages: rows.map(messageView) });
   });
 
-  /** accepted friends only (409 notFriends); sanitizeChat (300) + containsBlocked hard reject (400 blockedWord). */
+  /**
+   * Friends, or anyone when the recipient takes DMs from everyone (talking to other players); a block either way or a
+   * friends-only recipient → 409 dmsClosed. sanitizeChat (300) + containsBlocked hard reject (400 blockedWord).
+   */
   app.post('/messages/:username', limited('message'), async (req) => {
     const username = usernameParam(req);
     const body = SendMessageReq.parse(req.body);
@@ -190,7 +214,7 @@ export function registerSocialRoutes(app: FastifyInstance, deps: RestDeps): void
     const now = new Date(clock());
     const { msg, toId } = await repos.db.transaction(async (tx) => {
       const other = await target(tx, username, me);
-      if (!(await repos.social.areFriends(tx, me, other.id))) throw new HttpError(409, 'notFriends');
+      if (!(await mayMessage(deps, tx, me, other))) throw new HttpError(409, 'dmsClosed');
       return { msg: await repos.social.sendMessage(tx, me, other.id, text, now), toId: other.id };
     });
     // pushed live when the recipient is online (any process: the room holding them subscribed ewa:dm:<id>)
@@ -198,6 +222,82 @@ export function registerSocialRoutes(app: FastifyInstance, deps: RestDeps): void
       deps.bus.publish(`ewa:dm:${toId}`, { id: msg.id, fromId: me, fromName: req.user.usr, text: msg.text, sentAt: msg.sentAt.getTime() });
     }
     return out(deps, MessageViewSchema, messageView(msg));
+  });
+
+  /** Every thread of the caller, friends or not, newest first (the Social screen's Messages tab). */
+  app.get('/conversations', bearer, async (req) => {
+    const me = req.user.sub;
+    const { rows, friends } = await repos.db.transaction(async (tx) => ({
+      rows: await repos.social.conversations(tx, me, CONVERSATION_LIMIT),
+      friends: new Set((await repos.social.friendLists(tx, me)).friends.map((f) => f.id)),
+    }));
+    return out(deps, ConversationsRes, {
+      conversations: rows.map((r) => ({ username: r.username, lastText: r.lastText, lastAt: iso(r.lastAt), fromMe: r.fromMe, unread: r.unread, friend: friends.has(r.otherId) })),
+    });
+  });
+
+  // ---- talking to other players: the DM preference, the player card's relation, blocks ----------------------------
+
+  app.get('/social/prefs', bearer, async (req) => {
+    const row = await repos.db.transaction((tx) => repos.players.byId(tx, req.user.sub));
+    if (row === null) throw new HttpError(404, 'NotFound');
+    return out(deps, SocialPrefsSchema, { dmsFrom: row.dmsFrom === 'friends' ? 'friends' : 'everyone' });
+  });
+
+  app.post('/social/prefs', bearer, async (req) => {
+    const body = SocialPrefsSchema.parse(req.body);
+    await repos.db.transaction((tx) => repos.social.setDmsFrom(tx, req.user.sub, body.dmsFrom));
+    return out(deps, SocialPrefsSchema, body);
+  });
+
+  /** What the player card offers: friendship state, whether the caller blocked them, whether a DM would go through. */
+  app.get('/social/relation/:username', bearer, async (req) => {
+    const username = usernameParam(req);
+    const me = req.user.sub;
+    const r = await repos.db.transaction(async (tx) => {
+      const other = await target(tx, username, me);
+      const lists = await repos.social.friendLists(tx, me);
+      const has = (l: readonly { readonly id: string }[]): boolean => l.some((f) => f.id === other.id);
+      const friend = has(lists.friends) ? 'friends' : has(lists.outgoing) ? 'outgoing' : has(lists.incoming) ? 'incoming' : 'none';
+      return { id: other.id, username: other.username, friend, blocked: await repos.social.hasBlocked(tx, me, other.id), canMessage: await mayMessage(deps, tx, me, other) } as const;
+    });
+    return out(deps, RelationRes, r);
+  });
+
+  async function blockList(me: string): Promise<{ blocked: { id: string; username: string; blockedAt: string }[] }> {
+    const rows = await repos.db.transaction((tx) => repos.social.blockList(tx, me));
+    return { blocked: rows.map((b) => ({ id: b.id, username: b.username, blockedAt: iso(b.blockedAt) })) };
+  }
+
+  app.get('/social/blocks', bearer, async (req) => out(deps, BlockListRes, await blockList(req.user.sub)));
+
+  /** Blocks a player (a friendship or a pending request between them ends); the zone rooms hear it at once. */
+  app.post('/social/block', limited('friendReq'), async (req) => {
+    const username = usernameBody(req);
+    const me = req.user.sub;
+    const now = new Date(clock());
+    const otherId = await repos.db.transaction(async (tx) => {
+      const other = await target(tx, username, me);
+      if ((await repos.social.blockList(tx, me)).length >= BLOCK_LIMIT) throw new HttpError(409, 'blockLimit');
+      await repos.social.block(tx, me, other.id, now);
+      await repos.audit.write(tx, { actorId: me, action: 'social.block', subject: other.id, detail: {} }, now);
+      return other.id;
+    });
+    deps.bus.publish(BLOCKS_TOPIC, { blockerId: me, blockedId: otherId, on: true } satisfies BlocksPush);
+    return out(deps, BlockListRes, await blockList(me));
+  });
+
+  app.post('/social/unblock', bearer, async (req) => {
+    const username = usernameBody(req);
+    const me = req.user.sub;
+    const otherId = await repos.db.transaction(async (tx) => {
+      const other = await repos.players.byUsername(tx, username);
+      if (other === null) throw new HttpError(404, 'NotFound');
+      await repos.social.unblock(tx, me, other.id);
+      return other.id;
+    });
+    deps.bus.publish(BLOCKS_TOPIC, { blockerId: me, blockedId: otherId, on: false } satisfies BlocksPush);
+    return out(deps, BlockListRes, await blockList(me));
   });
 
   // ---- guilds (§30.7.3) ------------------------------------------------------------------------------------

@@ -7,7 +7,7 @@
  */
 
 // §4.1 / §4.2 — schema classes + the AOI view rule
-export { PlayerState, SpawnState, BattleSummary, RaidState, ZoneState, ArenaState, AOI_VIEW_FIELDS, LEAD_VARIANTS, decodeLeadFlags, encodeLeadFlags } from './state/index';
+export { PlayerState, SpawnState, BattleSummary, WatchBattlerState, RaidState, ZoneState, ArenaState, AOI_VIEW_FIELDS, LEAD_VARIANTS, decodeLeadFlags, encodeLeadFlags } from './state/index';
 export type { LeadVariant } from './state/index';
 export {
   AOI_CELL,
@@ -63,3 +63,6 @@ export * from './journal';
 
 // structural copies of content types (see types.ts TODO)
 export * from './types';
+
+// watching battles in the open world: the spectator field and the per-turn feed
+export * from './watch';

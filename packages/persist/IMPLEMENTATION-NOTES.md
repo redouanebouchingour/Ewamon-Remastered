@@ -385,3 +385,8 @@ only (`url` required, `kind` and the `pgliteDir` option dropped; `AnyDb` is the 
 `pool`). The dev database is the docker-compose `postgres` service (`DEV_DATABASE_URL`, `ensureDatabase` creates a
 missing one in development). Tests run on scratch databases (see Tests). `src/migrate.ts` without `DATABASE_URL`
 migrates the dev database instead of an in-memory PGlite.
+
+## Talking to other players (2026-10-28)
+
+- Migration 0026: `players.dms_from` (`'everyone'` default) and `player_blocks (blocker_id, blocked_id)` with a not-self
+  check and an index on `blocked_id`. `socialRepo.block` also deletes any friendship row between the two.

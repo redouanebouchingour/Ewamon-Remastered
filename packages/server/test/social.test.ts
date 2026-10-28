@@ -58,11 +58,14 @@ describe('friends (§30.7.1)', () => {
 });
 
 describe('DMs (§30.7.2)', () => {
-  it('friends only; sanitised; blocked words rejected; stored and pushed live as `dm`; thread paging; mark read clears unreadDm', async () => {
+  it('friends only when the recipient says so; sanitised; blocked words rejected; stored and pushed live as `dm`; thread paging; mark read clears unreadDm', async () => {
     const a = await register(s);
     const b = await register(s);
     const stranger = await register(s);
-    expect((await api(s, 'POST', `/messages/${b.username}`, a.access, { text: 'hi' })).body.code).toBe('notFriends');
+    // talking to other players: DMs are open by default; friends-only closes them to strangers
+    await api(s, 'POST', '/social/prefs', b.access, { dmsFrom: 'friends' });
+    await api(s, 'POST', '/social/prefs', stranger.access, { dmsFrom: 'friends' });
+    expect((await api(s, 'POST', `/messages/${b.username}`, a.access, { text: 'hi' })).body.code).toBe('dmsClosed');
     await api(s, 'POST', '/friends/request', a.access, { username: b.username });
     await api(s, 'POST', '/friends/accept', b.access, { username: a.username });
     const jb = await enter(s, b, 'mirevale');
