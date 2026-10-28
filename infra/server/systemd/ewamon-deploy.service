@@ -1,5 +1,5 @@
 [Unit]
-Description=Ewamon deploy (pull origin/main, build, restart)
+Description=Ewamon deploy (newest tag, build, restart)
 After=docker.service network-online.target
 Requires=docker.service
 

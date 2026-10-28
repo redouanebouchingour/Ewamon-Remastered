@@ -7,7 +7,7 @@ Ubuntu 26.04, Docker + Compose, Caddy on the host (TLS), ufw (22, 80, 443 open).
 |---|---|---|
 | `/opt/ewamon/compose.yml` | `compose.yml` | postgres, server, llm (llama.cpp, gemma4-e2b, 2 threads) |
 | `/opt/ewamon/Dockerfile` | `Dockerfile` | `server` image + `site` (the built client) on top of the repo's `deps` target |
-| `/opt/ewamon/deploy.sh` (`ewamon-deploy`) | `deploy.sh` | pull origin/main → build → `up -d` → health check → swap `/srv/ewamon/www` |
+| `/opt/ewamon/deploy.sh` (`ewamon-deploy`) | `deploy.sh` | check out the newest tag → build → `up -d` → health check → swap `/srv/ewamon/www` |
 | `/opt/ewamon/hook.py` | `hook.py` | deploy trigger on 127.0.0.1:9000 (`ewamon-hook.service`, user `ewahook`) |
 | `/opt/ewamon/backup.sh` | `backup.sh` | nightly pg_dump at 04:15 into `/opt/ewamon/backups` (14 kept) |
 | `/etc/caddy/Caddyfile` | `Caddyfile` | `/` static client, `/api` `/colyseus` `/npc/llm` `/_deploy` proxied |
@@ -19,7 +19,10 @@ Ubuntu 26.04, Docker + Compose, Caddy on the host (TLS), ufw (22, 80, 443 open).
 
 - **GitHub webhook** (needs repo admin): Settings → Webhooks → Add. Payload URL
   `https://ewamon.com/_deploy/github`, content type `application/json`, secret = `WEBHOOK_SECRET` from
-  `/opt/ewamon/hook.env`, "Just the push event". Pushes to `main` deploy.
+  `/opt/ewamon/hook.env`, "Just the push event". Pushing a tag deploys; pushes to branches are ignored.
+- **Releasing**: `git tag v1.2.3 && git push origin v1.2.3`. Every deploy (webhook, manual or `ewamon-deploy`) runs the
+  newest tag in version order (`git tag --sort=-v:refname`), never `main`; deleting the newest tag on GitHub and
+  deploying rolls back to the one before. With no tags the deploy stops and the running version stays.
 - **By hand over HTTPS**: `curl -X POST https://ewamon.com/_deploy/run -H "Authorization: Bearer $DEPLOY_TOKEN"`
 - **Status**: `curl https://ewamon.com/_deploy/status -H "Authorization: Bearer $DEPLOY_TOKEN"`
 - **On the server**: `ewamon-deploy`, log in `/opt/ewamon/logs/deploy.log` (also `journalctl -u ewamon-deploy`).
