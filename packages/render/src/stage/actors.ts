@@ -49,9 +49,9 @@ export const BREAKDANCE_MS = 6000;
 export const FP_HEADLESS_SCALE = 0.001;
 /**
  * The emote wheel (IMPLEMENTATION-NOTES "Emote wheel"): 7 the breakdance, 8..14 high five, "you, me, battle", whip /
- * nae nae, dab, look left, look right, crying. Lengths match protocol `emoteLengthMs`.
+ * nae nae, dab, six seven, the bird, crying. Lengths match protocol `emoteLengthMs`.
  */
-export const EMOTE_WHEEL_MS: readonly number[] = Object.freeze([0, EMOTE_MS, EMOTE_MS, EMOTE_MS, EMOTE_MS, EMOTE_MS, EMOTE_MS, BREAKDANCE_MS, 2600, 3400, 5200, 3000, 2600, 2600, 4200]);
+export const EMOTE_WHEEL_MS: readonly number[] = Object.freeze([0, EMOTE_MS, EMOTE_MS, EMOTE_MS, EMOTE_MS, EMOTE_MS, EMOTE_MS, BREAKDANCE_MS, 2600, 3400, 5200, 3000, 3600, 3600, 4200]);
 /** How long an emote plays (ms). */
 export function emoteMs(n: number): number {
   return EMOTE_WHEEL_MS[n] ?? EMOTE_MS;
@@ -93,7 +93,7 @@ export const CHARACTER = Object.freeze({
 export type EmoteId = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14;
 /** spine §4.1: 1..6 = wave happy sad alert heart cool; 7.. = the emote wheel (not in the spine). */
 export const EMOTE_NAMES: readonly string[] = Object.freeze([
-  '', 'wave', 'happy', 'sad', 'alert', 'heart', 'cool', 'breakdance', 'highfive', 'battle', 'whip', 'dab', 'lookleft', 'lookright', 'crying',
+  '', 'wave', 'happy', 'sad', 'alert', 'heart', 'cool', 'breakdance', 'highfive', 'battle', 'whip', 'dab', 'sixseven', 'bird', 'crying',
 ]);
 /**
  * The clip each emote plays (§10.7.7). KayKit ships no wave and nothing downcast, so those two are procedural poses
@@ -101,10 +101,10 @@ export const EMOTE_NAMES: readonly string[] = Object.freeze([
  * (`cheer`), alert flinches, cool is the one-handed `use`.
  */
 export const EMOTE_CLIPS: readonly (string | null)[] = Object.freeze([null, null, 'cheer', null, 'flinch', 'cheer', 'use', null, null, null, null, null, null, null, null]);
-type EmotePose = 'wave' | 'bow' | 'breakdance' | 'highfive' | 'battle' | 'whip' | 'dab' | 'lookleft' | 'lookright' | 'crying';
+type EmotePose = 'wave' | 'bow' | 'breakdance' | 'highfive' | 'battle' | 'whip' | 'dab' | 'sixseven' | 'bird' | 'crying';
 /** Procedural emotes (applied after the mixer, weighted by the emote fade). */
 export const EMOTE_POSES: readonly (EmotePose | null)[] = Object.freeze([
-  null, 'wave', null, 'bow', null, null, null, 'breakdance', 'highfive', 'battle', 'whip', 'dab', 'lookleft', 'lookright', 'crying',
+  null, 'wave', null, 'bow', null, null, null, 'breakdance', 'highfive', 'battle', 'whip', 'dab', 'sixseven', 'bird', 'crying',
 ] as const);
 /** Emotes that loop for their 2 s (the others play once and hold). */
 const EMOTE_LOOPS: readonly boolean[] = Object.freeze([false, false, true, false, false, true, false, false]);
@@ -145,8 +145,16 @@ export const SILLY = Object.freeze({
   whip: Object.freeze({ whipEnd: 2.4, whipS: 1.2, naeHz: 1.1, waveHz: 2.2, bounceM: 0.06 }),
   /** Six snapping dabs (alternating sides), then one held, trembling with rage. */
   dab: Object.freeze({ count: 6, everyS: 0.32, snapS: 0.06, hopM: 0.16, finalHopM: 0.38, trembleHz: 23 }),
-  /** Look left / right: the slow suspicious turn, the snap, the scan, a double take, the snap again. */
-  look: Object.freeze({ creepEnd: 0.5, snapEnd: 0.62, scanEnd: 1.9, backEnd: 2.05, againEnd: 2.2, headRad: 1.25 }),
+  /**
+   * Six seven: palms up, the hands weighing "six" against "seven" faster and faster (`hzFrom` → `hzTo`) with shrugging
+   * shoulders and a smug head wobble, then both arms flung up for the "SIX SEVEEEN" with a hip wiggle.
+   */
+  sixSeven: Object.freeze({ inEnd: 0.3, weighEnd: 2.9, hzFrom: 2, hzTo: 6, wiggleHz: 7 }),
+  /**
+   * The bird: the right fist out, the left hand cranking beside it like a music box while the finger "rises", the SNAP
+   * up and a cocky hold, then the hands on the cheeks, peeking left and right (`peekHz`) with giggling shoulders.
+   */
+  bird: Object.freeze({ crankEnd: 1.3, crankHz: 2.4, popEnd: 1.45, holdEnd: 1.95, cheeksS: 0.25, peekHz: 0.9, peekRad: 0.75, giggleHz: 6 }),
   /** Crying: hands to the face, sobbing shoulders, and a wail (head thrown back, arms flung) every `wailEvery` s. */
   crying: Object.freeze({ faceEnd: 0.4, sobHz: 3.2, wailEvery: 1.3, wailS: 0.4 }),
 });
@@ -412,6 +420,12 @@ export class CharacterPool implements ActorPool {
     this.place(r);
   }
 
+  /** `id`'s current `setLift` (m; 0 for an unknown id). */
+  liftOf(id: string): number {
+    const r = this.byId.get(id);
+    return r === undefined ? 0 : this.lift[r.slot]!;
+  }
+
   /** Phase D8: true while `id` stands on open water (tests, the client's ripple audio). */
   onWater(id: string): boolean {
     const r = this.byId.get(id);
@@ -626,8 +640,8 @@ export class CharacterPool implements ActorPool {
         else if (pose === 'battle') this.poseBattle(g, r.emoteW, t);
         else if (pose === 'whip') this.poseWhip(g, r.emoteW, t);
         else if (pose === 'dab') this.poseDab(g, r.emoteW, t);
-        else if (pose === 'lookleft') this.poseLook(g, r.emoteW, t, 1);
-        else if (pose === 'lookright') this.poseLook(g, r.emoteW, t, -1);
+        else if (pose === 'sixseven') this.poseSixSeven(g, r.emoteW, t);
+        else if (pose === 'bird') this.poseBird(g, r.emoteW, t);
         else if (pose === 'crying') this.poseCrying(g, r.emoteW, t);
       }
       // after the mixer (it skips a value that did not change, so the head's scale is restored here, not left to it)
@@ -1162,26 +1176,76 @@ export class CharacterPool implements ActorPool {
     this.arm(g, near, -0.55 * a + 0.3 * (1 - a), 0.45 * a - 0.9 * (1 - a), 0.7 * a, -0.9 * a + 0.25 * (1 - a), 0.45 * a - 0.95 * (1 - a), -0.1 * a, w);
   }
 
-  /** Look left (12, d = 1) / right (13, d = -1): creep, SNAP, scan with a hand shading the eyes, double take, snap again. */
-  private poseLook(g: Instance, w: number, t: number, d: 1 | -1): void {
-    const L = SILLY.look;
-    let head: number;
-    if (t < L.creepEnd) head = 0.35 * ease(t / L.creepEnd);
-    else if (t < L.snapEnd) head = 0.35 + (L.headRad - 0.35) * ease((t - L.creepEnd) / (L.snapEnd - L.creepEnd));
-    else if (t < L.scanEnd) head = L.headRad + Math.sin((t - L.snapEnd) * Math.PI * 3) * 0.1;
-    else if (t < L.backEnd) head = L.headRad * (1 - ease((t - L.scanEnd) / (L.backEnd - L.scanEnd)));
-    else if (t < L.againEnd) head = L.headRad * ease((t - L.backEnd) / (L.againEnd - L.backEnd));
-    else head = L.headRad;
-    const peer = head / L.headRad;
-    this.rootPose(g, w, 0, 0.15 * peer, 0.22 * peer * d, -0.12 * peer * d);
-    this.turnBone(g, 'chest', 0, 1, 0, 0.3 * peer * d * w);
-    this.turnBone(g, 'head', 0, 1, 0, (head - 0.3 * peer) * d * w);
-    this.turnBone(g, 'head', 1, 0, 0, 0.15 * peer * w);
-    // the hand on the look side shades the eyes; the other dangles
-    const shade = (-d) as 1 | -1;
-    const k = Math.min(1, t / 0.35);
-    this.arm(g, shade, 0.6, 0.35 * k - 0.8 * (1 - k), 0.55, -0.55 * k + 0.2 * (1 - k), 0.5 * k - 0.9 * (1 - k), 0.4, w);
-    this.arm(g, d, 0.35, -1, -0.1, 0.3, -1, 0.15, w);
+  /** Six seven (12): palms up, weighing six against seven ever faster, shrugging; then arms up for the SIX SEVEEEN. */
+  private poseSixSeven(g: Instance, w: number, t: number): void {
+    const S = SILLY.sixSeven;
+    if (t < S.weighEnd) {
+      const k = ease(Math.min(1, t / S.inEnd));
+      // the weighing speeds up: phase is the integral of a rate ramping from hzFrom to hzTo
+      const u = Math.max(0, t - S.inEnd), span = S.weighEnd - S.inEnd;
+      const s = Math.sin(Math.PI * 2 * (S.hzFrom * u + ((S.hzTo - S.hzFrom) * u * u) / (2 * span))) * k;
+      this.rootPose(g, w, Math.abs(s) * 0.05, 0.08 * k, 0.16 * s, 0.05 * s);
+      this.turnBone(g, 'chest', 0, 0, 1, 0.14 * s * w);
+      this.turnBone(g, 'head', 0, 0, 1, -0.28 * s * w);
+      this.turnBone(g, 'head', 1, 0, 0, -0.12 * k * w);
+      // upper arms down and a little forward, forearms forward with the palms up, bobbing in turn
+      this.arm(g, 1, 0.3, -0.85 + 0.3 * k, 0.35 * k, 0.2, -1 + (1 + 0.5 * s) * k, k, w);
+      this.arm(g, -1, 0.3, -0.85 + 0.3 * k, 0.35 * k, 0.2, -1 + (1 - 0.5 * s) * k, k, w);
+      this.aimLimb(g, 'upperlegl', 'lowerlegl', 0.2, -1, 0.15 * Math.abs(s), w);
+      this.aimLimb(g, 'upperlegr', 'lowerlegr', -0.2, -1, 0.15 * Math.abs(s), w);
+    } else {
+      const u = t - S.weighEnd;
+      const k = ease(Math.min(1, u / 0.15));
+      const wig = Math.sin(u * Math.PI * 2 * S.wiggleHz);
+      this.rootPose(g, w, Math.sin(Math.min(1, u / 0.35) * Math.PI) * 0.3, -0.25 * k, 0.22 * wig * k, 0.1 * wig * k);
+      this.turnBone(g, 'chest', 1, 0, 0, -0.15 * k * w);
+      this.turnBone(g, 'head', 1, 0, 0, -0.45 * k * w);
+      this.turnBone(g, 'head', 0, 0, 1, 0.15 * wig * w);
+      this.arm(g, 1, 0.65, 0.7 * k - 0.3 * (1 - k), 0.15, 0.6, 0.8 * k, 0.2, w);
+      this.arm(g, -1, 0.65, 0.7 * k - 0.3 * (1 - k), 0.15, 0.6, 0.8 * k, 0.2, w);
+    }
+  }
+
+  /** The bird (13): crank the music box, the finger SNAPS up, then hands on the cheeks, peeking around naughtily. */
+  private poseBird(g: Instance, w: number, t: number): void {
+    const B = SILLY.bird;
+    // the right arm thrust at the camera, the fist (the finger) up: the forearm rises with the crank, then snaps up
+    const fist = (rise: number, push: number): void => {
+      this.arm(g, -1, 0.2, -0.3 + 0.35 * rise, 0.9 + push, 0.05, -0.1 + 1.1 * rise, 1 - 0.75 * rise, w);
+    };
+    if (t < B.crankEnd) {
+      const c = t * Math.PI * 2 * B.crankHz;
+      const rise = 0.35 * (t / B.crankEnd);
+      this.rootPose(g, w, Math.abs(Math.sin(c)) * 0.03, 0.12, -0.15, 0);
+      this.turnBone(g, 'head', 1, 0, 0, 0.3 * w);
+      this.turnBone(g, 'head', 0, 0, 1, 0.18 * w);
+      fist(rise, 0);
+      // the left hand turns a crank beside the right fist
+      this.arm(g, 1, 0.05, -0.45, 0.9, -0.45 + 0.3 * Math.cos(c), 0.35 * Math.sin(c), 0.75, w);
+    } else if (t < B.holdEnd) {
+      // the snap up, then held there with the head cocked
+      const k = ease(Math.min(1, (t - B.crankEnd) / (B.popEnd - B.crankEnd)));
+      this.rootPose(g, w, 0, 0.12 + 0.06 * k, -0.15 * (1 - k), 0.06 * k);
+      this.turnBone(g, 'head', 1, 0, 0, (0.3 - 0.4 * k) * w);
+      this.turnBone(g, 'head', 0, 0, 1, (0.18 + 0.12 * k) * w);
+      fist(0.35 + 0.65 * k, 0.15 * k);
+      this.arm(g, 1, 0.6, -0.5 - 0.3 * k, 0.3 - 0.2 * k, 0.5, -0.6, 0.3, w);
+    } else {
+      // hands on the cheeks, hunched and giggling, peeking left and right: did anybody see that?
+      const u = t - B.holdEnd;
+      const k = ease(Math.min(1, u / B.cheeksS));
+      const peek = Math.sin(u * Math.PI * 2 * B.peekHz) * k;
+      const giggle = Math.sin(u * Math.PI * 2 * B.giggleHz) * k;
+      this.rootPose(g, w, Math.abs(giggle) * 0.025 - 0.04 * k, 0.16 * k, 0.12 * peek, 0.06 * peek);
+      this.turnBone(g, 'chest', 1, 0, 0, (0.12 + 0.04 * giggle) * k * w);
+      this.turnBone(g, 'head', 0, 1, 0, B.peekRad * peek * w);
+      this.turnBone(g, 'head', 1, 0, 0, 0.12 * k * w);
+      this.turnBone(g, 'head', 0, 0, 1, -0.15 * peek * w);
+      // blend from the bird / dangling arm to both palms on the cheeks
+      const ux = 0.45, uy = -0.55 + 0.05 * giggle, uz = 0.55, fx = -0.4, fy = 0.85, fz = 0.25;
+      this.arm(g, -1, 0.2 + (ux - 0.2) * k, 0.05 + (uy - 0.05) * k, 1.05 + (uz - 1.05) * k, 0.05 + (fx - 0.05) * k, 1 + (fy - 1) * k, 0.25, w);
+      this.arm(g, 1, 0.6 + (ux - 0.6) * k, -0.8 + (uy + 0.8) * k, 0.1 + (uz - 0.1) * k, 0.5 + (fx - 0.5) * k, -0.6 + (fy + 0.6) * k, 0.3 + (fz - 0.3) * k, w);
+    }
   }
 
   /** Crying (14): hands to the face, the shoulders heaving, and every so often a WAIL (head back, arms flung up). */

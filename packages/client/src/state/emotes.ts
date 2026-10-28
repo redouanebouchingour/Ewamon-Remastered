@@ -15,15 +15,15 @@ export interface WheelEntry {
   readonly glyph: string;
 }
 
-/** Clockwise from the top (look right on the right, look left on the left). */
+/** Clockwise from the top (the bird on the right, six seven on the left). */
 export const WHEEL: readonly WheelEntry[] = [
   { id: 8, label: 'High five', glyph: '✋' },
   { id: 9, label: 'You, me, battle', glyph: '⚔️' },
-  { id: 13, label: 'Look right', glyph: '👉' },
+  { id: 13, label: 'The bird', glyph: '🖕' },
   { id: 10, label: 'Whip / Nae Nae', glyph: '🕺' },
   { id: 7, label: 'Breakdance', glyph: '🔥' },
   { id: 11, label: 'DAB aggressively', glyph: '😤' },
-  { id: 12, label: 'Look left', glyph: '👈' },
+  { id: 12, label: 'Six sevennn', glyph: '🤷' },
   { id: 14, label: 'Crying', glyph: '😭' },
 ];
 

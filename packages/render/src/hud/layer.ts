@@ -141,7 +141,7 @@ function inkOn(hex: string): string {
 }
 /** Status squares (keyed by the uppercase 3-letter code). */
 const STATUS_COLORS: Readonly<Record<string, string>> = { BRN: '#ee6f4a', PSN: '#9a5bb0', PAR: '#f4cf3f', SLP: '#8aa6e0', FRZ: '#8fd6e8', TOX: '#7a3b9a', CNF: '#e06fa0' };
-const EMOTE_GLYPHS: readonly string[] = ['', '👋', '😊', '😢', '❗', '❤', '😎', '🔥', '✋', '⚔', '🕺', '😤', '👀', '👀', '😭'];
+const EMOTE_GLYPHS: readonly string[] = ['', '👋', '😊', '😢', '❗', '❤', '😎', '🔥', '✋', '⚔', '🕺', '😤', '67', '🖕', '😭'];
 const DIGITS: readonly string[] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 // ---- surfaces (DI for node tests) --------------------------------------------------------------------------------

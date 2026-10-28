@@ -504,7 +504,7 @@ Field mapping (the adapter is a table, not logic; target names are `10-render.md
 | move forward/back/strafe | `KeyW KeyS KeyA KeyD`, `ArrowUp ArrowDown` (fwd/back), `ArrowLeft ArrowRight` (strafe) | `input` |
 | run | `ShiftLeft` (hold) | `input.running` |
 | interact | `KeyE`, `Enter` | `interact { targetId, kind }` or `engageSpawn { spawnId }` |
-| jump | `Space` | nothing — local cosmetic hop (0.6 u, 420 ms); never on the wire |
+| jump | `Space` | nothing — local cosmetic hop (2 u, 780 ms; the camera rides it, in first person too); never on the wire <!-- amended 2026-10-28 --> |
 | bike | `KeyV` | Phase D11: mounts / folds the Bicycle (owned, outdoors, not on open water — else a toast says why); `input.bike` while riding; it folds itself in a hall or when the item is gone |
 | chat | `KeyT` | opens the DOM chat input; `Enter` sends `chat { text }`; `Escape` closes |
 | emote 1–6 | `Digit1`…`Digit6` | `emote { emote }` |

@@ -2330,7 +2330,7 @@ pool; `Part3.worldFx`).
   `BasicDioramaRig` ignores it. While the followed body emotes, any emote (`DioramaRigOptions.emoteHead` →
   `CharacterPool.emoteHead`; 2026-10-27, was the breakdance only), the eye rides the head joint: the eye's offset from
   the upright head joint and the look are turned by the head's rotation relative to its upright bind rest, from the
-  posed joint, so the view nods with a dab, turns with a look left, spins and hangs upside down with the breakdance.
+  posed joint, so the view nods with a dab, looks down at the bird's crank, spins and hangs upside down with the breakdance.
   Both ease in and out by the emote weight (last frame's body pose: the camera updates before the pool). A hidden body
   shows while it emotes (2026-10-27, player ask: see the hands move), its head joint shrunk to `FP_HEADLESS_SCALE` so
   the eye inside it looks out; the scale is set after the mixer and restored when the emote ends (the mixer skips an
@@ -2359,10 +2359,11 @@ pool; `Part3.worldFx`).
   poses like the breakdance (`EMOTE_POSES`, numbers in `SILLY`): high five (wind-up, slap, then flapping the hurt hand
   while hopping on one foot), "you, me, battle" (point at the camera, thumbs at the own chest, boxing bob with jabs),
   whip / nae nae (two whips, then the sway under a raised waving arm), dab (six snapping dabs, side to side, then one
-  held and trembling), look left / right (creep, snap, scan with a hand shading the eyes, double take) and crying (hands
+  held and trembling), six seven (palms up, weighing ever faster with shrugs, then arms up for the SIX SEVEEEN), the
+  bird (a music-box crank, the finger snaps up and holds, then the hands on the cheeks, peeking around naughtily) and crying (hands
   to the face, heaving shoulders, a wail every 1.3 s). Each sets the root (`rootPose`: lift, lean, yaw, roll), turns
   chest / head (`turnBone`) and aims both arm segments (`arm`, upper arm then forearm to the wrist) in root space after
-  the mixer; zero allocation. HUD cards: ✋ ⚔ 🕺 😤 👀 👀 😭.
+  the mixer; zero allocation. HUD cards: ✋ ⚔ 🕺 😤 67 🖕 😭.
 
 ## Quality presets (2026-10-23, not in the SPEC)
 
@@ -2767,3 +2768,12 @@ The user's call: most of a zone never moves, so only the player, villagers and c
   actor: the sheep, the NPCs); 5 static renders in 5 s at a fixed sun; 13 shadow-pass draws in a sampled frame (the actor map; not a benchmark,
   the cascades' ~126 above was mirevale). Same view and time as on `main`: the shadows match.
 
+
+## The camera rides an actor's lift (2026-10-28)
+
+- `DioramaRigOptions.lift` (wired to the new `CharacterPool.liftOf`): the follow spring's goal is the ground under the
+  feet (`feetOf().y − lift`) and the orbit centre adds the lift unsmoothed (faded out with the shot blend). Before,
+  the whole feet height sprang with τ 0.12 s: on a 1.2 m / 600 ms jump hop the camera reached 0.92 m, ~180 ms
+  after the apex, and read as not following. Measured live after the change (alt pair, Tide Route): the camera's y
+  rose 1.20 m with the feet' 1.20 m, frame for frame. Terrain steps still spring; a glide's lift is now tracked
+  directly too. The DOF focus was already the feet (lift included). `camera-rig.test.ts` checks the same-frame rise.

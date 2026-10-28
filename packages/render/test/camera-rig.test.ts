@@ -13,13 +13,14 @@ import { BATTLE_DISTANCE, BATTLE_PITCH, BATTLE_YAW_OFFSET, BATTLER_SEPARATION, P
 const DEG = Math.PI / 180;
 const FRAME = 1000 / 60;
 
-function makeRig(effects: EffectsFlags = ALL_EFFECTS, feet?: Map<string, Vector3>) {
+function makeRig(effects: EffectsFlags = ALL_EFFECTS, feet?: Map<string, Vector3>, lift?: Map<string, number>) {
   const cam = new PerspectiveCamera(28, 16 / 9, 0.5, 220);
   const onSlowmo = vi.fn();
   const onSettled = vi.fn();
   const r = new DioramaRig(cam, {
     effects: () => effects,
     feet: feet ? (id, out) => { const f = feet.get(id); return f ? out.copy(f) : null; } : undefined,
+    lift: lift ? (id) => lift.get(id) ?? 0 : undefined,
     onSlowmo, onSettled,
   });
   return { r, cam, onSlowmo, onSettled };
@@ -104,6 +105,23 @@ describe('follow: dead zone + critically damped spring', () => {
     const nv = -0.2 - (2 * w * -0.2 + w * w * (0.3 - 1)) * h;
     expect(one.v).toBe(nv);
     expect(one.x).toBe(0.3 + nv * h);
+  });
+
+  it('a lift (a jump, a glide) moves the orbit centre in the same frame, unsmoothed, and back down with it', () => {
+    const ground = 2;
+    const feet = new Map([['me', new Vector3(0, ground, 0)]]);
+    const lift = new Map([['me', 0]]);
+    const { r } = makeRig(ALL_EFFECTS, feet, lift);
+    r.follow('me');
+    run(r, 500);
+    expect(r.orbit.center.y).toBeCloseTo(ground, 6);
+    for (const m of [0.4, 1.2, 0.7, 0]) {
+      lift.set('me', m);
+      feet.get('me')!.y = ground + m;                    // the feet include the lift (CharacterPool.feetOf)
+      r.update(FRAME);
+      expect(r.orbit.center.y).toBeCloseTo(ground + m, 6);
+      expect(r.focus.y).toBeCloseTo(ground + m, 6);
+    }
   });
 
   it('the spring is critically damped: no overshoot toward a step target', () => {

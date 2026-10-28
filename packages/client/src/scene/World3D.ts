@@ -116,6 +116,7 @@ import type { SceneDirector } from './SceneDirector';
 import { SpawnViews } from './SpawnViews';
 import { FollowerViews } from './FollowerViews';
 import { FieldPowerSystem } from './fieldPowers';
+import { Hop } from './hop';
 import { CampViews } from './CampViews';
 import { getHeightfield, glideAltitude, interiorAt } from '@ewa/content';
 import { rendererInternals } from '@ewa/render';
@@ -363,6 +364,8 @@ class World implements World3D {
   private readonly campViews: CampViews;
   /** render's actor lift (a glide carries the avatar along its arc) */
   private liftActor: ((id: string, m: number) => void) | null = null;
+  /** the jump key's cosmetic hop (local only; its lift rides the same channel as a glide's) */
+  private readonly hop = new Hop();
   private selfFollowerShown = true;
   /** LLM feature 6: the follower pool (its billboard anchors the lead's speech bubble) */
   private followerPool: { billboardOf(owner: string): CreatureBillboard | null } | null = null;
@@ -381,7 +384,7 @@ class World implements World3D {
       zoom: (dir) => this.ready && !this.fpOn && this.renderer.camera.setZoomStop(Math.max(0, Math.min(2, this.zoomStop() + dir)) as 0 | 1 | 2),
       look: (dx, dy) => this.look(dx, dy),
       orbit: (dx) => this.ready && !this.fpOn && this.renderer.camera.orbitBy?.(-dx * LOOK_RAD_PER_PX),
-      jump: () => undefined,
+      jump: () => this.jump(),
       toggleBike: () => this.toggleBike(),
       fieldPower: () => {
         if (this.ready && this.zoneLoaded) this.field?.usePower();
@@ -2083,6 +2086,13 @@ class World implements World3D {
     return code.replace(/^Key|^Digit/, '');
   }
 
+  /** The jump key: a cosmetic hop on land while nothing else holds the avatar (first person: the eye rides it). */
+  private jump(): void {
+    if (!this.ready || !this.zoneLoaded || this.movementBlocked() || this.input.gliding !== null) return;
+    if (this.stepCollider?.onWater(this.input.pose.x, this.input.pose.z) === true) return;
+    this.hop.start(performance.now());
+  }
+
   private movementBlocked(): boolean {
     if (this.capture.typing()) return true;
     return this.worldBlocked();
@@ -2675,6 +2685,9 @@ class World implements World3D {
       const rx = this.input.renderX;
       const rz = this.input.renderZ;
       lift = Math.max(0, glideAltitude(getHeightfield(zone.id), g, this.input.glideAt) - (this.stepCollider?.height(rx, rz) ?? 0));
+      this.hop.cancel();
+    } else {
+      lift = this.hop.lift(performance.now());
     }
     this.liftActor?.(selfId, lift);
     const shown = outdoorsFree && this.director.pocket === null;
