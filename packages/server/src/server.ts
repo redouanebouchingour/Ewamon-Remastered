@@ -84,12 +84,13 @@ export async function boot(deps: ServerDeps): Promise<Booted> {
   if (env.SERVER_SEED === undefined) log.info({ worldSeed }, 'SERVER_SEED absent — derived world seed');
   for (const w of envWarnings(env)) log.warn(w);
 
-  // 1. presence / driver — the `colyseus` bundle (auth, tools, monitor, playground, redis) is imported only
-  //    when Redis is configured, so a dev/test process never loads it
+  // 1. presence / driver — the Redis packages are imported only when Redis is configured, so a dev/test process
+  //    never loads them (not the `colyseus` bundle: it pulls uWebSockets.js from a GitHub tarball that 429s)
   let presence: Presence;
   let driver: MatchMakerDriver;
   if (env.REDIS_URL !== undefined) {
-    const { RedisPresence, RedisDriver } = await import('colyseus');
+    const { RedisPresence } = await import('@colyseus/redis-presence');
+    const { RedisDriver } = await import('@colyseus/redis-driver');
     presence = new RedisPresence(env.REDIS_URL);
     driver = new RedisDriver(env.REDIS_URL);
   } else {

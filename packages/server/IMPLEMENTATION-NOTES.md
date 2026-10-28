@@ -69,7 +69,9 @@ process), `S<n>` (spec gaps) or `W<n>` (spawn director).
   adds); invisible to everyone until `view.add` because `spawns` is `@view()`-tagged.
 - **R9 — boot order:** the REST app is built (`ready()`, not listening) before the Colyseus server so rooms
   verify access tokens with the REST instance's `@fastify/jwt` verifier. Listening order is the spec's (WS,
-  then REST). The `colyseus` bundle (Redis presence/driver) is imported lazily, only when `REDIS_URL` is set.
+  then REST). `@colyseus/redis-presence` / `@colyseus/redis-driver` are imported lazily, only when `REDIS_URL` is
+  set (not the `colyseus` bundle: it installs uWebSockets.js from a GitHub tarball, which GitHub rate-limits and
+  broke a deploy).
 - **R10 — signals:** `gracefullyShutdown: false` on the Colyseus `Server`; `main.ts` handles SIGINT/SIGTERM
   (`stop()` = jobs → REST close → Colyseus graceful shutdown → DB close → exit).
 - **R11 — join-time AOI pass:** `onJoin` registers the viewer and places the avatar in the grid immediately
