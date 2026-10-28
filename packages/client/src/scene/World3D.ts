@@ -1026,7 +1026,7 @@ class World implements World3D {
         d.push($(p).listen('guildTag', restyle));
         return;
       }
-      this.remotes.add(key, { name: p.name, look: lookOf(p.body), guildTag: p.guildTag, inBattle: p.inBattle });
+      this.remotes.add(key, { name: p.name, look: lookOf(p.body), guildTag: p.guildTag, inBattle: p.inBattle, flair: p.flair });
       this.remotes.push(key, state.tick, p.x, p.z, p.angle, p.moving, p.running);
       // talking to other players: walk up to them like to an NPC (E opens the player card)
       const target = makeInteractable(`${PLAYER_PREFIX}${key}`, 'player', p.x, p.z, 'Talk to', p.name, this.keyLabel('interact'));
@@ -1041,7 +1041,7 @@ class World implements World3D {
         }),
       );
       d.push(
-        $(p).onChange(() => this.remotes.update(key, { name: p.name, look: lookOf(p.body), guildTag: p.guildTag, inBattle: p.inBattle })),
+        $(p).onChange(() => this.remotes.update(key, { name: p.name, look: lookOf(p.body), guildTag: p.guildTag, inBattle: p.inBattle, flair: p.flair })),
       );
     };
     d.push($(state).players.onAdd(onPlayer, true));
@@ -2738,10 +2738,10 @@ class World implements World3D {
     this.syncSpectators();
     this.syncFollowers();
     this.stepBuddy(sx, sz);
-    const list: { id: string; name: string; guildTag: string; inBattle: boolean; d: number }[] = [];
+    const list: { id: string; name: string; guildTag: string; inBattle: boolean; flair: string; d: number }[] = [];
     this.remotes.forEach((id, x, z, info, spawned) => {
       if (!spawned) return;
-      list.push({ id, name: info.name, guildTag: info.guildTag, inBattle: info.inBattle, d: Math.hypot(x - sx, z - sz) });
+      list.push({ id, name: info.name, guildTag: info.guildTag, inBattle: info.inBattle, flair: info.flair ?? '', d: Math.hypot(x - sx, z - sz) });
     });
     const zone = this.zone;
     if (zone !== null) {
@@ -2751,17 +2751,17 @@ class World implements World3D {
         if (d > 18) continue;
         if (n.when !== null && !flags.has(n.when)) continue;
         if (n.until !== null && flags.has(n.until)) continue;
-        list.push({ id: n.id, name: n.name, guildTag: '', inBattle: false, d });
+        list.push({ id: n.id, name: n.name, guildTag: '', inBattle: false, flair: '', d });
       }
     }
     for (const a of this.director.pocketActors) {
       const d = Math.hypot(a.x - sx, a.z - sz);
-      if (d <= 18) list.push({ id: a.id, name: a.name, guildTag: '', inBattle: false, d });
+      if (d <= 18) list.push({ id: a.id, name: a.name, guildTag: '', inBattle: false, flair: '', d });
     }
     list.sort((a, b) => a.d - b.d);
-    const next: HudNameplates = list.slice(0, 16).map(({ id, name, guildTag, inBattle }) => ({ id, name, guildTag, inBattle }));
+    const next: HudNameplates = list.slice(0, 16).map(({ id, name, guildTag, inBattle, flair }) => ({ id, name, guildTag, inBattle, flair }));
     const cur = this.hudWriter.current().nameplates;
-    if (cur.length === next.length && cur.every((c, i) => c.id === next[i]!.id && c.name === next[i]!.name && c.inBattle === next[i]!.inBattle && c.guildTag === next[i]!.guildTag)) return;
+    if (cur.length === next.length && cur.every((c, i) => c.id === next[i]!.id && c.name === next[i]!.name && c.inBattle === next[i]!.inBattle && c.guildTag === next[i]!.guildTag && c.flair === next[i]!.flair)) return;
     this.hudWriter.setNameplates(next);
   }
 

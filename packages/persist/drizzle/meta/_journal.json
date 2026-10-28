@@ -190,6 +190,13 @@
       "when": 1793179865803,
       "tag": "0026_player_blocks",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793180090308,
+      "tag": "0027_player_banners",
+      "breakpoints": true
     }
   ]
 }

@@ -79,6 +79,7 @@ import { EGGS_TOPIC } from '../rest/routes/daycare';
 import { NPC_BATTLE_TOPIC } from '../rest/routes/npc';
 import { TowerSessions } from './towerSession';
 import { advanceQuests, deliveriesFor } from '../game/quests';
+import { flairOf } from '../game/banner';
 import type { QuestEvent } from '../game/quests';
 import { STREAK_LAST_PREFIX, dailyLogin } from '../liveops/login';
 import { dayKey, hotspotDayKey, hotspotOpen, hotspotsFor, liveOpsModsFor } from '../liveops/schedule';
@@ -579,7 +580,8 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       const flags = await deps.repos.progress.flags(tx, playerId);
       const inventory = await deps.repos.inventory.all(tx, playerId);
       const guild = await deps.repos.social.guildOf(tx, playerId);
-      return { player, party, badges, flags, inventory, guildTag: guild?.tag ?? null };
+      const banner = await deps.repos.banners.get(tx, playerId);
+      return { player, party, badges, flags, inventory, guildTag: guild?.tag ?? null, flair: flairOf(banner) };
     });
     if (loaded.player === null) throw new ServerError(401, 'noPlayer');
     if (loaded.party.length === 0) throw new ServerError(409, 'noParty');
@@ -660,6 +662,7 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
       ps.angle = facing ?? (row.zoneId === this.zone.id ? row.angle : 0);
       ps.body = row.body;
       ps.guildTag = loaded.guildTag ?? '';
+      ps.flair = loaded.flair;
       this.state.players.set(playerId, ps);
     } else {
       // A takeover is always a NEW client (a reload or a second tab; a Colyseus reconnection never reaches onJoin),
@@ -1108,17 +1111,18 @@ export class ZoneRoom extends Room<{ state: ZoneState; metadata: ZoneMeta; clien
     }
   }
 
-  /** §30.5 `PlayerState.body/guildTag` re-read after POST /profile or any guild change (`ewa:profile`). */
+  /** §30.5 `PlayerState.body/guildTag/flair` re-read after POST /profile, POST /banner or any guild change (`ewa:profile`). */
   private async onProfile(playerId: string): Promise<void> {
     const ps = this.state.players.get(playerId);
     if (ps === undefined) return;
     const deps = this.deps;
     const r = await deps.repos.db
-      .transaction(async (tx) => ({ row: await deps.repos.players.byId(tx, playerId), guild: await deps.repos.social.guildOf(tx, playerId) }))
+      .transaction(async (tx) => ({ row: await deps.repos.players.byId(tx, playerId), guild: await deps.repos.social.guildOf(tx, playerId), banner: await deps.repos.banners.get(tx, playerId) }))
       .catch(() => null);
     if (r?.row == null) return;
     ps.body = r.row.body;
     ps.guildTag = r.guild?.tag ?? '';
+    ps.flair = flairOf(r.banner);
   }
 
   // ─── followers with field powers (SPEC §3.18) ────────────────────────────────

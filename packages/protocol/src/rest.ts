@@ -85,7 +85,50 @@ export const PlayerProfileSchema = z.object({
 });
 export type PlayerProfile = z.infer<typeof PlayerProfileSchema>;
 
-/** §5.3 allow-list, in PUBLIC_PROFILE_KEYS order. */
+/**
+ * Trainer banners (content `data/banners.ts`): the trainer's pick, saved with `POST /banner`. The shape only; the server
+ * checks every id is known and unlocked (content `bannerRefusal`) and that `featuredId` is one of the trainer's creatures.
+ */
+export const BannerChoiceSchema = z.object({
+  frame: z.string().min(1).max(32),
+  backdrop: z.string().min(1).max(32),
+  pins: z.array(z.string().min(1).max(32)).max(3),
+  trackers: z.array(z.string().min(1).max(32)).max(3),
+  featuredId: Uuid.nullable(),
+});
+export type BannerChoiceView = z.infer<typeof BannerChoiceSchema>;
+/** content `BannerStats`: what the server counts for the trainer's unlocks. */
+export const BannerStatsSchema = z.object({
+  badges: z.number().int().min(0),
+  dexCaught: z.number().int().min(0),
+  trainerLevel: z.number().int().min(1),
+  rating: z.number().int(),
+  peakRating: z.number().int(),
+  towerBest: z.number().int().min(0),
+  shinies: z.number().int().min(0),
+  legendaries: z.number().int().min(0),
+  pvpWins: z.number().int().min(0),
+  achievements: z.number().int().min(0),
+  champion: z.boolean(),
+  seasonBest: z.number().int().min(0),
+  typeCaught: z.record(z.string(), z.number().int().min(0)),
+});
+/** `GET /banner`, `POST /banner`: the saved pick and the counts the editor shows the locks from. */
+export const BannerRes = z.object({ choice: BannerChoiceSchema, stats: BannerStatsSchema });
+/**
+ * What other trainers see: the banner as it may be shown today (content `bannerShown`), each pin at its current tier,
+ * each tracker with its value, the featured creature (or the party lead; null for an empty party).
+ */
+export const BannerViewSchema = z.object({
+  frame: z.string(),
+  backdrop: z.string(),
+  pins: z.array(z.object({ id: z.string(), tier: z.number().int().min(1) })).max(3),
+  trackers: z.array(z.object({ id: z.string(), value: z.number().int() })).max(3),
+  featured: CreatureInstanceSchema.nullable(),
+});
+export type BannerView = z.infer<typeof BannerViewSchema>;
+
+/** §5.3 allow-list, in PUBLIC_PROFILE_KEYS order; `banner` is added by the route (server `game/banner.ts`). */
 export const PublicProfileSchema = z.object({
   id: Uuid,
   username: Username,
@@ -101,6 +144,8 @@ export const PublicProfileSchema = z.object({
   dexCaughtCount: z.number().int().min(0),
   showcase: z.array(CreatureInstanceSchema).max(3),
   createdAt: IsoDate,
+  /** absent from an older server */
+  banner: BannerViewSchema.optional(),
 });
 export type PublicProfile = z.infer<typeof PublicProfileSchema>;
 
@@ -1442,6 +1487,8 @@ export const ROUTES = {
   me: route({ method: 'GET', path: '/me', auth: 'bearer', response: MeRes }),
   zoneEnter: route({ method: 'POST', path: '/zone/enter', auth: 'bearer', request: ZoneEnterReq, response: ZoneEnterRes }),
   profile: route({ method: 'POST', path: '/profile', auth: 'bearer', request: ProfileReq, response: PlayerProfileSchema }),
+  banner: route({ method: 'GET', path: '/banner', auth: 'bearer', response: BannerRes }),
+  bannerSave: route({ method: 'POST', path: '/banner', auth: 'bearer', request: BannerChoiceSchema, response: BannerRes }),
   questsClaim: route({ method: 'POST', path: '/quests/claim', auth: 'bearer', request: QuestClaimReq, response: QuestClaimRes }),
   partyReorder: route({ method: 'POST', path: '/party/reorder', auth: 'bearer', request: PartyReorderReq, response: PartyRes }),
   partySwap: route({ method: 'POST', path: '/party/swap', auth: 'bearer', request: PartySwapReq, response: PartyBoxRes }),

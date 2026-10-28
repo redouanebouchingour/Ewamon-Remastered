@@ -29,3 +29,4 @@ export * from './npcQuests';
 export * from './camps';
 export * from './rivals';
 export * from './journal';
+export * from './banners';

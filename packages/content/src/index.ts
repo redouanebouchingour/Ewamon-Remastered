@@ -178,6 +178,27 @@ export {
 } from './data/research';
 export type { ResearchCounter, ResearchInputs, ResearchProgress, ResearchTask, ResearchTaskKind, ResearchTaskProgress } from './data/research';
 export { BODIES, LOOKS, TITLES } from './data/bodies';
+export {
+  BANNER_BACKDROPS,
+  BANNER_FRAMES,
+  BANNER_PINS,
+  BANNER_PIN_SLOTS,
+  BANNER_RARITIES,
+  BANNER_TRACKERS,
+  BANNER_TRACKER_SLOTS,
+  DEFAULT_BANNER,
+  bannerBackdrop,
+  bannerFrame,
+  bannerPin,
+  bannerProgress,
+  bannerRefusal,
+  bannerShown,
+  bannerTracker,
+  bannerUnlockHint,
+  bannerUnlocked,
+  pinTier,
+} from './data/banners';
+export type { BannerBackdropDef, BannerChoice, BannerCount, BannerFrameDef, BannerPinDef, BannerRarity, BannerStats, BannerTrackerDef, BannerUnlock } from './data/banners';
 export { BADGE_FLAGS, FLAG_IDS, FLAG_REGISTRY, VISITED_FLAGS, VISITED_PREFIX, badgeFlag, isKnownFlag, visitedFlag } from './flags';
 export type { FlagEntry } from './flags';
 

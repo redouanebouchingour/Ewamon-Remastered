@@ -13,6 +13,7 @@ import l from './layout.module.css';
 import { useClosePanel } from './shared';
 import { BadgeStrip, Showcase, TrainerIdentity, TrainerStats } from './TrainerCard';
 import { SeasonTitles } from './SeasonTitles';
+import { BannerHero, bannerModelOf } from './TrainerBanner';
 
 export function PlayerScreen() {
   const close = useClosePanel();
@@ -38,11 +39,13 @@ export function PlayerScreen() {
   return (
     <Panel title={pub.username} eyebrow="Public profile" onClose={close} actions={back}>
       <div className={l.stackLg}>
-        <TrainerIdentity username={pub.username} title={pub.title} motto={pub.motto} body={pub.body} guildTag={pub.guildTag} tier={pub.tier} you={pub.id === myId} />
-        <section className={l.section} aria-label="Stats">
-          <h3 className={l.sectionTitle}>Stats</h3>
-          <TrainerStats pub={pub} />
-        </section>
+        <BannerHero model={bannerModelOf(pub)}>
+          <TrainerIdentity username={pub.username} title={pub.title} motto={pub.motto} body={pub.body} guildTag={pub.guildTag} tier={pub.tier} you={pub.id === myId} />
+          <section className={l.section} aria-label="Stats">
+            <h3 className={l.sectionTitle}>Stats</h3>
+            <TrainerStats pub={pub} compact />
+          </section>
+        </BannerHero>
         <section className={l.section} aria-label="Badges">
           <h3 className={l.sectionTitle}>Badges</h3>
           <BadgeStrip earned={pub.badges} />

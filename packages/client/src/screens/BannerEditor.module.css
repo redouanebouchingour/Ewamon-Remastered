@@ -1,0 +1,217 @@
+/* Trainer banners: the editor beside its live preview. Options are carbon tiles on hairlines; the pick is ringed in
+ * accent (orange marks selection); a locked option is dimmed with what unlocks it and how far along it is. Rarity
+ * colours match the banner's corner brackets. */
+
+.editor {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--s-6);
+  align-items: start;
+}
+
+.preview {
+  position: sticky;
+  inset-block-start: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+  inline-size: 320px;
+  padding: var(--s-2);
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  min-inline-size: 0;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  max-block-size: 520px;
+  overflow-y: auto;
+  padding-inline-end: var(--s-2);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-4);
+  inline-size: 100%;
+  block-size: 100%;
+  padding: var(--s-3) var(--s-4);
+  border: 0;
+  border-radius: 0;
+  background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+  color: var(--text-1);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--motion-ui) var(--ease-out), box-shadow var(--motion-ui) var(--ease-out);
+}
+
+.option:hover:not(:disabled) {
+  background: var(--bg-3);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.option:disabled {
+  cursor: not-allowed;
+}
+
+.option:disabled .optName,
+.option:disabled .swatch,
+.dim .optName {
+  opacity: 0.55;
+}
+
+/* a pin not yet earned shows its first tier in grey */
+.dim > span:first-child {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+.on,
+.on:hover:not(:disabled) {
+  background: var(--accent-a08);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.optText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-inline-size: 0;
+  flex: 1;
+}
+
+.optName {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body-lg);
+  line-height: var(--lh-body);
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.rarity {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.rarity[data-rarity='rare'] { color: #7cb7ff; }
+.rarity[data-rarity='epic'] { color: #c58cff; }
+.rarity[data-rarity='legendary'] { color: #ffd76a; }
+.rarity[data-rarity='mythic'] { color: #ff7a45; }
+
+.lock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding-block-start: var(--s-1);
+}
+
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  color: var(--text-2);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+}
+
+.value {
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h3);
+  line-height: 1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.slot {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: 28px;
+  block-size: 28px;
+  background: var(--bg-0);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: 1;
+  font-weight: 800;
+}
+
+.on .slot {
+  background: var(--accent);
+  box-shadow: none;
+  color: var(--on-accent);
+}
+
+/* frame swatches: the rarity's metal; backdrop swatches: the backdrop's colours */
+.swatch {
+  flex: none;
+  inline-size: 36px;
+  block-size: 48px;
+  background: var(--bg-0);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+
+.swatch[data-rarity='rare'] { box-shadow: inset 0 0 0 3px #7cb7ff; }
+.swatch[data-rarity='epic'] { box-shadow: inset 0 0 0 4px #c58cff, 0 0 10px rgb(197 140 255 / 0.4); }
+.swatch[data-rarity='legendary'] { border: 5px solid; border-image: conic-gradient(#fff3c4, #ffd76a, #8a6410, #ffd76a, #fff3c4) 1; box-shadow: 0 0 10px rgb(255 215 106 / 0.45); }
+.swatch[data-rarity='mythic'] { border: 6px solid; border-image: conic-gradient(#ff4b3e, #ffb020, #fff3c4, #ff5b1f, #2a0402, #ff4b3e) 1; box-shadow: 0 0 12px rgb(255 91 31 / 0.6); }
+
+.swatch[data-backdrop='midnight'] { background: radial-gradient(circle at 50% 45%, #1d2340, #050508); }
+.swatch[data-backdrop='stadium'] { background: radial-gradient(60% 30% at 50% 80%, rgb(255 91 31 / 0.4), transparent), linear-gradient(#1a1a20, #050506); }
+.swatch[data-type] { background: radial-gradient(circle at 50% 50%, var(--tc), color-mix(in srgb, var(--tc) 25%, #08080a) 70%); }
+.swatch[data-backdrop='aurora'] { background: linear-gradient(160deg, #7be0d0, #a06eff 50%, #150a2c); }
+.swatch[data-backdrop='eclipse'] { background: radial-gradient(circle, #000 0 30%, #ffd76a 33%, transparent 55%), #070503; }
+.swatch[data-backdrop='throne'] { background: radial-gradient(circle, rgb(255 75 62 / 0.7), #120203 70%); }
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding-block-start: var(--s-4);
+  border-top: 1px solid var(--line-1);
+}
+
+@media (max-width: 900px) {
+  .editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .preview {
+    position: static;
+    inline-size: 100%;
+  }
+}

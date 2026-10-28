@@ -34,6 +34,8 @@ export class PlayerState extends Schema {
   @type('string') lead = '';
   /** Followers: the lead's look, packed (`encodeLeadFlags`: bit 0 shiny, bit 1 alpha, bits 2..4 the variant, bits 5..7 the held form). */
   @type('uint8') leadFlags = 0;
+  /** Trainer banners: the rarity of the banner frame ('' = common), so the nameplate can carry it */
+  @type('string') flair = '';
 }
 
 /** The variant keys in their `leadFlags` order (core `VariantKey`). */

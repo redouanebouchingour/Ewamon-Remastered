@@ -2,7 +2,8 @@
  * Phase C4 `/play/profile`: the player's own trainer card. The identity (title ∈ content `TITLES`, body ∈ `BODIES`
  * picked from character portraits, a free motto ≤ 120) is edited in place and saved with `POST /profile` through `profileAction.save` (the server
  * re-validates every field; the response lands through the session's `applyProfile`). The stats, badges and showcase
- * are the player's own public profile (GET /players/:me) — what other trainers see. Achievements (Phase D5): the
+ * are the player's own public profile (GET /players/:me) — what other trainers see. The banner (frame, backdrop, pins,
+ * trackers, partner) is edited first, live beside its preview (`BannerEditor`). Achievements (Phase D5): the
  * `QuestDef kind: 'achievement'` rows — earned first, then ready, then by progress; claiming happens in the journal.
  */
 import { useEffect, useState } from 'react';
@@ -29,6 +30,7 @@ import { SeasonTitles } from './SeasonTitles';
 import { GhostSection } from './GhostSection';
 import { NemesesSection } from './NemesesSection';
 import { RivalSection } from './RivalSection';
+import { BannerEditor } from './BannerEditor';
 
 export const MOTTO_MAX = 120;
 
@@ -121,6 +123,10 @@ export function ProfileScreen() {
       }
     >
       <div className={l.stackLg}>
+        <section className={l.section} aria-label="Banner">
+          <h3 className={l.sectionTitle}>Banner</h3>
+          <BannerEditor username={profile.username} title={title} guildTag={pub?.guildTag ?? null} tier={pub?.tier ?? 'bronze'} />
+        </section>
         <div className={s.top}>
           <section className={s.card} aria-label="Identity">
             <TrainerIdentity username={profile.username} title={title} motto={motto.trim()} body={body} guildTag={pub?.guildTag ?? null} tier={pub?.tier ?? 'bronze'} />

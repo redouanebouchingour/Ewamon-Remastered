@@ -165,7 +165,7 @@ describe('auth flow', () => {
     const b = await register(s);
     const r = await api(s, 'GET', `/players/${b.username.toUpperCase()}`, a.access);
     expect(r.status).toBe(200);
-    expect(Object.keys(r.body)).toEqual(['id', 'username', 'title', 'motto', 'body', 'rating', 'peakRating', 'tier', 'trainerLevel', 'badges', 'guildTag', 'dexCaughtCount', 'showcase', 'createdAt']);
+    expect(Object.keys(r.body)).toEqual(['id', 'username', 'title', 'motto', 'body', 'rating', 'peakRating', 'tier', 'trainerLevel', 'badges', 'guildTag', 'dexCaughtCount', 'showcase', 'createdAt', 'banner']);
     expect(r.body.showcase[0].ownerId).toBeNull();
     expect(r.body).not.toHaveProperty('email');
     expect((await api(s, 'GET', '/players/nobody_at_all', a.access)).status).toBe(404);

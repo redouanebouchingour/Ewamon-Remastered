@@ -38,6 +38,7 @@ import type { FastifyInstance } from 'fastify';
 import { newCreature } from '../../game/creatures';
 import { researchLevels } from '../../game/research';
 import { toInstance } from '../../rooms/battleSession';
+import { bannerViewOf } from '../../game/banner';
 import { CHAMPION_SPLIT, RUN_START_SPLIT } from '../../game/speedrun';
 import { dayKey } from '../../liveops/schedule';
 import { HttpError, iso, out, presenceZone, rateLimit, refuseInBattle, requireAuth } from '../http';
@@ -322,10 +323,12 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: RestDeps): voi
     const pub = await repos.db.transaction(async (tx) => {
       const row = await repos.players.byUsername(tx, username.toLowerCase());
       if (row === null || row.bannedAt !== null) return null;
-      return repos.players.publicProfile(tx, row.id);
+      const p = await repos.players.publicProfile(tx, row.id);
+      return p === null ? null : { p, banner: await bannerViewOf(repos, tx, row.id) };
     });
     if (pub === null) throw new HttpError(404, 'NotFound');
-    return out(deps, PublicProfileSchema, { ...pub, badges: [...pub.badges], showcase: pub.showcase.map(toInstance), createdAt: iso(pub.createdAt) });
+    const { p, banner } = pub;
+    return out(deps, PublicProfileSchema, { ...p, badges: [...p.badges], showcase: p.showcase.map(toInstance), createdAt: iso(p.createdAt), ...(banner !== null ? { banner } : {}) });
   });
 
   /** Verified speedruns: a player's play clock and splits (the caller's own, or a trainer's by name: runs are public). */

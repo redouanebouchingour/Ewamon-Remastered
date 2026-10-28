@@ -1,0 +1,619 @@
+/* Trainer banners: a tall card in the Broadcast language (condensed italic uppercase, carbon, hard edges) that gets
+ * louder with the frame's rarity. Common: a hairline. Rare: a metal edge and corner brackets. Epic: a thicker edge, a
+ * glow and a light sweep. Legendary: a moving edge. Mythic: a fast fire edge, a pulsing glow and embers.
+ * The edge is `.edge` behind an inset `.card`; how far the card is inset is the edge's width. */
+
+.banner {
+  position: relative;
+  inline-size: 320px;
+  max-inline-size: 100%;
+  aspect-ratio: 5 / 8;
+  flex: none;
+  isolation: isolate;
+  color: var(--text-hi);
+}
+
+.lg {
+  inline-size: 360px;
+}
+
+.edge {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--line-2);
+}
+
+.card {
+  position: absolute;
+  inset: 1px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  background: var(--bg-0);
+}
+
+/* ---- backdrops ------------------------------------------------------------------------------------------------ */
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(1px 1px at 18% 24%, rgb(245 243 238 / 0.8), transparent),
+    radial-gradient(1px 1px at 72% 14%, rgb(245 243 238 / 0.6), transparent),
+    radial-gradient(1.5px 1.5px at 84% 38%, rgb(245 243 238 / 0.7), transparent),
+    radial-gradient(1px 1px at 34% 52%, rgb(245 243 238 / 0.5), transparent),
+    radial-gradient(1px 1px at 60% 64%, rgb(245 243 238 / 0.4), transparent),
+    radial-gradient(1.5px 1.5px at 12% 70%, rgb(245 243 238 / 0.5), transparent),
+    radial-gradient(120% 70% at 50% 45%, #1d2340 0%, #0b0d18 60%, #050508 100%);
+}
+
+.banner[data-backdrop='stadium'] .backdrop {
+  background:
+    conic-gradient(from 135deg at 0% 0%, transparent 0deg, rgb(245 243 238 / 0.16) 12deg, transparent 26deg),
+    conic-gradient(from 199deg at 100% 0%, transparent 0deg, rgb(245 243 238 / 0.16) 12deg, transparent 26deg),
+    radial-gradient(70% 18% at 50% 78%, rgb(255 91 31 / 0.22), transparent 70%),
+    linear-gradient(180deg, #1a1a20 0%, #0b0b0e 70%, #050506 100%);
+}
+
+/* a type backdrop: its colour glowing behind the creature, speed lines, its icon huge and tilted */
+.banner[data-type] .backdrop {
+  background:
+    radial-gradient(64% 46% at 50% 48%, color-mix(in srgb, var(--tc) 75%, transparent), transparent 74%),
+    repeating-linear-gradient(115deg, color-mix(in srgb, var(--tc) 16%, transparent) 0 2px, transparent 2px 16px),
+    linear-gradient(180deg, color-mix(in srgb, var(--tc) 48%, #08080a) 0%, color-mix(in srgb, var(--tc) 14%, #08080a) 55%, #08080a 88%);
+}
+
+.watermark {
+  position: absolute;
+  inset-block-start: 14%;
+  inset-inline-start: 18%;
+  inline-size: 110%;
+  block-size: auto;
+  color: var(--tc);
+  opacity: 0.16;
+  transform: rotate(-14deg);
+}
+
+.banner[data-backdrop='aurora'] .backdrop {
+  background: linear-gradient(160deg, #0b1030 0%, #150a2c 55%, #050508 100%);
+}
+
+.banner[data-backdrop='aurora'] .backdrop::before {
+  content: '';
+  position: absolute;
+  inset: -30% -40%;
+  background:
+    radial-gradient(40% 18% at 30% 30%, rgb(123 224 208 / 0.55), transparent 70%),
+    radial-gradient(36% 16% at 70% 22%, rgb(160 110 255 / 0.5), transparent 70%),
+    radial-gradient(30% 14% at 50% 42%, rgb(240 166 208 / 0.4), transparent 70%);
+  filter: blur(14px);
+  animation: drift 14s var(--ease-in-out) infinite alternate;
+}
+
+.banner[data-backdrop='eclipse'] .backdrop {
+  background:
+    radial-gradient(circle at 50% 46%, #000 0 21%, #fff3c4 22%, rgb(255 215 106 / 0.75) 24%, rgb(255 176 32 / 0.25) 31%, transparent 44%),
+    repeating-conic-gradient(from 0deg at 50% 46%, rgb(255 215 106 / 0.07) 0deg 3deg, transparent 3deg 11deg),
+    radial-gradient(90% 60% at 50% 46%, #1e1406 0%, #070503 70%, #000 100%);
+}
+
+.banner[data-backdrop='throne'] .backdrop {
+  background:
+    radial-gradient(60% 40% at 50% 50%, rgb(255 75 62 / 0.45), transparent 72%),
+    repeating-linear-gradient(90deg, transparent 0 15%, rgb(255 176 32 / 0.16) 15% 15.6%, transparent 15.6% 21%),
+    linear-gradient(180deg, #34070a 0%, #120203 60%, #050101 100%);
+}
+
+/* ---- the content ---------------------------------------------------------------------------------------------- */
+
+.head,
+.stage,
+.foot {
+  position: relative;
+  z-index: 2;
+  min-inline-size: 0;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-5) var(--s-5) 0;
+}
+
+.titleLine {
+  overflow: hidden;
+  color: var(--text-1);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.name {
+  overflow: hidden;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h1);
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 2px 0 rgb(0 0 0 / 0.6), 0 0 18px rgb(0 0 0 / 0.5);
+}
+
+.lg .name {
+  font-size: var(--t-display);
+}
+
+.headRow {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding-block-start: var(--s-2);
+}
+
+.guild {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.tier {
+  padding: 0 var(--s-3);
+  background: rgb(13 13 15 / 0.7);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-body);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tier[data-tier='silver'] { box-shadow: inset 0 0 0 1px #c8d2da; }
+.tier[data-tier='gold'] { box-shadow: inset 0 0 0 1px #ffd76a; color: #ffd76a; }
+.tier[data-tier='platinum'] { box-shadow: inset 0 0 0 1px #7be0f0; color: #bff3fa; }
+.tier[data-tier='diamond'] { box-shadow: inset 0 0 0 1px #7cb7ff; color: #b9d8ff; }
+.tier[data-tier='master'] { background: var(--accent); box-shadow: none; color: var(--on-accent); }
+
+.stage {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--s-2);
+}
+
+.hero.hero {
+  inline-size: min(70%, 220px);
+  block-size: auto;
+  aspect-ratio: 1;
+  background: transparent;
+  filter: drop-shadow(0 14px 14px rgb(0 0 0 / 0.55));
+}
+
+.lg .hero.hero {
+  inline-size: min(72%, 250px);
+}
+
+.heroName {
+  padding: 0 var(--s-3);
+  background: rgb(13 13 15 / 0.72);
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.heroLevel {
+  color: var(--text-2);
+}
+
+.heroEmpty {
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-6) var(--s-5) var(--s-5);
+  background: linear-gradient(0deg, rgb(5 5 6 / 0.94) 0%, rgb(5 5 6 / 0.7) 70%, transparent 100%);
+}
+
+.pins {
+  display: flex;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trackers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+}
+
+.tracker {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  padding-block-start: var(--s-2);
+  border-top: 2px solid var(--text-hi);
+}
+
+.trackerLabel {
+  overflow: hidden;
+  color: var(--text-2);
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: var(--lh-caption);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trackerValue {
+  margin: 0;
+  color: var(--text-hi);
+  font-family: var(--face-display);
+  font-size: var(--t-h2);
+  line-height: 1.1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- pins: hexagons in their metal ---------------------------------------------------------------------------- */
+
+.pin {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 50px;
+  flex: none;
+}
+
+.pinSm {
+  inline-size: 34px;
+  block-size: 39px;
+}
+
+.pin::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: linear-gradient(160deg, #e2a26c, #7a4320 55%, #c8834a);
+}
+
+.pinFace {
+  position: relative;
+  display: grid;
+  place-items: center;
+  inline-size: 78%;
+  block-size: 78%;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: #1b120c;
+  color: #f0c08a;
+}
+
+.pinTier {
+  position: absolute;
+  inset-block-end: -6px;
+  padding: 0 var(--s-2);
+  background: var(--bg-0);
+  box-shadow: inset 0 0 0 1px currentColor;
+  color: #f0c08a;
+  font-family: var(--face-display);
+  font-size: var(--t-caption);
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.pin[data-metal='silver']::before { background: linear-gradient(160deg, #f2f5f7, #7d8a94 55%, #cfd8de); }
+.pin[data-metal='silver'] .pinFace { background: #14181b; color: #e8eef2; }
+.pin[data-metal='silver'] .pinTier { color: #e8eef2; }
+.pin[data-metal='gold']::before { background: linear-gradient(160deg, #fff3c4, #b8860b 55%, #ffd76a); }
+.pin[data-metal='gold'] .pinFace { background: #1c1405; color: #ffd76a; }
+.pin[data-metal='gold'] .pinTier { color: #ffd76a; }
+.pin[data-metal='diamond']::before { background: linear-gradient(160deg, #e6fbff, #4aa3d6 50%, #b9d8ff); }
+.pin[data-metal='diamond'] .pinFace { background: #08131c; color: #b9e6ff; }
+.pin[data-metal='diamond'] .pinTier { color: #b9e6ff; }
+.pin[data-metal='master']::before { background: conic-gradient(from 210deg, #ff5b1f, #ffb020, #ff4b3e, #ff7a45, #ff5b1f); }
+.pin[data-metal='master'] .pinFace { background: #1a0705; color: #ffb38f; }
+.pin[data-metal='master'] .pinTier { color: #ffb38f; }
+
+/* ---- frames --------------------------------------------------------------------------------------------------- */
+
+.banner[data-rarity='rare'] .card { inset: 3px; }
+.banner[data-rarity='epic'] .card { inset: 4px; }
+.banner[data-rarity='legendary'] .card { inset: 5px; }
+.banner[data-rarity='mythic'] .card { inset: 6px; }
+
+.banner[data-frame='paperline'] .edge { background: var(--text-hi); }
+.banner[data-frame='paperline'] .card { inset: 8px 2px 2px; }
+
+/* corner brackets in the rarity's colour, just outside the edge */
+.banner[data-rarity='rare'],
+.banner[data-rarity='epic'],
+.banner[data-rarity='legendary'],
+.banner[data-rarity='mythic'] {
+  color: #7cb7ff;
+}
+
+.banner[data-rarity='epic'] { color: #c58cff; }
+.banner[data-rarity='legendary'] { color: #ffd76a; }
+.banner[data-rarity='mythic'] { color: #ff5b1f; }
+
+.banner[data-rarity='rare']::after,
+.banner[data-rarity='epic']::after,
+.banner[data-rarity='legendary']::after,
+.banner[data-rarity='mythic']::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) left top / 22px 2px no-repeat,
+    linear-gradient(currentColor, currentColor) left top / 2px 22px no-repeat,
+    linear-gradient(currentColor, currentColor) right top / 22px 2px no-repeat,
+    linear-gradient(currentColor, currentColor) right top / 2px 22px no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom / 22px 2px no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom / 2px 22px no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom / 22px 2px no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom / 2px 22px no-repeat;
+}
+
+/* the text inside keeps its own colours (the brackets read `color`) */
+.card {
+  color: var(--text-hi);
+}
+
+.banner[data-frame='circuit'] .edge { background: linear-gradient(135deg, #c8d2da, #4a5560 38%, #e8eef2 55%, #3a434c 80%, #9aa6b0); }
+.banner[data-frame='field_notes'] .edge { background: linear-gradient(135deg, #ffd88a, #8a5a1a 45%, #e0b050 60%, #6b4210); }
+.banner[data-frame='veteran'] .edge { background: linear-gradient(135deg, #f0c08a, #6b3d1d 42%, #d39a62 58%, #5a3015); }
+
+.banner[data-rarity='epic'] { box-shadow: 0 0 22px rgb(197 140 255 / 0.28); }
+.banner[data-frame='eight_crowns'] { box-shadow: 0 0 24px rgb(255 215 106 / 0.32); }
+.banner[data-frame='eight_crowns'] .edge { background: repeating-linear-gradient(90deg, #fff3c4 0 6px, #ffd76a 6px 14px, #8a6410 14px 20px); }
+.banner[data-frame='duelist'] { box-shadow: 0 0 24px rgb(255 75 62 / 0.35); }
+.banner[data-frame='duelist'] .edge { background: repeating-linear-gradient(-45deg, #ff4b3e 0 8px, #5a0b08 8px 12px, #ff7a45 12px 16px); }
+.banner[data-frame='spire'] .edge { background: repeating-linear-gradient(45deg, #f2f5f7 0 6px, #7d8a94 6px 12px); }
+.banner[data-frame='platinum_edge'] { box-shadow: 0 0 24px rgb(123 224 240 / 0.32); }
+.banner[data-frame='platinum_edge'] .edge {
+  background: linear-gradient(120deg, #e6fbff 0%, #7be0f0 20%, #2f5a68 35%, #e6fbff 50%, #7be0f0 65%, #2f5a68 80%, #e6fbff 100%);
+  background-size: 300% 300%;
+  animation: shimmer 4s linear infinite;
+}
+
+/* legendary and mythic: a conic ring turning behind the card */
+.banner[data-rarity='legendary'] .edge::before,
+.banner[data-rarity='mythic'] .edge::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
+  inline-size: 180%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  animation: spin 5s linear infinite;
+}
+
+.banner[data-frame='laurel'] { box-shadow: 0 0 30px rgb(255 200 80 / 0.42); }
+.banner[data-frame='laurel'] .edge::before { background: conic-gradient(#fff3c4, #ffd76a 15%, #8a6410 30%, #ffd76a 45%, #fff3c4 50%, #ffd76a 65%, #8a6410 80%, #ffd76a 95%, #fff3c4); }
+.banner[data-frame='prismatic'] { box-shadow: 0 0 30px rgb(240 166 208 / 0.38); }
+.banner[data-frame='prismatic'] .edge::before { background: conic-gradient(#ff5b8a, #ffb020, #f4cf3f, #7be0d0, #4aa3d6, #a06eff, #ff5b8a); animation-duration: 3.5s; }
+.banner[data-frame='mythkeeper'] { box-shadow: 0 0 30px rgb(123 224 208 / 0.35); }
+.banner[data-frame='mythkeeper'] .edge::before { background: conic-gradient(#7be0d0, #1b3b6f 25%, #a06eff 50%, #1b3b6f 75%, #7be0d0); }
+.banner[data-frame='finalist'] { box-shadow: 0 0 30px rgb(255 91 31 / 0.38); }
+.banner[data-frame='finalist'] .edge::before { background: repeating-conic-gradient(#ff5b1f 0deg 18deg, #f5f3ee 18deg 24deg, #2a0d04 24deg 36deg); animation-duration: 9s; }
+
+.banner[data-rarity='mythic'] { animation: pulse 2.4s var(--ease-in-out) infinite; }
+.banner[data-rarity='mythic'] .edge::before { background: conic-gradient(#ff4b3e, #ffb020 12%, #fff3c4 16%, #ff5b1f 24%, #2a0402 40%, #ff4b3e 55%, #ffb020 70%, #fff3c4 74%, #ff5b1f 82%, #2a0402 92%, #ff4b3e); animation-duration: 2.6s; }
+
+/* epic and up: a light sweep over the card; prismatic: a holographic film */
+.sheen {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  display: none;
+}
+
+.banner[data-rarity='epic'] .sheen,
+.banner[data-rarity='legendary'] .sheen,
+.banner[data-rarity='mythic'] .sheen {
+  display: block;
+  background: linear-gradient(115deg, transparent 38%, rgb(255 255 255 / 0.12) 48%, rgb(255 255 255 / 0.2) 50%, transparent 60%);
+  background-size: 300% 100%;
+  mix-blend-mode: screen;
+  animation: sweep 5s var(--ease-in-out) infinite;
+}
+
+.banner[data-frame='prismatic'] .sheen {
+  background: linear-gradient(115deg, transparent 20%, rgb(255 91 138 / 0.14) 35%, rgb(123 224 208 / 0.14) 50%, rgb(244 207 63 / 0.12) 65%, transparent 80%);
+  background-size: 250% 100%;
+  animation-duration: 6s;
+  animation-direction: alternate;
+}
+
+/* the laurel crest at the top of the Champion's frame */
+.laurel {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 50%;
+  z-index: 5;
+  inline-size: 76px;
+  block-size: 20px;
+  translate: -50% 0;
+  clip-path: polygon(0 0, 100% 0, 88% 100%, 72% 40%, 60% 100%, 50% 30%, 40% 100%, 28% 40%, 12% 100%);
+  background: linear-gradient(180deg, #fff3c4, #ffd76a 50%, #b8860b);
+}
+
+/* the mythic frame's embers */
+.embers {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.embers i {
+  position: absolute;
+  inset-block-end: -8px;
+  inline-size: 4px;
+  block-size: 4px;
+  border-radius: 50%;
+  background: #ffb020;
+  box-shadow: 0 0 8px 2px rgb(255 91 31 / 0.8);
+  animation: rise 3.2s linear infinite;
+  opacity: 0;
+}
+
+.embers i:nth-child(1) { inset-inline-start: 10%; animation-delay: 0s; }
+.embers i:nth-child(2) { inset-inline-start: 26%; animation-delay: 1.1s; animation-duration: 2.8s; }
+.embers i:nth-child(3) { inset-inline-start: 44%; animation-delay: 2s; }
+.embers i:nth-child(4) { inset-inline-start: 62%; animation-delay: 0.5s; animation-duration: 3.6s; }
+.embers i:nth-child(5) { inset-inline-start: 78%; animation-delay: 1.6s; }
+.embers i:nth-child(6) { inset-inline-start: 90%; animation-delay: 2.6s; animation-duration: 2.6s; }
+
+@keyframes spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 0% 50%;
+  }
+
+  to {
+    background-position: 300% 50%;
+  }
+}
+
+@keyframes sweep {
+  0%,
+  55% {
+    background-position: 120% 0;
+  }
+
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(-6%, 0, 0) rotate(-4deg);
+  }
+
+  to {
+    transform: translate3d(6%, 4%, 0) rotate(4deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 24px rgb(255 75 62 / 0.35);
+  }
+
+  50% {
+    box-shadow: 0 0 44px rgb(255 140 40 / 0.65);
+  }
+}
+
+@keyframes rise {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate3d(12px, -420px, 0) scale(0.3);
+    opacity: 0;
+  }
+}
+
+/* still under reduced motion: the edges keep their colours, nothing turns, sweeps or rises */
+@media (prefers-reduced-motion: reduce) {
+  .banner,
+  .edge,
+  .edge::before,
+  .sheen,
+  .backdrop::before,
+  .embers i {
+    animation: none !important;
+  }
+}
+
+:global(:root[data-reduced='1']) .banner,
+:global(:root[data-reduced='1']) .edge,
+:global(:root[data-reduced='1']) .edge::before,
+:global(:root[data-reduced='1']) .sheen,
+:global(:root[data-reduced='1']) .backdrop::before,
+:global(:root[data-reduced='1']) .embers i {
+  animation: none !important;
+}
+
+/* ---- the public profile's head -------------------------------------------------------------------------------- */
+
+.heroLayout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--s-6);
+  align-items: start;
+}
+
+.heroSide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  min-inline-size: 0;
+}
+
+@media (max-width: 900px) {
+  .heroLayout {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+
+  .heroSide {
+    inline-size: 100%;
+  }
+}

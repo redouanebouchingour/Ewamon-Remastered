@@ -6,6 +6,7 @@ import { BOUNTY_REFUSAL_TEXT, CAMP_REFUSAL_TEXT } from '@ewa/content';
 import { ApiFailure } from './apiError';
 
 const MESSAGES: Readonly<Record<string, string>> = {
+  bannerLocked: 'That banner piece is not unlocked yet.',
   network: 'Cannot reach the server. Check that it is running and try again.',
   badResponse: 'The server sent something unexpected.',
   unauthorized: 'Your session has ended. Log in again.',

@@ -2080,6 +2080,7 @@ export class PlayerState extends Schema {
   @type('boolean') biking = false;   // Phase D11: the last accepted input was ridden (the bike cap applied)
   @type('string') lead = '';         // added 2026-10-21 (followers, §3.18): the species of the party lead walking behind this player ('' = every creature fainted); written only on a change
   @type('uint8') leadFlags = 0;      // added 2026-10-21: the lead's look packed (`encodeLeadFlags`: bit 0 shiny, bit 1 alpha, bits 2..4 the variant in core VariantKey order, bits 5..7 the 1-based slot in core `formsOf` of its worn relic form, 0 = none <!-- amended 2026-10-25: held relic forms outside a battle -->)
+  @type('string') flair = '';        // added 2026-10-28: trainer banners, the saved banner frame's rarity ('' = common or none) for the nameplate's stripe
 }
 
 export class SpawnState extends Schema {
@@ -2345,7 +2346,9 @@ All bodies and responses are zod-validated in `packages/protocol/src/rest.ts`; t
 | `POST /guilds` | `{ name: 3..24, tag: /^[A-Z0-9]{3,4}$/ }` (costs `GUILD.createCost` 5000, 409 `InsufficientFunds`) | `GuildCreateRes` = `GuildView & { inventoryDelta }` (`money` after the charge) | bearer |
 | `POST /guilds/:id/join` · `/leave` · `/kick` · `/promote` | `{ playerId? }` | `GuildView` | bearer |
 | `GET /leaderboard?mode=rating|dex|trainerLevel|towerStreak|daily|nuzlocke|hardcore|speedrun&page=` | - | `{ rows: LeaderboardRow[] }` (Phase D14: `towerStreak` ranks `player_streaks.best` desc, then `current`, then username, players with best > 0 only; every row carries `towerBest?` / `towerCurrent?`; `daily` (added 2026-10-20) ranks today's winners by `daily_results.turns` asc, then the earlier win, and carries `dailyTurns?` / `dailyMarks?`; `nuzlocke` / `hardcore` (added 2026-10-20) list the players holding the mode's flag: cleared runs first (earliest clear first), then runs still going, then failed ones, each by badges desc, with `challengeBadges?` / `challengeState?`; `speedrun` (added 2026-10-20) ranks the `champion` split of runs that hold the first beat's split, fastest first, with `speedrunMs?`) | bearer |
-| `GET /players/:username` | — | `PublicProfile` (allow-list, §5.3) | bearer |
+| `GET /players/:username` | — | `PublicProfile` (allow-list, §5.3) + `banner?: BannerView` | bearer |
+| `GET /banner` | - | `{ choice: BannerChoice; stats: BannerStats }` (trainer banners, content `data/banners.ts`) | bearer |
+| `POST /banner` | `BannerChoice` `{ frame, backdrop, pins ≤ 3, trackers ≤ 3, featuredId: uuid \| null }` | same as `GET /banner`; 403 `bannerLocked { reason }` when content `bannerRefusal` refuses, 404 for a creature not the caller's | bearer |
 | `GET /battle-pass` | — | `{ trainerExp, trainerLevel, claimed: number[], mythicalChoice: string | null, rewards: BattlePassReward[] }` | bearer |
 | `POST /battle-pass/claim` | `{ level }` | `{ claimed, inventory, money, creaturesAdded }` | bearer |
 | `POST /battle-pass/mythical-choice` | `{ species: 'lumyth' | 'noxmyth' }` | `{ creaturesAdded }` | bearer |
@@ -2960,7 +2963,7 @@ Trade completion (`30-server-netcode.md` owns the handshake) is one transaction,
 
 ### 5.3 `toPublic()` allow-list
 
-`PublicProfile` is built by naming fields, never by deleting them: `{ id, username, title, motto, body, rating, peakRating, tier, trainerLevel, badges, guildTag: string | null, dexCaughtCount, showcase: CreatureInstance[] (≤ 3, with ownerId nulled), createdAt }`. `badges`, `guildTag`, `dexCaughtCount` and `showcase` do not live on the `players` row, so the pure function is `toPublic(row, extras: PublicExtras)`; `publicProfile(tx, id)` gathers the extras. `guildTag` is `null` for a player in no guild. The list is exported as `PUBLIC_PROFILE_KEYS` and a unit test asserts `Object.keys(toPublic(row, extras))` equals it exactly, in order. Adding a column to `players` never leaks it. <!-- reconciled 2026-09-18: extras arg + nullable guildTag from the implementation -->
+`PublicProfile` is built by naming fields, never by deleting them: `{ id, username, title, motto, body, rating, peakRating, tier, trainerLevel, badges, guildTag: string | null, dexCaughtCount, showcase: CreatureInstance[] (≤ 3, with ownerId nulled), createdAt }`. `badges`, `guildTag`, `dexCaughtCount` and `showcase` do not live on the `players` row, so the pure function is `toPublic(row, extras: PublicExtras)`; `publicProfile(tx, id)` gathers the extras. `guildTag` is `null` for a player in no guild. The list is exported as `PUBLIC_PROFILE_KEYS` and a unit test asserts `Object.keys(toPublic(row, extras))` equals it exactly, in order. Adding a column to `players` never leaks it. Trainer banners (2026-10-28): the route appends `banner` (protocol `BannerView`: the saved `player_banners` pick as content `bannerShown` allows it today, pins at their tier, tracker values, the featured creature with `ownerId` nulled, the party lead when the pick is gone); it is gathered by server `game/banner.ts`, outside the allow-list, whose keys are unchanged. <!-- reconciled 2026-09-18: extras arg + nullable guildTag from the implementation -->
 
 ### 5.5 Error codes, constants and the lock order
 

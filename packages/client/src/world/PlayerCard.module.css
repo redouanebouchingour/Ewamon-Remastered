@@ -108,3 +108,26 @@
   font-size: var(--t-caption);
   line-height: var(--lh-caption);
 }
+
+/* trainer banners: their banner on the left once the profile has loaded, the card beside it */
+.layout {
+  display: block;
+}
+
+.withBanner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--s-5);
+  align-items: start;
+}
+
+.layout .banner {
+  inline-size: 280px;
+}
+
+@media (max-width: 720px) {
+  .withBanner {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+}

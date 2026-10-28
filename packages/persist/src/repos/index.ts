@@ -1,5 +1,7 @@
 import type { Db } from '../db';
 import { auditRepo } from './audit';
+import { bannerRepo } from './banners';
+import type { BannerRepo } from './banners';
 import type { AuditRepo } from './audit';
 import { authRepo } from './auth';
 import type { AuthRepo } from './auth';
@@ -103,6 +105,8 @@ export interface Repos {
   readonly worldNews: WorldNewsRepo;
   /** the adventure journal (migration 0024): a diary entry per player per UTC day, and the reads behind a day */
   readonly journal: JournalRepo;
+  /** trainer banners (migration 0027): the card other trainers see, and the counts behind its unlocks */
+  readonly banners: BannerRepo;
 }
 
 /**
@@ -141,6 +145,7 @@ export function createRepos(db: Db): Repos & { readonly db: Db } {
     rivals: rivalRepo,
     worldNews: worldNewsRepo,
     journal: journalRepo,
+    banners: bannerRepo,
   };
 }
 
@@ -180,3 +185,4 @@ export type { Rival, RivalIdentityRow, RivalMeeting, RivalResult } from './rival
 export type { NewsBadge, NewsCampTakeover, NewsNemesis, NewsSale, NewsSplit } from './worldNews';
 export { JOURNAL_READ_MAX } from './journal';
 export type { JournalAudit, JournalBattle, JournalCreatureEvent, JournalEntry, JournalMemory } from './journal';
+export type { BannerCounts, SavedBanner } from './banners';

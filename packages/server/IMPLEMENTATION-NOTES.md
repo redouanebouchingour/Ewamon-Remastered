@@ -1523,6 +1523,14 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   stays at < 15 s in-process (Q17): the bots, the server and the other test files share the machine.
 - Earlier notes that mention PGlite describe the state of their date.
 
+
+## Trainer banners (2026-10-28)
+
+- `PlayerState.flair` is the rarity of the *saved* frame, read on join and on `ewa:profile`. It is not re-checked against
+  today's unlocks (that needs the full count read on every join); the public view (`game/banner.ts`, content
+  `bannerShown`) is, so a frame lost since (Prismatic after trading shinies away) falls back on the card while the
+  nameplate keeps its colour until the next save.
+
 ## Talking to other players, watching battles (2026-10-28)
 
 - DMs reach a non-friend unless the recipient chose friends only (`players.dms_from`, migration 0026; the client's

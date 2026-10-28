@@ -27,7 +27,8 @@ export interface RemoteSink {
   despawn(id: string): void;
 }
 
-export interface RemoteInfo { name: string; look: string; guildTag: string; inBattle: boolean }
+/** `flair`: the trainer banner frame's rarity (`PlayerState.flair`, '' = none) for the nameplate stripe */
+export interface RemoteInfo { name: string; look: string; guildTag: string; inBattle: boolean; flair?: string }
 
 class Track {
   readonly ring = new Float64Array(RING * F);

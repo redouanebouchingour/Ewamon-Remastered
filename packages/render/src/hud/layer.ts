@@ -47,7 +47,7 @@ export interface HudModel {
   readonly questHint: string | null;           // one line ≤ 60 chars, below the time; from the active quest's first undone objective label
   readonly chat: readonly { readonly name: string; readonly text: string; readonly at: number }[]; // last 6 lines, bottom-left, each fades 8 s after `at`
   readonly prompt: { readonly key: string; readonly verb: string; readonly target: string } | null; // "E — Talk to Fenkeeper", bottom-centre
-  readonly nameplates: readonly { readonly id: string; readonly name: string; readonly guildTag: string; readonly inBattle: boolean }[]; // ≤ 16 nearest; render positions them over actors
+  readonly nameplates: readonly { readonly id: string; readonly name: string; readonly guildTag: string; readonly inBattle: boolean; readonly flair?: string }[]; // ≤ 16 nearest; render positions them over actors; `flair`: a trainer banner frame's rarity ('' / absent = none)
   readonly battle: { readonly bars: readonly { readonly who: Ref; readonly name: string; readonly level: number; readonly hp: number; readonly maxHp: number; readonly status: string | null; readonly stages: string; readonly showNumbers: boolean; readonly types?: readonly string[] }[]; readonly turnLabel: string; readonly shakes: number } | null;   // `types`: addition (Part 5, M2-battle-7)
   readonly connection: 'connected' | 'reconnecting' | 'offline';
   readonly dev: { readonly fps: number; readonly drawCalls: number; readonly gpuMs: number; readonly desyncs: number; readonly rubberBands: number } | null; // F3 in dev builds
@@ -107,6 +107,8 @@ const LINE = '#4a4a54';
 const PAPER = '#f5f3ee';
 const FOG = '#a3a3ad';
 const ACCENT = '#ff5b1f';
+/** Trainer banners: a nameplate's flair stripe per banner-frame rarity (the client's banner corner-bracket colours). */
+const FLAIR: Readonly<Record<string, string>> = { rare: '#7cb7ff', epic: '#c58cff', legendary: '#ffd76a', mythic: '#ff5b1f' };
 const ON_ACCENT = BLACK;
 const HP_HI = PAPER; const HP_MID = '#ffb020'; const HP_LO = '#ff4b3e';
 /** the ghost of lost HP: paper over the track, so the chunk a hit took reads before it drains away */
@@ -1095,7 +1097,7 @@ export class CanvasHudLayer implements HudLayer {
     ctx.restore();
   }
 
-  /** Nameplates: a black slab per actor — the guild tag in fog, the name in the display face; in battle → orange edge. */
+  /** Nameplates: a black slab per actor — the guild tag in fog, the name in the display face; in battle → orange edge; a banner flair → a rarity stripe. */
   private drawNameplates(): void {
     const { ctx } = this.surface;
     const s = this.s(); const pr = this.pr;
@@ -1119,6 +1121,13 @@ export class CanvasHudLayer implements HudLayer {
       const w = Math.min(260 * s, edge + pad + gw + nw + pad + cut);
       const x0 = x - w / 2; const y0 = y - 18 * s; const cy = y0 + h / 2 + 1 * s;
       this.slab(x0, y0, w, h, SLAB);
+      // a trainer banner's flair: a stripe in the frame's rarity under the slab (legendary and mythic: over it too)
+      const flair = p.flair === undefined ? undefined : FLAIR[p.flair];
+      if (flair !== undefined) {
+        const t = 3 * s;
+        this.slab(x0, y0 + h, w - cut, t, flair);
+        if (p.flair === 'legendary' || p.flair === 'mythic') { ctx.fillStyle = flair; ctx.fillRect(x0, y0 - t, w, t); }
+      }
       if (edge > 0) { ctx.fillStyle = ACCENT; ctx.fillRect(x0, y0, edge, h); }
       if (gw > 0) { ctx.font = this.font(HUD.smallPx, 700, true); this.text(tag, x0 + edge + pad, cy, FOG); }
       ctx.font = this.font(HUD.bodyPx + 1, 800, true);

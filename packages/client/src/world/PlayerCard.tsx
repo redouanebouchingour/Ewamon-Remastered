@@ -9,6 +9,7 @@
  *   challenges, trades and world chat between the two, both ways).
  *
  * Live facts (in battle, their battle, how far it is) come from the room state; the card closes itself when they leave.
+ * Their trainer banner (`PublicProfile.banner`) stands beside the card once the profile has loaded.
  */
 import { useEffect, useState } from 'react';
 import { SPECTATE_RANGE_M } from '@ewa/protocol';
@@ -19,6 +20,8 @@ import { describeError } from '../net/errors';
 import { getWorldSession } from '../net/WorldSession';
 import { useRoomState } from '../net/useRoomState';
 import { TrainerAvatar } from '../screens/TrainerCard';
+import { TrainerBanner, bannerModelOf } from '../screens/TrainerBanner';
+import { cx } from '../ui/cx';
 import { tierLabel } from '../data/trainer';
 import { toast } from '../state/notifications';
 import { partyCanBattle, useSessionStore } from '../state/session';
@@ -170,119 +173,124 @@ function PlayerCardBody({ id, name }: { readonly id: string; readonly name: stri
     });
   };
 
+  // trainer banners: their banner beside the card once the profile has loaded (the avatar head stays while it loads)
+  const banner = pub?.banner !== undefined ? bannerModelOf(pub) : null;
   const blocked = rel?.blocked === true;
   const friendLabel = rel === null ? 'Add friend' : rel.friend === 'friends' ? 'Friends' : rel.friend === 'outgoing' ? 'Request sent' : rel.friend === 'incoming' ? 'Accept friend' : 'Add friend';
   const friendDisabled = rel === null || blocked || rel.friend === 'friends' || rel.friend === 'outgoing';
 
   return (
-    <Modal open size="sm" title={name} onClose={close} description="Another trainer">
-      <div className={s.card} data-testid="playercard">
-        <header className={s.head}>
-          <TrainerAvatar username={name} {...(live.body !== '' ? { body: live.body } : {})} size="lg" />
-          <div className={s.who}>
-            {pub === null && !failed ? <Skeleton shape="block" count={1} className={s.titleSkeleton} label="Loading the trainer" /> : <p className={s.title}>{pub?.title ?? 'Trainer'}</p>}
-            <p className={s.name}>
-              {name}
-              {live.guildTag !== '' && <span className={s.guild}>[{live.guildTag}]</span>}
-            </p>
-            <div className={s.chips}>
-              {pub !== null && <Pill tone="neutral">{tierLabel(pub.tier)}</Pill>}
-              {pub !== null && <Pill>Lv {pub.trainerLevel}</Pill>}
-              {pub !== null && <Pill>{pub.badges.length} badges</Pill>}
-              {rel?.friend === 'friends' && <Pill tone="info">Friend</Pill>}
-              {live.inBattle && <Pill tone="warn">In a battle</Pill>}
-              {blocked && <Pill tone="danger">Blocked</Pill>}
+    <Modal open size={banner !== null ? 'md' : 'sm'} title={name} onClose={close} description="Another trainer">
+      <div className={cx(s.layout, banner !== null && s.withBanner)}>
+        {banner !== null && <TrainerBanner model={banner} className={s.banner} />}
+        <div className={s.card} data-testid="playercard">
+          <header className={s.head}>
+            <TrainerAvatar username={name} {...(live.body !== '' ? { body: live.body } : {})} size="lg" />
+            <div className={s.who}>
+              {pub === null && !failed ? <Skeleton shape="block" count={1} className={s.titleSkeleton} label="Loading the trainer" /> : <p className={s.title}>{pub?.title ?? 'Trainer'}</p>}
+              <p className={s.name}>
+                {name}
+                {live.guildTag !== '' && <span className={s.guild}>[{live.guildTag}]</span>}
+              </p>
+              <div className={s.chips}>
+                {pub !== null && <Pill tone="neutral">{tierLabel(pub.tier)}</Pill>}
+                {pub !== null && <Pill>Lv {pub.trainerLevel}</Pill>}
+                {pub !== null && <Pill>{pub.badges.length} badges</Pill>}
+                {rel?.friend === 'friends' && <Pill tone="info">Friend</Pill>}
+                {live.inBattle && <Pill tone="warn">In a battle</Pill>}
+                {blocked && <Pill tone="danger">Blocked</Pill>}
+              </div>
+              {pub !== null && pub.motto.length > 0 && <p className={s.motto}>“{pub.motto}”</p>}
             </div>
-            {pub !== null && pub.motto.length > 0 && <p className={s.motto}>“{pub.motto}”</p>}
-          </div>
-        </header>
+          </header>
 
-        <section className={s.message} aria-label="Message">
-          {rel === null ? (
-            <Skeleton shape="block" count={1} className={s.composerSkeleton} label="Loading" />
-          ) : rel.canMessage ? (
-            <form
-              className={s.composer}
-              onSubmit={(e) => {
-                e.preventDefault();
-                sendMessage();
-              }}
-            >
-              <TextField label={`Message ${name}`} hideLabel placeholder={`Say something to ${name}`} value={draft} onChange={setDraft} maxLength={300} counterFrom={250} className={s.grow} autoFocus />
-              <Button type="submit" icon="send" busy={busy === 'message'} disabled={draft.trim().length === 0}>
-                Send
-              </Button>
-            </form>
-          ) : (
-            <p className={s.caption}>{blocked ? 'You blocked this trainer.' : `${name} only takes messages from friends.`}</p>
-          )}
-        </section>
+          <section className={s.message} aria-label="Message">
+            {rel === null ? (
+              <Skeleton shape="block" count={1} className={s.composerSkeleton} label="Loading" />
+            ) : rel.canMessage ? (
+              <form
+                className={s.composer}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  sendMessage();
+                }}
+              >
+                <TextField label={`Message ${name}`} hideLabel placeholder={`Say something to ${name}`} value={draft} onChange={setDraft} maxLength={300} counterFrom={250} className={s.grow} autoFocus />
+                <Button type="submit" icon="send" busy={busy === 'message'} disabled={draft.trim().length === 0}>
+                  Send
+                </Button>
+              </form>
+            ) : (
+              <p className={s.caption}>{blocked ? 'You blocked this trainer.' : `${name} only takes messages from friends.`}</p>
+            )}
+          </section>
 
-        <div className={s.actions}>
-          <Button
-            icon="sword"
-            variant="primary"
-            disabled={live.inBattle || blocked || !canBattle}
-            title={!canBattle ? 'Your party needs healing first' : live.inBattle ? 'They are in a battle' : undefined}
-            onClick={() => {
-              if (send('challenge', id)) close();
-            }}
-          >
-            Challenge
-          </Button>
-          <Button
-            icon="trade"
-            disabled={live.inBattle || blocked}
-            onClick={() => {
-              if (send('tradeRequest', id)) {
-                toast('info', `Trade request sent to ${name}.`);
-                close();
-              }
-            }}
-          >
-            Trade
-          </Button>
-          {live.inBattle && (
+          <div className={s.actions}>
             <Button
-              icon="eye"
-              disabled={!live.watchable}
-              title={live.watchable ? undefined : 'Walk closer to the battle'}
+              icon="sword"
+              variant="primary"
+              disabled={live.inBattle || blocked || !canBattle}
+              title={!canBattle ? 'Your party needs healing first' : live.inBattle ? 'They are in a battle' : undefined}
               onClick={() => {
-                useWatchStore.getState().start(live.battleId);
-                close();
+                if (send('challenge', id)) close();
               }}
             >
-              Watch battle
+              Challenge
             </Button>
-          )}
-          <Button icon={rel?.friend === 'friends' ? 'check' : 'plus'} disabled={friendDisabled} busy={busy === 'friend'} onClick={friendAction}>
-            {friendLabel}
-          </Button>
-          <Button
-            icon="heart"
-            variant="ghost"
-            onClick={() => {
-              try {
-                getWorldSession().send('emote', { emote: WAVE });
-              } catch (_e) {
-                // no room: nothing to wave in
-              }
-            }}
-          >
-            Wave
-          </Button>
-          <Button icon="user" variant="ghost" onClick={() => { close(); navigateTo(`/play/players/${encodeURIComponent(username)}`); }}>
-            Profile
-          </Button>
-          <Button icon="social" variant="ghost" disabled={rel === null || (!rel.canMessage && rel.friend !== 'friends')} onClick={() => { close(); navigateTo(`/play/social/${encodeURIComponent(username)}`); }}>
-            Conversation
-          </Button>
-          <Button icon="shield" variant="ghost" busy={busy === 'block'} disabled={rel === null} onClick={toggleBlock} className={confirmBlock ? s.confirm : undefined}>
-            {blocked ? 'Unblock' : confirmBlock ? 'Confirm block' : 'Block'}
-          </Button>
+            <Button
+              icon="trade"
+              disabled={live.inBattle || blocked}
+              onClick={() => {
+                if (send('tradeRequest', id)) {
+                  toast('info', `Trade request sent to ${name}.`);
+                  close();
+                }
+              }}
+            >
+              Trade
+            </Button>
+            {live.inBattle && (
+              <Button
+                icon="eye"
+                disabled={!live.watchable}
+                title={live.watchable ? undefined : 'Walk closer to the battle'}
+                onClick={() => {
+                  useWatchStore.getState().start(live.battleId);
+                  close();
+                }}
+              >
+                Watch battle
+              </Button>
+            )}
+            <Button icon={rel?.friend === 'friends' ? 'check' : 'plus'} disabled={friendDisabled} busy={busy === 'friend'} onClick={friendAction}>
+              {friendLabel}
+            </Button>
+            <Button
+              icon="heart"
+              variant="ghost"
+              onClick={() => {
+                try {
+                  getWorldSession().send('emote', { emote: WAVE });
+                } catch (_e) {
+                  // no room: nothing to wave in
+                }
+              }}
+            >
+              Wave
+            </Button>
+            <Button icon="user" variant="ghost" onClick={() => { close(); navigateTo(`/play/players/${encodeURIComponent(username)}`); }}>
+              Profile
+            </Button>
+            <Button icon="social" variant="ghost" disabled={rel === null || (!rel.canMessage && rel.friend !== 'friends')} onClick={() => { close(); navigateTo(`/play/social/${encodeURIComponent(username)}`); }}>
+              Conversation
+            </Button>
+            <Button icon="shield" variant="ghost" busy={busy === 'block'} disabled={rel === null} onClick={toggleBlock} className={confirmBlock ? s.confirm : undefined}>
+              {blocked ? 'Unblock' : confirmBlock ? 'Confirm block' : 'Block'}
+            </Button>
+          </div>
+          {confirmBlock && <p className={s.caption}>Blocking stops messages, friend requests, challenges, trades and chat between you. It ends a friendship.</p>}
+          {failed && <p className={s.caption}>Could not load this trainer's card. The actions still work.</p>}
         </div>
-        {confirmBlock && <p className={s.caption}>Blocking stops messages, friend requests, challenges, trades and chat between you. It ends a friendship.</p>}
-        {failed && <p className={s.caption}>Could not load this trainer's card. The actions still work.</p>}
       </div>
     </Modal>
   );
