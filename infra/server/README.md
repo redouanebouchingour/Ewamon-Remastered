@@ -70,7 +70,10 @@ DNS (at the registrar) plus the PTR record (Strato server panel → reverse DNS 
 | TXT | `mail._domainkey.ewamon.com` | the `p=…` record from `cat /opt/ewamon/dkim/ewamon.com.txt` |
 | TXT | `_dmarc.ewamon.com` | `v=DMARC1; p=quarantine; adkim=s; aspf=s` (Strato's own DMARC rule set to "Geen") |
 
-All of it is in the Strato panel: Domeinbeheer → ewamon.com → DNS → TXT- en CNAME-records. The zone has a wildcard
+| TXT | `mail.ewamon.com` | `v=spf1 ip4:85.215.92.169 -all` (SPF for the HELO name) |
+
+All of it is in the Strato panel: Domeinbeheer → ewamon.com → DNS → TXT- en CNAME-records. That form holds every TXT
+record of the zone at once and replaces them all on save, so keep the existing rows when adding one. The zone has a wildcard
 `*.ewamon.com CNAME ewamon.com`, so a name without its own record still resolves (to the A record).
 
 ```sh
