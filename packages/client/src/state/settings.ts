@@ -144,7 +144,7 @@ export const INPUT_ACTIONS = Object.keys(DEFAULT_KEYBINDS) as InputAction[];
 export const DEFAULT_SETTINGS: SettingsData = {
   graphics: { reducedEffects: false, renderScale: 1, dynamicResolution: true, quality: 'auto', frameCap: 60, detailDistance: 'auto', showFps: false, dof: true, bloom: true, grain: true, chroma: true, shake: true, hitstop: true, slowmo: true },
   accessibility: { reducedMotion: 'system', colorblind: 'none', uiScale: 1, battleTextSpeed: 'normal', screenFlash: true, speedrunTimer: false, battleCommentary: true, trainerBanter: true, followerChatter: true },
-  audio: { master: 0.8, music: 0.7, sfx: 0.8, ui: 0.6, muteWhenHidden: true, npcVoices: false, battleVoices: false, voices: 0.8, speechInput: false },
+  audio: { master: 0.8, music: 0.1, sfx: 0.8, ui: 0.6, muteWhenHidden: true, npcVoices: false, battleVoices: false, voices: 0.8, speechInput: false },
   keybinds: DEFAULT_KEYBINDS,
   social: { showChat: true, allowChallenges: true, allowTrades: true, allowDmsFrom: 'everyone' },
 };
