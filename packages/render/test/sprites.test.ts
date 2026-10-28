@@ -4,12 +4,14 @@
  * refcounted atlas cache and dispose, and the billboard pool (one material per atlas, per-object userData only).
  */
 import { describe, expect, it, vi } from 'vitest';
-import { LinearMipmapLinearFilter, NearestFilter, NoColorSpace, PerspectiveCamera, RedFormat, SRGBColorSpace, Texture } from 'three/webgpu';
+import { BufferAttribute, BufferGeometry, LinearMipmapLinearFilter, Matrix4, NearestFilter, NoColorSpace, PerspectiveCamera, RedFormat, SRGBColorSpace, Texture } from 'three/webgpu';
+import type { Mesh, Object3D } from 'three/webgpu';
 import {
   ATLAS_LEVELS, AtlasCache, MAX_SINGLES, atlasSetBytes, chainBytes, cropForLevel, loadAtlasTextures, loadSingleTextures, singleKey,
   textureFromLevels, type AtlasDecoder, type AtlasSet,
 } from '../src/sprites/atlas.js';
 import { BillboardPool } from '../src/sprites/billboard.js';
+import type { CreatureModel, CreatureModelSource } from '../src/sprites/creatureModels.js';
 import {
   ANIM, BILLBOARD, FALLBACK_HEIGHT_M, POSES, VARIANT_KEYS, VARIANT_UNIFORMS, billboardDims, bobOffset, bobPhase, cardBodyV, decayHurt, paletteFor, poseDurationMs, samplePose,
   type PoseSample,
@@ -374,6 +376,90 @@ describe('§10.4.2 BillboardPool / CreatureBillboard', () => {
     expect(c.r).toBeCloseTo(want.r, 6);
     pool.setTypeColors({ ...TYPE_COLORS, Water: '#ffffff' });
     expect(c.r).toBe(1);
+    pool.dispose();
+  });
+});
+
+describe('3D creature bodies (IMPLEMENTATION-NOTES "3D creatures")', () => {
+  const model = (): CreatureModel => {
+    const g = new BufferGeometry();
+    g.setAttribute('position', new BufferAttribute(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]), 3));
+    return { geometry: g, matrix: new Matrix4() };
+  };
+  const source = (ids: readonly string[]): CreatureModelSource & { calls: string[] } => {
+    const calls: string[] = [];
+    return { calls, model: (id) => { calls.push(id); return Promise.resolve(ids.includes(id) ? model() : null); }, dispose: () => {} };
+  };
+  const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+
+  it('off by default; on, a creature with a model swaps its card for the body once it loads, and back when turned off', async () => {
+    const src = source(['cindercap']);
+    const pool = new BillboardPool({ decoder: fakeDecoder(), models: src });
+    await pool.bindAtlas(fakeSet('a-001'));
+    const a = pool.acquire(desc('spawn:1', 'a-001', { model: 'cindercap', heightM: 0.6 }));
+    const [quad, decal, body] = a.object.children as [Object3D, Object3D, Object3D];
+    expect(a.hasBody).toBe(false);
+    expect(src.calls).toEqual([]);
+    pool.setModels(true);
+    expect(a.hasBody).toBe(false);          // loading: the card stays
+    expect(quad.visible).toBe(true);
+    await flush();
+    expect(a.hasBody).toBe(true);
+    expect(quad.visible).toBe(false);
+    expect(body.visible).toBe(true);
+    expect(decal.visible).toBe(true);
+    expect(body.scale.y).toBeCloseTo(0.6, 9);   // the GLB is 1 m tall: the body stands the creature's height
+    // the body shares the card's per-object record, so the model material reads the same pose / palette / flash
+    expect((body.children[0] as Mesh).userData).toBe((quad as Mesh).userData);
+    // one load per model, shared
+    const b = pool.acquire(desc('spawn:2', 'a-001', { model: 'cindercap' }));
+    expect(b.hasBody).toBe(true);
+    expect(src.calls).toEqual(['cindercap']);
+    pool.setModels(false);
+    expect(a.hasBody).toBe(false);
+    expect(quad.visible).toBe(true);
+    expect(body.visible).toBe(false);
+    a.dispose(); b.dispose(); pool.dispose();
+  });
+
+  it('two switches: the overworld and the battle stage (setModelScope) show 2D or 3D apart', async () => {
+    const pool = new BillboardPool({ decoder: fakeDecoder(), models: source(['cindercap']) });
+    await pool.bindAtlas(fakeSet('a-001'));
+    pool.setModels(true, 'world');
+    const w = pool.acquire(desc('spawn:1', 'a-001', { model: 'cindercap' }));
+    const b = pool.acquire(desc('battler:mine', 'a-001', { model: 'cindercap' }));
+    b.setModelScope('battle');
+    await flush();
+    expect([w.hasBody, b.hasBody]).toEqual([true, false]);
+    expect(pool.modelsEnabled('battle')).toBe(false);
+    pool.setModels(true, 'battle');
+    pool.setModels(false, 'world');
+    expect([w.hasBody, b.hasBody]).toEqual([false, true]);
+    b.setModelScope('world');
+    expect(b.hasBody).toBe(false);
+    pool.dispose();
+  });
+
+  it('no model (none listed, or no descriptor id) keeps the card; heading, pose axis and faint drive the body', async () => {
+    const pool = new BillboardPool({ decoder: fakeDecoder(), models: source(['voltaura']) });
+    await pool.bindAtlas(fakeSet('a-001'));
+    pool.setModels(true);
+    const none = pool.acquire(desc('x', 'a-001', { model: 'unknown' }));
+    const plain = pool.acquire(desc('y'));
+    const v = pool.acquire(desc('z', 'a-001', { model: 'voltaura' }));
+    await flush();
+    expect(none.hasBody).toBe(false);
+    expect(plain.hasBody).toBe(false);
+    expect(v.hasBody).toBe(true);
+    const body = v.object.children[2]!;
+    v.setHeading(1.2);
+    expect(body.rotation.y).toBeCloseTo(1.2, 9);
+    v.setHeading(null);
+    v.setPoseAxis(1, 0);
+    v.update(16);
+    expect(body.rotation.y).toBeCloseTo(Math.PI / 2, 9);
+    v.setFaint(1);
+    expect(body.visible).toBe(false);
     pool.dispose();
   });
 });

@@ -554,6 +554,7 @@ export class Stage implements BattleStage {
     }
     if (have !== undefined) { have.bb.dispose(); this.removeFromList(have); }
     const bb = this.d.sprites.acquire(desc);
+    bb.setModelScope('battle');             // "Ewamons in battle": 2D or 3D apart from the overworld
     bb.setFacing(ref.side === 0 ? 'back' : 'front');
     bb.setSharp(true);                      // active battlers are DOF-sharp (Pillar 1)
     this.main.root.add(bb.object);

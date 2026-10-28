@@ -16,6 +16,7 @@ import type { HarvestLevel } from '../descriptors.js';
 import type { ZoneHandle } from '../contracts.js';
 import { DioramaRig } from '../camera/rig.js';
 import { createSpritePool, type BillboardPool } from '../sprites/billboard.js';
+import { createCreatureModelSource } from '../sprites/creatureModels.js';
 import { CanvasHudLayer, HUD, type HudAnchors, type Ref } from '../hud/layer.js';
 import { PANEL_DEFAULT_FRACTION } from '../camera/battle.js';
 import { CharacterPool } from './actors.js';
@@ -73,7 +74,10 @@ function build(ctx: HostContext): Part3 {
   let slowmoLeft = 0;
   let chromaAmount = 0; let chromaMs = 0; let chromaLeft = 0;
 
-  const sprites = createSpritePool({ harvestLevel: harvestUniform, camera: ctx.camera3, upload: (t) => ctx.gpu.initTexture(t) });
+  const sprites = createSpritePool({
+    harvestLevel: harvestUniform, camera: ctx.camera3, upload: (t) => ctx.gpu.initTexture(t),
+    models: ctx.creatureModelsUrl === null ? null : createCreatureModelSource({ baseUrl: ctx.creatureModelsUrl, warn: (m) => { if (isDevBuild()) console.warn(`[@ewa/render creatures] ${m}`); } }),
+  });
   // characters: KayKit 3D bodies from models.manifest.json (§10.7.7); the decal reads the sprite pool's camera uniforms
   const warnCharacters = (m: string): void => { if (isDevBuild()) console.warn(`[@ewa/render characters] ${m}`); };
   const actors = new CharacterPool({

@@ -65,6 +65,11 @@ export interface SpriteDescriptor {
    * spread wings), instead of keeping the front's scale (`cardBodyV`). Absent = false.
    */
   readonly backFullHeight?: boolean;
+  /**
+   * Added 2026-10-28 (IMPLEMENTATION-NOTES "3D creatures"): the sprite id of the creature's 3D body
+   * (`/creature-models/<model>.glb`), drawn in place of the card while the pool's models are on. Absent = card only.
+   */
+  readonly model?: string;
 }
 
 /**

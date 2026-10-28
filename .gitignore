@@ -46,3 +46,6 @@ tools/asset-audit/.audit/report.json
 models/**
 !models/*/
 !models/*/.gitkeep
+
+# creature-models preview renders (tools/creature-models build.mjs)
+previews/

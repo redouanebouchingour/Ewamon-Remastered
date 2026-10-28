@@ -31,7 +31,7 @@
  * - The shimmer clock is a pool uniform advanced by `dt × timeScale` (hitstop freezes it) rather than `time`.
  */
 import {
-  BufferAttribute, Color, DoubleSide, FrontSide, Group, Mesh, MeshBasicNodeMaterial, MeshStandardNodeMaterial, MultiplyBlending,
+  BufferAttribute, BufferGeometry, Color, DoubleSide, FrontSide, Group, Mesh, MeshBasicNodeMaterial, MeshStandardNodeMaterial, MultiplyBlending,
   PlaneGeometry, Quaternion, Sphere, Box3, Vector2, Vector3, Vector4,
 } from 'three/webgpu';
 import type { Node, Object3D, PerspectiveCamera, Texture, UniformNode } from 'three/webgpu';
@@ -52,6 +52,7 @@ import {
   samplePose, type BillboardDims, type PaletteValues, type PoseSample,
 } from './tables.js';
 import { TYPE_COLORS, hexToLinearInto, validateTypeColorTable } from './typeColors.js';
+import { CREATURE_MODEL, createCreatureModelMaterial, warmupModelGeometry, type CreatureModel, type CreatureModelSource } from './creatureModels.js';
 
 // ---- §10.4.2 SpritePool (verbatim) ---------------------------------------------------------------------------
 
@@ -227,11 +228,17 @@ export function createDecalMaterial(u: BillboardUniforms): MeshBasicNodeMaterial
 
 // ---- pool --------------------------------------------------------------------------------------------------------
 
+/** Which 3D-bodies switch a creature follows: the overworld (default) or the battle stage. */
+export type ModelScope = 'world' | 'battle';
+
 interface AtlasEntry { readonly textures: AtlasTextures; readonly material: MeshStandardNodeMaterial }
 
 interface Rig {
   readonly group: Group;
   readonly quad: Mesh;
+  /** The 3D body (creatureModels.ts): `body` takes the pose / heading / size, `bodyMesh` the GLB node's own transform. */
+  readonly body: Group;
+  readonly bodyMesh: Mesh;
   readonly decal: Mesh;
   readonly ud: BillboardUserData;
   readonly dud: DecalUserData;
@@ -246,6 +253,8 @@ export interface BillboardPoolOptions {
   readonly upload?: (t: Texture) => void;
   /** Camera whose direction drives `cameraYaw` / `cameraLean`. */
   readonly camera?: PerspectiveCamera;
+  /** 3D creature bodies (creatureModels.ts); absent / null = cards only. Shown once `setModels(true)`. */
+  readonly models?: CreatureModelSource | null;
 }
 
 const _dir = new Vector3();
@@ -287,6 +296,15 @@ export class BillboardPool implements SpritePool {
   private disposed = false;
   /** Σ `infoOvercountBytes` of the loaded sets (the level 0 three's `Info` counts twice; the host subtracts it). */
   private overcount = 0;
+  private readonly modelSource: CreatureModelSource | null;
+  /** 3D bodies per scope (`CreatureBillboard.setModelScope`): the overworld and the battle stage switch apart. */
+  private readonly modelsOn = { world: false, battle: false };
+  /** The one material of every 3D body (creatureModels.ts). */
+  readonly modelMaterial: MeshStandardNodeMaterial;
+  private readonly emptyGeometry = new BufferGeometry();
+  private readonly models = new Map<string, CreatureModel | null>();
+  private readonly modelWaiting = new Map<string, CreatureBillboard[]>();
+  private warmModelGeometry: BufferGeometry | null = null;
 
   constructor(o: BillboardPoolOptions = {}) {
     this.uniforms = {
@@ -306,6 +324,9 @@ export class BillboardPool implements SpritePool {
     this.decalMaterial = createDecalMaterial(this.uniforms);
     const nt = neutralAtlasTextures();
     this.neutral = { textures: nt, material: createBillboardMaterial(nt, this.uniforms, 'neutral') };
+    this.modelSource = o.models ?? null;
+    this.modelMaterial = createCreatureModelMaterial(this.uniforms);
+    this.emptyGeometry.name = 'ewa:creature-model-empty';
     this.cache = new AtlasCache<AtlasEntry>(
       (e) => { this.overcount -= infoOvercountBytes(e.textures); e.material.dispose(); disposeAtlasTextures(e.textures); },
       (e) => e.textures.bytes,
@@ -313,6 +334,39 @@ export class BillboardPool implements SpritePool {
   }
 
   setCamera(c: PerspectiveCamera): void { this.camera = c; }
+
+  /**
+   * 3D bodies on / off for one scope (the client's "Ewamons overworld" / "Ewamons in battle" settings), or for both
+   * when `scope` is omitted: every live creature of that scope with a model swaps between its card and its body at once;
+   * a body still loading shows the card until it lands. Off by default; no source = cards always.
+   */
+  setModels(on: boolean, scope?: ModelScope): void {
+    for (const k of scope === undefined ? (['world', 'battle'] as const) : [scope]) this.modelsOn[k] = on;
+    for (let i = 0; i < this.live.length; i++) this.live[i]!.refreshBody();
+  }
+
+  /** Whether creatures of `scope` draw their 3D bodies (models on for it and a source to load them from). */
+  modelsEnabled(scope: ModelScope = 'world'): boolean { return this.modelsOn[scope] && this.modelSource !== null; }
+
+  /**
+   * The loaded body for sprite id `id`, or null: none, still loading (the billboard is re-pointed when it lands) or
+   * models off. @internal
+   */
+  modelFor(id: string, b: CreatureBillboard): CreatureModel | null {
+    if (!this.modelsEnabled(b.modelScope)) return null;
+    if (this.models.has(id)) return this.models.get(id)!;
+    const list = this.modelWaiting.get(id);
+    if (list !== undefined) { if (!list.includes(b)) list.push(b); return null; }
+    this.modelWaiting.set(id, [b]);
+    void this.modelSource!.model(id).then((m) => {
+      if (this.disposed) return;
+      this.models.set(id, m);
+      const waiting = this.modelWaiting.get(id) ?? [];
+      this.modelWaiting.delete(id);
+      for (const w of waiting) w.refreshBody();
+    });
+    return null;
+  }
 
   // ---- SpritePool ------------------------------------------------------------------------------------------
 
@@ -385,6 +439,12 @@ export class BillboardPool implements SpritePool {
     this.neutral.material.dispose();
     disposeAtlasTextures(this.neutral.textures);
     this.decalMaterial.dispose();
+    this.modelMaterial.dispose();
+    this.modelSource?.dispose();
+    this.emptyGeometry.dispose();
+    this.warmModelGeometry?.dispose();
+    this.models.clear();
+    this.modelWaiting.clear();
     this.quadGeometry.dispose();
     this.decalGeometry.dispose();
     this.waiting.clear();
@@ -424,6 +484,10 @@ export class BillboardPool implements SpritePool {
       ud.rect.set(0, 0, 1, 1); ud.size.set(1, 1.6); ud.footV = 0.08;
       this.warm.quad.material = this.neutral.material;
       this.warm.group.name = 'ewa:billboard-warmup';
+      // the 3D body's program compiles in the same frame (a small triangle beside the card)
+      this.warmModelGeometry = warmupModelGeometry();
+      this.warm.bodyMesh.geometry = this.warmModelGeometry;
+      this.warm.body.visible = true;
     }
     return this.warm.group;
   }
@@ -438,6 +502,8 @@ export class BillboardPool implements SpritePool {
     r.group.removeFromParent();
     r.group.visible = true;
     r.quad.material = this.neutral.material;
+    r.body.visible = false;
+    r.bodyMesh.geometry = this.emptyGeometry;
     this.free.push(r);
   }
 
@@ -451,6 +517,10 @@ export class BillboardPool implements SpritePool {
     for (const [k, list] of this.waiting) {
       const j = list.indexOf(b);
       if (j >= 0) { list.splice(j, 1); if (list.length === 0) this.waiting.delete(k); }
+    }
+    for (const list of this.modelWaiting.values()) {
+      const j = list.indexOf(b);
+      if (j >= 0) list.splice(j, 1);
     }
   }
 
@@ -521,10 +591,23 @@ export class BillboardPool implements SpritePool {
     decal.castShadow = false;
     decal.receiveShadow = false;
     decal.name = 'ewa:contact-decal';
+    // the 3D body shares the card's per-object record, so the model material reads the same pose / palette / flash
+    const bodyMesh = new Mesh(this.emptyGeometry, this.modelMaterial);
+    bodyMesh.userData = ud as unknown as Record<string, unknown>;
+    bodyMesh.castShadow = true;
+    bodyMesh.receiveShadow = true;
+    bodyMesh.layers.set(LAYERS.billboards);
+    bodyMesh.layers.enable(LAYERS.dynamicShadow);
+    bodyMesh.matrixAutoUpdate = false;
+    bodyMesh.name = 'ewa:creature-model';
+    const body = new Group();
+    body.name = 'ewa:creature-body';
+    body.visible = false;
+    body.add(bodyMesh);
     const group = new Group();
     group.name = 'ewa:creature';
-    group.add(quad, decal);
-    const r: Rig = { group, quad, decal, ud, dud };
+    group.add(quad, decal, body);
+    const r: Rig = { group, quad, body, bodyMesh, decal, ud, dud };
     this.all.push(r);
     return r;
   }
@@ -576,6 +659,15 @@ export class CreatureBillboard {
   private faintHold = false;
   /** `setFlipbook(false)`: the static frame even when the side's flipbook is bound (a far creature; client residency). */
   private flipbookOn = true;
+  /** The sprite id of the 3D body (`SpriteDescriptor.model`); null = card only. */
+  private readonly modelId: string | null;
+  /** The loaded body while the pool's models are on; null = the card. */
+  private body: CreatureModel | null = null;
+  /** `setHeading`: the body's yaw (walkers); null = the pose axis, else facing the camera. */
+  private heading: number | null = null;
+  /** Whether `setPoseAxis` was called (the battle stage): the body faces along it. */
+  private axisSet = false;
+  private scope: ModelScope = 'world';
 
   constructor(pool: SpritePool, d: SpriteDescriptor) {
     if (!(pool instanceof BillboardPool)) throw new TypeError('@ewa/render: CreatureBillboard needs the renderer\'s SpritePool');
@@ -595,8 +687,10 @@ export class CreatureBillboard {
     this.object.position.set(0, 0, 0);
     this.setVariant(d.variant, d.isAlpha, this.isShiny);
     this.refreshTypeColor();
+    this.modelId = d.model ?? null;
     this.bindSide();
     pool.addLive(this);
+    this.refreshBody();
   }
 
   // ---- §10.4.2 -----------------------------------------------------------------------------------------------
@@ -665,6 +759,7 @@ export class CreatureBillboard {
       this.applyPose();
       if (this.poseElapsed >= this.poseMs) this.poseMs = 0;
     }
+    if (this.body !== null) this.applyBody();
   }
 
   dispose(): void {
@@ -682,7 +777,40 @@ export class CreatureBillboard {
     const l = Math.hypot(x, z);
     if (l < 1e-6) return;
     this.axisX = x / l; this.axisZ = z / l;
+    this.axisSet = true;
     this.applyTransform();
+  }
+
+  /**
+   * The 3D body's heading (radians about +Y; 0 faces +Z, `atan2(dx, dz)` of a walk): a walker faces where it goes.
+   * null = back to the pose axis, or to facing the camera. The card ignores it.
+   */
+  setHeading(yaw: number | null): void {
+    this.heading = yaw !== null && Number.isFinite(yaw) ? yaw : null;
+    if (this.body !== null) this.applyBody();
+  }
+
+  /** Which of the pool's 3D-bodies switches this creature follows (default 'world'; battlers set 'battle'). */
+  setModelScope(s: ModelScope): void {
+    if (s === this.scope) return;
+    this.scope = s;
+    this.refreshBody();
+  }
+
+  get modelScope(): ModelScope { return this.scope; }
+
+  /** @internal Re-reads the pool's models switch and this creature's body (a bind landed or the switch changed). */
+  refreshBody(): void {
+    if (this.disposed) return;
+    const m = this.modelId === null ? null : this.pool.modelFor(this.modelId, this);
+    this.body = m;
+    if (m !== null) {
+      this.rig.bodyMesh.geometry = m.geometry;
+      this.rig.bodyMesh.matrix.copy(m.matrix);
+      this.rig.bodyMesh.matrixWorldNeedsUpdate = true;
+      this.applyBody();
+    }
+    this.applyVisibility();
   }
 
   /** Terrain normal under the feet (`TerrainCollider.normal`): the contact decal lies on it. */
@@ -747,6 +875,8 @@ export class CreatureBillboard {
   get bound(): boolean { return this.ready; }
   /** Whether the shown side plays its flipbook (its anim atlas is bound). */
   get animated(): boolean { return this.anim !== null; }
+  /** Whether the 3D body is drawn in place of the card. */
+  get hasBody(): boolean { return this.body !== null; }
   /** Whether the side may play its flipbook (`setFlipbook`). */
   get flipbookEnabled(): boolean { return this.flipbookOn; }
   /** The flipbook page shown (−1 when static). */
@@ -757,7 +887,7 @@ export class CreatureBillboard {
   /** WORLD position of the top of the sprite (HUD bar anchor). Zero allocation. */
   topWorld(out: Vector3): Vector3 {
     this.object.getWorldPosition(out);
-    out.y += this.dims.yMax + this.rig.ud.lift;
+    out.y += (this.body !== null ? this.bodyHeightM() * this.rig.ud.scaleY : this.dims.yMax) + this.rig.ud.lift;
     return out;
   }
 
@@ -855,7 +985,34 @@ export class CreatureBillboard {
   }
 
   private applyVisibility(): void {
-    this.rig.quad.visible = this.ready && this.dissolveBase < 0.999;
-    this.rig.decal.visible = this.ready && this.dissolveBase < 0.999;
+    const shown = this.dissolveBase < 0.999;
+    const body = this.body !== null;
+    this.rig.quad.visible = !body && this.ready && shown;
+    this.rig.body.visible = body && shown;
+    this.rig.decal.visible = (body || this.ready) && shown;
+  }
+
+  /** The body stands the creature's height (× 1.12 for an alpha, × `setSizeMul`); the GLB is 1 m tall. */
+  private bodyHeightM(): number {
+    const m = Number.isFinite(this.d.heightM) && this.d.heightM > 0 ? this.d.heightM : 1;
+    return m * (this.isAlpha ? B.alphaScale : 1) * this.sizeMul;
+  }
+
+  /** The body's pose (lift, squash, bob), size and heading. Scalar writes; per frame while a body is shown. */
+  private applyBody(): void {
+    const ud = this.rig.ud;
+    const s = this.bodyHeightM();
+    const b = this.rig.body;
+    b.position.set(0, ud.bob + ud.lift, 0);
+    b.scale.set(s, s * ud.scaleY, s);
+    let yaw: number;
+    if (this.heading !== null) yaw = this.heading;
+    else if (this.axisSet) yaw = Math.atan2(this.axisX, this.axisZ);
+    else {
+      // face the camera (a front) or turn away from it (a back), with the sprites' three-quarter turn
+      const toCam = this.pool.uniforms.cameraYaw.value;
+      yaw = this.side === 'front' ? toCam + CREATURE_MODEL.frontTurn : toCam + Math.PI - CREATURE_MODEL.frontTurn;
+    }
+    b.rotation.y = yaw;
   }
 }

@@ -3004,3 +3004,12 @@ the second isolated client (the component over the landing page: the foe and own
 - The Watch panel words a turn with the field as it was before the turn, applying switch-ins as the lines go: the
   summary patch can arrive before the `battleWatch` message, so the room's field may already hold the turn's end.
 - Spectator creatures lease their full atlases (like the raid den), not singles like followers: rings are few.
+
+## 3D Ewamons: overworld and battle (2026-10-28, not in the SPEC)
+
+- Graphics settings `creaturesWorld` ("Ewamons overworld", default 2D) and `creaturesBattle` ("Ewamons in battle",
+  default 2D): `World3D` calls `sprites.setModels(on, 'world' | 'battle')` at boot and on every change, so creatures
+  switch between their 3D bodies and the 2D sprite cards live. Battlers (render's battle stage) and watched battles
+  (`SpectatorViews`) follow the battle setting, everything else the overworld one (render IMPLEMENTATION-NOTES
+  "3D creatures"). The sprite catalog names each descriptor's body (`model: spriteId ?? speciesId`); the GLBs are
+  served from `public/creature-models/` (built by `tools/creature-models`).

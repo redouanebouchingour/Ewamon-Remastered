@@ -215,6 +215,7 @@ export class SpectatorViews {
     if (desc === null) return null;
     const lease = this.d.leaseSprites(sprite, 'front');
     const bb = this.d.acquire(desc);
+    bb.setModelScope('battle');   // a watched battle follows "Ewamons in battle"
     bb.setFacing('front');
     if (w.hpPct === 0) bb.setFaint(1);
     this.d.parent.add(bb.object);

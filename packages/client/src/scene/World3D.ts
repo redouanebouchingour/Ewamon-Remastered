@@ -553,6 +553,15 @@ class World implements World3D {
     group.name = this.clientGroupName;
     r.scene.add(group);
     if (p3 !== undefined) {
+      // "Ewamons overworld" / "Ewamons in battle": the OpenSCAD bodies in place of the sprite cards, per scope (the cards
+      // stay the fallback while a body loads)
+      const looks = useSettingsStore.getState().graphics;
+      p3.sprites.setModels(looks.creaturesWorld === '3d', 'world');
+      p3.sprites.setModels(looks.creaturesBattle === '3d', 'battle');
+      this.rendererOffs.push(
+        useSettingsStore.subscribe((s) => s.graphics.creaturesWorld, (v) => p3.sprites.setModels(v === '3d', 'world')),
+        useSettingsStore.subscribe((s) => s.graphics.creaturesBattle, (v) => p3.sprites.setModels(v === '3d', 'battle')),
+      );
       this.textures = new CreatureTextures({
         catalog: () => this.catalog,
         pool: () => (this.disposed ? null : p3.sprites),

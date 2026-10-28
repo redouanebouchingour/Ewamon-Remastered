@@ -1,0 +1,135 @@
+// Solpyre Tenjin: Solpyre ascended. Its plumage burns down to amber and bronze with pale-gold feather tips, golden
+// light veins its body, a thin halo hangs behind the white-hot crest and sparks of light float around it.
+include <lib.scad>
+
+body = [0.72, 0.32, 0.12];
+bodyHi = [0.88, 0.5, 0.2];
+crimson = [0.6, 0.27, 0.1];
+crimsonDk = [0.45, 0.18, 0.08];
+pale = [1, 0.93, 0.7];
+gold = [0.98, 0.68, 0.12];
+goldHi = [1, 0.84, 0.35];
+flameRed = [1, 0.5, 0.12];
+flameOrange = [1, 0.72, 0.3];
+flameCore = [1, 0.95, 0.75];
+talon = [0.42, 0.28, 0.18];
+rock = [0.22, 0.13, 0.1];
+lava = [0.85, 0.3, 0.06];
+beakC = [0.85, 0.55, 0.15];
+
+// Teardrop flame tongue: a round base swelling up and narrowing to a point.
+module tongue(p, d, r, c) {
+  color(c) hull() {
+    translate(p) sphere(r);
+    translate(p + d * 0.45 + [d[0] * 0.2, 0, 0]) sphere(r * 0.7);
+    translate(p + d) sphere(0.2);
+  }
+}
+module flame(p, s = 1, lean = [0, 0, 0]) {
+  tongue(p, [0, 0, 7.5 * s] + lean, 3 * s, flameRed);
+  for (y = [-1, 1]) {
+    tongue(p + [0, y * 1.2 * s, -0.2 * s], [0.4 * s, 0, 5.5 * s] + lean * 0.8, 2.2 * s, flameOrange);
+    tongue(p + [0, y * 2 * s, -0.5 * s], [0, 0, 3.2 * s] + lean * 0.6, 1.3 * s, flameCore);
+  }
+}
+// Long feather: a flat blade from p along d, width w (lies in the XZ plane; the wing is flattened in Y afterwards).
+module feather(p, d, w, c) {
+  color(c) hull() {
+    translate(p) sphere(w, $fn = 10);
+    translate(p + d * 0.6) sphere(w * 0.8, $fn = 10);
+    translate(p + d) sphere(0.2, $fn = 6);
+  }
+}
+// One wing, raised up and out to +X from its root at the origin.
+module wing() {
+  rotate([0, 8, 0]) scale([1, 0.32, 1]) {
+    // Primaries: long crimson blades fanning from out-sideways to straight up, each with a gold band.
+    for (i = [0 : 7]) {
+      a = 0 + i * 9;
+      l = 12 + i * 1.3;
+      base = [4 + i * 0.7, 0, 1 + i * 1.6];
+      d = [cos(a) * l, 0, sin(a) * l];
+      feather(base, d, 1.7, i % 2 == 0 ? crimson : crimsonDk);
+      feather(base + d * 0.55, d * 0.45, 1.3, pale);
+      for (y = [-1, 1]) {
+        feather(base + d * 0.12 + [0, y * 2, 0], d * 0.4, 0.9, gold);
+        feather(base + [0, y * 3.2, 0], d * 0.22, 1, flameOrange);
+      }
+    }
+    // Coverts over the arm.
+    for (i = [0 : 5]) {
+      a = 15 + i * 12;
+      feather([1 + i * 0.6, -3, i * 0.9], [cos(a) * 7, 0, sin(a) * 7], 1.5, i % 2 == 0 ? body : crimson);
+    }
+    // Leading-edge arm.
+    color(body) hull() { sphere(2.2, $fn = 14); translate([8, -1, 9]) sphere(1.6, $fn = 12); }
+  }
+}
+
+// Ring of fire on a scorched rock disc.
+color(rock) translate([0, 0, 0.8]) scale([12, 9, 1.4]) sphere(1, $fn = 32);
+color(lava) translate([0, 0, 1.6]) scale([9.5, 7, 0.9]) sphere(1, $fn = 28);
+for (a = [0 : 30 : 330]) flame([cos(a) * 9.5, sin(a) * 7.2, 1.6], 0.45 + 0.12 * (a % 60 == 0 ? 1 : 0));
+
+// Legs and talons gripping the rock.
+mirror_x() {
+  limb([2.6, 0, 12], [3.2, -0.5, 6.5], 1.6, 1, body);
+  limb([3.2, -0.5, 6.5], [3.4, -0.6, 2.6], 0.8, 0.7, talon);
+  for (a = [-35, 0, 35]) limb([3.4, -0.6, 2.6], [3.4 + sin(a) * 2.2, -0.6 - cos(a) * 2.2, 2], 0.5, 0.25, talon);
+  limb([3.4, -0.6, 2.6], [3.4, 1.4, 2], 0.45, 0.25, talon);
+}
+
+// Body: an upright teardrop with a feathered breast.
+blob([[[5.2, 4.6, 7], [0, 0.5, 17]], [[3.4, 3.4, 4], [0, -0.5, 24]]], body);
+ell([3.6, 1.6, 5], [0, -3.4, 14.5], bodyHi);
+// Golden sun medallion on the chest.
+translate([0, -4.6, 20]) rotate([80, 0, 0]) {
+  color(gold) cylinder(h = 0.9, r = 3.4, $fn = 28);
+  color(goldHi) translate([0, 0, 0.6]) cylinder(h = 0.6, r = 2.2, $fn = 24);
+  color(gold) translate([0, 0, 1]) cylinder(h = 0.5, r = 1.1, $fn = 16);
+  for (a = [0 : 45 : 315]) color(goldHi) rotate([0, 0, a]) translate([2.8, 0, 0.7]) sphere(0.4, $fn = 8);
+}
+
+// Head with a hooked beak, fierce eyes and a crest of fire.
+ell([3.2, 3.2, 3.4], [0, -1.6, 28], body);
+color(beakC) hull() {
+  translate([0, -4.4, 27.6]) sphere(1.1, $fn = 12);
+  translate([0, -6.6, 26.6]) sphere(0.25, $fn = 8);
+}
+mirror_x() {
+  eye([1.7, -4, 28.6], 0.8, iris = [1, 0.75, 0.1], sclera = [1, 0.95, 0.7], pupil = [0.2, 0.05, 0], yaw = -30, flat = 0.5);
+  color(crimsonDk) translate([1.7, -4.3, 29.4]) rotate([0, -20, -30]) scale([1.2, 0.5, 0.35]) sphere(1, $fn = 10);
+}
+flame([0, -0.4, 29.5], 1.2, [0, 1.5, 0]);
+flame([2.4, 0.2, 29.2], 0.75, [2, 1, 0]);
+flame([-2.4, 0.2, 29.2], 0.75, [-2, 1, 0]);
+
+// Wings, raised from the shoulders.
+translate([3.4, 1.5, 22]) wing();
+translate([-3.4, 1.5, 22]) mirror([1, 0, 0]) wing();
+
+// Tail: crimson tail feathers and flame streamers curling out to the viewer's right behind.
+for (i = [-1 : 1]) feather([i * 1.2, 3.5, 12], [i * 2, 5, -7], 1.4, crimson);
+// Streamers: flame tongues trailing out low to +X, the last ones curling up.
+tongue([1, 4.5, 9], [8, 3, -3], 2, flameRed);
+tongue([5, 7, 6.5], [7, 0, -1], 1.8, flameOrange);
+tongue([9, 8, 6], [5, -1, 2], 1.6, flameRed);
+tongue([12, 7, 7], [3, -2, 5], 1.4, flameOrange);
+tongue([13.5, 5.5, 10], [-1, -1, 5], 1.1, flameCore);
+tongue([-1, 4.5, 9], [-6, 3, -1], 1.6, flameRed);
+tongue([-5, 7, 8], [-3, -1, 4], 1.2, flameOrange);
+
+// Halo behind the crest.
+color(goldHi) translate([0, 1.5, 31]) rotate([90, 0, 0]) difference() {
+  cylinder(h = 0.6, r = 6.8, center = true, $fn = 40);
+  cylinder(h = 1, r = 6.0, center = true, $fn = 40);
+}
+// Golden light veins over the body.
+module vein(pts) chain(pts, [for (q = pts) 0.22], goldHi);
+vein([[1.5, -3.8, 23], [2.5, -3.6, 18], [1.5, -4, 14], [2.8, -3.2, 10]]);
+vein([[-1.6, -4, 17], [-2.6, -3.6, 13], [-1.8, -3.2, 10]]);
+vein([[0, 4.6, 22], [1, 5, 18], [-0.5, 5, 14], [0.8, 4, 11]]);
+vein([[-2.5, 4, 20], [-3.8, 3, 16]]);
+// Floating sparks of light.
+for (p = [[-16, -3, 30], [15, -2, 33], [-18, 0, 18], [18, 1, 20], [-10, -4, 36], [9, -3, 6], [-12, 2, 8], [6, 3, 37]])
+  color(goldHi) translate(p) for (r = [[0, 0, 0], [0, 90, 0], [90, 0, 0]]) rotate(r) scale([0.25, 0.25, 1]) sphere(0.9, $fn = 8);

@@ -190,6 +190,7 @@ export function createSpriteCatalog(m: CreatureManifest, species: (id: string) =
         id: key, front: frame(sp.front, anim('front')), back: frame(sp.back, anim('back')), heightM: form?.heightM ?? def?.heightM ?? sp.sizeScale * LEGACY_BODY_M, types, variant, isAlpha,
         ...(isShiny ? { isShiny: true, shinyPalette: shinyPaletteOf(speciesId) } : {}), ...(aura !== undefined ? { aura } : {}),
         ...(BACK_FULL_HEIGHT.has(speciesId) ? { backFullHeight: true } : {}),
+        model: spriteId ?? speciesId,
       };
     },
     get speciesCount() {

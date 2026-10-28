@@ -122,7 +122,7 @@ export {
 } from './sprites/atlas.js';
 export type { AnimAtlasSet, AtlasDecoder, AtlasMap, AtlasMapName, AtlasSet, AtlasTextures, Crop, DecodedImage } from './sprites/atlas.js';
 export { BillboardPool, CreatureBillboard, createBillboardMaterial, createDecalMaterial, createSpritePool } from './sprites/billboard.js';
-export type { BillboardPoolOptions, BillboardUniforms, BillboardUserData, SpritePool } from './sprites/billboard.js';
+export type { BillboardPoolOptions, BillboardUniforms, BillboardUserData, ModelScope, SpritePool } from './sprites/billboard.js';
 export {
   ANIM, BATTLER_POSES, BILLBOARD, FALLBACK_HEIGHT_M, POSES, VARIANT_KEYS, VARIANT_UNIFORMS, billboardDims, bobOffset, bobPhase, cardBodyV, decayHurt, flipbookFrame, flipbookPhase01,
   flipbookTotalMs, paletteFor as variantPaletteFor, poseDurationMs, samplePose,

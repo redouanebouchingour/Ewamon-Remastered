@@ -16,7 +16,7 @@ import { REDUCED_LOCKED } from '../state/effective';
 import { useEffectiveSettings } from '../state/applySettings';
 import { useUiStore } from '../state/ui';
 import { INPUT_ACTIONS, UI_SCALE, bindingConflict, isBindable, useSettingsStore } from '../state/settings';
-import type { Colorblind, DetailDistance, FrameCap, GraphicsQualitySetting, GraphicsSettings, InputAction } from '../state/settings';
+import type { Colorblind, CreatureLook, DetailDistance, FrameCap, GraphicsQualitySetting, GraphicsSettings, InputAction } from '../state/settings';
 import { Button } from '../ui/Button';
 import { Segmented, Select } from '../ui/Field';
 import { Panel } from '../ui/Panel';
@@ -45,7 +45,7 @@ const TABS: readonly { readonly key: Tab; readonly label: string }[] = [
   { key: 'world', label: 'World' },
 ];
 
-type EffectToggle = Exclude<keyof GraphicsSettings, 'reducedEffects' | 'renderScale' | 'dynamicResolution' | 'quality' | 'frameCap' | 'detailDistance' | 'showFps'>;
+type EffectToggle = Exclude<keyof GraphicsSettings, 'reducedEffects' | 'renderScale' | 'dynamicResolution' | 'quality' | 'frameCap' | 'detailDistance' | 'showFps' | 'creaturesWorld' | 'creaturesBattle'>;
 const EFFECT_TOGGLES: Readonly<Record<EffectToggle, { readonly label: string; readonly description: string }>> = {
   dof: { label: 'Depth of field', description: 'Soft focus on the distance. Never blurs your creature or an active battler.' },
   bloom: { label: 'Bloom', description: 'Glow around bright light. Static, so it stays available under reduced motion.' },
@@ -55,6 +55,11 @@ const EFFECT_TOGGLES: Readonly<Record<EffectToggle, { readonly label: string; re
   hitstop: { label: 'Hitstop', description: 'A 50 ms freeze on every landed hit.' },
   slowmo: { label: 'Critical slow motion', description: 'Time slows briefly on a critical hit.' },
 };
+
+const CREATURE_LOOKS: readonly { readonly key: 'creaturesWorld' | 'creaturesBattle'; readonly label: string; readonly caption: string }[] = [
+  { key: 'creaturesWorld', label: 'Ewamons overworld', caption: 'Ewamon in the world as 3D models or as the original 2D sprites.' },
+  { key: 'creaturesBattle', label: 'Ewamons in battle', caption: 'Battling Ewamon, yours and in battles you watch, as 3D models or 2D sprites.' },
+];
 
 export const ACTION_LABEL: Readonly<Record<InputAction, string>> = {
   forward: 'Move forward',
@@ -178,6 +183,23 @@ function GraphicsTab() {
           onChange={(v) => set('graphics', { frameCap: Number(v) as FrameCap })}
         />
       </div>
+      {CREATURE_LOOKS.map(({ key, label, caption }) => (
+        <div key={key} className={s.control}>
+          <div>
+            <p className={s.controlLabel}>{label}</p>
+            <p className={l.caption}>{caption}</p>
+          </div>
+          <Segmented<CreatureLook>
+            label={label}
+            value={g[key]}
+            options={[
+              { value: '2d', label: '2D' },
+              { value: '3d', label: '3D' },
+            ]}
+            onChange={(v) => set('graphics', { [key]: v } as Partial<GraphicsSettings>)}
+          />
+        </div>
+      ))}
       <Toggle
         label="Show FPS"
         description="Frames per second in the top bar, updated every second."

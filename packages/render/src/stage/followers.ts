@@ -264,6 +264,8 @@ export class FollowerPool {
       } else if (e.stillS >= FOLLOWER.faceFrontAfterS && e.bb.facing === 'back' && !e.frontOnly) {
         e.bb.setFacing('front');
       }
+      // a 3D body faces where it walks, and turns to the camera with the card once it has stood a moment
+      e.bb.setHeading(walking ? e.yaw : e.stillS >= FOLLOWER.faceFrontAfterS || e.frontOnly ? null : e.yaw);
     }
   }
 

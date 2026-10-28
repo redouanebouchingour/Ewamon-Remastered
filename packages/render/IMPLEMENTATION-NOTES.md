@@ -2777,3 +2777,35 @@ The user's call: most of a zone never moves, so only the player, villagers and c
   after the apex, and read as not following. Measured live after the change (alt pair, Tide Route): the camera's y
   rose 1.20 m with the feet' 1.20 m, frame for frame. Terrain steps still spring; a glide's lift is now tracked
   directly too. The DOF focus was already the feet (lift included). `camera-rig.test.ts` checks the same-frame rise.
+
+## 3D creatures (2026-10-28, not in the SPEC; an alternative to §10.4's billboard cards)
+
+- **What:** every creature sprite id has a hand-written OpenSCAD model (`tools/creature-models/scad/<id>.scad`), built
+  into `packages/client/public/creature-models/<id>.glb` + `index.json` (one mesh, 1 m tall, feet on y = 0, facing
+  +Z, COLOR_0 = linear vertex colour with the glow mask in alpha, quantized + meshopt). `BillboardPool.setModels(on, scope?)`
+  draws a creature's body in place of its card, per scope: `'world'` (the default of every creature) and `'battle'`
+  (`setModelScope('battle')`: the battle stage's battlers and the client's watched battles). The client's graphics
+  settings "Ewamons overworld" and "Ewamons in battle" (both default 2D) drive the two.
+- **One creature, two looks:** `SpriteDescriptor.model` (optional, added) names the body. The body is a mesh in the
+  same pooled rig as the card (`group = [quad, decal, body]`) and **shares the card's per-object record**, so the one
+  model material (`sprites/creatureModels.ts`) reads the same `hueShift / satMul / lightMul / hurt / dissolve / glow /
+  alphaGlow / sharp / typeColor`: variant and shiny palettes, the hurt flash, the faint dissolve (holes in model
+  space), the type rim, the sun's rim, alpha shimmer, shiny sparkle and the evolution glow work for every caller
+  unchanged. No caller had to change except followers (`setHeading`).
+- **Loading:** the card stays up until the body has loaded (`createCreatureModelSource`: `index.json` once, each GLB
+  once through `GLTFLoader` + `MeshoptDecoder`, geometry shared by every creature of that id). The atlases bind as
+  before (the card is the fallback and the 2D mode), so texture residency is unchanged; bodies add ~150 KiB of
+  geometry per species seen. A missing or failed model keeps the card.
+- **Size and pose:** the body stands `heightM` (× 1.12 for an alpha, × `setSizeMul`), takes `lift`, `bob` and
+  `scaleY` from the pose, and the group's lunge offset like the card. `topWorld` uses the body's height.
+- **Facing:** `setHeading(yaw)` (followers: where they walk; null once they have stood `faceFrontAfterS`), else the
+  pose axis once `setPoseAxis` was called (battlers face their foe), else the camera: a front faces it with a
+  three-quarter turn (`CREATURE_MODEL.frontTurn`, like the sprites' fronts), a back turns away.
+- **Glow:** the GLB's alpha is the emissive mask, set by the build with the sprite pipeline's rule per colour (HSV
+  value ≥ 0.92, chroma ≥ 0.4, most vivid first up to 8 % of the surface) plus per-colour `GLOW` / `NOGLOW` markers in
+  the scad. Emissive = mask × albedo × 1.35 (`CREATURE_MODEL.emissiveGain`, the card's 1.8 bloomed whole glowing
+  surfaces white).
+- **Cost:** 2.6k to 33.5k triangles per body (median 16.8k), 30 MiB of GLBs for 203 ids. A crowded zone draws a few
+  hundred thousand creature triangles; there is no LOD yet (a far creature could fall back to its card).
+- **Tests:** `sprites.test.ts` "3D creature bodies" (off by default; card until loaded; shared record; one load per
+  id; heading / axis / faint). Checked in the sandbox (`?demo=legends|battle`, `&models=0` for the cards).

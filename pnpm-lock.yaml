@@ -243,6 +243,24 @@ importers:
         specifier: ^0.34.3
         version: 0.34.5
 
+  tools/creature-models:
+    dependencies:
+      '@gltf-transform/core':
+        specifier: ^4.5.0
+        version: 4.5.0
+      '@gltf-transform/extensions':
+        specifier: ^4.5.0
+        version: 4.5.0
+      '@gltf-transform/functions':
+        specifier: ^4.5.0
+        version: 4.5.0(@types/node@22.20.3)
+      meshoptimizer:
+        specifier: ^0.24.0
+        version: 0.24.0
+      sharp:
+        specifier: ^0.35.4
+        version: 0.35.4(@types/node@22.20.3)
+
   tools/material-bake:
     dependencies:
       '@ewa/render':

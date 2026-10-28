@@ -22,6 +22,7 @@ export type FrameCap = -1 | 0 | 30 | 60;
  * How far from the player grass tufts, flowers, pebbles and ambient motes (fireflies, pollen…) draw: 8 / 16 / 20 m, or all
  * (render `zone/detail.ts`); 'auto' = medium on the low quality preset, else all.
  */
+export type CreatureLook = '2d' | '3d';
 export type DetailDistance = 'auto' | 'close' | 'medium' | 'far' | 'max';
 export const FRAME_CAP_UNLIMITED = -1;
 
@@ -42,6 +43,10 @@ export interface GraphicsSettings {
   readonly shake: boolean;
   readonly hitstop: boolean;
   readonly slowmo: boolean;
+  /** "Ewamons overworld": creatures in the world as 3D models (tools/creature-models) or the 2D sprite cards */
+  readonly creaturesWorld: CreatureLook;
+  /** "Ewamons in battle": battlers (yours, and watched battles) as 3D models or the 2D sprite cards */
+  readonly creaturesBattle: CreatureLook;
 }
 export interface AccessibilitySettings {
   readonly reducedMotion: 'system' | 'on' | 'off';
@@ -142,7 +147,7 @@ export const DEFAULT_KEYBINDS: Keybinds = {
 export const INPUT_ACTIONS = Object.keys(DEFAULT_KEYBINDS) as InputAction[];
 
 export const DEFAULT_SETTINGS: SettingsData = {
-  graphics: { reducedEffects: false, renderScale: 1, dynamicResolution: true, quality: 'auto', frameCap: 60, detailDistance: 'auto', showFps: false, dof: true, bloom: true, grain: true, chroma: true, shake: true, hitstop: true, slowmo: true },
+  graphics: { reducedEffects: false, renderScale: 1, dynamicResolution: true, quality: 'auto', frameCap: 60, detailDistance: 'auto', showFps: false, dof: true, bloom: true, grain: true, chroma: true, shake: true, hitstop: true, slowmo: true, creaturesWorld: '2d', creaturesBattle: '2d' },
   accessibility: { reducedMotion: 'system', colorblind: 'none', uiScale: 1, battleTextSpeed: 'normal', screenFlash: true, speedrunTimer: false, battleCommentary: true, trainerBanter: true, followerChatter: true },
   audio: { master: 0.8, music: 0.1, sfx: 0.8, ui: 0.6, muteWhenHidden: true, npcVoices: false, battleVoices: false, voices: 0.8, speechInput: false },
   keybinds: DEFAULT_KEYBINDS,

@@ -82,12 +82,14 @@ function descriptor(man: Manifest, species: string, key: string, variant: Varian
     atlas: r.atlas, rect: r.uv, px: r.px, footV: r.footV, aspect: r.aspect, ...(r.bodyV !== undefined ? { bodyV: r.bodyV } : {}),
     ...(a && ANIM_ON ? { anim: { atlas: a.atlas, rects: a.frames, delaysMs: a.delays, staticFrame: a.staticFrame } } : {}),
   });
-  return { id: key, front: f(sp.front, sp.anim?.front), back: f(sp.back, sp.anim?.back), heightM: heightOf(species), types: typesOf(species), variant, isAlpha, ...(aura ? { aura } : {}), ...(species === 'astaroth' ? { backFullHeight: true } : {}) };   // backFullHeight: the client's BACK_FULL_HEIGHT
+  return { id: key, front: f(sp.front, sp.anim?.front), back: f(sp.back, sp.anim?.back), heightM: heightOf(species), types: typesOf(species), variant, isAlpha, ...(aura ? { aura } : {}), ...(species === 'astaroth' ? { backFullHeight: true } : {}), model: species };   // backFullHeight: the client's BACK_FULL_HEIGHT
 }
 
 export async function startPart3Demo(r: Renderer, mode: string, api: Record<string, unknown>): Promise<void> {
   const p = part3Of(r)!;
   const host = rendererInternals(r)!;
+  // 3D creature bodies unless `&models=0` (the client's "Ewamons overworld" / "Ewamons in battle" settings)
+  p.sprites.setModels(new URLSearchParams(location.search).get('models') !== '0');
   const man = await loadManifest();
   const zoneAtlases = man.zones.mire_route ?? [];
   const sets = zoneAtlases.map((id) => atlasSet(man.atlases.find((a) => a.id === id)!));

@@ -130,6 +130,7 @@ function fakeDeps() {
       return {
         object: new Group(),
         setFacing: () => undefined,
+        setModelScope: () => undefined,
         setPosition: (x: number, y: number, z: number) => {
           f.pos = [x, y, z];
         },

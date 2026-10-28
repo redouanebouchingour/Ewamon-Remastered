@@ -77,6 +77,8 @@ export interface RendererOptions {
   readonly quality?: GraphicsQuality | 'auto';
   /** Where `models.manifest.json`, the character GLBs and the look atlas are served (§10.7.7; IMPLEMENTATION-NOTES Part 6). Default `'/models/'`; null = no character bodies (decals and nameplates only). */
   readonly modelsUrl?: string | null;
+  /** Where the 3D creature bodies (`index.json` + `<sprite id>.glb`, IMPLEMENTATION-NOTES "3D creatures") are served. Default `'/creature-models/'`; null = cards only. */
+  readonly creatureModelsUrl?: string | null;
   /** Millisecond clock for `RenderStats.frameMs`; render never reads a wall clock itself (§10 NN 10). Default: none (frameMs = 0). */
   readonly clock?: () => number;
   /**
@@ -269,6 +271,8 @@ export interface HostContext {
   readonly materials: MaterialLibrary;
   /** `RendererOptions.modelsUrl` (null = no character bodies). */
   readonly modelsUrl: string | null;
+  /** `RendererOptions.creatureModelsUrl` (null = creature cards only). */
+  readonly creatureModelsUrl: string | null;
   readonly lighting: LightRig;
   readonly sky: SkyController;
   readonly fog: HeightFog;
@@ -505,6 +509,7 @@ class RendererHost implements Renderer, HostContext {
   readonly actors: ActorPool;
   readonly materials: MaterialLibrary;
   readonly modelsUrl: string | null;
+  readonly creatureModelsUrl: string | null;
   readonly lighting: LightRig;
   readonly sky: SkyController;
   readonly fog: HeightFog;
@@ -579,6 +584,7 @@ class RendererHost implements Renderer, HostContext {
     this.quality = o.quality === 'auto' ? recommendedQuality(caps) : o.quality ?? 'high';
     this.clock = o.clock ?? null;
     this.modelsUrl = o.modelsUrl === undefined ? '/models/' : o.modelsUrl;
+    this.creatureModelsUrl = o.creatureModelsUrl === undefined ? '/creature-models/' : o.creatureModelsUrl;
     this.onCompileProgress = o.onCompileProgress ?? null;
     this.onDeviceLost = o.onDeviceLost ?? null;
     this.precompileEnabled = o.precompile !== false;

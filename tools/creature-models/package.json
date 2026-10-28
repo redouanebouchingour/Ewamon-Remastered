@@ -1,0 +1,17 @@
+{
+  "name": "@ewa/creature-models",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ref": "node src/ref.mjs",
+    "build": "node src/build.mjs"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "^4.5.0",
+    "@gltf-transform/extensions": "^4.5.0",
+    "@gltf-transform/functions": "^4.5.0",
+    "meshoptimizer": "^0.24.0",
+    "sharp": "^0.35.4"
+  }
+}
