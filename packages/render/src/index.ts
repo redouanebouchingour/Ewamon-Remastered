@@ -144,6 +144,8 @@ export { CAPACITY as VFX_CAPACITY, EMITTERS as VFX_EMITTERS, MAX_PARTICLES as VF
 export type { SequenceVfxRecipe, VfxAnchor, VfxPhase, VfxRecipe } from './stage/vfx.js';
 export { ACTOR_POOL_SIZE, CHARACTER, CharacterPool, EMOTE_CLIPS, EMOTE_MS, EMOTE_NAMES, RIPPLE } from './stage/actors.js';
 export type { ActorPoolOptions, EmoteId, GroundSampler } from './stage/actors.js';
+export { NPC_MODEL, NpcModelStage } from './stage/npcModels.js';
+export type { NpcModels, NpcModelSpec, NpcModelStageOptions } from './stage/npcModels.js';
 export { FOLLOWER, FollowerPool, combinedWalkers } from './stage/followers.js';
 export type { FollowerOwners } from './stage/followers.js';
 export type { FieldFxKind } from './worldfx/index.js';

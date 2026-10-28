@@ -56,6 +56,7 @@ import { ALL_PASSES_ON, GRAPH_PASSES, PostStack, type PassSwitches } from './pos
 import { QUALITY_PROFILES, recommendedQuality, type GraphicsQuality } from './quality.js';
 import { DETAIL_DISTANCE_M, setDetailFocus, setDetailRadius, setLodScale, type DetailDistance } from './zone/detail.js';
 import { setWaterBackdrop } from './materials/waterBackdrop.js';
+import type { NpcModels } from './stage/npcModels.js';
 import {
   computePassMs, copyInfo, countPunctualLights, createRenderStats, dumpZone, median, PassTimer, readBudgetCounts, TimestampResolver,
   type LightCountsOut, type MutableRenderStats, type TimestampPoolLike, type ZoneDump,
@@ -79,6 +80,8 @@ export interface RendererOptions {
   readonly modelsUrl?: string | null;
   /** Where the 3D creature bodies (`index.json` + `<sprite id>.glb`, IMPLEMENTATION-NOTES "3D creatures") are served. Default `'/creature-models/'`; null = cards only. */
   readonly creatureModelsUrl?: string | null;
+  /** Where the rigged NPC set pieces (`index.json` + `<id>.rig.glb`, IMPLEMENTATION-NOTES "NPC models") are served. Default `'/npc-models/'`; null = none. */
+  readonly npcModelsUrl?: string | null;
   /** Millisecond clock for `RenderStats.frameMs`; render never reads a wall clock itself (§10 NN 10). Default: none (frameMs = 0). */
   readonly clock?: () => number;
   /**
@@ -166,6 +169,8 @@ export interface Renderer {
   readonly stage: BattleStage;                 // §10.7.5
   readonly hud: HudLayer;                      // §10.9
   readonly actors: ActorPool;                  // §10.7.6
+  /** Rigged NPC set pieces (`stage/npcModels.ts`, addition 2026-10-28); absent on fakes. */
+  readonly npcModels?: NpcModels;
   readonly materials: MaterialLibrary;         // §10.2 (read-only use by the client: stats, prewarm)
   loadZone(spec: ZoneSpec, opts?: LoadZoneOptions): Promise<ZoneHandle>;   // rejects if a zone is loaded and not yet disposed
   /** T4 addition: resolves when the loaded zone's background compile finished (or its zone was disposed). */
@@ -252,6 +257,9 @@ export function chooseKtx2Target(c: Ktx2SupportLike | null | undefined): RenderC
   return 'rgba8';
 }
 
+/** A host without NPC set pieces (custom subsystems): placing them is a no-op. */
+const NO_NPC_MODELS: NpcModels = { set: () => undefined, play: () => false, clips: () => [] };
+
 /** §10.1.2 step 6 (Pillar 1): vertical FOV 28°, near 0.5, far 220. */
 export const CAMERA_PARAMS = Object.freeze({ fovV: 28, near: 0.5, far: 220 });
 
@@ -273,6 +281,8 @@ export interface HostContext {
   readonly modelsUrl: string | null;
   /** `RendererOptions.creatureModelsUrl` (null = creature cards only). */
   readonly creatureModelsUrl: string | null;
+  /** `RendererOptions.npcModelsUrl` (null = no NPC set pieces). */
+  readonly npcModelsUrl: string | null;
   readonly lighting: LightRig;
   readonly sky: SkyController;
   readonly fog: HeightFog;
@@ -326,6 +336,8 @@ export interface RendererSubsystems {
   stage(ctx: HostContext): BattleStage;
   hud(ctx: HostContext): HudBinding;
   actors(ctx: HostContext): ActorPool;
+  /** Rigged NPC set pieces (addition 2026-10-28); optional (absent = none). */
+  npcModels?(ctx: HostContext): NpcModels;
   zones(ctx: HostContext): ZoneLoader;
   hooks(ctx: HostContext): readonly FrameHook[];
   /** Extra objects rendered in the step-8 warm-up frame (e.g. one billboard). */
@@ -344,6 +356,7 @@ export const DEFAULT_SUBSYSTEMS: RendererSubsystems = {
   stage: (ctx) => PART3_SUBSYSTEMS.stage(ctx),
   hud: (ctx) => PART3_SUBSYSTEMS.hud(ctx),
   actors: (ctx) => PART3_SUBSYSTEMS.actors(ctx),
+  npcModels: (ctx) => PART3_SUBSYSTEMS.npcModels(ctx),
   zones: (ctx) => zoneSystemFor(ctx),
   hooks: (ctx) => [zoneSystemFor(ctx), ...PART3_SUBSYSTEMS.hooks(ctx)],
   warmup: (ctx) => PART3_SUBSYSTEMS.warmup(ctx),
@@ -510,6 +523,8 @@ class RendererHost implements Renderer, HostContext {
   readonly materials: MaterialLibrary;
   readonly modelsUrl: string | null;
   readonly creatureModelsUrl: string | null;
+  readonly npcModelsUrl: string | null;
+  readonly npcModels: NpcModels;
   readonly lighting: LightRig;
   readonly sky: SkyController;
   readonly fog: HeightFog;
@@ -585,6 +600,7 @@ class RendererHost implements Renderer, HostContext {
     this.clock = o.clock ?? null;
     this.modelsUrl = o.modelsUrl === undefined ? '/models/' : o.modelsUrl;
     this.creatureModelsUrl = o.creatureModelsUrl === undefined ? '/creature-models/' : o.creatureModelsUrl;
+    this.npcModelsUrl = o.npcModelsUrl === undefined ? '/npc-models/' : o.npcModelsUrl;
     this.onCompileProgress = o.onCompileProgress ?? null;
     this.onDeviceLost = o.onDeviceLost ?? null;
     this.precompileEnabled = o.precompile !== false;
@@ -628,6 +644,7 @@ class RendererHost implements Renderer, HostContext {
     this.hudOverlay = hud.overlay;
     this.stage = subsystems.stage(this);
     this.actors = subsystems.actors(this);
+    this.npcModels = subsystems.npcModels?.(this) ?? NO_NPC_MODELS;
     this.zones = subsystems.zones(this);
     this.hooks = subsystems.hooks(this);
     this.warmObjects.push(...subsystems.warmup(this));

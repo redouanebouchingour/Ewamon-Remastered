@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "heightMeters": 1,
+  "facing": "+z",
+  "models": {
+    "fb_kaas_croissant": {
+      "url": "fb_kaas_croissant.rig.glb",
+      "bytes": 349348,
+      "rig": true
+    },
+    "fb_king_klinker": {
+      "url": "fb_king_klinker.rig.glb",
+      "bytes": 320968,
+      "rig": true
+    },
+    "fb_klaas_faak": {
+      "url": "fb_klaas_faak.rig.glb",
+      "bytes": 322228,
+      "rig": true
+    },
+    "fb_mogu_mogu": {
+      "url": "fb_mogu_mogu.rig.glb",
+      "bytes": 312024,
+      "rig": true
+    },
+    "fb_mr_mercedes": {
+      "url": "fb_mr_mercedes.rig.glb",
+      "bytes": 379764,
+      "rig": true
+    },
+    "fb_mr_motor": {
+      "url": "fb_mr_motor.rig.glb",
+      "bytes": 361712,
+      "rig": true
+    },
+    "foosball_table": {
+      "url": "foosball_table.rig.glb",
+      "bytes": 235992,
+      "rig": true
+    }
+  }
+}

@@ -19,7 +19,7 @@ import {
   createRenderer, paintSurfaceColor, rendererInternals,
 } from '../src/index.js';
 import type { BasicDioramaRig, GraphicsQuality, HarvestLevel, LightSource, Renderer, SurfaceId, WeatherKind, ZoneHandleImpl } from '../src/index.js';
-import { zone as contentZone } from '@ewa/content';
+import { foosballClubIn, zone as contentZone } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
 import { withNeighbours, zoneSpecFor } from '@ewa/client-adapter';
 
@@ -443,6 +443,9 @@ async function main(): Promise<void> {
     };
     if (params.get('hold') === '1') holding = true; else await firstZoneFrame();
     (window as unknown as { __ewaZone: unknown }).__ewaZone = { spec, handle: zoneHandle };
+    // the Mire Route foosball club (content data/foosball.ts), placed like the client's SceneDirector does
+    const club = foosballClubIn(zoneId);
+    if (club !== null) r.npcModels?.set([{ id: 'table', ...club.table }, ...club.players.map((p) => ({ id: p.trainer.id, model: p.model, x: p.x, z: p.z, yaw: p.yaw, heightM: p.heightM }))]);
   } else if (params.get('demo') === 'arena') {
     // ?demo=arena: the PvP stadium (stage/arenaBackdrop.ts) as the zone root, no zone loaded; part3.ts dresses the
     // ring at the origin. The backdrop's clock runs in a frame hook (scaled ms → s).

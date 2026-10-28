@@ -3,6 +3,7 @@
 //   node src/rig.mjs <id …>     the static <id>.glb -> packages/client/public/creature-models/<id>.rig.glb (+ index.json)
 //   node src/rig.mjs --all      every rigs/<id>.mjs
 //   RIG_PARTS=1 node src/rig.mjs <id>   colours each joint's triangles apart (checking assign(); re-rig after)
+//   node src/rig.mjs --npc …    the NPC set (rigs/npc/ -> public/npc-models/, paths.mjs)
 //
 // The static GLB (build.mjs) is the input. The first rig moves it from the client's public folder to glb/
 // (STATIC_DIR), where it stays as the input; index.json serves the rigged one (index.mjs). The game plays the clips by
@@ -457,8 +458,9 @@ function srgbToLinear(c) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const args = process.argv.slice(2);
-  const ids = args[0] === '--all' ? readdirSync(RIG_DIR).filter((f) => f.endsWith('.mjs')).map((f) => f.slice(0, -4)) : args;
+  // `--npc` picks the NPC set (paths.mjs); `_<name>.mjs` files are shared helpers, not rigs
+  const args = process.argv.slice(2).filter((a) => a !== '--npc');
+  const ids = args[0] === '--all' ? readdirSync(RIG_DIR).filter((f) => f.endsWith('.mjs') && !f.startsWith('_')).map((f) => f.slice(0, -4)) : args;
   if (ids.length === 0) throw new Error('usage: rig.mjs <id …> | --all');
   let failed = 0;
   for (const id of ids) {
