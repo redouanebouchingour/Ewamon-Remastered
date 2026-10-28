@@ -35,10 +35,10 @@ export const EMOTE_BREAKDANCE = 7;
 export const BREAKDANCE_MS = 6_000;
 /**
  * The emote wheel (G, 2026-10-27; not in the spine): 7 the breakdance and 8..14 high five, "you, me, battle", whip /
- * nae nae, dab, look left, look right, crying. Each stays on `PlayerState.emote` for its own length; 1..6 keep 2 s.
+ * nae nae, dab, six seven, the bird, crying. Each stays on `PlayerState.emote` for its own length; 1..6 keep 2 s.
  */
 export const EMOTE_MAX = 14;
-const EMOTE_LENGTH_MS: readonly number[] = [0, 2_000, 2_000, 2_000, 2_000, 2_000, 2_000, BREAKDANCE_MS, 2_600, 3_400, 5_200, 3_000, 2_600, 2_600, 4_200];
+const EMOTE_LENGTH_MS: readonly number[] = [0, 2_000, 2_000, 2_000, 2_000, 2_000, 2_000, BREAKDANCE_MS, 2_600, 3_400, 5_200, 3_000, 3_600, 3_600, 4_200];
 /** How long emote `n` plays (ms); 2 s for an unknown one. */
 export function emoteLengthMs(n: number): number {
   return EMOTE_LENGTH_MS[n] ?? 2_000;

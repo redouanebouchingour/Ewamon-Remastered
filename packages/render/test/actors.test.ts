@@ -292,7 +292,7 @@ describe('CharacterPool — KayKit bodies', () => {
     pool.dispose();
   });
 
-  it('first person rides the emoting head (look left / right turn the view, crying looks down then up) and shows the body headless', async () => {
+  it('first person rides the emoting head (the bird looks down at the crank, six seven up, crying down then up) and shows the body headless', async () => {
     const { pool } = await readyPool();
     pool.spawn('a', { look: 'casual_male', name: 'A', guildTag: '', isLocal: false });
     await flush();
@@ -308,8 +308,8 @@ describe('CharacterPool — KayKit bodies', () => {
       expect(pool.emoteHead('a', head, pivot, q), `emote ${n} weight`).toBeGreaterThan(0.9);
       return new Vector3(0, 0, 1).applyQuaternion(q);
     };
-    expect(view(12, 1200).x, 'look left').toBeGreaterThan(0.5);
-    expect(view(13, 1200).x, 'look right').toBeLessThan(-0.5);
+    expect(view(13, 800).y, 'the bird, eyes on the crank').toBeLessThan(-0.2);
+    expect(view(12, 3200).y, 'six seven, the SIX SEVEEEN').toBeGreaterThan(0.2);
     expect(view(14, 1200).y, 'crying, face in the hands').toBeLessThan(-0.2);
     pool.setEmote('a', 0);
     for (let t = 0; t < 600; t += 16) pool.update(16);

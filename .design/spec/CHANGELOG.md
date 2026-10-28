@@ -6,6 +6,12 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-28 the jump key. One entry. -->
+
+## 2026-10-28 · `20-client.md` §20.4.5 bindings · jump: a 2 u hop over 780 ms that the camera follows
+Why: the jump key was bound but did nothing (client P5: no vertical offset on actors). Render's actor lift (added for glides) now carries the hop. On playtest the user asked for the camera to follow the jumping character and for a higher jump (2 u); the duration grows with √height so the gravity stays the draft's. First person no longer refuses the jump: the eye sits on the followed feet, lift included, so it rises with the hop. The diorama camera springs toward the ground under the followed feet and adds their lift unsmoothed: the 0.12 s spring alone reached 2/3 of the hop's height, 160 ms late. Still local only, never on the wire.
+Evidence: client `hop.test.ts` (the parabola, a press mid-hop, cancel); render `camera-rig.test.ts` (the orbit centre rides the lift in the same frame and comes back down with it); live on the alt pair (Tide Route, 1.2 u build): the camera's y rose 1.20 m with the feet, frame for frame.
+Affects: `packages/client/src/scene/{hop.ts,World3D.ts}`; `packages/render/src/camera/rig.ts` (`DioramaRigOptions.lift`), `packages/render/src/stage/{actors.ts,wiring.ts}` (`CharacterPool.liftOf`).
 <!-- 2026-10-28 a banner partner in its Majin / Tenjin form. One entry. -->
 
 ## 2026-10-28 · `00-spine.md` §4.7 `POST /banner` · the featured creature may wear its Majin or Tenjin form

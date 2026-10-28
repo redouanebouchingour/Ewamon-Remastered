@@ -198,8 +198,11 @@ render is reported, not changed.
   prediction exactly; one message covers three steps.
 - **P4 — no input message while standing still** (pose / running unchanged since the last send); the server's
   `moving` flag clears itself after 250 ms (server S8).
-- **P5 — jump is a stub**: the ActorPool has no vertical offset (`setTransform` takes x/z/angle only), so the
-  cosmetic 0.6 u hop cannot be drawn. `Space` is bound and does nothing.
+- **P5 — jump** (`scene/hop.ts`): `Space` hops the own avatar 2 m over 780 ms (parabola `4h·t(1−t)`; the spec's
+  draft said 0.6 u / 420 ms, raised at the same gravity on playtest) through render's `setLift`, the channel
+  a glide uses, and the camera rides the lift (render `DioramaRigOptions.lift`); prediction keeps running underneath, so a hop while walking carries
+  forward. Local only, never on the wire (other players do not see it). In first person the eye rides the hop (it sits on
+  the followed feet, lift included). Refused while movement is blocked, on water and mid-glide; a glide cancels a hop; a press mid-hop is ignored.
 - **P6 — every predicted step is clamped to the length it asked for** (`scene/collider.ts`): render's `resolveMoveInto`
   corner probes land a capsule radius (0.35 m) around the target and a blocked start escapes up to 4 m, so a step
   against a trunk could move ~0.37 m in 16.7 ms (22 m/s). The server caps each message at 8.05 m/s and kicks after 30
@@ -312,7 +315,7 @@ render is reported, not changed.
 | §20.4.1–§20.4.2 | done — `World3D` + tick order, hidden-tab 250 ms stepping, `performance.mark('ewa:first-frame')` |
 | §20.4.3 SceneDirector | done — load / unload / enter / exit battle, spectator arenas for battles ≤ 40 u, harvest per player; handover is unload → load (render's `loadZone` refuses while a zone is loaded), so the old zone is not kept under the camera travel |
 | §20.4.4 adapter | unchanged (`zoneSpecFor.test.ts` snapshot green) |
-| §20.4.5 prediction | done (P1–P8); jump stubbed (P5) |
+| §20.4.5 prediction | done (P1–P8); jump local-only (P5) |
 | §20.4.6 remotes | done (R1, R2) |
 | §20.4.7 targeting + dialogue | done — ranges, prompts, NPC lines from content + flags + `storyBeat`, pickups / lore / warp / gym / healer / shop, `C` challenge |
 | §20.5.1–§20.5.4 | done (B1–B4, B7) |
@@ -376,7 +379,7 @@ Scoped checks: `pnpm exec tsc -b packages/client` clean · `pnpm exec eslint pac
    only `inPlay`; the 16 m margin band is dense trees with no blockers and crowns have no query). The battle camera
    landed inside a crown twice live; the client scores crowns from trunk rings and the margin band from the zone size
    (B9). Suggest a `ZoneHandle.occluded(x, z, y)` / crown-circle list, or camera collision for the battle pose.
-7. Minor, unchanged from before: the ActorPool has no vertical offset (jump stub, P5); no world-creature API (S1);
+7. Minor, unchanged from before: no world-creature API (S1);
    HudLayer change detection is by reference (H1).
 
 ## Server findings (part 2)

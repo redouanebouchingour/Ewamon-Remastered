@@ -242,7 +242,7 @@ installed library that future readers should not have to re-derive. The spec its
 ## Emote wheel (2026-10-27)
 
 - `EmoteMsg.emote` accepts 1..`EMOTE_MAX` (14): 8..14 are the wheel's high five, "you, me, battle", whip / nae nae,
-  dab, look left, look right and crying. `emoteLengthMs(n)` is the one length table (1..6 2 s, 7 6 s, 8..14 2.6–5.2 s)
+  dab, six seven, the bird and crying. `emoteLengthMs(n)` is the one length table (1..6 2 s, 7 6 s, 8..14 2.6–5.2 s)
   the server's emote timer reads; render keeps its own copy (`EMOTE_WHEEL_MS`, render imports only three).
 
 ## NPC memory and town reputation (2026-10-24)

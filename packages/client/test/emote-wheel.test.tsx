@@ -35,9 +35,9 @@ describe('the emote wheel', () => {
   it('eight emotes, clockwise from the top; the hub is a dead zone', () => {
     expect(WHEEL.map((e) => e.id).sort((a, b) => a - b)).toEqual([7, 8, 9, 10, 11, 12, 13, 14]);
     expect(sliceAt(0, -100, 20)).toBe(0);
-    expect(WHEEL[sliceAt(100, 0, 20)!]!.label).toBe('Look right');
+    expect(WHEEL[sliceAt(100, 0, 20)!]!.label).toBe('The bird');
     expect(WHEEL[sliceAt(0, 100, 20)!]!.label).toBe('Breakdance');
-    expect(WHEEL[sliceAt(-100, 0, 20)!]!.label).toBe('Look left');
+    expect(WHEEL[sliceAt(-100, 0, 20)!]!.label).toBe('Six sevennn');
     expect(sliceAt(70, -70, 20)).toBe(1);
     expect(sliceAt(5, 5, 20)).toBeNull();
   });

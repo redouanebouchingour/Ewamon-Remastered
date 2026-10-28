@@ -152,6 +152,8 @@ export function springStep(x: number, v: number, target: number, dtS: number, ou
 
 /** Feet lookup (ActorPool.feetOf). */
 export type FeetResolver = (actorId: string, out: Vector3) => Vector3 | null;
+/** How far the feet float above the ground (CharacterPool.liftOf: a jump's hop, a glide), included in the feet. */
+export type LiftResolver = (actorId: string) => number;
 /**
  * The head while the body emotes (`CharacterPool.emoteHead`): the joint's world position, its upright offset above the
  * feet and its rotation from upright; returns the emote weight (0 = upright, nothing written).
@@ -161,6 +163,11 @@ export type EmoteHeadResolver = (actorId: string, outHead: Vector3, outPivot: Ve
 export interface DioramaRigOptions {
   readonly effects: () => EffectsFlags;
   readonly feet?: FeetResolver;
+  /**
+   * The lift inside the feet: the camera springs toward the ground under them and rides the lift unsmoothed, so a
+   * 0.6 s hop moves it in step (the 0.12 s spring reached 2/3 of a hop's height, late). Absent = all of it springs.
+   */
+  readonly lift?: LiftResolver;
   /** First person rides the followed body's head through every emote; absent = always upright. */
   readonly emoteHead?: EmoteHeadResolver;
   /** Called when a heading/zoom ease ends (§10.7.1's `csm.updateFrustums()`; the cached sun shadows need none). */
@@ -207,6 +214,8 @@ export class DioramaRig implements CameraRig {
   private followed: string | null = null;
   private readonly goal = new Vector3();
   private readonly target = new Vector3();
+  /** the followed actor's lift this frame (m), added to the orbit centre on top of the sprung target */
+  private followLift = 0;
   private readonly vel = new Vector3();
   // shot state (battle / inspect)
   private mode: Mode = 'diorama';
@@ -339,11 +348,19 @@ export class DioramaRig implements CameraRig {
     this.distT = 0;
   }
 
+  private liftOf(actorId: string): number {
+    const m = this.o.lift?.(actorId) ?? 0;
+    return Number.isFinite(m) && m > 0 ? m : 0;
+  }
+
   follow(actorId: string | null): void {
     if (this.mode !== 'diorama') return;
     this.followed = actorId;
     if (actorId !== null && this.o.feet?.(actorId, _feet)) {
-      this.goal.copy(_feet); this.target.copy(_feet); this.vel.set(0, 0, 0); this.focus.copy(_feet);
+      this.focus.copy(_feet);
+      this.followLift = this.liftOf(actorId);
+      _feet.y -= this.followLift;
+      this.goal.copy(_feet); this.target.copy(_feet); this.vel.set(0, 0, 0);
     }
   }
 
@@ -403,7 +420,10 @@ export class DioramaRig implements CameraRig {
       const dx = _feet.x - this.goal.x; const dz = _feet.z - this.goal.z;
       const d = Math.hypot(dx, dz);
       if (d > DEAD_ZONE) { const k = (d - DEAD_ZONE) / d; this.goal.x += dx * k; this.goal.z += dz * k; }
-      this.goal.y = _feet.y;
+      this.followLift = this.liftOf(this.followed);
+      this.goal.y = _feet.y - this.followLift;
+    } else {
+      this.followLift = 0;
     }
     springStep(this.target.x, this.vel.x, this.goal.x, dtS, _spring); this.target.x = _spring.x; this.vel.x = _spring.v;
     springStep(this.target.y, this.vel.y, this.goal.y, dtS, _spring); this.target.y = _spring.x; this.vel.y = _spring.v;
@@ -536,6 +556,7 @@ export class DioramaRig implements CameraRig {
     this.pose.pitch = PITCH * DEG + (this.shot.pitch - PITCH * DEG) * b;
     this.pose.distance = this.dist + (this.shot.distance - this.dist) * b;
     this.pose.center.lerpVectors(this.target, this.shot.center, b);
+    this.pose.center.y += this.followLift * (1 - b);
     if (aim > 0) {
       // dolly toward the cue target: aim the orbit centre at it and shorten the distance by `push`
       _dolly.lerpVectors(this.shot.center, this.cueTarget, aim);
