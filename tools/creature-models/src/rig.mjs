@@ -2,6 +2,7 @@
 //
 //   node src/rig.mjs <id …>     packages/client/public/creature-models/<id>.glb -> <id>.rig.glb (+ index.json)
 //   node src/rig.mjs --all      every rigs/<id>.mjs
+//   node src/rig.mjs --npc …    the NPC set (rigs/npc/ -> public/npc-models/, paths.mjs)
 //
 // The static GLB (build.mjs) is the input and stays on disk; index.json serves the rigged one in its place
 // (index.mjs). The game plays the clips by name (render IMPLEMENTATION-NOTES "Rigged creatures").
@@ -336,8 +337,9 @@ function srgbToLinear(c) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const args = process.argv.slice(2);
-  const ids = args[0] === '--all' ? readdirSync(RIG_DIR).filter((f) => f.endsWith('.mjs')).map((f) => f.slice(0, -4)) : args;
+  // `--npc` picks the NPC set (paths.mjs); `_<name>.mjs` files are shared helpers, not rigs
+  const args = process.argv.slice(2).filter((a) => a !== '--npc');
+  const ids = args[0] === '--all' ? readdirSync(RIG_DIR).filter((f) => f.endsWith('.mjs') && !f.startsWith('_')).map((f) => f.slice(0, -4)) : args;
   if (ids.length === 0) throw new Error('usage: rig.mjs <id …> | --all');
   let failed = 0;
   for (const id of ids) {

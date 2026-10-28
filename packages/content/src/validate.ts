@@ -39,6 +39,7 @@ import {
 import { SPECIES } from './data/species';
 import { MOVES, SPREAD_MOVES } from './data/spreadMoves';
 import { ABILITIES } from './data/abilities';
+import { foosballTrainers } from './data/foosball';
 import { ITEMS } from './data/items';
 import { ORBS } from './data/orbs';
 import { CONSUMABLES } from './data/consumables';
@@ -264,7 +265,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
       const lim = ZONE_SIZE[z.kind] / 2 - ZONE_MARGIN - 4;
       if (Math.abs(o.x) > lim || Math.abs(o.z) > lim) err(`zone ${z.id}: obstacle ${o.id} (${o.x}, ${o.z}) outside ±${lim}`);
     }
-    for (const t of z.trainers) {
+    // the foosball club (data/foosball.ts) is a layer beside the ZoneDef: same checks, and its ids never clash with the zone's
+    for (const t of [...z.trainers, ...foosballTrainers(z.id)]) {
       for (const m of t.team) if (!speciesById.has(m.species)) err(`trainer ${t.id}: species '${m.species}' unknown`);
       if (!looks.has(t.look)) err(`trainer ${t.id}: look '${t.look}' not in LOOKS`);
       // Phase D6: a doubles trainer brings two creatures to the field
@@ -543,7 +545,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
       if (z.lore.length !== 2) err(`zone ${z.id}: lore tablets ${z.lore.length} !== 2`);
       if (z.id === 'mirevale' && (z.spawn.x !== 0 || z.spawn.z !== 6)) err('mirevale.spawn must be { x: 0, z: 6 }');
       const ids = new Set<string>();
-      for (const x of [...z.npcs, ...z.trainers, ...z.items, ...z.lore, ...z.warps]) { if (ids.has(x.id)) err(`zone ${z.id}: duplicate entity id '${x.id}'`); ids.add(x.id); }
+      for (const x of [...z.npcs, ...z.trainers, ...foosballTrainers(z.id), ...z.items, ...z.lore, ...z.warps]) { if (ids.has(x.id)) err(`zone ${z.id}: duplicate entity id '${x.id}'`); ids.add(x.id); }
     }
     for (const l of LEAGUE) {
       if (l.stage === 'gym') {
@@ -787,6 +789,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
       }
       for (const n of z.npcs) target(`npc ${n.id}`, n.x, n.z, INTERACT_RANGE_M);
       for (const t of z.trainers) target(`trainer ${t.id}`, t.x, t.z, INTERACT_RANGE_M);
+      for (const t of foosballTrainers(z.id)) target(`trainer ${t.id}`, t.x, t.z, INTERACT_RANGE_M);
       for (const i of z.items) target(`item ${i.id}`, i.x, i.z, INTERACT_RANGE_M);
       for (const l of z.lore) target(`lore ${l.id}`, l.x, l.z, INTERACT_RANGE_M);
       for (const w of z.warps) { target(`warp ${w.id}`, w.x, w.z, INTERACT_RANGE_M); target(`warp ${w.id} target`, w.toX, w.toZ, INTERACT_RANGE_M); }

@@ -1,6 +1,6 @@
 // Builds creature models from scad/<id>.scad:
 //   1. OpenSCAD (Manifold) exports a coloured 3MF (one base material per color() call).
-//   2. The 3MF becomes a GLB: Z-up -> Y-up (faces +Z, three's front), 1 m tall, feet on y = 0, centred in x / z,
+//   2. The 3MF becomes a GLB: Z-up -> Y-up (faces +Z, three's front), 1 m tall, feet on y = 0, centred in x / z (the NPC set keeps the scad origin),
 //      vertex colours (COLOR_0 rgb, linear; alpha = the glow mask, see glowColours), normals smoothed across edges under CREASE_DEG within one colour,
 //      then weld -> reorder -> quantize -> EXT_meshopt_compression like tools/model-pipeline.
 //      Written to packages/client/public/creature-models/<id>.glb.
@@ -11,6 +11,7 @@
 //   node src/build.mjs --no-preview <id …> | --all   skip the preview renders
 //   node src/build.mjs --glow-preview …     also .cache/glow/<id>.png: the sprite's glow mask | the model's glow
 //   node src/build.mjs --index     rewrite creature-models/index.json from the GLBs on disk
+//   node src/build.mjs --npc …     the NPC set: scad/npc/ -> public/npc-models/ (paths.mjs); `_<name>.scad` are shared parts
 //   A creature with a rigs/<id>.mjs is re-rigged after its build (rig.mjs: skeleton + animation clips).
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -21,7 +22,7 @@ import { quantize, reorder, weld } from '@gltf-transform/functions';
 import { MeshoptEncoder } from 'meshoptimizer';
 import sharp from 'sharp';
 import { writeIndex } from './index.mjs';
-import { OUT_DIR, PREVIEW_DIR, REF_DIR, RIG_DIR, ROOT, SCAD_DIR, WORK_DIR, readManifest } from './paths.mjs';
+import { NPC_SET, OUT_DIR, PREVIEW_DIR, REF_DIR, RIG_DIR, ROOT, SCAD_DIR, WORK_DIR, readManifest } from './paths.mjs';
 import { rig } from './rig.mjs';
 
 const CREASE_DEG = 55;
@@ -42,7 +43,7 @@ if (args[0] === '--index') {
   writeIndex();
 } else {
   const ids = args[0] === '--all'
-    ? readdirSync(SCAD_DIR).filter((f) => f.endsWith('.scad') && f !== 'lib.scad').map((f) => f.slice(0, -5))
+    ? readdirSync(SCAD_DIR).filter((f) => f.endsWith('.scad') && f !== 'lib.scad' && !f.startsWith('_')).map((f) => f.slice(0, -5))
     : args;
   if (ids.length === 0) throw new Error('usage: build.mjs <id …> | --all | --index');
   let failed = 0;
@@ -197,7 +198,8 @@ async function toGlb({ pos, tris, triColor, colorOf }, ground = null) {
   if (ground !== null && ground > min[1]) throw new Error(`ground ${ground} is above the model's lowest point ${min[1].toFixed(2)}`);
   const floor = ground ?? min[1];
   const s = 1 / (max[1] - floor);
-  const off = [(min[0] + max[0]) / 2, floor, (min[2] + max[2]) / 2];
+  // the NPC set keeps the scad origin (a person's feet, a table's centre): the game places them against each other
+  const off = NPC_SET ? [0, floor, 0] : [(min[0] + max[0]) / 2, floor, (min[2] + max[2]) / 2];
   for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) P[i * 3 + k] = (P[i * 3 + k] - off[k]) * s;
 
   // Face normals (area-weighted) and, per position, the faces around it.

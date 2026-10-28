@@ -256,6 +256,10 @@ export {
 } from './obstacles';
 export type { ObstacleRefusal, StampField } from './obstacles';
 
+// ─── the Mire Route foosball club (a layer beside ZoneDef: trainers that never move the layout) ─────────
+export { FOOSBALL_CLUB, foosballClubIn, foosballPlayer, foosballTrainers } from './data/foosball';
+export type { FoosballClub, FoosballModel, FoosballPlayer } from './data/foosball';
+
 // ─── the zone plan (layout, buildings, lights, props, footprints; audit R1) ───
 export type {
   Bounds,

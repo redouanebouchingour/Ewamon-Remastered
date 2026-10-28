@@ -22,6 +22,7 @@ import { PANEL_DEFAULT_FRACTION } from '../camera/battle.js';
 import { CharacterPool } from './actors.js';
 import { FollowerPool, combinedWalkers } from './followers.js';
 import { createGltfCharacterSource } from './looks.js';
+import { NpcModelStage } from './npcModels.js';
 import { isDevBuild } from '../env.js';
 import { Stage, type StageGround } from './battleStage.js';
 import { VfxSystem } from './vfx.js';
@@ -43,6 +44,8 @@ export interface Part3 {
   readonly actors: CharacterPool;
   /** Followers (§10.7.9): each trainer's party lead trailing behind them as its creature billboard. */
   readonly followers: FollowerPool;
+  /** Rigged NPC set pieces (npcModels.ts): the client places them per zone. */
+  readonly npcModels: NpcModelStage;
   readonly vfx: VfxSystem;
   readonly stage: Stage;
   readonly hud: CanvasHudLayer;
@@ -87,6 +90,8 @@ function build(ctx: HostContext): Part3 {
   ctx.scene.add(actors.root);
   const followers = new FollowerPool(sprites, actors, ctx.camera3);
   ctx.scene.add(followers.root);
+  const npcModels = new NpcModelStage({ baseUrl: ctx.npcModelsUrl, warn: (m) => { if (isDevBuild()) console.warn(`[@ewa/render npc-models] ${m}`); } });
+  ctx.scene.add(npcModels.root);
   const host = ctx as unknown as Renderer;
   // the loaded zone's collider carries the tree crowns the shot camera avoids (H11); nothing once it is disposed
   let zoneRef: (ZoneHandle & { readonly disposed?: boolean; readonly collider?: unknown }) | null = null;
@@ -165,6 +170,7 @@ function build(ctx: HostContext): Part3 {
       vfx.update(dtScaledMs, ctx.camera3);
       actors.update(dtScaledMs);
       followers.update(dtScaledMs);
+      npcModels.update(dtScaledMs);
       worldFx.update(dtScaledMs);
       stage.update(dtScaledMs, real);
       reveal.update(real);
@@ -193,13 +199,14 @@ function build(ctx: HostContext): Part3 {
       reveal.setMask(mask);
       worldFx.onZone(z);
     },
-    dispose(): void { reveal.dispose(); worldFx.dispose(); followers.dispose(); vfx.dispose(); sprites.dispose(); },
+    dispose(): void { reveal.dispose(); worldFx.dispose(); followers.dispose(); npcModels.dispose(); vfx.dispose(); sprites.dispose(); },
   };
 
   const bundle: Part3 = {
-    sprites, rig, actors, followers, vfx, stage, hud, reveal, pad, worldFx, hook,
+    sprites, rig, actors, followers, npcModels, vfx, stage, hud, reveal, pad, worldFx, hook,
     setGround(g) {
       stage.setGround(g);
+      npcModels.setGround(g === null ? null : (x, z) => g.sample(x, z));
       // Phase D8: surfers ride the water level (the collider's surfaceY) with a ripple where it says open water
       if (g === null) actors.setGround(null);
       // M3 review R-forgewall-2: actors stand on a dressed ring's level pad (`TerrainPad.adjust`), not on the cut ground
@@ -248,11 +255,12 @@ function warmupObjects(ctx: HostContext): Object3D[] {
 }
 
 /** The subsystem factories part 3 provides (merged into `DEFAULT_SUBSYSTEMS`). */
-export const PART3_SUBSYSTEMS: Pick<RendererSubsystems, 'camera' | 'stage' | 'hud' | 'actors' | 'hooks' | 'warmup'> & { persistent(ctx: HostContext): readonly Object3D[] } = {
+export const PART3_SUBSYSTEMS: Pick<RendererSubsystems, 'camera' | 'stage' | 'hud' | 'actors' | 'hooks' | 'warmup'> & { npcModels(ctx: HostContext): NpcModelStage } & { persistent(ctx: HostContext): readonly Object3D[] } = {
   camera: (ctx) => part3For(ctx).rig,
   stage: (ctx) => part3For(ctx).stage,
   hud: (ctx) => { const h = part3For(ctx).hud; return { layer: h, overlay: { scene: h.scene, camera: h.camera } }; },
   actors: (ctx) => part3For(ctx).actors,
+  npcModels: (ctx) => part3For(ctx).npcModels,
   hooks: (ctx) => [part3For(ctx).hook],
   warmup: (ctx) => warmupObjects(ctx),
   // T4: the main arena (hidden until a battle) compiles at boot and in every zone's background phase

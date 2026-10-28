@@ -70,3 +70,27 @@ e.g. alternate eyes) and `clips` (`pose(t, u)` per clip, sampled at 30 fps). The
 `walk`, `idle_*` fidgets and one per battle pose (render IMPLEMENTATION-NOTES "Rigged creatures"). Check the result in
 the render sandbox: `?demo=rig&species=<id>`. Before rigging a new one, read [ANIMATING.md](ANIMATING.md): the
 findings from Flowbot (rotation signs, pivots, planted feet, expressions, pitfalls, how to check and film it).
+
+## The NPC set (`--npc`)
+
+`--npc` on `build.mjs` / `rig.mjs` switches to people and props (2026-10-28: the Mire Route foosball club): sources in
+`scad/npc/` and `rigs/npc/`, output in `packages/client/public/npc-models/` with its own `index.json`, drawn by render
+`stage/npcModels.ts`. Same conventions, three differences: 1 unit = 1 cm, the GLB keeps the scad origin in x / y (a
+person's feet, a table's centre; no re-centring) so the game can place models against each other, and files starting
+with `_` are shared parts that `--all` skips.
+
+- `scad/npc/_human.scad` + `rigs/npc/_human.mjs`: the shared parametric person (body, memoji head, hair / beard styles,
+  clothes) and its rig helper (22-ish joints, 2-bone IK for arms and legs, the playing `idle`, `talk`, `cheer`, and
+  `h.fidget` for a character's own `idle_*`). A character file is one `human(...)` call plus props and fidgets;
+  `fb_king_klinker` is the worked example.
+- `foosball_table`: a joint per rod (spin + slide), the ball and the two score beads; `idle` is a match loop,
+  `idle_goal` / `cheer` a goal each way.
+- Each person's height (max z - min z / 100) is their `heightM` in content `data/foosball.ts`; rebuild, then update it.
+- Rigged parts are whole closed shells: a prop that touches a part of another joint fuses into it
+  (`HUMAN_DEBUG=1 node src/rig.mjs --npc <id>` lists shells per joint). Build before rigging (the frame comes from the
+  build cache).
+
+```bash
+node src/build.mjs --npc fb_king_klinker      # scad -> glb -> rig.glb + previews/fb_king_klinker.png
+node src/build.mjs --npc --all
+```

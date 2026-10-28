@@ -7,7 +7,7 @@
  * coordinates). A league trainer is challenged where it stands in its hall (`interiorLeaders` x/z, checked at 4 m).
  * `LEAGUE_MARKER` (0, −26) is only the fallback for a league trainer with no hall (IMPLEMENTATION-NOTES R5).
  */
-import { OBSTACLE_INTERACT_M, leaderSpot, LEAGUE, interiorItems, interiorLeaders, interiorSwitches, interiorTrainers, interiorWarps, staticsFor } from '@ewa/content';
+import { OBSTACLE_INTERACT_M, foosballTrainers, leaderSpot, LEAGUE, interiorItems, interiorLeaders, interiorSwitches, interiorTrainers, interiorWarps, staticsFor } from '@ewa/content';
 import type { GroundItemDef, LeagueTrainer, LegendaryStatic, LoreTabletDef, NpcDef, ObstacleDef, TrainerDef, WarpDef, WorldSwitch, ZoneDef } from '@ewa/content';
 import type { InteractKind } from '@ewa/protocol';
 
@@ -49,7 +49,7 @@ export function findTarget(zone: ZoneDef, kind: InteractKind, targetId: string, 
     case 'npc': {
       const npc = zone.npcs.find((n) => n.id === targetId);
       if (npc !== undefined) return { kind: 'npc', npc, x: npc.x, z: npc.z };
-      const trainer = zone.trainers.find((t) => t.id === targetId) ?? interiorTrainers(zone.id).find((t) => t.id === targetId);
+      const trainer = zone.trainers.find((t) => t.id === targetId) ?? interiorTrainers(zone.id).find((t) => t.id === targetId) ?? foosballTrainers(zone.id).find((t) => t.id === targetId);
       if (trainer !== undefined) return { kind: 'trainer', trainer, x: trainer.x, z: trainer.z };
       return null;
     }

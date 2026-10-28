@@ -4,7 +4,7 @@
  * trainer (gym leader, Warden, Champion), else a zone trainer (route trainers and the story trainers a beat fights,
  * e.g. Sable), else a gym-hall trainer. Nothing here decides game truth.
  */
-import { ARENA_DAILY, ARENA_TRAINING, LEAGUE, TOWER, allZones, campGuardOwner, ghostOwner, interiorNpcs, interiorTrainers, rivalNameOf } from '@ewa/content';
+import { ARENA_DAILY, ARENA_TRAINING, LEAGUE, TOWER, allZones, campGuardOwner, foosballTrainers, ghostOwner, interiorNpcs, interiorTrainers, rivalNameOf } from '@ewa/content';
 import { villagerNpcId } from '@ewa/protocol';
 import type { LeagueTrainer } from '@ewa/content';
 import type { BattleState, TypeName } from '@ewa/core';
@@ -43,13 +43,14 @@ function villagerRows(): Map<string, TrainerRow> {
   return m;
 }
 
-/** Every zone trainer and gym-hall trainer by id (built once, on first use). */
+/** Every zone trainer, gym-hall trainer and foosball-club member by id (built once, on first use). */
 function trainerRows(): Map<string, TrainerRow> {
   if (trainers !== null) return trainers;
   const m = new Map<string, TrainerRow>();
   for (const z of allZones()) {
     for (const t of z.trainers) if (!m.has(t.id)) m.set(t.id, { name: t.name, look: t.look });
     for (const t of interiorTrainers(z.id)) if (!m.has(t.id)) m.set(t.id, { name: t.name, look: t.look });
+    for (const t of foosballTrainers(z.id)) if (!m.has(t.id)) m.set(t.id, { name: t.name, look: t.look });
   }
   trainers = m;
   return m;

@@ -33,7 +33,7 @@
  */
 import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
-import { BIKE_ITEM, BODIES, HOLLOWED_FLAG, POSTGAME_FLAG, SHADOW_MAX, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, shadowNotice, zone as zoneDef } from '@ewa/content';
+import { BIKE_ITEM, BODIES, HOLLOWED_FLAG, POSTGAME_FLAG, SHADOW_MAX, foosballPlayer, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, shadowNotice, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { BattleState, CreatureInstance } from '@ewa/core';
 import { EMOTE_BREAKDANCE, EMOTE_MAX, FISH_REACH_M, SPECTATE_RANGE_M, emoteLengthMs } from '@ewa/protocol';
@@ -1933,6 +1933,19 @@ class World implements World3D {
       }
       case 'trainer': {
         const plan = trainerPlan(z.id, t.id, this.flags());
+        const club = plan.dialogue === null ? foosballPlayer(t.id) : null;
+        if (club !== null) {
+          // the foosball club: they look up from the table and talk it up, then paging past the last line (the offer)
+          // challenges; Escape walks away. Beaten: their defeat line, then the offer again (the server keeps the cooldown).
+          const tr = club.trainer;
+          const beaten = this.flags().has(`trainer:${tr.id}:beaten`);
+          this.renderer.npcModels?.play(tr.id, 'talk');
+          ui.setDialogue({
+            speaker: tr.name, lines: beaten ? [club.defeat, tr.lines[tr.lines.length - 1]!] : tr.lines, index: 0, targetId: tr.id,
+            onFinish: () => this.ws.send('interact', { targetId: tr.id, kind: 'npc' }),
+          });
+          return;
+        }
         const tr = z.trainers.find((x) => x.id === t.id) ?? interiorTrainers(z.id).find((x) => x.id === t.id);
         if (plan.dialogue === null && tr !== undefined && tr.lines.length > 0) toast('info', `${tr.name}: ${tr.lines[0]}`);
         this.runPlan(plan, t.id, () => this.ws.send('interact', { targetId: t.id, kind: 'npc' }));

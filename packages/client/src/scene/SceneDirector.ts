@@ -23,7 +23,7 @@
  * and the prediction collider re-opens its stamped samples (`ObstacleSink.setObstacles`) — on load and on every flag
  * change, only when the cleared set changed.
  */
-import { getHeightfield, harvestStateFor, interiorAt, interiorsFor, obstacleAt, obstacleFlag, zone as zoneDef } from '@ewa/content';
+import { foosballClubIn, getHeightfield, harvestStateFor, interiorAt, interiorsFor, obstacleAt, obstacleFlag, zone as zoneDef } from '@ewa/content';
 import type { HarvestState, PlacedInterior, ZoneDef, ZoneId } from '@ewa/content';
 import type { BattleFormat } from '@ewa/core';
 import { BATTLER_SEPARATION, BATTLE_DISTANCE, BATTLE_PITCH, BATTLE_YAW_OFFSET, doorOf, fitCentre, headingYaw, trainerSlot } from '@ewa/render';
@@ -40,6 +40,11 @@ import { npcVisible } from './dialogue';
 import type { GateBlockers } from './collider';
 import { FloorIndex, GateSync, hallBoundsOf, interiorInteractables, leaderSpots, pocketActors, pocketYawDeg, refreshInteriorTargets } from './interiors';
 import type { PocketActor } from './interiors';
+
+/** `Renderer.npcModels` id of the foosball table, and the club's blocker id. */
+export const FOOSBALL_TABLE_ID = 'foosball:table';
+const FOOSBALL_BLOCKER = 'foosball';
+
 /** §20.2.6 zone banner: 400 in, 2 000 hold, 400 out (the HUD draws it statically; hold only under reduced motion). */
 export const BANNER_MS = 2800;
 
@@ -301,6 +306,21 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     for (const t of z.trainers) spawnStatic(t.id, t.look, t.name, t.x, t.z, faceOrigin(t.x, t.z), false, false);
   }
 
+  /**
+   * The Mire Route foosball club (content `FOOSBALL_CLUB`): its rigged models play the table, and the table with the six
+   * round it blocks the walk (client-side only, like a gate: prediction is stricter than the server, never looser).
+   */
+  function placeFoosballClub(id: ZoneId | null): void {
+    const club = id === null ? null : foosballClubIn(id);
+    d.renderer.npcModels?.set(club === null ? [] : [
+      { id: FOOSBALL_TABLE_ID, ...club.table },
+      ...club.players.map((p) => ({ id: p.trainer.id, model: p.model, x: p.x, z: p.z, yaw: p.yaw, heightM: p.heightM })),
+    ]);
+    const b = d.blockers?.() ?? null;
+    if (club !== null) b?.addBlocker(FOOSBALL_BLOCKER, club.solid);
+    else b?.removeBlocker(FOOSBALL_BLOCKER);
+  }
+
   function spawnStatic(id: string, look: string, name: string, x: number, z: number, angle: number, npc: boolean, inPocket: boolean): void {
     const actors = d.renderer.actors;
     actors.spawn(id, { look, name, guildTag: '', isLocal: false });
@@ -376,6 +396,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
       out.push(e);
     }
     for (const t of z.trainers) out.push(makeInteractable(t.id, 'trainer', t.x, t.z, 'Challenge', t.name, key));
+    for (const p of foosballClubIn(z.id)?.players ?? []) out.push(makeInteractable(p.trainer.id, 'trainer', p.x, p.z, 'Talk to', p.trainer.name, key));
     for (const i of z.items) {
       const e = makeInteractable(i.id, 'item', i.x, i.z, 'Pick up', `${itemInfo(i.item).name}${i.qty > 1 ? ` ×${i.qty}` : ''}`, key);
       e.enabled = !flags.has(`item:${z.id}:${i.id}`);
@@ -438,6 +459,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     floors = new FloorIndex(interiorsFor(id));
     gates = new GateSync(id, d.blockers?.() ?? null);
     gates.sync(flags, zh.interiors);
+    placeFoosballClub(id);
     d.legendaries?.()?.sync(id, flags);
     playBanner(z.name);
     d.audio.setTheme(d.audio.themeFor(id, z.biome), 400);
@@ -452,6 +474,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     gates = null;
     obstacleKey = null;
     despawnStatics();
+    placeFoosballClub(null);
     d.legendaries?.()?.sync(null, lastFlags);
     d.targets.clear();
     d.onZone(null, null);

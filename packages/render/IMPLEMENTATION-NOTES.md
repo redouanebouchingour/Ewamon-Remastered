@@ -2840,3 +2840,18 @@ The user's call: most of a zone never moves, so only the player, villagers and c
   card bob).
   Sandbox `?demo=rig&species=flowbot` (a button per clip, a second one gliding round; `part3.rig.scrub(clip, t)`
   freezes a frame for screenshots).
+
+## NPC models (2026-10-28, not in the SPEC; the Mire Route foosball club)
+
+- `stage/npcModels.ts` `NpcModelStage` (exposed as `Renderer.npcModels`, a no-op on hosts without it) draws rigged set
+  pieces built by `tools/creature-models --npc` into `/npc-models/` (`RendererOptions.npcModelsUrl`, default
+  `'/npc-models/'`, null = none): people and props that are not actors (no KayKit body, gait or nameplate). The client
+  places them per zone with `set(specs)` (`[]` clears) and plays a clip with `play(id, name)`.
+- Each model is a `CreatureRigPlayer` on its own clone, so the creatures' clip contract holds: `idle` loops (here: playing
+  the table), an `idle_*` fidget now and then, any clip once on demand (`talk`, `cheer`). They never move, so `walk`
+  never plays. The GLB is 1 m tall and keeps the scad origin (a person's feet, the table's centre), front +Z;
+  `heightM` scales it back. One vertex-colour `MeshStandardNodeMaterial` for all of them (no palette, rim or glow).
+- Never frustum-culled: a skinned mesh's computed bounds (bone matrices in world space) land off the model once it
+  sits in a moved, scaled group, and three culled the table while it stood in plain view. Seven set pieces cost nothing.
+- Ground: the bundle's `setGround` stands them on the zone collider's `sample`.
+- The sandbox places the club whenever it loads `?zone=mire_route`. Test: `npc-models.test.ts`.

@@ -920,3 +920,19 @@ target follows (179).
 sprite, its flavor and its line (the player is 1.55 m). A species missing from the table, or a table key that names no
 species or battle form, fails the generator. A battle form gets its own `heightM` only when keyed `<species>_<form>`
 there (17 forms rise past their species, e.g. hyoryu 3.5 → Majin 3.8 m); the rest stand as tall as the species.
+
+## The Mire Route foosball club (2026-10-28, not in the SPEC)
+
+- `data/foosball.ts`: six villagers playing table football on the dirt patch at (-73.7, -4.8), north of the road and
+  east of the bluff trail (measured in the render sandbox). Each is a `TrainerDef` (two creatures, Lv 5 to 7, rematch
+  after 3 days) and a rigged model from `tools/creature-models --npc`.
+- A layer beside the ZoneDef, like the interiors and obstacles: `ZoneDef.trainers` feed the layout RNG and the
+  heightfield, so the club is not in `ZONES` and the zone is byte-identical. Every lookup by trainer id asks
+  `foosballTrainers(zoneId)` beside the zone's own (server `findTarget`, client `foe.ts`, the interact prompts,
+  validate). They are not in the trainer-sight list: they never walk up to the player.
+- Placement is authored in the table's frame (cm, the scad's) and turned into world metres; `foosball.test.ts` checks
+  that every grip a person holds lands on its rod. `solid` (the table and the six, grown by the capsule) is a
+  client-side movement blocker only, like a gate: prediction is stricter than the server, never looser.
+- Talking: their lines, paging past the last (the challenge) starts the battle, Escape walks away; once beaten, their
+  `defeat` line and the challenge again (the server keeps the cooldown). The lines double as the NPC chat persona.
+- The battle shows their `look` (a KayKit body), not the rigged model.
