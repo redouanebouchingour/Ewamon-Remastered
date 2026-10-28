@@ -11,15 +11,18 @@
 //   node src/build.mjs --no-preview <id …> | --all   skip the preview renders
 //   node src/build.mjs --glow-preview …     also .cache/glow/<id>.png: the sprite's glow mask | the model's glow
 //   node src/build.mjs --index     rewrite creature-models/index.json from the GLBs on disk
+//   A creature with a rigs/<id>.mjs is re-rigged after its build (rig.mjs: skeleton + animation clips).
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Document, NodeIO } from '@gltf-transform/core';
 import { EXTMeshoptCompression, KHRMeshQuantization } from '@gltf-transform/extensions';
 import { quantize, reorder, weld } from '@gltf-transform/functions';
 import { MeshoptEncoder } from 'meshoptimizer';
 import sharp from 'sharp';
-import { OUT_DIR, PREVIEW_DIR, REF_DIR, ROOT, SCAD_DIR, WORK_DIR, readManifest } from './paths.mjs';
+import { writeIndex } from './index.mjs';
+import { OUT_DIR, PREVIEW_DIR, REF_DIR, RIG_DIR, ROOT, SCAD_DIR, WORK_DIR, readManifest } from './paths.mjs';
+import { rig } from './rig.mjs';
 
 const CREASE_DEG = 55;
 const MAX_TRIANGLES = 40000;
@@ -68,6 +71,8 @@ async function build(id) {
   writeFileSync(join(OUT_DIR, `${id}.glb`), bytes);
   if (!NO_PREVIEW) await preview(id, scad);
   console.log(`ok ${id}: ${mesh.tris.length / 3} triangles, ${(bytes.length / 1024).toFixed(0)} KiB, glow ${(glowShare * 100).toFixed(1)} % -> previews/${id}.png`);
+  // a rigged creature (rigs/<id>.mjs) re-rigs from the new static GLB
+  if (existsSync(join(RIG_DIR, `${id}.mjs`))) await rig(id);
 }
 
 function runScad(extra) {
@@ -353,10 +358,4 @@ async function glowPreview(id, { pos, tris, triColor, colorOf }, on) {
     .composite(tiles.map((input, i) => ({ input, left: i * S, top: 0 })))
     .png()
     .toFile(join(WORK_DIR, '../glow', `${id}.png`));
-}
-
-function writeIndex() {
-  const models = Object.fromEntries(readdirSync(OUT_DIR).filter((f) => f.endsWith('.glb')).sort()
-    .map((f) => [f.slice(0, -4), { url: f, bytes: statSync(join(OUT_DIR, f)).size }]));
-  writeFileSync(join(OUT_DIR, 'index.json'), `${JSON.stringify({ version: 1, heightMeters: 1, facing: '+z', models }, null, 2)}\n`);
 }

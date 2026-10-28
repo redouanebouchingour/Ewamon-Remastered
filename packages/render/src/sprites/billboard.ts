@@ -53,6 +53,7 @@ import {
 } from './tables.js';
 import { TYPE_COLORS, hexToLinearInto, validateTypeColorTable } from './typeColors.js';
 import { CREATURE_MODEL, createCreatureModelMaterial, warmupModelGeometry, type CreatureModel, type CreatureModelSource } from './creatureModels.js';
+import { CreatureRigPlayer } from './creatureRig.js';
 
 // ---- §10.4.2 SpritePool (verbatim) ---------------------------------------------------------------------------
 
@@ -663,6 +664,10 @@ export class CreatureBillboard {
   private readonly modelId: string | null;
   /** The loaded body while the pool's models are on; null = the card. */
   private body: CreatureModel | null = null;
+  /** A rigged body's clone and clip player (creatureRig.ts); null for a static body or the card. */
+  private player: CreatureRigPlayer | null = null;
+  /** Metres the feet moved (xz) since the last update: a rigged body walks while it moves. */
+  private moved = 0;
   /** `setHeading`: the body's yaw (walkers); null = the pose axis, else facing the camera. */
   private heading: number | null = null;
   /** Whether `setPoseAxis` was called (the battle stage): the body faces along it. */
@@ -696,6 +701,8 @@ export class CreatureBillboard {
   // ---- §10.4.2 -----------------------------------------------------------------------------------------------
 
   setPosition(x: number, y: number, z: number): void {
+    const step = Math.hypot(x - this.base.x, z - this.base.z);
+    if (step < 2) this.moved += step;   // a longer jump is a placement, not a walk
     this.base.set(x, y, z);
     this.applyTransform();
   }
@@ -716,6 +723,7 @@ export class CreatureBillboard {
     this.poseMs = poseDurationMs(p, ms);
     if (def.flash) this.setHurt(1);
     this.applyPose();
+    this.player?.setPose(p, this.poseMs);
   }
 
   setHurt(strength: number): void {
@@ -729,6 +737,7 @@ export class CreatureBillboard {
     this.dissolveBase = p;
     this.faintHold = p > 0;
     this.applyPose();
+    this.player?.setFaint(p);
   }
 
   /** `isShiny` (Phase D4, optional) and `shinyPalette` (2026-10-26, optional) keep the current ones when omitted. */
@@ -759,12 +768,15 @@ export class CreatureBillboard {
       this.applyPose();
       if (this.poseElapsed >= this.poseMs) this.poseMs = 0;
     }
+    if (this.player !== null) this.player.update(dt / 1000, this.moved);
+    this.moved = 0;
     if (this.body !== null) this.applyBody();
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.dropPlayer();
     if (this.key !== null && this.ready) this.pool.unuse(this.key);
     this.pool.removeLive(this);
     this.pool.returnRig(this.rig);
@@ -803,14 +815,36 @@ export class CreatureBillboard {
   refreshBody(): void {
     if (this.disposed) return;
     const m = this.modelId === null ? null : this.pool.modelFor(this.modelId, this);
+    if (m !== this.body) this.dropPlayer();
     this.body = m;
     if (m !== null) {
-      this.rig.bodyMesh.geometry = m.geometry;
-      this.rig.bodyMesh.matrix.copy(m.matrix);
-      this.rig.bodyMesh.matrixWorldNeedsUpdate = true;
+      if (m.rig !== undefined) {
+        if (this.player === null) {
+          this.player = new CreatureRigPlayer(m.rig, this.pool.modelMaterial, this.rig.ud as unknown as Record<string, unknown>, this.id, LAYERS.billboards, LAYERS.dynamicShadow);
+          this.rig.body.add(this.player.root);
+          if (this.pose !== 'idle' && this.poseMs > 0) this.player.setPose(this.pose, this.poseMs);
+          if (this.faintHold) this.player.setFaint(this.dissolveBase);
+        }
+        this.rig.bodyMesh.visible = false;
+      } else {
+        this.rig.bodyMesh.geometry = m.geometry;
+        this.rig.bodyMesh.matrix.copy(m.matrix);
+        this.rig.bodyMesh.matrixWorldNeedsUpdate = true;
+        this.rig.bodyMesh.visible = true;
+      }
       this.applyBody();
     }
     this.applyVisibility();
+  }
+
+  /** The rigged body's clip player (null: a static body, the card, or no clips). */
+  get rigPlayer(): CreatureRigPlayer | null { return this.player; }
+
+  private dropPlayer(): void {
+    if (this.player === null) return;
+    this.player.dispose();
+    this.player = null;
+    this.rig.bodyMesh.visible = true;
   }
 
   /** Terrain normal under the feet (`TerrainCollider.normal`): the contact decal lies on it. */
@@ -1003,7 +1037,8 @@ export class CreatureBillboard {
     const ud = this.rig.ud;
     const s = this.bodyHeightM();
     const b = this.rig.body;
-    b.position.set(0, ud.bob + ud.lift, 0);
+    // a rigged body moves itself (its clips): the card's idle bob on top of them reads as shaking
+    b.position.set(0, (this.player !== null ? 0 : ud.bob) + ud.lift, 0);
     b.scale.set(s, s * ud.scaleY, s);
     let yaw: number;
     if (this.heading !== null) yaw = this.heading;

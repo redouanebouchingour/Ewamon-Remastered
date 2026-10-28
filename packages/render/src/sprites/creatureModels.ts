@@ -4,7 +4,8 @@
  * pool's models are on (`BillboardPool.setModels`) and the creature's GLB has loaded. The card stays the fallback.
  *
  * - Each GLB is one mesh, 1 m tall, feet on y = 0, facing +Z, vertex colours in COLOR_0 (linear rgb) with the glow
- *   mask in its alpha (1 = emissive, the sprites' emissive mask on the model), quantized + meshopt.
+ *   mask in its alpha (1 = emissive, the sprites' emissive mask on the model), quantized + meshopt. A rigged GLB
+ *   (`index.json` `rig: true`) adds a skin and named clips; creatureRig.ts plays them.
  * - ONE material for every model, built from the billboard's per-object record (`BillboardUserData`, the mesh shares
  *   the card's record): variant palette, hurt flash, dissolve, type rim, the sun's rim, shiny sparkle, alpha shimmer
  *   and the evolution glow read the same names, so every billboard caller drives a model unchanged.
@@ -19,6 +20,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { BILLBOARD } from './tables.js';
 import type { BillboardUniforms } from './billboard.js';
+import type { CreatureRigTemplate } from './creatureRig.js';
 
 const B = BILLBOARD;
 
@@ -26,6 +28,8 @@ const B = BILLBOARD;
 export interface CreatureModel {
   readonly geometry: BufferGeometry;
   readonly matrix: Matrix4;
+  /** A rigged body (skin + clips, creatureRig.ts): each creature plays it on its own clone; absent = a static body. */
+  readonly rig?: CreatureRigTemplate;
 }
 
 /** Where bodies come from (tests pass a synthetic one). */
@@ -95,7 +99,11 @@ export function createCreatureModelSource(o: CreatureModelSourceOptions): Creatu
           for (const x of Array.isArray(m.material) ? m.material : [m.material]) x.dispose();
           if (!g.getAttribute('color')) g.setAttribute('color', whiteColors(g.getAttribute('position').count));
           g.name = `ewa:creature-model:${id}`;
-          const model: CreatureModel = { geometry: g, matrix: m.matrixWorld.clone() };
+          // a rigged GLB keeps its scene (bones + skinned mesh) as the template each creature clones
+          const rigged = (m as Mesh & { isSkinnedMesh?: boolean }).isSkinnedMesh === true && gltf.animations.length > 0;
+          const model: CreatureModel = rigged
+            ? { geometry: g, matrix: m.matrixWorld.clone(), rig: { scene: gltf.scene, clips: gltf.animations } }
+            : { geometry: g, matrix: m.matrixWorld.clone() };
           if (disposed) { g.dispose(); return null; }
           loaded.push(model);
           return model;

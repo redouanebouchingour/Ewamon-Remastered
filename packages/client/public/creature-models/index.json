@@ -236,8 +236,9 @@
       "bytes": 274128
     },
     "flowbot": {
-      "url": "flowbot.glb",
-      "bytes": 127100
+      "url": "flowbot.rig.glb",
+      "bytes": 296032,
+      "rig": true
     },
     "frofloe": {
       "url": "frofloe.glb",

@@ -2809,3 +2809,34 @@ The user's call: most of a zone never moves, so only the player, villagers and c
   hundred thousand creature triangles; there is no LOD yet (a far creature could fall back to its card).
 - **Tests:** `sprites.test.ts` "3D creature bodies" (off by default; card until loaded; shared record; one load per
   id; heading / axis / faint). Checked in the sandbox (`?demo=legends|battle`, `&models=0` for the cards).
+
+## Rigged creatures (2026-10-28, not in the SPEC; the first one is Flowbot)
+
+- **What:** a 3D body can carry a skeleton and named animation clips. `tools/creature-models` rig.mjs turns a static
+  `<id>.glb` plus `rigs/<id>.mjs` (joints, a per-triangle part rule, extra expression geometry, clips as functions of
+  time) into `<id>.rig.glb`: rigid skin weights (one joint per triangle), the clips baked at 30 fps, resampled,
+  quantized + meshopt. `index.json` serves the rigged file (`rig: true`) in place of the static one. Any skinned GLB
+  with clips of these names plugs in the same way (a Blender export works too).
+- **Clip names are the contract** (`sprites/creatureRig.ts`): `idle` and `walk` loop (walk while the feet move faster
+  than `RIG.walkSpeed`, measured from `setPosition`, its rate following the speed); `idle_*` are fidgets, one every 6
+  to 13 s while idling (deterministic per id); `windup`, `lunge`, `hurt`, `recoil`, `faint`, `celebrate`, `enter`,
+  `exit` play once on `setPose`, stretched to the pose's ms. `faint` holds its last frame and `setFaint(p)` scrubs it;
+  a `windup` with no follow-up holds 0.6 s. A pose without a clip keeps the loop. Every clip carries a track for every
+  channel any clip moves, so a cross-fade never falls back to the rest pose.
+- **Per creature:** `CreatureBillboard.refreshBody` clones the template (`SkeletonUtils.clone`: own bones, skeleton and
+  `AnimationMixer`; geometry shared) into the body group in place of the static mesh, with the pool's one model
+  material and the card's per-object record, so palettes, hurt flash, dissolve, rims and glow work unchanged (the
+  skinning node runs before them, so the dissolve holes ride on the moving parts). The card's own lift / squash /
+  lunge still move the body as a whole on top. The skinned bounds are computed once and padded × 1.5.
+- **Flowbot:** 23 joints (pelvis, legs, torso, monitor head, face, three eye sets, mouth, two 3-joint arms, six
+  lightning bolts), 13 clips, 289 KiB (the static GLB is 124 KiB; ~110 KiB is animation). The rig drops the scad's
+  hover drum (`assign` returns null for it) and refits the rest, so Flowbot stands on its own feet; its clips keep the
+  feet planted (a stride with a hip dip for `walk`). The ^ ^ and x x eyes are extra boxes the scad never had, hidden
+  at scale 1e-4 until a clip shows them.
+- **No card bob on a rigged body:** the card's idle bob (`bobOffset`) stays off a rigged body; on top of the clips'
+  own motion it read as shaking.
+- **Not yet:** the skinned program is not in the warm-up frame (the first rigged body on screen compiles it); no LOD.
+- **Tests / check:** `creature-rig.test.ts` (clone per body, walk / idle, poses, holds, fidgets, the pool swap, no
+  card bob).
+  Sandbox `?demo=rig&species=flowbot` (a button per clip, a second one gliding round; `part3.rig.scrub(clip, t)`
+  freezes a frame for screenshots).

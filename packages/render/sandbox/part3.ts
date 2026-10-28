@@ -17,6 +17,8 @@
  * baseline), `&side=back`. Controls on `part3.legends`: `frames()` (each card's flipbook page), `facing(side)`,
  * `pose(i, pose, ms)`, `faint(i)`, `inspect(i | null)`, `bindAnim()`, `stats()`. `?demo=battle&mine=&foe=` puts any two
  * species in the arena; `?demo=arena` (same controls, `&terrain=`, `&h=0..3`) fights it in the PvP stadium with no zone (their atlases, flipbooks included, are bound first).
+ * `?demo=rig&species=flowbot` (2026-10-28): a rigged 3D body big at the focus with a button per clip, and a second one
+ * gliding round it (controls on `part3.rig`, see the block).
  */
 import { Group, Vector3 } from 'three/webgpu';
 import { SPECIES } from '@ewa/content';   // sandbox only (vite alias); the render package never imports content
@@ -224,6 +226,80 @@ export async function startPart3Demo(r: Renderer, mode: string, api: Record<stri
       stats: () => ({ sprites: p.sprites.stats(), programs: r.renderer.info.memory.programs, textures: r.renderer.info.memory.textures }),
     };
     Object.assign(out, { legends });
+  }
+
+  if (mode === 'rig') {
+    // rigged 3D bodies (sprites/creatureRig.ts): `&species=flowbot` (default) big at the focus, facing the camera, and
+    // a second one gliding round it (the walk loop); a button per clip. Controls on `part3.rig`: `play(name)`,
+    // `pose(pose, ms)`, `clips()`, `playing()`, `glide(on)`, `tour(ms)` (every clip in turn).
+    const q = new URLSearchParams(location.search);
+    const id = q.get('species') ?? 'flowbot';
+    await bindSpecies([id]);
+    walkers.forEach((_, i) => p.actors.despawn(`walker${i}`));
+    walkersOn = false;
+    const group = new Group();
+    group.name = 'sandbox:rig';
+    r.scene.add(group);
+    const ground = (x: number, z: number): number => ((api.zone as (() => { collider: { sampleClamped(x: number, z: number): number } } | null) | undefined)?.()?.collider.sampleClamped(x, z) ?? 0);
+    const at = focus.clone();
+    p.rig.setFocus(at.x, ground(at.x, at.z) + 0.6, at.z);
+    p.rig.setZoomStop(Number(q.get('zoom') ?? 0) as 0 | 1 | 2);
+    const hero = p.sprites.acquire({ ...descriptor(man, id, `rig:${id}`), heightM: Number(q.get('h') ?? 1.6) });
+    hero.setFacing('front');
+    hero.setPosition(at.x, ground(at.x, at.z), at.z);
+    hero.setSharp(true);
+    group.add(hero.object);
+    // the inspector camera on the hero (`&dist=` m, `&close=0` keeps the diorama view)
+    if (q.get('close') !== '0') p.rig.inspect(new Vector3(at.x, ground(at.x, at.z) + hero.heightM * 0.62, at.z), 0, Number(q.get('dist') ?? 5));
+    const glider = p.sprites.acquire(descriptor(man, id, `rig:${id}:glide`));
+    glider.setSharp(true);
+    group.add(glider.object);
+    let glideOn = q.get('glide') !== '0';
+    let ang = 0;
+    glider.setShown(glideOn);
+    extraTicks.push((dt) => {
+      if (!glideOn) return;
+      ang += (2.4 / 3.2) * (dt / 1000);
+      const x = at.x + Math.cos(ang) * 3.2; const z = at.z + Math.sin(ang) * 3.2;
+      glider.setPosition(x, ground(x, z), z);
+      glider.setHeading(Math.atan2(-Math.sin(ang), Math.cos(ang)));
+    });
+    p.hud.set({ nameplates: [], chat: [], prompt: null, zoneName: null, questHint: null, party: [] });
+    const poses = new Set(['windup', 'lunge', 'hurt', 'recoil', 'faint', 'celebrate', 'enter', 'exit']);
+    const play = (name: string): boolean => {
+      if (poses.has(name)) { hero.setPose(name as Parameters<CreatureBillboard['setPose']>[0], 0); return true; }
+      return hero.rigPlayer?.play(name) ?? false;
+    };
+    const clips = (): readonly string[] => hero.rigPlayer?.clipNames ?? [];
+    const bar = document.createElement('div');
+    bar.style.cssText = 'position:fixed;left:12px;bottom:12px;display:flex;flex-wrap:wrap;gap:6px;z-index:50;max-width:70vw';
+    document.body.append(bar);
+    const fillBar = (): void => {
+      bar.replaceChildren(...clips().map((c) => {
+        const b = document.createElement('button');
+        b.textContent = c;
+        b.style.cssText = 'font:600 13px system-ui;padding:6px 10px;border-radius:6px;border:0;background:#1d2433e6;color:#fff;cursor:pointer';
+        b.onclick = () => { play(c); };
+        return b;
+      }));
+    };
+    const until = (ok: () => boolean): Promise<void> => new Promise((res) => { const t = setInterval(() => { if (ok()) { clearInterval(t); res(); } }, 100); });
+    void until(() => clips().length > 0).then(fillBar);
+    const rigApi = {
+      hero, glider, play, clips,
+      pose: (pose: Parameters<CreatureBillboard['setPose']>[0], ms = 0) => hero.setPose(pose, ms),
+      playing: () => hero.rigPlayer?.playing ?? null,
+      /** Holds a clip at `t01` of its length (screenshots). */
+      scrub: (name: string, t01: number) => hero.rigPlayer?.scrub(name, t01) ?? false,
+      ready: () => clips().length > 0,
+      glide: (on: boolean) => { glideOn = on; glider.setShown(on); },
+      /** Every clip in turn, `ms` apart (one-shots are short; the loops and fidgets get their own length). */
+      tour: async (ms = 1400) => {
+        for (const c of clips()) { play(c); await new Promise((res) => setTimeout(res, c.startsWith('idle') || c === 'walk' ? Math.max(ms, 2600) : ms)); }
+        hero.setPose('idle', 0);
+      },
+    };
+    Object.assign(out, { rig: rigApi });
   }
 
   if (mode === 'wild') {

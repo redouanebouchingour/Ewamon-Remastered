@@ -54,3 +54,17 @@ node src/build.mjs --no-preview <id …>   # skip the OpenSCAD preview renders
    colours, a hidden face, missing features, the back) and rebuild. Two or three passes is normal.
 4. Forms (`<id>_majin`, `_tenjin`, `_rage`, ravatar's relics) start as a copy of the base model and change what the
    form's art changes.
+
+## Rigging and animation
+
+A creature with a `rigs/<id>.mjs` gets a skeleton and animation clips: `node src/rig.mjs <id>` (or `--all`) reads the
+built `<id>.glb` and writes `<id>.rig.glb`, which `index.json` serves in its place (`rig: true`). `build.mjs` re-rigs
+after rebuilding such a creature. The rig works on the GLB, so it needs no OpenSCAD.
+
+`rigs/flowbot.mjs` is the worked example. A rig file authors everything in the scad's own coordinates (Z up, facing
+-Y, +X the creature's left) and exports `frame` (the scad model's height and lowest z), `joints` (pivots, parents, rest
+rotation / scale), `assign(centroid, rgb)` (which joint each triangle belongs to), `extras` (boxes added to the mesh,
+e.g. alternate eyes) and `clips` (`pose(t, u)` per clip, sampled at 30 fps). The game plays the clips by name: `idle`,
+`walk`, `idle_*` fidgets and one per battle pose (render IMPLEMENTATION-NOTES "Rigged creatures"). Check the result in
+the render sandbox: `?demo=rig&species=<id>`. Before rigging a new one, read [ANIMATING.md](ANIMATING.md): the
+findings from Flowbot (rotation signs, pivots, planted feet, expressions, pitfalls, how to check and film it).
