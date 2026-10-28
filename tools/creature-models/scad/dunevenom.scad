@@ -2,6 +2,17 @@
 // segmented tail arching high over its back into a pale venom bulb with a lime cap and a purple drip.
 include <lib.scad>
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
 gold = [0.85, 0.62, 0.25];
 band = [0.6, 0.4, 0.15];
 goldHi = [0.94, 0.75, 0.38];
@@ -31,8 +42,8 @@ mirror_x() spike([4.6, -9, 16.5], [1.5, -1, 2.5], 1.2, 0.1, band);
 
 // Face: narrowed pale eyes with purple pupils, mandibles under them.
 mirror_x() {
-  eye([3.4, -13, 13.6], 2.1, iris = purple, sclera = [0.97, 0.94, 1], yaw = -20, pupil = [0.2, 0.05, 0.22], flat = 0.4);
-  color(band) translate([3.4, -13.4, 15.6]) rotate([0, -20, -20]) scale([2.6, 0.8, 0.7]) sphere(1, $fn = 14);
+  eye([3.4, -12.4, 13.6], 2.3, iris = [0.78, 0.32, 0.88], sclera = [0.97, 0.94, 1], yaw = 8, pupil = [0.2, 0.05, 0.22], flat = 0.4, lid = 0.48, lid_tilt = 30, lid_c = [0.3, 0.12, 0.3], slit = 0.3);
+  brow([3.4, -12.4, 13.6], 2.3, 0.55, gold, 8);
   limb([2.2, -12.5, 10.4], [1.4, -15, 8.6], 1, 0.35, goldHi);
 }
 color(ink) translate([0, -13.6, 10.4]) scale([1.4, 0.4, 0.5]) sphere(1, $fn = 12);

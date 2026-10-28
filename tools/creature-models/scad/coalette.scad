@@ -2,6 +2,17 @@
 // small flames burning along its head and spine and a thick tail that curls up behind it into a tall flame.
 include <lib.scad>
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
 coal = [0.24, 0.2, 0.23];
 coalHi = [0.36, 0.3, 0.33];
 crack = [0.95, 0.42, 0.08];
@@ -39,8 +50,8 @@ color(coalHi) translate([0, -7, 24.2]) scale([4, 3, 1.4]) sphere(1, $fn = 16);
 mirror_x() color([0.08, 0.06, 0.07]) translate([1.1, -10, 22.6]) scale([0.4, 0.3, 0.35]) sphere(1, $fn = 8);
 color([0.1, 0.07, 0.08]) translate([0, -9.4, 20.6]) rotate([90, 0, 0]) scale([3, 0.6, 0.4]) cylinder(h = 0.6, r = 1, center = true, $fn = 16);
 mirror_x() {
-  eye([3.2, -8.3, 24.2], 1.6, iris = [1, 0.62, 0.08], pupil = [0.15, 0.05, 0.02], sclera = [1, 0.85, 0.4], yaw = -22);
-  color(coalHi) translate([3.2, -8.4, 26]) rotate([0, -15, -20]) scale([2, 0.9, 0.6]) sphere(1, $fn = 12);
+  eye([3.3, -7.8, 24.0], 2.2, iris = [1, 0.62, 0.08, GLOW], pupil = [0.15, 0.05, 0.02], sclera = [1, 0.85, 0.4], yaw = 6, lid = 0.4, lid_tilt = 28, lid_c = [0.1, 0.08, 0.09], slit = 0.4);
+  brow([3.3, -7.8, 24.0], 2.2, 0.5, coalHi, 6);
 }
 // Head flames: a crest of little flames from the brow back over the crown.
 flame([0, -3, 27.6], [0, 1, 5], 1.6);

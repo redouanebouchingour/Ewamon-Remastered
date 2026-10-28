@@ -16,7 +16,17 @@ claw = [0.75, 0.3, 0.2];
 petalO = [1, 0.62, 0.12];
 petalR = [0.98, 0.45, 0.1];
 seed = [0.4, 0.24, 0.1];
+socket = [0.06, 0.14, 0.05];
 
+// Hard brow ridge over an eye at p (radius s, turned yaw like the eye): a hulled wedge in the skin colour, high at the
+// temple and slanting down towards the nose, overhanging the eye so the face itself scowls.
+module brow(p, s, yaw, drop, c) {
+  translate(p) rotate([0, 0, yaw]) color(c) hull() {
+    translate([s * 1.0, s * 0.05, s * 1.25]) scale([s * 0.6, s * 0.7, s * 0.36]) sphere(1, $fn = 12);
+    translate([-s * 0.95, -s * 0.25, s * (1.25 - drop)]) scale([s * 0.5, s * 0.62, s * 0.32]) sphere(1, $fn = 12);
+    translate([0, s * 0.9, s * 1.1]) scale([s * 1.1, s * 0.6, s * 0.5]) sphere(1, $fn = 12);
+  }
+}
 module ell16(r, p, c) { color(c) translate(p) scale(r) sphere(1, $fn = 14); }
 
 // Sunflower facing +Z (rotate it into place): petals ring around a seed disc.
@@ -52,8 +62,10 @@ chain([[0, -1, 23], [0, -2.2, 27], [0, -3, 30]], [3.6, 3.1, 2.9], green);
 blob([[[5, 4.8, 4.2], [0, -3.2, 31.5]], [[3.6, 3.8, 2.8], [0, -7.8, 30.6]]], green);
 color(greenDk) translate([0, -10.3, 29.6]) scale([2.9, 1.2, 0.3]) sphere(1, $fn = 12);
 mirror_x() {
-  eye([3.0, -7.2, 32.6], 1.45, iris = [0.85, 0.12, 0.08], pupil = [0.25, 0.02, 0.02], sclera = [0.95, 0.75, 0.5], yaw = -30, flat = 0.4);
-  color(greenDk) translate([3.0, -7.7, 34]) rotate([0, 16, -30]) scale([1.8, 0.6, 0.4]) sphere(1, $fn = 10);
+  color(socket) translate([2.85, -7.1, 32.3]) rotate([0, 0, 22]) scale([1.45, 0.6, 1.2]) sphere(1.5, $fn = 14);
+  eye([2.8, -7.3, 32.3], 1.8, iris = [1, 0.12, 0.06, GLOW], pupil = [0.2, 0.0, 0.0], sclera = [1, 0.8, 0.35], yaw = 22, flat = 0.45,
+      lid = 0.42, lid_tilt = 32, lid_c = socket);
+  brow([2.8, -6.9, 32.5], 1.8, 22, 0.7, green);
   // Little cheek frills.
   spike([3.4, -2.6, 31], [2.2, 1.6, -0.6], 0.8, 0.1, greenHi);
 }
@@ -91,6 +103,9 @@ tailPts = [[0, 4, 7], [3, 9, 4], [9, 12, 3], [14, 9, 3], [14, 4, 4.5], [10, 3, 6
            [-6, 13, 2.4], [-12, 9, 2.6], [-15, 3, 4], [-15, -1, 7], [-14, -2, 10]];
 tailR = [3.6, 3.2, 2.8, 2.4, 2.1, 1.8, 1.7, 1.6, 1.4, 1.2, 1, 0.8, 0.7];
 chain(tailPts, tailR, green, $fn = 14);
+// Darker scale bands across the tail so the long coil doesn't read as a plain tube.
+for (i = [0 : len(tailPts) - 2]) let(d = tailPts[i + 1] - tailPts[i], r = (tailR[i] + tailR[i + 1]) / 2)
+  color(greenDk) translate(tailPts[i] + d * 0.5) rotate(_dir_rot(d)) scale([r * 1.05, r * 1.05, r * 0.3]) sphere(1, $fn = 10);
 for (i = [1 : 2 : 9]) spike(tailPts[i] + [0, 0, tailR[i] * 0.7], [0, 0, 1.4], 0.6, 0.1, bark);
 for (i = [2 : 3 : 9]) ell16([0.5, 0.5, 0.6], tailPts[i] + [0, -tailR[i] * 0.8, tailR[i] * 0.3], glow);
 petal([1.6, 0.4, 0.7], [-13.6, -1.6, 8.5], [0, -20, 0], leafHi);
@@ -104,7 +119,7 @@ mirror_x() translate([3.5, 4, 24]) rotate([0, 0, 15]) rotate([0, 10, 0]) {
     l = 8 + (3 - abs(k - 3)) * 1.4;
     o = [12 * (k / 6), 0, 7 * (k / 6)] * 0.6;
     color(k % 2 == 0 ? leaf : leafHi) translate(o) rotate([0, a, 0]) translate([0, 0, l]) scale([2.8, 0.5, l]) sphere(1, $fn = 12);
-    color(greenDk) translate(o) rotate([0, a, 0]) translate([0, -0.2, l]) scale([0.25, 0.5, l * 0.95]) sphere(1, $fn = 6);
+    for (v = [-0.2, 0.2]) color(greenDk) translate(o) rotate([0, a, 0]) translate([0, v, l]) scale([0.25, 0.5, l * 0.95]) sphere(1, $fn = 6);
   }
   translate([7, -1, 10]) rotate([90, 0, 0]) sunflower(1.0);
   translate([11, -1, 5]) rotate([90, 0, 0]) sunflower(0.8);

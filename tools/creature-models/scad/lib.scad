@@ -52,13 +52,32 @@ module petal(r, p, rot = [0, 0, 0], c) {
 
 // Cartoon eye on a surface: white (or sclera colour), iris, pupil and a highlight, looking along -Y and tilted by
 // `yaw` (degrees about Z) so eyes on a round head can look outward. size = eye radius.
-module eye(p, size, iris = "black", sclera = "white", yaw = 0, pupil = "black", shine = true, flat = 0.45) {
+// Angry / intimidating eyes: `lid` (0..1) hoods that share of the eye's height under a lid of colour `lid_c` (the skin),
+// its edge slanted `lid_tilt` degrees down towards the nose (x = 0), whichever side of the face the eye is on. A lidded
+// eye also gets a lower lid rising towards the outer corner (`squint`, share of the height) and no highlight unless
+// `shine = true` is passed: the highlight is what makes an eye read cute. Its pupil narrows to a slit (`slit`, the
+// pupil's width as a share of the round one).
+module eye(p, size, iris = "black", sclera = "white", yaw = 0, pupil = "black", shine = undef, flat = 0.45,
+           lid = 0, lid_tilt = 20, lid_c = "black", squint = undef, slit = undef) {
+  // Lids read best a little steeper than the number suggests at game distance.
+  tilt = (p[0] < 0 ? 1 : -1) * lid_tilt * 1.25;
+  pw = slit == undef ? (lid > 0 ? 0.45 : 1) : slit;
+  sq = squint == undef ? lid * 0.4 : squint;
   translate(p) rotate([0, 0, yaw]) {
+    if (lid > 0) color(lid_c) intersection() {
+      scale([1.1, 0.88, 1.12]) sphere(size, $fn = 20);
+      // Pitched forward so the edge overhangs the iris like a brow: the game camera looks down on it.
+      rotate([12, tilt, 0]) translate([-3 * size, -3 * size, size * (1.15 - 2.3 * lid)]) cube(6 * size);
+    }
+    if (lid > 0 && sq > 0) color(lid_c) intersection() {
+      scale([1.08, 0.88, 1.18]) sphere(size, $fn = 20);
+      rotate([0, tilt * -0.5, 0]) translate([-3 * size, -3 * size, -6 * size - size * (1.15 - 2.3 * sq)]) cube(6 * size);
+    }
     color(sclera) scale([1, flat, 1.15]) sphere(size, $fn = 20);
     color(iris) translate([0, -size * flat * 0.62, -size * 0.05]) scale([0.68, 0.5, 0.82]) sphere(size, $fn = 18);
     // The iris front sits at -(flat * 0.62 + 0.5) * size; the pupil's front pokes just past it.
-    if (pupil != iris) color(pupil) translate([0, -size * (flat * 0.62 + 0.24), -size * 0.05]) scale([0.36, 0.3, 0.46]) sphere(size, $fn = 14);
-    if (shine) color("white") translate([size * 0.25, -size * flat * 1.05, size * 0.3]) sphere(size * 0.2, $fn = 10);
+    if (pupil != iris) color(pupil) translate([0, -size * (flat * 0.62 + 0.24), -size * 0.05]) scale([0.36 * pw, 0.3, 0.46 + 0.2 * (1 - pw)]) sphere(size, $fn = 14);
+    if (shine == undef ? lid == 0 : shine) color("white") translate([size * 0.25, -size * flat * 1.05, size * 0.3]) sphere(size * 0.2, $fn = 10);
   }
 }
 

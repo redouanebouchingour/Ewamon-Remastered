@@ -81,8 +81,14 @@ color(mask) intersection() {
   skull(1.08);
   translate([0, -2, 35.6]) cube([20, 30, 2.6], center = true);
 }
-ell([1.6, 1.4, 1.4], [5, 2, 35.8], mask);
-eye([-2.2, -6.2, 35.6], 1.4, iris = glow, sclera = [0.5, 0.9, 1], pupil = [0.05, 0.2, 0.4], yaw = 22);
+ell([1.6, 1.4, 1.4], [-5, 2, 35.8], mask);
+// One big glowing blue eye blazing through the blindfold, sunk into it under a hard black brow.
+eye([2.2, -6.1, 35.3], 1.75, iris = [0.75, 0.97, 1, GLOW], sclera = [0.2, 0.75, 1, GLOW], pupil = [0.02, 0.12, 0.3], yaw = 18,
+    lid = 0.38, lid_tilt = 28, lid_c = mask, slit = 0.3, squint = 0.1);
+color(mask) hull() {
+  translate([4.1, -4.4, 37.5]) scale([1, 1.2, 0.5]) sphere(1, $fn = 10);
+  translate([0.7, -7.2, 36.6]) scale([0.7, 1, 0.4]) sphere(1, $fn = 8);
+}
 // Tall pointed ears poking out of the mane.
 mirror_x() {
   color(head) hull() { petal([1.6, 0.9, 1], [3.6, 0, 39], [0, 0, 0], head); spike([3.8, 0, 39], [1.6, 0.5, 6.5], 0.4, 0.05, head); }
@@ -112,6 +118,11 @@ chain([[2.5, 5, 15], [9, 8, 9], [15, 9, 8], [21, 8, 12], [23, 7, 17]], [2.2, 3.4
 tuft([9, 8, 8], [3, 2, -4], 2.2, fur);
 tuft([14, 9, 6.5], [4, 1, -3], 2.4, fur);
 tuft([20, 8.5, 10], [4, 0.5, -2], 2.2, fur);
+// Shaggy locks along the top and back of the brush, lighter streaks among them, so it is not a smooth tube.
+for (t = [[5, 7.5, 13.5, [-0.5, 3, 2]], [9, 9.5, 12, [0, 3.5, 2.5]], [13, 10.5, 11.5, [1, 3.5, 3]], [17, 10.5, 12, [1, 3, 3]],
+          [20, 9.5, 14.5, [2, 3, 2]], [11, 11.5, 8, [0.5, 3.5, -1]], [16, 12, 8.5, [1, 3, -1]], [7, 4, 10, [0, -3, -1]],
+          [13, 5, 7, [0.5, -3, -1.5]], [18.5, 4.5, 9.5, [1, -3, -1]]])
+  tuft([t[0], t[1], t[2]], t[3], 1.8, (t[0] * 3) % 2 == 0 ? furHi : fur);
 blob([[[3.8, 3.6, 3.6], [23.5, 7, 20.5]], [[2.6, 2.6, 3], [24, 7, 24]]], frost);
 tuft([24, 7, 25], [0.5, 0, 7], 2.2, mane);
 tuft([23, 7.5, 24], [-3.5, 0.5, 5.5], 1.9, mane);

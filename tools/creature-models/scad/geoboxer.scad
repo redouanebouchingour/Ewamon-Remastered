@@ -41,9 +41,14 @@ mirror_x() ell([3.1, 2.3, 2.6], [2.6, 4.4, 10.5], skinHi);
 ell([6.2, 6, 6.6], [0, -2, 30.5], skin);
 mirror_x() ell([1.1, 1.4, 1.7], [6.1, -1.2, 30], skinDk);  // ears
 mirror_x() {
-  color(skinDk) translate([2.4, -7.2, 31]) scale([1.8, 1.2, 1.4]) sphere(1, $fn = 14);
-  eye([2.4, -7.9, 30.8], 1.25, iris = eyeC, sclera = [0.96, 0.9, 0.78], pupil = [0.08, 0.04, 0.02], yaw = -10, flat = 0.4);
-  color(skinDk) translate([2.3, -7.9, 32.7]) rotate([0, -24, -8]) scale([2.2, 1, 0.7]) sphere(1, $fn = 14);
+  // Deep-set glaring eyes: a dark socket, the eye sunk into it, a heavy brow ridge slanting down to the nose.
+  color(skinDk) translate([2.5, -6.7, 30.9]) scale([1.9, 0.8, 1.6]) sphere(1, $fn = 14);
+  eye([2.5, -7, 30.8], 1.45, iris = [0.85, 0.5, 0.12], sclera = [0.96, 0.9, 0.78], pupil = [0.08, 0.04, 0.02], yaw = 8, flat = 0.5,
+      lid = 0.4, lid_tilt = 30, lid_c = skinDk, slit = 0.55);
+  color(skin) hull() {
+    translate([4.4, -6.2, 33]) scale([1.5, 1.2, 0.9]) sphere(1, $fn = 12);
+    translate([0.9, -7.7, 32]) scale([1, 1, 0.7]) sphere(1, $fn = 10);
+  }
 }
 ell([1, 1.2, 1.3], [0, -8.5, 29.2], skinHi);  // nose
 color([0.25, 0.12, 0.06]) translate([0, -7.4, 26.6]) scale([2.4, 1, 1]) sphere(1, $fn = 16);  // open snarl

@@ -3,6 +3,17 @@
 // behind, a huge fanned tail of flame feathers, and loose embers floating around it.
 include <lib.scad>
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
 coat = [0.82, 0.45, 0.25];
 coatDk = [0.68, 0.3, 0.16];
 cream = [0.9, 0.78, 0.58];
@@ -59,8 +70,10 @@ for (y = [-6, -3.5, -1]) spike([0, y, 18 - (y + 6) * 0.3], [0, 2.5, 2.6], 1.6, 0
 blob([[[3.8, 3.8, 3.6], [0, -11, 20]], [[2.3, 2.6, 1.9], [0, -14.5, 18.6]]], coat);
 mirror_x() ell([1.7, 1.6, 1.5], [2.6, -12.8, 18.3], cream);
 color(stripe) translate([0, -16.9, 19.2]) scale([0.9, 0.6, 0.6]) sphere(1, $fn = 12);
-mirror_x() eye([1.9, -13.7, 20.8], 0.9, iris = [0.25, 0.15, 0.08], yaw = -25);
-mirror_x() color(stripe) translate([1.8, -13.9, 21.9]) rotate([0, -15, -25]) scale([1.1, 0.3, 0.3]) sphere(1, $fn = 10);
+mirror_x() {
+  eye([1.95, -13.6, 20.8], 1.35, iris = [1, 0.62, 0.12], pupil = [0.12, 0.05, 0.02], sclera = [1, 0.9, 0.6], yaw = 10, lid = 0.48, lid_tilt = 32, lid_c = stripe, slit = 0.35);
+  brow([1.95, -13.6, 20.8], 1.35, 0.6, coatDk, 10);
+}
 // Ears, pointed and swept back.
 mirror_x() spike([2.6, -10.5, 22.6], [1.4, 1.6, 3.4], 1.1, 0.1, coat);
 // Brown horn-like crest locks and a crown of fire blazing up between them.

@@ -8,8 +8,10 @@ cream = [0.98, 0.86, 0.66];
 black = [0.12, 0.12, 0.16];
 cyan = [0.25, 0.75, 0.85];
 cyanHi = [0.6, 0.95, 1];
+bolt = [0.45, 0.9, 1, GLOW];
 claw = [0.85, 0.88, 0.92];
-eyeC = [0.2, 0.75, 0.95];
+eyeC = [0.3, 0.9, 1, GLOW];
+furDk = [0.7, 0.26, 0.06];
 
 // Legs: orange thighs, black shins and paws.
 mirror_x() {
@@ -46,10 +48,19 @@ translate([0, -0.5, 27]) {
   // The scarf mask over the lower muzzle.
   color(cyan) hull() { translate([0, -1, -2]) scale([3.6, 3.4, 1.2]) sphere(1, $fn = 20); translate([0, -4.5, -1.6]) scale([1.6, 1.6, 0.9]) sphere(1, $fn = 14); }
   // Sharp eyes.
+  // Sharp glowing eyes sunk under a hard orange brow that scowls down to the snout, a black socket around each.
   mirror_x() {
-    eye([1.6, -3, 0.9], 0.8, iris = eyeC, pupil = black, sclera = [1, 1, 0.95], yaw = -30, flat = 0.35);
-    color(black) translate([1.8, -3.2, 1.7]) rotate([0, -20, -30]) scale([1.3, 0.4, 0.25]) sphere(1, $fn = 10);
+    translate([1.95, -2.4, 1.1]) rotate([0, -15, -28]) scale([1.4, 0.45, 1.05]) color(black) sphere(1, $fn = 14);
+    eye([1.95, -2.7, 1.1], 1.1, iris = eyeC, pupil = black, sclera = [1, 0.95, 0.6], yaw = -22, flat = 0.4,
+        lid = 0.42, lid_tilt = 32, lid_c = black, slit = 0.35, squint = 0.12);
+    color(fur) hull() {
+      translate([0.75, -3.3, 1.8]) scale([0.45, 0.45, 0.35]) sphere(1, $fn = 12);
+      translate([2, -2.85, 2.4]) scale([0.8, 0.5, 0.38]) sphere(1, $fn = 12);
+      translate([3.05, -1.7, 2.7]) scale([0.5, 0.5, 0.4]) sphere(1, $fn = 12);
+    }
   }
+  // Cheek ruffs.
+  mirror_x() for (i = [0 : 1]) color(cream) hull() { translate([3, -1.2 + i, -0.6 - i * 0.6]) sphere(0.9, $fn = 10); translate([5, -0.6 + i, -1.6 - i * 0.8]) sphere(0.15, $fn = 6); }
   // Ears.
   mirror_x() {
     color(fur) hull() { translate([2, 0.5, 2.2]) scale([1.4, 0.8, 1]) sphere(1, $fn = 14); translate([3.2, 1, 7]) sphere(0.3, $fn = 8); }
@@ -73,8 +84,17 @@ module tail(a, len = 13) {
   color(fur) hull() { translate(mid) sphere(3.6, $fn = 18); translate(m2) sphere(2.2, $fn = 16); }
   color(black) hull() { translate(m2 + dir * 0.4) sphere(1.95, $fn = 16); translate(tip) sphere(0.3, $fn = 8); }
   color(furHi) translate(mid + [0, -0.8, 0]) scale([2, 1, 2.2]) sphere(1.3, $fn = 14);
+  // darker stripe down the back of the tail and a few flame-like fur flicks along its edges
+  color(furDk) hull() { translate(mid + [0, 2.6, 0]) scale([1.8, 1, 1.8]) sphere(1, $fn = 10); translate(m2 + [0, 1.6, 0]) sphere(0.9, $fn = 8); }
+  for (f = [0.35, 0.6]) let(q = base + dir * len * f + [0, 1.5, 0], side = [cos(a), 0, -sin(a)])
+    color(f < 0.5 ? furHi : furDk) hull() { translate(q + side * 2.6) sphere(1, $fn = 8); translate(q + side * 4.4 + dir * 1.5) sphere(0.12, $fn = 6); }
 }
 for (a = [-110, -80, -52, -26, 0, 26, 52, 80, 110]) tail(a, 17 - abs(a) * 0.02);
 // A few lightning zigzags crackling over the tails.
 for (s = [[-1, 1], [1, 1], [-1, 0], [1, 0]]) color(cyan) let(x = s[0] * (s[1] == 1 ? 8 : 12), z = s[1] == 1 ? 24 : 12)
   chain([[x, 7.5, z], [x + 1.2, 7.8, z + 1.6], [x - 0.4, 8, z + 2.6], [x + 1, 8.2, z + 4.2]], [0.25, 0.25, 0.25, 0.1], cyan);
+for (q = [[-10, 9, 20], [10, 9, 18], [-4, 10, 26], [5, 10, 8], [-7, 9.5, 7]]) color(bolt)
+  chain([q, q + [1.4, 0.2, 1], q + [0.2, 0.3, 2], q + [1.8, 0.4, 3.2], q + [0.8, 0.4, 4.4]], [0.22, 0.22, 0.22, 0.2, 0.08], bolt);
+// Silver bracers on the forearms (sprite).
+color(claw) translate([6.7, -2.2, 15.8]) rotate([-20, 0, 0]) cylinder(h = 1.6, r = 1.35, center = true, $fn = 14);
+color(claw) translate([-8.8, -3, 20.5]) rotate([0, 70, -40]) cylinder(h = 1.6, r = 1.35, center = true, $fn = 14);

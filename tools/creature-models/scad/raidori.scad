@@ -5,12 +5,30 @@ body = [0.33, 0.34, 0.45];
 bodyDk = [0.22, 0.22, 0.3];
 patch = [0.8, 0.8, 0.84];
 stripe = [0.45, 0.46, 0.55];
+streak = [0.56, 0.57, 0.68];
 mane = [0.98, 0.8, 0.12];
 maneDk = [0.85, 0.6, 0.05];
 mask = [0.62, 0.62, 0.85];
 paw = [0.95, 0.95, 0.97];
 star = [1, 0.86, 0.3];
 fang = [1, 1, 1];
+socket = [0.1, 0.08, 0.16];
+
+// Hard brow ridge over an eye at p (radius s, turned yaw like the eye): a hulled wedge in the skin colour, high at the
+// temple and slanting down towards the nose, overhanging the eye so the face itself scowls.
+module brow(p, s, yaw, drop, c) {
+  translate(p) rotate([0, 0, yaw]) color(c) hull() {
+    translate([s * 1.0, s * 0.05, s * 1.25]) scale([s * 0.6, s * 0.7, s * 0.36]) sphere(1, $fn = 12);
+    translate([-s * 0.95, -s * 0.25, s * (1.25 - drop)]) scale([s * 0.5, s * 0.62, s * 0.32]) sphere(1, $fn = 12);
+    translate([0, s * 0.9, s * 1.1]) scale([s * 1.1, s * 0.6, s * 0.5]) sphere(1, $fn = 12);
+  }
+}
+// Flat scales / plates laid on an ellipsoid (centre cen, radii r): each [azimuth, elevation, size].
+module plates(cen, r, list, th = 0.35, c) {
+  for (t = list) let(az = t[0], el = t[1], sz = t[2])
+    color(c) translate([cen[0] + r[0] * cos(el) * cos(az), cen[1] + r[1] * cos(el) * sin(az), cen[2] + r[2] * sin(el)])
+      rotate([0, 0, az]) rotate([0, 90 - el, 0]) scale([sz, sz * 1.15, th]) sphere(1, $fn = 8);
+}
 
 // Torso, long along Y, chest higher than hips.
 blob([[[7, 8, 6.5], [0, -5, 17]], [[6.5, 7, 6], [0, 6, 16]]], body);
@@ -20,6 +38,10 @@ mirror_x() ell([1.2, 3.2, 2.6], [6.4, 4, 15], patch);
 // Lightning-scar stripes on the flanks.
 mirror_x() for (s = [[-4, 19, 20], [1, 18, -25], [6, 20, 30]])
   color(stripe) translate([6.6, s[0], s[1]]) rotate([s[2], 0, 0]) scale([0.4, 0.5, 3]) sphere(1, $fn = 10);
+
+// Paler storm streaks raked back over the shoulders, back and haunches (the sprite's grey mottling).
+mirror_x() for (k = [[-8, 4.6, 21.5, 30], [-3, 5.6, 21.5, 15], [2.5, 5.6, 21, 25], [7.5, 5, 20.6, 10], [10.5, 4.4, 18.6, 35], [-1, 2.6, 22.6, 20]])
+  color(streak) translate([k[1], k[0], k[2]]) rotate([0, -40, 0]) rotate([k[3], 0, 0]) scale([0.55, 2.8, 0.9]) sphere(1, $fn = 10);
 
 // Legs: thick, with white paws and claws.
 module leg(x, y, front) {
@@ -57,8 +79,10 @@ color(bodyDk) translate([0, -23.3, 26.4]) scale([0.9, 0.6, 0.6]) sphere(1, $fn =
 mirror_x() spike([1.5, -21.5, 24.6], [0, -0.3, -4], 0.75, 0.1, fang);
 // Fierce red eyes.
 mirror_x() {
-  eye([2.6, -19.2, 28.6], 1.2, iris = [0.85, 0.08, 0.08], pupil = [0.2, 0, 0], yaw = -20);
-  color(bodyDk) translate([2.6, -19.8, 29.9]) rotate([0, -20, -20]) scale([1.6, 0.6, 0.45]) sphere(1, $fn = 12);
+  color(socket) translate([2.45, -18.5, 29]) rotate([0, 0, 20]) scale([1.5, 0.6, 1.25]) sphere(1.2, $fn = 14);
+  eye([2.4, -18.45, 29], 1.55, iris = [1, 0.1, 0.06, GLOW], pupil = [0.15, 0, 0], sclera = [1, 0.85, 0.3], yaw = 20, flat = 0.5,
+      lid = 0.5, lid_tilt = 32, lid_c = socket);
+  brow([2.4, -18.45, 29], 1.55, 20, 0.8, mask);
 }
 // Pointed ears.
 mirror_x() spike([2.8, -13.5, 31.5], [1.4, 1, 4], 1.4, 0.1, body);

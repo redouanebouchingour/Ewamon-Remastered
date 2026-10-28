@@ -58,8 +58,13 @@ color(rock) translate([0, -14, 13]) scale([5, 3, 4.2]) sphere(1, $fn = 22);
 color(snout) translate([0, -17.2, 11.6]) rotate([90, 0, 0]) scale([3.2, 2.6, 1]) cylinder(h = 2.6, r = 1, center = true, $fn = 20);
 mirror_x() color([0.25, 0.14, 0.1]) translate([1.2, -18.6, 11.6]) scale([0.6, 0.3, 0.8]) sphere(1, $fn = 10);
 mirror_x() {
-  eye([3, -15.6, 15.2], 1.4, iris = eyeC, pupil = [0.2, 0.02, 0.02], sclera = [0.95, 0.85, 0.75], yaw = -30, shine = false);
-  color(rockDk) translate([3.2, -15.6, 16.4]) rotate([0, -20, -25]) scale([2, 0.8, 0.7]) sphere(1, $fn = 12);
+  // Glowing red eyes on a dark socket, sunk under a heavy stone brow that slants down to the snout.
+  eye([3.1, -15.2, 15.2], 1.75, iris = [1, 0.18, 0.08, GLOW], pupil = [0.15, 0.02, 0.02], sclera = [0.2, 0.1, 0.08], yaw = 10,
+      flat = 0.55, shine = false, lid = 0.48, lid_tilt = 32, lid_c = rockDk, slit = 0.35);
+  color(rockDk) hull() {
+    translate([4.6, -14.4, 17.4]) scale([1.5, 1.4, 0.85]) sphere(1, $fn = 10);
+    translate([1.2, -16.4, 16.4]) scale([0.9, 1, 0.6]) sphere(1, $fn = 10);
+  }
   // Ears: pointed stone wedges.
   color(rockHi) translate([5, -9.5, 18.6]) rotate([15, 30, 10]) scale([1.6, 1, 3]) sphere(1, $fn = 12);
   // Tusks: from the jaw, curving out and up.

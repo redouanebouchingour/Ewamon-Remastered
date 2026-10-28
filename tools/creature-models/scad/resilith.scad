@@ -23,8 +23,13 @@ ell([5.6, 5.4, 5], [0, -9, 9], green);
 color(brown) translate([0, -11.2, 7.6]) scale([4.2, 3.6, 3.6]) sphere(1, $fn = 24);
 mirror_x() color(orange) translate([3, -12.4, 7.8]) rotate([0, 0, -25]) scale([1.8, 1.2, 1.6]) sphere(1, $fn = 14);
 mirror_x() {
-  eye([2.1, -14.3, 8.6], 1.1, iris = red, sclera = [1, 0.5, 0.4], pupil = [0.3, 0, 0], yaw = -18, flat = 0.4);
-  color(greenDk) translate([2, -14.4, 9.8]) rotate([0, -25, -18]) scale([1.6, 0.6, 0.45]) sphere(1, $fn = 10);
+  // Glowing red eyes sunk into the mask under a hard brow that slants down to the mandibles.
+  eye([2.1, -13.6, 8.6], 1.5, iris = [1, 0.16, 0.12, GLOW], sclera = [0.95, 0.45, 0.15], pupil = [0.3, 0, 0], yaw = 12,
+      flat = 0.5, lid = 0.46, lid_tilt = 32, lid_c = greenDk, slit = 0.4);
+  color(greenDk) hull() {
+    translate([3.6, -12.8, 10.7]) scale([1.3, 1.1, 0.7]) sphere(1, $fn = 10);
+    translate([0.8, -14.4, 10]) scale([0.8, 0.8, 0.5]) sphere(1, $fn = 10);
+  }
 }
 mirror_x() spike([1, -14.4, 5.6], [0.3, -0.4, -1.6], 0.45, 0.05, [0.95, 0.9, 0.8]);  // mandibles
 // Dark seam across the top of the head and two whisker antennae.

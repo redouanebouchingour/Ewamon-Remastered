@@ -12,7 +12,7 @@ orange = [0.95, 0.5, 0.12, NOGLOW];
 gold = [0.95, 0.75, 0.2];
 wind = [0.3, 0.85, 0.9, GLOW];
 claw = [0.95, 0.95, 0.95];
-eyeC = [0.85, 0.08, 0.1];
+eyeC = [1, 0.1, 0.1, GLOW];
 
 // Legs: baggy blue trousers, orange ankle wraps, white clawed feet.
 mirror_x() {
@@ -52,9 +52,18 @@ translate([0, -0.6, 30]) scale(1.2) {
   ell([1.8, 1, 1], [0, -5.4, -0.6], [0.96, 0.97, 1]);
   mirror_x() ell([0.3, 0.25, 0.25], [0.6, -6.3, -0.3], [0.3, 0.3, 0.4]);
   color([0.3, 0.3, 0.4]) translate([0, -5.6, -1.6]) scale([1.4, 0.4, 0.2]) sphere(1, $fn = 10);
+  // Eyes sunk in dark sockets under a hard white brow that scowls down to the snout.
   mirror_x() {
-    eye([1.6, -2.9, 0.5], 1.0, iris = eyeC, pupil = [0.2, 0, 0], sclera = [1, 1, 1], yaw = -30, flat = 0.35);
-    color(furShade) translate([1.8, -3.1, 1.6]) rotate([0, -22, -30]) scale([1.4, 0.5, 0.35]) sphere(1, $fn = 10);
+    ell([1.5, 0.45, 1.35], [1.65, -2.6, 0.45], [0.2, 0.22, 0.32]);
+    eye([1.7, -3, 0.4], 1.3, iris = eyeC, pupil = [0.12, 0, 0], sclera = [0.25, 0.25, 0.32], yaw = -14, flat = 0.4,
+        lid = 0.42, lid_tilt = 32, lid_c = furShade, slit = 0.4, squint = 0.1);
+    color(fur) hull() {
+      translate([0.45, -3.5, 1.05]) scale([0.45, 0.45, 0.38]) sphere(1, $fn = 12);
+      translate([1.7, -3.25, 1.7]) scale([0.85, 0.55, 0.42]) sphere(1, $fn = 12);
+      translate([2.9, -2.2, 2.1]) scale([0.55, 0.55, 0.42]) sphere(1, $fn = 12);
+    }
+    // a fang off the upper jaw
+    spike([0.9, -5.4, -1.4], [0, -0.1, -0.9], 0.25, 0.04, claw);
   }
   // Golden crest: a tiara band with three points and two swept horns.
   color(gold) translate([0, -0.6, 2.4]) rotate([-15, 0, 0]) scale([3.4, 3.2, 1]) difference() {
@@ -81,6 +90,15 @@ mirror_x() for (i = [0 : 2]) mane_lock([4, 0.5 + i, 28 - i * 1.5], [4.5, -1 + i,
 chain([[0, 3.5, 12], [5, 6.5, 7], [11, 5, 4.5], [16, 2.5, 8], [17, 1.5, 14], [15.5, 1.5, 19]], [3, 2.8, 2.4, 2, 1.6, 1.3], fur);
 for (d = [[0, 0, 4.5], [2.5, 0, 3.5], [-2, 0.5, 3.5], [1, 1.5, 4], [3.5, -0.5, 1.5]]) mane_lock([15.5, 1.5, 19], d, 1.6, mane);
 
+// Tail detail: a shaggy crest of fur tufts along its top and pale-blue belly plates underneath.
+tailPts = [[0, 3.5, 12], [5, 6.5, 7], [11, 5, 4.5], [16, 2.5, 8], [17, 1.5, 14]];
+tailR = [3, 2.8, 2.4, 2, 1.6];
+for (i = [0 : 3]) for (f = [0.25, 0.75]) let(t = tailPts[i] * (1 - f) + tailPts[i + 1] * f, r = tailR[i] * (1 - f) + tailR[i + 1] * f)
+  mane_lock(t + [0, r * 0.75, r * 0.45], [0.4, 2, 1.3], r * 0.45, f < 0.5 ? maneShade : fur);
+for (i = [0 : 3]) let(t = (tailPts[i] + tailPts[i + 1]) / 2, r = (tailR[i] + tailR[i + 1]) / 2)
+  color(furShade) translate(t + [0, -r * 0.55, -r * 0.45]) scale([r * 0.75, r * 0.6, r * 0.55]) sphere(1, $fn = 10);
+// Gi trouser creases and claws on the fists.
+mirror_x() for (i = [0 : 2]) color(giDark) translate([4.2 + i * 0.6, -3.3 + i * 0.1, 8.5 + i * 1.6]) rotate([0, 25 - i * 10, 20]) scale([1.6, 0.25, 0.25]) sphere(1, $fn = 8);
 // Cyan wind rings swirling around the body.
 for (r = [[22, 12.5, 8], [13, 13, -7], [5, 11.5, 5]])
   color(wind) translate([0, 0, r[0]]) rotate([r[2], 4, 0]) scale([1, 0.85, 1]) rotate_extrude($fn = 40) translate([r[1], 0]) scale([1, 0.4]) circle(1.2, $fn = 6);

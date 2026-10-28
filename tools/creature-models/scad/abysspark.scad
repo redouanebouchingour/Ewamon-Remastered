@@ -28,11 +28,23 @@ for (i = [0 : 5]) {
 }
 // Pale cheek plates.
 mirror_x() ell([1, 3, 1.4], [5.2, -11.8, 13], [0.85, 0.88, 0.92]);
-// Narrow glaring eyes.
-mirror_x() {
-  eye([5, -11.5, 21.2], 1.5, iris = yellow, pupil = dark, sclera = yellow, yaw = -35, flat = 0.35);
-  color(navyDk) translate([4.8, -12, 22.8]) rotate([0, -25, -35]) scale([2.6, 0.8, 0.6]) sphere(1, $fn = 12);
+// Eye sunk into the skull: turned `yaw` outward along the skin and squashed front-to-back so only its face shows, set
+// in a dark socket under a hard brow ridge of the skin colour that slants down to the snout, so the face itself scowls.
+module socket_eye(p, size, yaw, iris, sclera, pupil, skin, sock, lid = 0.5, tilt = 30, squash = 0.6) {
+  translate(p) rotate([0, 0, yaw]) {
+    color(sock) translate([0, size * 0.45, -size * 0.05]) scale([1.14, 0.55, 1.12]) sphere(size, $fn = 20);
+    scale([1, squash, 1]) eye([0.01, 0, 0], size, iris = iris, sclera = sclera, pupil = pupil, lid = lid, lid_tilt = tilt,
+                              lid_c = skin, slit = 0.35);
+    // The ridge is a wedge rooted behind the eye, so it reads as a ledge of the skull, not a stuck-on bar.
+    color(skin) hull() {
+      translate([size * 0.8, size * 0.25, size * 0.78]) scale([0.32, 0.45, 0.24]) sphere(size, $fn = 12);
+      translate([-size * 0.9, -size * 0.45, size * 0.12]) scale([0.36, 0.45, 0.24]) sphere(size, $fn = 12);
+      translate([0, size * 0.9, size * 0.45]) scale([0.9, 0.5, 0.4]) sphere(size, $fn = 12);
+    }
+  }
 }
+// Narrow glaring eyes: glowing yellow slits sunk under the heavy brow.
+mirror_x() socket_eye([4.7, -11.7, 21.1], 2.2, 30, [1, 0.85, 0.1, GLOW], [1, 0.93, 0.35], dark, navyDk, dark, lid = 0.5, tilt = 32);
 
 // Lightning streaks and cyan flecks on the flanks.
 module streak(p, rot, l, c) { color(c) translate(p) rotate(rot) scale([0.7, l, 0.7]) sphere(1, $fn = 8); }

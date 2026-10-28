@@ -16,7 +16,7 @@ tailGrey = [0.36, 0.26, 0.2];
 tailCream = [0.95, 0.5, 0.12];
 claw = [0.95, 0.92, 0.82];
 nose = [0.18, 0.12, 0.1];
-eyeIris = [1, 0.55, 0.1];
+eyeIris = [1, 0.55, 0.1, GLOW];
 obsidian = [0.16, 0.14, 0.15];
 ember = [1, 0.45, 0.08];
 flameRed = [0.92, 0.22, 0.06];
@@ -132,10 +132,16 @@ ell([0.9, 0.6, 0.6], [0, -6.4, 33.4], nose);
 color(nose) translate([0, -6, 31.6]) scale([1.2, 0.3, 0.3]) sphere(1, $fn = 10);
 // Cheek ruff.
 mirror_x() for (z = [31, 33]) spike([3.4, -2.6, z], [2, 0.4, -1], 1.2, 0.05, furHi);
-// Eyes: narrow and fierce under heavy brows.
+// Eyes: big, narrow and fierce, sunk in dark sockets under a hard brow ridge that slants down to the nose.
 mirror_x() {
-  eye([2, -4.4, 35], 1, iris = eyeIris, pupil = [0.1, 0.12, 0.16], yaw = -20);
-  color(furDark) translate([2.1, -4.9, 36.2]) rotate([0, -18, -20]) scale([1.6, 0.5, 0.45]) sphere(1, $fn = 12);
+  translate([2.15, -4.15, 34.9]) rotate([0, -12, -20]) scale([1.65, 0.5, 1.35]) color(nose) sphere(1, $fn = 16);
+  eye([2.15, -4.4, 34.9], 1.3, iris = eyeIris, pupil = [0.06, 0.06, 0.1], sclera = [0.98, 0.9, 0.6], yaw = -18,
+      lid = 0.48, lid_tilt = 32, lid_c = furDark, slit = 0.35, squint = 0.16);
+  color(fur) hull() {
+    translate([1.0, -5.25, 35.75]) scale([0.5, 0.5, 0.4]) sphere(1, $fn = 12);
+    translate([2.3, -4.9, 36.5]) scale([0.95, 0.6, 0.45]) sphere(1, $fn = 12);
+    translate([3.7, -3.6, 37]) scale([0.6, 0.6, 0.45]) sphere(1, $fn = 12);
+  }
 }
 // Arrow marking: point on the brow, band over the crown into the mane.
 color(mark) translate([0, -4.95, 36.6]) rotate([-60, 0, 0]) linear_extrude(0.8, center = true)

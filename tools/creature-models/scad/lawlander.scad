@@ -2,6 +2,17 @@
 // cape trimmed in gold, an orange bandana, a bandolier, leather bracers, a holstered gun and a badge on his hat.
 include <lib.scad>
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
 fur = [0.48, 0.44, 0.4];
 furDk = [0.24, 0.19, 0.15];
 furHi = [0.55, 0.48, 0.38];
@@ -98,8 +109,8 @@ color(band) translate([0, -14, 29.9]) scale([1.1, 0.7, 0.8]) sphere(1, $fn = 12)
 ell([1.4, 3, 2.8], [0, -9.6, 33.4], cream);
 mirror_x() {
   limb([2.6, -10, 31.6], [4.6, -5, 33.2], 1.2, 1.7, band);
-  eye([2.6, -10.6, 31.6], 0.85, iris = eyeCol, pupil = [0.1, 0.05, 0], sclera = eyeCol, yaw = -18, shine = false);
-  color(band) translate([2.4, -10.8, 32.6]) rotate([0, -15, -18]) scale([1.4, 0.5, 0.35]) sphere(1, $fn = 10);
+  eye([2.6, -10.5, 31.5], 1.45, iris = eyeCol, pupil = [0.1, 0.05, 0], sclera = eyeCol, yaw = 6, shine = false, lid = 0.5, lid_tilt = 24, lid_c = band, slit = 0.4);
+  brow([2.6, -10.5, 31.5], 1.45, 0.42, fur, 6);
 }
 // Mouth line and a wheat stalk.
 color(band) translate([0, -12, 28.4]) scale([1.4, 0.4, 0.25]) sphere(1, $fn = 10);

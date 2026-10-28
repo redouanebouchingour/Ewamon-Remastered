@@ -2,6 +2,17 @@
 // spray of leafy tail feathers and orange webbed feet. Stink lines curl up from the flower.
 include <lib.scad>
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
 green = [0.55, 0.78, 0.25];
 greenDk = [0.36, 0.58, 0.18];
 belly = [0.86, 0.92, 0.45];
@@ -32,8 +43,8 @@ color(bill) hull() {
 color(billDk) translate([0, -12.4, 21.2]) scale([3.1, 2.4, 0.6]) sphere(1, $fn = 16);
 // Scowling eyes: pale blue under heavy dark brows.
 mirror_x() {
-  eye([3.4, -8.6, 25.4], 1.9, iris = [0.25, 0.55, 0.75], pupil = [0.05, 0.1, 0.15], sclera = [0.8, 0.92, 0.95], yaw = -25, flat = 0.4);
-  color([0.12, 0.2, 0.1]) translate([3.2, -9.2, 27.2]) rotate([0, 22, -25]) scale([2.6, 0.7, 0.5]) sphere(1, $fn = 12);
+  eye([3.4, -8.1, 25.4], 2.2, iris = [0.2, 0.6, 0.85], pupil = [0.05, 0.1, 0.15], sclera = [0.8, 0.92, 0.95], yaw = 8, flat = 0.4, lid = 0.5, lid_tilt = 22, lid_c = greenDk, slit = 0.6);
+  brow([3.4, -8.1, 25.4], 2.2, 0.45, greenDk, 8);
 }
 // Darker cheek spot.
 mirror_x() ell([1, 0.5, 1], [6, -6, 23], greenDk);
@@ -73,6 +84,16 @@ for (f = [[18, 0, leaf], [32, 10, leafHi], [8, -12, leaf], [26, -24, leafHi], [1
   color(f[2]) translate([4, 8, 9]) rotate([0, 0, f[0] - 25]) rotate([f[1] - 30, 0, 0]) translate([0, 9, 0]) scale([2.4, 10, 1.1]) sphere(1, $fn = 20);
 }
 color(greenDk) translate([3, 7, 9]) scale([4, 3, 3]) sphere(1, $fn = 20);
+
+// Back: overlapping rows of darker scalloped feathers so the plump back is not one smooth ball.
+for (row = [[11.5, 0], [15, 1], [18.5, 0]], x = [-8 : 4 : 8]) {
+  xx = x + row[1] * 2;
+  z = row[0];
+  if (abs(xx) < 8.5) {
+    y = 1 + 11 * sqrt(max(0.05, 1 - pow(xx / 11, 2) - pow((z - 11) / 9, 2))) - 0.5;
+    color(row[1] == 1 ? greenDk : leaf) translate([xx, y, z]) rotate([-20, 0, -xx * 3]) scale([2.3, 0.7, 2.6]) sphere(1, $fn = 12);
+  }
+}
 
 // Legs and orange webbed feet.
 mirror_x() {

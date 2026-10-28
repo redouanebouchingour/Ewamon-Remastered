@@ -58,10 +58,14 @@ blob([[[7.5, 7, 6.5], [0, -5.5, 29.5]], [[6.5, 6, 5], [0, -3, 32.5]]], bark);
 blob([[[4.4, 3.4, 3], [0, -11, 27.5]], [[3, 3, 2.3], [0, -13, 28]]], muzzle);
 ell([1.4, 0.9, 1], [0, -15.6, 28.5], dark);
 color(dark) translate([0, -14.4, 26]) rotate([90, 0, 0]) scale([1.6, 0.35, 0.35]) cylinder(h = 0.6, r = 1, center = true, $fn = 12);
-// Glowing red eyes under a heavy brow.
+// Glowing red eyes on dark sockets, sunk under heavy bark brows that slant down to the muzzle.
 mirror_x() {
-  eye([3.6, -11, 31], 1.5, iris = red, sclera = dark, pupil = dark, yaw = -22);
-  color(barkDk) translate([3.6, -11.7, 32.6]) rotate([0, -15, -22]) scale([2.2, 0.8, 0.6]) sphere(1, $fn = 12);
+  eye([3.6, -10.7, 31], 1.9, iris = [1, 0.16, 0.08, GLOW], sclera = dark, pupil = dark, yaw = 12, flat = 0.5,
+      lid = 0.48, lid_tilt = 32, lid_c = barkDk, slit = 0.4);
+  color(barkDk) hull() {
+    translate([5.6, -9.6, 33.6]) scale([1.7, 1.4, 0.9]) sphere(1, $fn = 12);
+    translate([1.3, -11.9, 32.6]) scale([1, 1, 0.65]) sphere(1, $fn = 10);
+  }
 }
 // Small ears.
 mirror_x() ell([2, 1.3, 2], [5.6, -3, 36.5], bark);

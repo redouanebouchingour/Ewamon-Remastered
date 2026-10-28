@@ -12,7 +12,7 @@ flameRed = [0.93, 0.25, 0.05];
 flameOrange = [1, 0.58, 0.1];
 flameCore = [1, 0.9, 0.45];
 claw = [0.93, 0.88, 0.75];
-eyeC = [1, 0.6, 0.1];
+eyeC = [1, 0.9, 0.35, GLOW];
 
 module tongue(p, d, r, c) {
   color(c) hull() { translate(p) sphere(r); translate(p + d) sphere(0.15); }
@@ -86,9 +86,16 @@ mirror_x() color(seam) translate([2.8, -5, 31.4]) rotate([0, 0, -20]) scale([0.3
 mirror_x() spike([1.5, -9.4, 30.8], [0, 0, -1.4], 0.45, 0.05, claw);
 mirror_x() spike([1.5, -9.2, 30], [0, 0, 1.2], 0.4, 0.05, claw);
 // Glowing eyes and brow plates.
+// Molten eyes sunk in black sockets under hard brow plates that slant down to the snout.
 mirror_x() {
-  eye([2.6, -6.4, 33.4], 1.45, iris = eyeC, pupil = [0.25, 0.05, 0], sclera = [1, 0.85, 0.4], yaw = -25);
-  color(armorHi) translate([2.8, -6.8, 34.8]) rotate([0, -20, -25]) scale([2, 0.9, 0.6]) sphere(1, $fn = 14);
+  translate([3, -5.55, 34.1]) rotate([0, 0, -30]) scale([1.7, 0.5, 1.5]) color([0.05, 0.03, 0.03]) sphere(1, $fn = 16);
+  eye([3, -5.75, 34.1], 1.5, iris = eyeC, pupil = [0.25, 0.04, 0], sclera = [1, 0.4, 0.04, GLOW], yaw = -30,
+      lid = 0.46, lid_tilt = 33, lid_c = armorHi, slit = 0.35, squint = 0.15);
+  color(armorHi) hull() {
+    translate([1.3, -7, 35.1]) scale([0.6, 0.6, 0.45]) sphere(1, $fn = 12);
+    translate([3, -6.2, 35.95]) scale([1.1, 0.7, 0.5]) sphere(1, $fn = 12);
+    translate([4.6, -4.5, 36.4]) scale([0.7, 0.7, 0.55]) sphere(1, $fn = 12);
+  }
 }
 // Forehead sigil.
 color(gold) translate([0, -5.3, 35.3]) rotate([70, 0, 0]) difference() { cylinder(h = 0.5, r = 1.2, center = true, $fn = 18); cylinder(h = 1, r = 0.7, center = true, $fn = 14); }
@@ -121,3 +128,21 @@ mirror_x() {
   color(seam) translate([3, 6.4, 20]) rotate([0, 0, 0]) scale([0.4, 0.5, 5]) sphere(1, $fn = 10);
 }
 color(seam) translate([0, 6.6, 18]) scale([4, 0.5, 0.4]) sphere(1, $fn = 14);
+
+// Back armour: shoulder-blade plates rimmed in molten seams and a row of spine plates, so the back is not a plain blob.
+mirror_x() {
+  color(seam) translate([4.2, 5.6, 24]) rotate([0, -25, 0]) scale([3.5, 1.2, 4.2]) sphere(1, $fn = 16);
+  color(armorHi) translate([4.25, 5.95, 24.1]) rotate([0, -25, 0]) scale([3.2, 1.2, 3.9]) sphere(1, $fn = 16);
+  ell([0.6, 0.4, 0.6], [4.6, 7.1, 24.4], gold);
+}
+for (z = [14, 17.5, 21, 24.5]) color(armorHi) translate([0, 6.2 + (z - 14) * 0.08, z]) rotate([-15, 0, 0]) scale([1.5, 0.9, 1.4]) sphere(1, $fn = 10);
+// Glowing cracks radiating from the galaxy core.
+for (a = [25, 70, 150, 205, 250, 320]) color(seam) translate([5.6 * cos(a), -5.4 + abs(cos(a)) * 0.9, 21 + 5.6 * sin(a)])
+  rotate([0, -a, 0]) rotate([0, 0, -15 * cos(a)]) scale([1.6, 0.3, 0.25]) sphere(1, $fn = 8);
+// Elbow spikes and knee spikes.
+mirror_x() {
+  spike([13.5, 1, 17.5], [1.2, 2.2, 1], 0.9, 0.08, armorHi);
+  spike([6.9, -4.2, 7.2], [0.2, -1.2, 1.6], 0.7, 0.08, armorHi);
+}
+// Plate rings down the tail, rimmed in seams.
+for (p = [[4.5, 7.2, 8.6], [10, 9.1, 6.4], [15.6, 7.6, 6.4]]) ell([1.4, 1.4, 1.2], p + [0, 0, 2.5], armorHi);

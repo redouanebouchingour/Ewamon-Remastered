@@ -41,10 +41,25 @@ mirror_x() for (i = [0 : 4]) {
   spike([1.7 - i * 0.08, y - 0.8, 28.7], [0, 0, 0.8], 0.28, 0.02, [1, 1, 0.95]);
 }
 mirror_x() ell([0.3, 0.3, 0.3], [0.9, -15.6, 30.2], tealDk);
-// Eyes, brows and horns.
+// Eye sunk into the skull: turned `yaw` outward along the skin and squashed front-to-back so only its face shows, set
+// in a dark socket under a hard brow ridge of the skin colour that slants down to the snout, so the face itself scowls.
+module socket_eye(p, size, yaw, iris, sclera, pupil, skin, sock, lid = 0.5, tilt = 30, squash = 0.6) {
+  translate(p) rotate([0, 0, yaw]) {
+    color(sock) translate([0, size * 0.45, -size * 0.05]) scale([1.14, 0.55, 1.12]) sphere(size, $fn = 20);
+    scale([1, squash, 1]) eye([0.01, 0, 0], size, iris = iris, sclera = sclera, pupil = pupil, lid = lid, lid_tilt = tilt,
+                              lid_c = skin, slit = 0.35);
+    // The ridge is a wedge rooted behind the eye, so it reads as a ledge of the skull, not a stuck-on bar.
+    color(skin) hull() {
+      translate([size * 0.8, size * 0.25, size * 0.78]) scale([0.32, 0.45, 0.24]) sphere(size, $fn = 12);
+      translate([-size * 0.9, -size * 0.45, size * 0.12]) scale([0.36, 0.45, 0.24]) sphere(size, $fn = 12);
+      translate([0, size * 0.9, size * 0.45]) scale([0.9, 0.5, 0.4]) sphere(size, $fn = 12);
+    }
+  }
+}
+// Eyes (bright green slits in dark sockets under a teal brow ridge) and horns.
 mirror_x() {
-  eye([2.9, -5.6, 31.2], 1.1, iris = [0.2, 0.75, 0.3], yaw = -32);
-  color(tealDk) translate([2.8, -5.4, 32.4]) rotate([0, -14, -30]) scale([1.6, 1, 0.5]) sphere(1, $fn = 14);
+  socket_eye([2.3, -6.6, 32.6], 1.7, 28, [0.35, 1, 0.3], [0.95, 0.95, 0.62], [0.02, 0.08, 0.02], teal, [0.04, 0.12, 0.16],
+             lid = 0.38, tilt = 30);
   spike([2.4, -2.6, 32.6], [1.2, 1.8, 3.6], 0.9, 0.1, horn);
   spike([3.4, -1.2, 31.6], [2, 2.2, 1.8], 0.7, 0.1, horn);
 }
@@ -54,7 +69,7 @@ ribs = [[-14, 12], [0, 16], [14, 18], [28, 18], [42, 16], [56, 13], [70, 9]];
 mirror_x() rotate([0, 6, 0]) for (i = [0 : len(ribs) - 2]) {
   a0 = ribs[i][0]; l0 = ribs[i][1]; a1 = ribs[i + 1][0]; l1 = ribs[i + 1][1];
   b0 = [0.4, 4 + i * 1.6, 17 - i * 1.4]; b1 = [0.4, 4 + (i + 1) * 1.6, 17 - (i + 1) * 1.4];
-  color([purple, [0.32, 0.42, 0.62], purpleHi][i % 3]) hull() {
+  color([purple, sailTeal, purpleHi][i % 3]) hull() {
     translate(b0) sphere(0.6);
     translate(b0 + [0, sin(a0), cos(a0)] * l0) sphere(0.4);
     translate(b1) sphere(0.6);
@@ -69,8 +84,11 @@ mirror_x() for (r = [[4.5, 6, 16], [5.5, 5, 9.5]]) ell([1.2, 1, 1.2], r, rockDk)
 // Arms: purple crystal gauntlets, big dark claws.
 mirror_x() {
   chain([[5.5, -2, 21.5], [8, -3.5, 17], [8.4, -6, 14.5]], [2.2, 1.9, 1.6], teal);
-  color(purple) translate([8.2, -4.6, 16]) rotate([40, 0, 15]) cylinder(h = 4, r1 = 2.6, r2 = 2, $fn = 6, center = true);
+  color(purple) translate([8.2, -4.6, 16]) rotate([40, 0, 15]) cylinder(h = 4.6, r1 = 3, r2 = 2.3, $fn = 6, center = true);
+  // Crystal shards jutting out of the gauntlet, pale facets on the dark.
   spike([9.4, -3.8, 17], [1.8, 0.8, 1.6], 0.9, 0.1, purpleHi);
+  spike([9.8, -5.2, 15.2], [2.2, -0.4, 0.2], 0.8, 0.1, purpleHi);
+  spike([8, -3, 18.2], [0.4, 1.2, 2], 0.7, 0.1, purpleDk);
   ell([1.8, 1.6, 1.4], [8.6, -7, 13.6], teal);
   for (t = [-35, 0, 35]) chain([[8.6 + sin(t) * 1.2, -8.2, 13.6], [8.8 + sin(t) * 1.6, -9.4, 12.6], [8.8 + sin(t) * 1.6, -9.4, 11]], [0.55, 0.4, 0.1], claw);
 }
@@ -96,3 +114,15 @@ for (p = [[0, 1.6, 0], [0, -1.6, 0]]) color(rock) translate([16, 9.5, 21]) rotat
 
 // Bubbles.
 for (b = [[12, 2, 22, 0.8], [13.5, 3, 26, 0.6], [11, 4, 18, 0.5], [-12, 2, 10, 0.6], [-10, -6, 4, 0.5], [9, -8, 3, 0.5]]) ell([b[3], b[3], b[3]], [b[0], b[1], b[2]], bubble);
+
+// Scale cracks over the back: a net of short dark lines across the torso's back and down the tail, like the sprite's
+// crackled hide, so the back isn't one smooth teal blob.
+function back_pt(a, z) = let(t = (z - 13) / 8, rx = 7 - 1.8 * t, ry = 6.5 - 1.5 * t, cy = 1.5 - 2.5 * t)
+  [rx * sin(a) * 1.0, cy + ry * cos(a) * 1.0, z];
+for (z = [12 : 3 : 18]) for (a = [-84 : 24 : 60]) let(o = (z % 2) * 12) {
+  limb(back_pt(a + o, z), back_pt(a + o + 24, z), 0.22, 0.22, tealDk);
+  limb(back_pt(a + o, z), back_pt(a + o + 6, z + 3), 0.22, 0.22, tealDk);
+}
+// Dark scutes along the top of the tail.
+for (i = [0 : len(tail) - 3]) for (t = [0.25, 0.75]) let(p = tail[i] + (tail[i + 1] - tail[i]) * t)
+  color(tealDk) translate(p + [0, 0, [4, 3.2, 2.5, 1.9, 1.5][i] * 0.9]) scale([0.9, 1.2, 0.5]) sphere(1, $fn = 10);

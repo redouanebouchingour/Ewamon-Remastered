@@ -30,9 +30,23 @@ blob([[[5, 3, 2], [0, -13, 12]], [[4, 2, 1.5], [0, -15, 12.5]]], cyan);
 color(dark) translate([0, -14.5, 13.8]) scale([4.4, 2.2, 0.5]) sphere(1, $fn = 20);
 mirror_x() for (x = [1.2, 3]) spike([x, -15.8, 13.4], [0, 0, 1.4], 0.4, 0.05, "white");
 
-// Fierce yellow eyes.
-mirror_x() eye([4.6, -12.3, 18], 2.3, iris = yellow, pupil = dark, sclera = yellow, yaw = -30);
-mirror_x() color(navy) translate([4.4, -12.8, 20.3]) rotate([0, -20, -30]) scale([2.8, 0.7, 0.6]) sphere(1, $fn = 12);
+// Eye sunk into the skull: turned `yaw` outward along the skin and squashed front-to-back so only its face shows, set
+// in a dark socket under a hard brow ridge of the skin colour that slants down to the snout, so the face itself scowls.
+module socket_eye(p, size, yaw, iris, sclera, pupil, skin, sock, lid = 0.5, tilt = 30, squash = 0.6) {
+  translate(p) rotate([0, 0, yaw]) {
+    color(sock) translate([0, size * 0.45, -size * 0.05]) scale([1.14, 0.55, 1.12]) sphere(size, $fn = 20);
+    scale([1, squash, 1]) eye([0.01, 0, 0], size, iris = iris, sclera = sclera, pupil = pupil, lid = lid, lid_tilt = tilt,
+                              lid_c = skin, slit = 0.35);
+    // The ridge is a wedge rooted behind the eye, so it reads as a ledge of the skull, not a stuck-on bar.
+    color(skin) hull() {
+      translate([size * 0.8, size * 0.25, size * 0.78]) scale([0.32, 0.45, 0.24]) sphere(size, $fn = 12);
+      translate([-size * 0.9, -size * 0.45, size * 0.12]) scale([0.36, 0.45, 0.24]) sphere(size, $fn = 12);
+      translate([0, size * 0.9, size * 0.45]) scale([0.9, 0.5, 0.4]) sphere(size, $fn = 12);
+    }
+  }
+}
+// Fierce yellow eyes: glowing slits sunk under a hard navy brow.
+mirror_x() socket_eye([4.3, -12.5, 18.2], 2.7, 30, [1, 0.84, 0.2, GLOW], [1, 0.95, 0.55], dark, navy, dark, lid = 0.48);
 
 // Lightning markings along the flanks.
 module bolt(p, s, flip = 1) {

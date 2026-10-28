@@ -26,9 +26,14 @@ ell([7.6, 7.2, 8], [0, -1.5, 31], skin);
 mirror_x() ell([1.3, 1.6, 2], [7.4, -0.5, 30.5], skinDk);  // ears
 // Heavy frowning brows over deep-set eyes.
 mirror_x() {
-  color(skinDk) translate([2.9, -7.4, 31.4]) scale([2.1, 1.4, 1.7]) sphere(1, $fn = 16);  // eye socket
-  eye([2.9, -8.4, 31], 1.45, iris = eyeC, sclera = [0.96, 0.9, 0.78], pupil = [0.08, 0.04, 0.02], yaw = -10, flat = 0.4, shine = true);
-  color(skinDk) translate([2.8, -8.4, 33.3]) rotate([0, -22, -8]) scale([2.6, 1, 0.7]) sphere(1, $fn = 14);
+  color(skinDk) translate([2.9, -7.3, 31.1]) scale([2.1, 0.8, 1.8]) sphere(1, $fn = 16);  // eye socket
+  eye([2.9, -7.6, 31], 1.65, iris = [0.62, 0.36, 0.1], sclera = [0.96, 0.9, 0.78], pupil = [0.08, 0.04, 0.02], yaw = 8,
+      flat = 0.5, lid = 0.42, lid_tilt = 30, lid_c = skinDk, slit = 0.6);
+  // Brow ridge overhanging the eye, slanting down to the nose.
+  color(skin) hull() {
+    translate([5, -6.6, 33.5]) scale([1.6, 1.3, 0.95]) sphere(1, $fn = 12);
+    translate([1.1, -8.4, 32.6]) scale([1.1, 1, 0.75]) sphere(1, $fn = 10);
+  }
 }
 ell([1.1, 1.3, 1.5], [0, -9, 29.4], skinHi);  // nose
 color([0.3, 0.17, 0.08]) translate([0, -8.3, 26.7]) scale([1.8, 0.6, 0.4]) sphere(1, $fn = 14);  // frown

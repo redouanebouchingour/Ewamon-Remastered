@@ -42,8 +42,8 @@ mirror_x() {
   // Swept horns off the shield.
   chain([[3.6, -12, 13.6], [6, -12, 16.6], [8, -9, 18.4]], [1.2, 0.8, 0.1], shellHi);
   spike([5.4, -11.5, 10], [3.6, 0.5, 1], 1.1, 0.1, shellHi);
-  color(eyeC) translate([2.8, -17.6, 10.2]) rotate([0, 0, -30]) scale([1.8, 0.9, 1.1]) sphere(1, $fn = 14);
-  color([1, 0.85, 0.3]) translate([2.6, -18.4, 10.4]) sphere(0.55, $fn = 8);
+  color(eyeC) translate([2.8, -17.6, 10.2]) rotate([0, -25, -30]) scale([1.9, 0.9, 0.75]) sphere(1, $fn = 14);
+  color([1, 0.85, 0.3]) translate([2.6, -18.4, 10.3]) scale([1, 1, 0.7]) sphere(0.5, $fn = 8);
   color(violet) translate([3.4, -17.2, 11.6]) rotate([0, -25, -30]) scale([1.6, 0.5, 0.35]) sphere(1, $fn = 10);
   // Fangs hanging from the jaw.
   for (x = [1, 2.8, 4.4]) spike([x, -17.4 + x * 0.4, 7.2], [x * 0.2, -1, -4 + x * 0.3], 0.8, 0.05, hook);

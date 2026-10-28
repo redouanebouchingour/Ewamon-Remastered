@@ -2,6 +2,17 @@
 // a scowling face with a tiny dark beak and a flame mark on its back.
 include <lib.scad>
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
 body = [0.85, 0.42, 0.18];
 bodyHi = [0.95, 0.55, 0.28];
 bodyDk = [0.7, 0.3, 0.12];
@@ -37,8 +48,8 @@ for (x = [-4, 0, 4]) spike([x, -9, 14.5], [x * 0.1, -0.6, -1.6], 1.2, 0.1, bodyH
 
 // Face: angry eyes, a little dark beak.
 mirror_x() {
-  eye([3.8, -8.1, 24.8], 1.8, iris = [0.65, 0.15, 0.05], sclera = [1, 0.85, 0.6], pupil = [0.1, 0.02, 0], yaw = -22, flat = 0.45);
-  color(bodyDk) translate([3.7, -8.6, 26.9]) rotate([0, -22, -22]) scale([2.3, 0.8, 0.55]) sphere(1, $fn = 12);
+  eye([3.8, -7.7, 24.8], 2.1, iris = [0.9, 0.16, 0.04], sclera = [1, 0.88, 0.55], pupil = [0.1, 0.02, 0], yaw = 6, flat = 0.45, lid = 0.42, lid_tilt = 32, lid_c = [0.35, 0.12, 0.05], slit = 0.4);
+  brow([3.8, -7.7, 24.8], 2.1, 0.6, bodyDk, 6);
 }
 color(beak) translate([0, -9.5, 22.4]) rotate([90, 0, 0]) cylinder(h = 2.4, r1 = 1.1, r2 = 0.1, $fn = 12);
 

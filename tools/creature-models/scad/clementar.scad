@@ -3,6 +3,17 @@
 // three leafy oranges held up in each hand. Its big tan tail sweeps out from under the robe.
 include <lib.scad>
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
 fur = [0.84, 0.72, 0.48];
 furDk = [0.7, 0.57, 0.36];
 cream = [0.95, 0.87, 0.68];
@@ -106,9 +117,10 @@ blob([[[2.6, 2, 1.9], [0, -4.4, 26]], [[1.1, 1.2, 0.9], [0, -7.6, 26.4]]], cream
 ell([0.7, 0.5, 0.55], [0, -8.6, 26.8], nose);
 color(nose) translate([0.6, -6.4, 25.3]) rotate([90, 0, 12]) scale([1.4, 0.3, 1]) cylinder(h = 0.4, r = 1, center = true, $fn = 12);
 // Viewer's right eye open, left eye a closed wink.
-eye([2.4, -4.4, 28.8], 1.35, iris = [0.55, 0.3, 0.1], pupil = [0.2, 0.08, 0.04], yaw = -26, flat = 0.42);
-color(furDk) translate([2.4, -4.8, 29.9]) rotate([0, 14, -26]) scale([1.5, 0.5, 0.35]) sphere(1, $fn = 10);
-color(nose) translate([-2.4, -4.6, 28.7]) rotate([0, -8, 26]) scale([1.4, 0.45, 0.32]) sphere(1, $fn = 10);
+eye([2.4, -4.0, 28.8], 1.6, iris = [0.85, 0.5, 0.12], pupil = [0.2, 0.08, 0.04], yaw = 8, flat = 0.42, lid = 0.5, lid_tilt = 14, lid_c = furDk, slit = 0.5);
+brow([2.4, -4.0, 28.8], 1.6, 0.3, fur, 8);
+color(nose) translate([-2.4, -4.75, 28.6]) rotate([0, -8, 10]) scale([1.6, 0.5, 0.36]) sphere(1, $fn = 10);
+mirror([1, 0, 0]) brow([2.4, -4.2, 28.4], 1.6, 0.1, fur);
 
 // Tall ears and the fez.
 mirror_x() ear([3.2, 0.4, 30.4], [5, 2.5, 11.5], 3, earIn, fur, fur);

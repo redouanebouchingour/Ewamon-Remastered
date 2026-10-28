@@ -1,6 +1,23 @@
 // Cindercap: a charcoal lizard under a glowing ember-spotted mushroom cap, a flame on its tail tip.
 include <lib.scad>
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
+// Flat colour patch lying on the ellipsoid (radii r, centre c) at azimuth az (0 = straight back, +Y) and elevation el.
+module patchOn(r, c, az, el, s, col) {
+  color(col) translate(c + [r[0] * sin(az) * cos(el), r[1] * cos(az) * cos(el), r[2] * sin(el)])
+    rotate([0, 0, -az]) rotate([el, 0, 0]) scale([s, s * 0.3, s * 0.8]) sphere(1, $fn = 14);
+}
+
 body = [0.2, 0.2, 0.23];
 bodyHi = [0.3, 0.3, 0.34];
 capRed = [0.86, 0.22, 0.06];
@@ -14,6 +31,10 @@ flameOrange = [1, 0.55, 0.08];
 flameCore = [1, 0.9, 0.4];
 claw = [0.92, 0.92, 0.9];
 
+// Ashy scale patches and a glowing crack down the back.
+for (m = [[-25, 15, 2.2], [30, 35, 1.8], [10, -10, 2.4], [-40, -25, 1.6]]) patchOn([8, 7, 7], [0, 0, 9], m[0], m[1], m[2], bodyHi);
+for (m = [[-20, 20, 2], [35, 5, 1.6]]) patchOn([7.5, 6.8, 6.2], [0, -1, 23.5], m[0], m[1], m[2], bodyHi);
+chain([[0.6, 7.6, 15.5], [-0.5, 7.4, 12], [0.8, 7.6, 8.5], [-0.2, 7.4, 5.5]], [0.32, 0.3, 0.28, 0.22], [1, 0.45, 0.08]);
 // Torso, a pear: wide hips, narrower chest.
 blob([[[8, 7, 7], [0, 0, 9]], [[6.5, 6, 6], [0, -0.5, 16]]], body);
 // Belly glow.
@@ -29,8 +50,8 @@ mirror_x() ell([0.35, 0.3, 0.35], [1.1, -11.2, 22], [0.08, 0.08, 0.1]);
 color([0.08, 0.08, 0.1]) translate([0, -10.1, 20.1]) rotate([90, 0, 0]) scale([2.6, 0.6, 0.4]) cylinder(h = 0.6, r = 1, center = true, $fn = 16);
 // Angry ember eyes under heavy brows.
 mirror_x() {
-  eye([3.4, -7.4, 23.4], 1.8, iris = [0.95, 0.35, 0.05], pupil = [0.1, 0.02, 0.02], sclera = [1, 0.7, 0.3], yaw = -18);
-  color(bodyHi) translate([3.4, -8, 25.4]) rotate([0, -18, -18]) scale([2.2, 0.9, 0.7]) sphere(1, $fn = 16);
+  eye([3.5, -7.25, 23.0], 2.5, iris = [1, 0.42, 0.05, GLOW], pupil = [0.1, 0.02, 0.02], sclera = [1, 0.72, 0.25], yaw = 6, lid = 0.4, lid_tilt = 30, lid_c = [0.1, 0.1, 0.12], slit = 0.35);
+  brow([3.5, -7.25, 23.0], 2.5, 0.45, bodyHi, 6);
 }
 
 // Mushroom cap: a squashed dome with a brown gill skirt underneath, ember spots on top; tipped back off the face.

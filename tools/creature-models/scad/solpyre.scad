@@ -15,12 +15,30 @@ talon = [0.42, 0.28, 0.18];
 rock = [0.22, 0.13, 0.1];
 lava = [0.85, 0.3, 0.06];
 beakC = [0.85, 0.55, 0.15];
+beakDk = [0.55, 0.3, 0.08];
+socket = [0.22, 0.03, 0.04];
+
+// Hard brow ridge over an eye at p (radius s, turned yaw like the eye): a hulled wedge in the skin colour, high at the
+// temple and slanting down towards the nose, overhanging the eye so the face itself scowls.
+module brow(p, s, yaw, drop, c) {
+  translate(p) rotate([0, 0, yaw]) color(c) hull() {
+    translate([s * 1.0, s * 0.05, s * 1.25]) scale([s * 0.6, s * 0.7, s * 0.36]) sphere(1, $fn = 12);
+    translate([-s * 0.95, -s * 0.25, s * (1.25 - drop)]) scale([s * 0.5, s * 0.62, s * 0.32]) sphere(1, $fn = 12);
+    translate([0, s * 0.9, s * 1.1]) scale([s * 1.1, s * 0.6, s * 0.5]) sphere(1, $fn = 12);
+  }
+}
+// Flat scales / plates laid on an ellipsoid (centre cen, radii r): each [azimuth, elevation, size].
+module plates(cen, r, list, th = 0.35, c) {
+  for (t = list) let(az = t[0], el = t[1], sz = t[2])
+    color(c) translate([cen[0] + r[0] * cos(el) * cos(az), cen[1] + r[1] * cos(el) * sin(az), cen[2] + r[2] * sin(el)])
+      rotate([0, 0, az]) rotate([0, 90 - el, 0]) scale([sz, sz * 1.15, th]) sphere(1, $fn = 8);
+}
 
 // Teardrop flame tongue: a round base swelling up and narrowing to a point.
 module tongue(p, d, r, c) {
   color(c) hull() {
-    translate(p) sphere(r);
-    translate(p + d * 0.45 + [d[0] * 0.2, 0, 0]) sphere(r * 0.7);
+    translate(p) sphere(r, $fn = 12);
+    translate(p + d * 0.45 + [d[0] * 0.2, 0, 0]) sphere(r * 0.7, $fn = 12);
     translate(p + d) sphere(0.2);
   }
 }
@@ -34,8 +52,8 @@ module flame(p, s = 1, lean = [0, 0, 0]) {
 // Long feather: a flat blade from p along d, width w (lies in the XZ plane; the wing is flattened in Y afterwards).
 module feather(p, d, w, c) {
   color(c) hull() {
-    translate(p) sphere(w, $fn = 10);
-    translate(p + d * 0.6) sphere(w * 0.8, $fn = 10);
+    translate(p) sphere(w, $fn = 8);
+    translate(p + d * 0.6) sphere(w * 0.8, $fn = 8);
     translate(p + d) sphere(0.2, $fn = 6);
   }
 }
@@ -94,10 +112,21 @@ color(beakC) hull() {
   translate([0, -4.4, 27.6]) sphere(1.1, $fn = 12);
   translate([0, -6.6, 26.6]) sphere(0.25, $fn = 8);
 }
+// Hooked lower mandible and a dark beak line; the cere ridge runs back over the eyes as a hard brow.
+color(beakDk) hull() { translate([0, -4.2, 26.6]) sphere(0.8, $fn = 10); translate([0, -5.6, 26.2]) sphere(0.2, $fn = 6); }
 mirror_x() {
-  eye([1.7, -4, 28.6], 0.8, iris = [1, 0.75, 0.1], sclera = [1, 0.95, 0.7], pupil = [0.2, 0.05, 0], yaw = -30, flat = 0.5);
-  color(crimsonDk) translate([1.7, -4.3, 29.4]) rotate([0, -20, -30]) scale([1.2, 0.5, 0.35]) sphere(1, $fn = 10);
+  color(socket) translate([1.6, -3.7, 28.6]) rotate([0, 0, 24]) scale([1.5, 0.6, 1.25]) sphere(1.0, $fn = 14);
+  eye([1.6, -3.7, 28.6], 1.25, iris = [1, 0.78, 0.1, GLOW], sclera = [1, 0.55, 0.1], pupil = [0.2, 0.03, 0], yaw = 24, flat = 0.5,
+      lid = 0.45, lid_tilt = 32, lid_c = socket);
+  brow([1.6, -3.7, 28.6], 1.25, 24, 0.75, crimson);
 }
+// Layered breast and back feathers: rows of overlapping scale feathers so the body isn't a smooth egg.
+mirror_x() {
+  plates([0, 0.5, 17], [5.2, 4.6, 7], [for (az = [-80 : 30 : 100]) for (el = [-35 : 20 : 30]) [az + el * 0.5, el, 1.5]], 0.32, bodyHi);
+  plates([0, -0.5, 24], [3.4, 3.4, 4], [for (az = [-60 : 40 : 100]) for (el = [-10 : 25 : 30]) [az, el, 1.2]], 0.32, crimsonDk);
+}
+// Feathered thighs over the talons.
+mirror_x() for (k = [0 : 2]) petal([1.3, 0.9, 2.2], [3 + k * 0.1, -0.4 + (k - 1) * 0.9, 9.6 - abs(k - 1) * 0.6], [0, -10, 0], k == 1 ? bodyHi : crimson);
 flame([0, -0.4, 29.5], 1.2, [0, 1.5, 0]);
 flame([2.4, 0.2, 29.2], 0.75, [2, 1, 0]);
 flame([-2.4, 0.2, 29.2], 0.75, [-2, 1, 0]);

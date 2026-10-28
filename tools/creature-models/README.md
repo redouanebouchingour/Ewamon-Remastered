@@ -41,6 +41,13 @@ node src/build.mjs --no-preview <id …>   # skip the OpenSCAD preview renders
    - Every part inside a `color()` (RGB vectors 0..1 picked from the sprite). Uncoloured geometry is a warning.
    - Readable at game size: a clear silhouette, the sprite's main colours in the right places, a face with eyes,
      and the signature features (horns, flames, cap, wings, tail, markings). Stylised and chunky beats fiddly.
+   - Match the sprite's expression: `eye()` alone is wide open and cute. For glaring or menacing eyes give it `lid`
+     (0.4-0.5), `lid_tilt` (25-32, slants down towards the nose) and `lid_c` (the socket or skin): a lidded eye also
+     loses its highlight, gets a slit pupil and a lower-lid squint. Make it big enough to read at game size, sink it
+     into the head with a brow ridge in the skin colour overhanging it (`scad/gnashfin.scad`), and remember a positive
+     `yaw` turns a +X eye outward; a negative one buries it and bulges its white rim out of the side of the head.
+   - Big creatures need real anatomy, not a ball head: a snout and separate lower jaw, wings as finger bones with
+     membrane between them (`scad/rexaloft.scad`), serpents on a smooth spline (`scad/voidraxis.scad`).
    - Floating parts are fine (flames, orbs, halos) but keep them close to the body.
    - Budget: aim for under 25k triangles (the build refuses over 40k). No `minkowski()`; keep `$fn` modest.
 3. `node src/build.mjs <id>` and look at `previews/<id>.png`. Fix what does not read like the sprite (proportions,

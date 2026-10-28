@@ -3,6 +3,17 @@
 // tossing four oranges in an arc around it, and a big bushy tail.
 include <lib.scad>
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
 fur = [0.84, 0.72, 0.48];
 furDk = [0.7, 0.57, 0.36];
 cream = [0.95, 0.87, 0.68];
@@ -97,8 +108,8 @@ blob([[[2.4, 2, 1.8], [0, -4, 26]], [[1, 1.2, 0.9], [0, -7, 26.4]]], cream);
 ell([0.65, 0.5, 0.5], [0, -8, 26.8], nose);
 color(nose) translate([0.4, -6.5, 25.3]) rotate([90, 0, 10]) scale([1.4, 0.3, 1]) cylinder(h = 0.4, r = 1, center = true, $fn = 12);
 mirror_x() {
-  eye([2.2, -3.8, 28.6], 1.2, iris = [0.6, 0.14, 0.1], pupil = [0.2, 0.04, 0.04], yaw = -26, flat = 0.42);
-  color(furDk) translate([2.2, -4.2, 29.6]) rotate([0, 14, -26]) scale([1.5, 0.5, 0.35]) sphere(1, $fn = 10);
+  eye([2.2, -3.55, 28.6], 1.55, iris = [0.88, 0.16, 0.1], pupil = [0.2, 0.03, 0.03], yaw = 8, flat = 0.42, lid = 0.46, lid_tilt = 20, lid_c = furDk, slit = 0.4);
+  brow([2.2, -3.55, 28.6], 1.55, 0.42, fur, 8);
 }
 
 // Tall ears and the fez between them.

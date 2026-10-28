@@ -31,6 +31,17 @@ module iceShard(p, s, tilt) {
   }
 }
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
 // Body: slender and long-legged.
 blob([[[5.2, 6, 5.6], [0, -3, 13]], [[4.8, 6, 5], [0, 6, 12.5]]], body);
 ell([4.4, 8, 3], [0, 1, 8.5], bodyLight);
@@ -78,10 +89,10 @@ ell([6, 5.8, 5.6], [0, -9, 28.5], body);
 blob([[[3, 2.6, 2.4], [0, -13, 27]], [[1.3, 1.4, 1.2], [0, -17.4, 26.6]]], body);
 ell([2.6, 3.6, 1.6], [0, -13, 25.8], bodyLight);
 ell([0.8, 0.6, 0.7], [0, -18.7, 27.1], eyeC);
-// Calm, narrowed eyes.
+// Calm, narrowed eyes sunk under a crystal brow: regal and cold rather than cruel.
 mirror_x() {
-  eye([2.8, -13.9, 29.2], 1.5, iris = eyeC, pupil = [0.05, 0.05, 0.12], sclera = [0.85, 0.92, 1], yaw = -24, flat = 0.38);
-  color(bodyDeep) translate([2.9, -14.3, 30.2]) rotate([0, -14, -24]) scale([2.1, 0.6, 0.45]) sphere(1, $fn = 14);
+  eye([2.8, -13.2, 29.2], 1.75, iris = [0.32, 0.36, 0.62], pupil = [0.04, 0.04, 0.1], sclera = [0.85, 0.92, 1], yaw = 4, flat = 0.4, lid = 0.48, lid_tilt = 18, lid_c = bodyDeep, slit = 0.4);
+  brow([2.8, -13.2, 29.2], 1.75, 0.38, bodyLight, 4);
 }
 // Crystal forehead mark and cheek fins.
 leaf([0, -13.2, 31], [0, -0.8, 2.6], 0.8, vein);

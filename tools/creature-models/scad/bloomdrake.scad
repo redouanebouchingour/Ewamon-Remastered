@@ -15,7 +15,17 @@ claw = [0.85, 0.25, 0.18];
 petalO = [0.95, 0.45, 0.12];
 petalR = [0.82, 0.28, 0.1];
 seed = [0.42, 0.25, 0.1];
+socket = [0.1, 0.2, 0.08];
 
+// Hard brow ridge over an eye at p (radius s, turned yaw like the eye): a hulled wedge in the skin colour, high at the
+// temple and slanting down towards the nose, overhanging the eye so the face itself scowls.
+module brow(p, s, yaw, drop, c) {
+  translate(p) rotate([0, 0, yaw]) color(c) hull() {
+    translate([s * 1.0, s * 0.05, s * 1.25]) scale([s * 0.6, s * 0.7, s * 0.36]) sphere(1, $fn = 12);
+    translate([-s * 0.95, -s * 0.25, s * (1.25 - drop)]) scale([s * 0.5, s * 0.62, s * 0.32]) sphere(1, $fn = 12);
+    translate([0, s * 0.9, s * 1.1]) scale([s * 1.1, s * 0.6, s * 0.5]) sphere(1, $fn = 12);
+  }
+}
 // Low-poly ellipsoid for the many small plates.
 module ell16(r, p, c) { color(c) translate(p) scale(r) sphere(1, $fn = 14); }
 
@@ -94,8 +104,10 @@ color(greenDk) translate([0, -11.8, 18.9]) scale([5.4, 1.4, 0.35]) sphere(1, $fn
 mirror_x() ell([0.45, 0.35, 0.35], [1.8, -13.4, 21.4], greenDk);
 // Fierce orange eyes with heavy brows, and glowing spirals on the cheeks.
 mirror_x() {
-  eye([4.6, -9.4, 23.2], 2.2, iris = [0.98, 0.5, 0.08], pupil = [0.3, 0.05, 0.02], sclera = [1, 0.85, 0.4], yaw = -28, flat = 0.42);
-  color(greenDk) translate([4.6, -10, 25.4]) rotate([0, 16, -28]) scale([2.9, 1, 0.7]) sphere(1, $fn = 14);
+  color(socket) translate([4.35, -10.2, 23.4]) rotate([0, 0, 22]) scale([1.4, 0.6, 1.2]) sphere(1.8, $fn = 16);
+  eye([4.3, -10.5, 23.4], 2.2, iris = [1, 0.5, 0.05, GLOW], pupil = [0.25, 0.03, 0.0], sclera = [1, 0.85, 0.35], yaw = 22, flat = 0.45,
+      lid = 0.42, lid_tilt = 30, lid_c = socket);
+  brow([4.25, -9.8, 23.4], 2.2, 22, 0.7, green);
   translate([8.5, -3, 22]) rotate([0, 90, 0]) {
     color(glow) difference() {
       cylinder(h = 0.5, r = 1.6, center = true, $fn = 16);

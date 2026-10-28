@@ -2,6 +2,17 @@
 // grey ponytail streaming from its top-knot, heavy rocky greaves with brown clawed boots and a bushy grey-tipped tail.
 include <lib.scad>
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
 fur = [0.95, 0.83, 0.62];
 furHi = [1, 0.9, 0.72];
 furDark = [0.85, 0.66, 0.45];
@@ -67,8 +78,8 @@ color(nose) translate([0, -7.1, 24.2]) scale([1.8, 0.4, 0.5]) sphere(1, $fn = 12
 mirror_x() color(claw) translate([1, -7.25, 24.3]) scale([0.4, 0.3, 0.4]) sphere(1, $fn = 8);
 // Eyes: big grey-blue.
 mirror_x() {
-  eye([2.6, -5.1, 27.5], 1.1, iris = [0.2, 0.15, 0.12], pupil = [0.08, 0.06, 0.05], yaw = -20);
-  color(mark) translate([2.6, -5.6, 28.8]) rotate([0, -22, -20]) scale([1.9, 0.5, 0.45]) sphere(1, $fn = 12);
+  eye([2.6, -4.85, 27.5], 1.45, iris = [0.5, 0.45, 0.72], pupil = [0.08, 0.06, 0.05], yaw = 6, lid = 0.45, lid_tilt = 26, lid_c = mark, slit = 0.55);
+  brow([2.6, -4.85, 27.5], 1.45, 0.45, fur, 6);
 }
 // Cheek blush.
 mirror_x() stroke([[3.8, -4.6, 25.8], [4.8, -4, 25.2]], 0.3);

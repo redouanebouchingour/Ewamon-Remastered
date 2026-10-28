@@ -47,8 +47,13 @@ color(barkDk) translate([0, -17.3, 11]) scale([1.6, 0.4, 0.4]) sphere(1, $fn = 1
 spike([0, -14, 20], [0, -3, 6], 1.4, 0.1, bark);  // brow horn
 mirror_x() leaf([4.8, -12, 19], [0, 50, 0], 1.3, leafC);  // leaf ears
 mirror_x() {
-  eye([2.5, -16.5, 15.4], 1.4, iris = eyeOr, sclera = [1, 0.8, 0.3], pupil = [0.5, 0.1, 0], yaw = -20, flat = 0.4);
-  color(greenDk) translate([2.4, -16.6, 17]) rotate([0, -25, -20]) scale([2, 0.7, 0.5]) sphere(1, $fn = 10);
+  // Glowing orange eyes sunk into the mask under a heavy brow that slants down to the snout.
+  eye([2.7, -16.4, 15.3], 1.75, iris = [1, 0.55, 0.1, GLOW], sclera = [1, 0.82, 0.3], pupil = [0.4, 0.06, 0], yaw = 12,
+      flat = 0.5, lid = 0.4, lid_tilt = 32, lid_c = greenDk, slit = 0.4);
+  color(greenHi) hull() {
+    translate([4.4, -15.4, 17.7]) scale([1.5, 1.3, 0.85]) sphere(1, $fn = 10);
+    translate([1, -17.2, 16.9]) scale([0.9, 0.9, 0.6]) sphere(1, $fn = 10);
+  }
 }
 }
 

@@ -36,8 +36,21 @@ module jackal_head(p, bandC = cape) {
     ell([0.8, 0.7, 0.6], [0, -10.3, -0.8], [0.1, 0.08, 0.06]);
     color(oliveDk) translate([0, -6, -2.8]) scale([1.8, 3, 0.4]) sphere(1, $fn = 16);
     // Eyes: red, angled.
-    mirror_x() eye([2.2, -3.3, 1.2], 0.9, iris = [0.8, 0.08, 0.08], sclera = [1, 0.85, 0.8], yaw = -25);
-    mirror_x() color(furDk) translate([2.2, -3.6, 2]) rotate([0, -20, -25]) scale([1.4, 0.5, 0.4]) sphere(1, $fn = 12);
+    // Eyes: big red irises sunk in dark sockets under a hard brow that scowls down to the muzzle.
+    mirror_x() {
+      ell([1.45, 0.5, 1.3], [2.5, -2.5, 1.25], [0.12, 0.08, 0.05]);
+      eye([2.5, -2.8, 1.25], 1.15, iris = [1, 0.1, 0.06], pupil = [0.1, 0, 0], sclera = [1, 0.85, 0.35], yaw = -24,
+          lid = 0.5, lid_tilt = 32, lid_c = furDk, slit = 0.4, squint = 0.15);
+      color(fur) hull() {
+        translate([1.1, -3.8, 1.85]) scale([0.5, 0.5, 0.4]) sphere(1, $fn = 12);
+        translate([2.4, -3.35, 2.45]) scale([0.85, 0.55, 0.4]) sphere(1, $fn = 12);
+        translate([3.5, -2, 2.75]) scale([0.55, 0.55, 0.42]) sphere(1, $fn = 12);
+      }
+    }
+    // Fangs at the corners of the muzzle.
+    mirror_x() spike([0.9, -8.3, -2.3], [0, -0.1, -1], 0.3, 0.04, [0.96, 0.94, 0.86]);
+    // Green star on the headband knot (sprite).
+    color([0.1, 0.5, 0.2]) translate([1.5, 4.5, 1.9]) rotate([90, 0, 60]) linear_extrude(0.3) polygon([for (i = [0 : 9]) let(r = i % 2 == 0 ? 0.9 : 0.38) [r * sin(i * 36), r * cos(i * 36)]]);
     // Ears.
     mirror_x() {
       color(olive) translate([2.2, 1, 3]) rotate([-8, 18, 0]) scale([1, 0.55, 1]) cylinder(h = 7.5, r1 = 2, r2 = 0.1, $fn = 14);
@@ -88,6 +101,10 @@ module body() {
   color(gold) translate([0, -6.4, 16.2]) rotate([90, 0, 0]) cylinder(h = 1, r = 2.6, $fn = 24);
   color(goldDk) translate([0, -7.3, 16.2]) rotate([90, 0, 0]) cylinder(h = 0.4, r = 1.4, $fn = 16);
   color(cape) translate([0, -7.6, 16.2]) cube([0.6, 0.3, 1.6], center = true);
+  mirror_x() color(goldDk) translate([4.6, -5.4, 16.2]) rotate([0, 0, -38]) cube([2.2, 0.5, 1.9], center = true);
+  mirror_x() color(cape) translate([4.6, -5.75, 16.2]) rotate([0, 0, -38]) cube([0.8, 0.2, 0.8], center = true);
+  // "Global champion" patch on the left leg.
+  translate([-8, -4.3, 10.6]) rotate([0, 0, 20]) { color([0.15, 0.4, 0.75]) cube([2.8, 0.4, 2], center = true); color([0.2, 0.65, 0.25]) translate([0.2, -0.15, 0.1]) scale([0.8, 0.2, 0.6]) sphere(1, $fn = 8); }
   // Gold chain on the chest.
   color(gold) translate([-0.5, -1, 30.5]) rotate([-28, 0, 0]) scale([1, 1.1, 1]) rotate_extrude($fn = 24) translate([5.6, 0]) circle(0.5, $fn = 8);
   // Cape over the shoulders: a flared shell open at the front with a gold fringe.
@@ -104,6 +121,13 @@ module body() {
     color(gold) translate([0, 2.5, 3.9]) cylinder(h = 1.5, r = 16.9, $fn = 40);
     color(gold) translate([0, -20, 0]) cube([40, 40, 80], center = true);
   }
+  // Gold fringe tassels hanging off the hem, and a darker gold band above it so the back breaks up.
+  for (a = [-84 : 12 : 84]) color(goldDk) translate([17.9 * sin(a), 2.5 + 17.9 * cos(a), 3]) cylinder(h = 1.4, r1 = 0.25, r2 = 0.5, $fn = 6);
+  difference() {
+    color(capeDk) translate([0, 2.5, 7]) cylinder(h = 0.9, r1 = 17.45, r2 = 17.25, $fn = 40);
+    color(capeDk) translate([0, 2.5, 6.9]) cylinder(h = 1.1, r = 16.6, $fn = 40);
+    color(capeDk) translate([0, -20, 0]) cube([40, 40, 80], center = true);
+  }
   // Inner lining of the cape slightly darker, peeking at the front edges.
   mirror_x() color(capeDk) translate([17.6, 0.2, 5.5]) rotate([0, -14, 0]) scale([0.4, 0.4, 1]) cylinder(h = 24, r = 1.2, $fn = 8);
   // Dutch flag patch on the right leg.
@@ -119,6 +143,8 @@ module body() {
     limb([10.1, -0.6, 2.2], [10.2, -0.6, 5.2], 2.6, 2.5, shoe);
     color(gold) translate([10.2, -0.6, 5.4]) cylinder(h = 0.7, r = 2.7, $fn = 20);
     color(gold) translate([10.4, -4.4, 1.7]) scale([1.6, 0.5, 0.5]) sphere(1, $fn = 12);
+    // red lacing up the boot front
+    for (z = [2.6, 3.6, 4.6]) color(cape) translate([10.15, -3.05, z]) rotate([10, 0, 0]) scale([1.1, 0.25, 0.22]) sphere(1, $fn = 8);
     
   }
 }

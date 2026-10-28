@@ -32,8 +32,19 @@ module jackal_head(p, bandC = band) {
     ell([0.8, 0.7, 0.6], [0, -10.3, -0.8], [0.1, 0.08, 0.06]);
     color(oliveDk) translate([0, -6, -2.8]) scale([1.8, 3, 0.4]) sphere(1, $fn = 16);
     // Eyes: red, angled.
-    mirror_x() eye([2.2, -3.3, 1.2], 0.9, iris = [0.8, 0.08, 0.08], sclera = [1, 0.85, 0.8], yaw = -25);
-    mirror_x() color(furDk) translate([2.2, -3.6, 2]) rotate([0, -20, -25]) scale([1.4, 0.5, 0.4]) sphere(1, $fn = 12);
+    // Eyes: big red irises sunk in dark sockets under a hard brow that scowls down to the muzzle.
+    mirror_x() {
+      ell([1.45, 0.5, 1.3], [2.5, -2.5, 1.25], [0.12, 0.08, 0.05]);
+      eye([2.5, -2.8, 1.25], 1.15, iris = [1, 0.1, 0.06], pupil = [0.1, 0, 0], sclera = [1, 0.85, 0.35], yaw = -24,
+          lid = 0.48, lid_tilt = 30, lid_c = furDk, slit = 0.4, squint = 0.15);
+      color(fur) hull() {
+        translate([1.1, -3.8, 1.85]) scale([0.5, 0.5, 0.4]) sphere(1, $fn = 12);
+        translate([2.4, -3.35, 2.45]) scale([0.85, 0.55, 0.4]) sphere(1, $fn = 12);
+        translate([3.5, -2, 2.75]) scale([0.55, 0.55, 0.42]) sphere(1, $fn = 12);
+      }
+    }
+    // Fangs at the corners of the muzzle.
+    mirror_x() spike([0.9, -8.3, -2.3], [0, -0.1, -1], 0.3, 0.04, [0.96, 0.94, 0.86]);
     // Ears.
     mirror_x() {
       color(olive) translate([2.2, 1, 3]) rotate([-8, 18, 0]) scale([1, 0.55, 1]) cylinder(h = 7.5, r1 = 2, r2 = 0.1, $fn = 14);
@@ -59,17 +70,27 @@ module body() {
   mirror_x() color(furHi) translate([10, -3.6, 29.5]) rotate([0, 0, -30]) scale([1.6, 0.4, 1.2]) sphere(1, $fn = 14);
   // Back muscle lines.
   color(furDk) translate([0, 5.8, 25]) scale([0.4, 0.5, 5]) sphere(1, $fn = 10);
+  // Shoulder-blade highlights and a darker saddle across the back.
+  mirror_x() color(furHi) translate([4.5, 5.6, 29.5]) rotate([0, -20, 0]) scale([2.4, 0.6, 1.6]) sphere(1, $fn = 12);
+  color(furDk) translate([0, 4.8, 21]) scale([5.5, 1.2, 1.8]) sphere(1, $fn = 14);
   mirror_x() color(furDk) translate([4.5, 5.4, 26]) rotate([0, 30, 0]) scale([0.35, 0.5, 4]) sphere(1, $fn = 10);
   // Arms: elbows out, fists on the hips.
   mirror_x() {
     chain([[10.5, 0, 27], [14.5, 0.5, 21.5], [9.5, -1, 16.5]], [3.2, 2.8, 2.4], fur);
     ell([3, 3, 2.8], [9.8, -1.5, 16.2], glove);
     ell([1.6, 1.2, 1.4], [10.6, -3.8, 17], [1, 0.35, 0.3]);
+    // white glove cuff and lace
+    color(band) translate([10.6, -0.3, 18.2]) rotate([-60, 0, 30]) cylinder(h = 1, r = 2.3, center = true, $fn = 18);
+    color(band) translate([9, -4.1, 17.8]) scale([0.3, 0.3, 1.2]) sphere(1, $fn = 8);
+    // fur shading on the forearm and knuckle-taped wrist
+    color(furDk) translate([13.4, 0.8, 21.5]) rotate([0, -40, 0]) scale([1.2, 2.2, 0.9]) sphere(1, $fn = 10);
   }
   // Trunks.
   blob([[[7.5, 5.5, 3], [0, 0.5, 15.5]], [[8.5, 5.5, 2.5], [0, 0.5, 13]]], shorts);
   mirror_x() color(shortsHi) translate([7, -3.2, 10.5]) rotate([0, 0, -20]) scale([1.6, 0.6, 1.2]) sphere(1, $fn = 14);
   mirror_x() limb([5.5, 0.5, 13], [9, -0.5, 9], 4, 3.6, shorts);
+  // Grey waistband on the trunks.
+  color(shortsHi) translate([0, 0.5, 17.2]) scale([7.6, 5.6, 1]) cylinder(h = 1.4, r = 1, center = true, $fn = 28);
   // Dutch flag patch on the right leg.
   translate([8.2, -4.1, 10.4]) rotate([0, 0, -20]) {
     color(nlRed) translate([0, 0, 0.8]) cube([2.4, 0.4, 0.8], center = true);
@@ -80,7 +101,11 @@ module body() {
   mirror_x() {
     chain([[9, -0.5, 9], [10.5, -1, 4.5], [10, -0.5, 2]], [3.2, 2.6, 2.3], fur);
     blob([[[2.8, 4, 1.4], [10.5, -2.2, 1.3]], [[2.4, 2, 1.6], [10.2, 0.8, 1.6]]], shoe);
-    
+    // white soles and laces
+    color(band) translate([10.4, -1.4, 0.35]) scale([2.7, 4.6, 0.35]) sphere(1, $fn = 18);
+    for (y = [-3, -1.8]) color(band) translate([10.5, y, 2.45 - (y + 3) * 0.2]) scale([1.1, 0.25, 0.2]) sphere(1, $fn = 8);
+    // knee and calf shading
+    color(furHi) translate([10.4, -3, 5.6]) scale([1.6, 0.6, 1.4]) sphere(1, $fn = 10);
   }
 }
 

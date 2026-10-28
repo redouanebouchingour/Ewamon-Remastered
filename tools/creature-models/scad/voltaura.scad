@@ -2,6 +2,17 @@
 // a gold bolt across its chest, a crackling gold orb in one hand and a whip tail ending in a blue spark bulb.
 include <lib.scad>
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
 blue = [0.08, 0.22, 0.6];
 blueHi = [0.16, 0.36, 0.78];
 gold = [0.95, 0.78, 0.15, GLOW];
@@ -46,8 +57,11 @@ limb([0, -0.4, 25], [0, -1.5, 29.5], 1.5, 1.3, blue);
 blob([[[2.2, 2.4, 2.4], [0, -1.6, 31]], [[1.3, 1.8, 1.3], [0, -4.8, 29.6]]], blue);
 // Gold face stripe and bright eyes.
 color(gold) translate([0, -3.3, 31.8]) rotate([-30, 0, 0]) scale([0.5, 2.2, 0.4]) sphere(1, $fn = 12);
-mirror_x() eye([1.4, -3.4, 31.1], 0.95, iris = eyeC, pupil = [0.1, 0.1, 0.2], sclera = [1, 1, 0.7], yaw = -40);
-mirror_x() color(gold) translate([1.6, -3.0, 32.2]) rotate([0, 15, -40]) scale([1.1, 0.5, 0.35]) sphere(1, $fn = 12);
+mirror_x() {
+  eye([1.45, -3.0, 31.2], 1.25, iris = [1, 0.9, 0.2, GLOW], pupil = [0.1, 0.1, 0.2], sclera = [1, 1, 0.7], yaw = 22,
+      lid = 0.48, lid_tilt = 30, lid_c = [0.03, 0.08, 0.25], slit = 0.3);
+  brow([1.45, -3.0, 31.2], 1.25, 0.55, blue, 22);
+}
 // Long golden antenna-horns sweeping up and back, with spark tips.
 mirror_x() {
   chain([[1, -1, 32.6], [2.4, -0.5, 35.5], [3.6, 0.6, 38.5], [5.4, 2.5, 40], [6.6, 3.8, 39.6]], [0.9, 0.85, 0.7, 0.45, 0.25], gold);

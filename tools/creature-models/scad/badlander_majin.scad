@@ -2,6 +2,17 @@
 // snarl, a bandolier glowing like embers, a bandana that streams up as flame and a red ring burnt into its hat.
 include <lib.scad>
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
 fur = [0.15, 0.14, 0.16];
 furDk = [0.08, 0.08, 0.09];
 furHi = [0.55, 0.48, 0.38];
@@ -29,7 +40,7 @@ claw = [0.4, 0.38, 0.4];
 steel = [0.65, 0.67, 0.7];
 rope = [0.72, 0.6, 0.38];
 wheat = [0.88, 0.76, 0.42];
-eyeCol = [1, 0.15, 0.1];
+eyeCol = [1, 0.15, 0.1, GLOW];
 
 // Boots with spurs, chunky trouser legs.
 mirror_x() {
@@ -109,8 +120,8 @@ color(band) translate([0, -14, 29.9]) scale([1.1, 0.7, 0.8]) sphere(1, $fn = 12)
 ell([1.4, 3, 2.8], [0, -9.6, 33.4], cream);
 mirror_x() {
   limb([2.6, -10, 31.6], [4.6, -5, 33.2], 1.2, 1.7, band);
-  eye([2.6, -10.9, 31.6], 1.05, iris = eyeCol, pupil = [0.1, 0.05, 0], sclera = eyeCol, yaw = -18, shine = false);
-  color(band) translate([2.4, -11, 33]) rotate([0, -15, -18]) scale([1.4, 0.5, 0.3]) sphere(1, $fn = 10);
+  eye([2.6, -10.5, 31.5], 1.55, iris = eyeCol, pupil = [0.1, 0.02, 0], sclera = eyeCol, yaw = 6, shine = false, lid = 0.52, lid_tilt = 32, lid_c = band, slit = 0.35);
+  brow([2.6, -10.5, 31.5], 1.55, 0.6, fur, 6);
 }
 // Glowing cracks across the brow and cheeks.
 color(crack) for (c = [[-2.6, -10.8, 33, 20], [-1.4, -11.3, 31.6, -40], [3.4, -10.6, 30, 30], [4.6, -9, 29.4, -20]])
@@ -146,6 +157,13 @@ for (x = [-9.5 : 2.4 : 9.5]) color(cape)
   translate([x, 1.5 + 8 * sqrt(max(0, 1 - pow(x / 11, 2))), 8.5]) scale([1.1, 0.5, 2 + (abs(x * 7) % 3)]) rotate([0, 0, 45]) sphere(1, $fn = 4);
 color(capePatch) translate([3, 9, 13]) rotate([-6, 0, 0]) cube([3.4, 0.6, 3], center = true);
 color(capePatch) translate([-4, 7.5, 21]) rotate([-8, 0, 20]) cube([2.6, 0.6, 2.4], center = true);
+// Fold creases down the back of the duster (a shade darker), so it reads as hanging cloth rather than a tube.
+function capeY(x, z) = let(f = (27 - z) / 18) 1 + 0.5 * f + (7 + 1.4 * f) * sqrt(max(0, 1 - pow(x / (9.4 + 1.6 * f), 2)));
+for (x = [-6.5, -1.5, 3.5, 7.5]) color(cape * 0.82) hull() {
+  translate([x * 0.86, capeY(x * 0.86, 24) + 0.05, 24]) scale([1.2, 0.5, 1]) sphere(0.4, $fn = 8);
+  translate([x, capeY(x, 10.5) + 0.25, 10.5]) scale([1.6, 0.5, 1]) sphere(0.6, $fn = 8);
+}
+color(capePatch) translate([6.5, capeY(6.5, 17) - 0.05, 17]) rotate([-6, 0, -40]) cube([2.4, 0.6, 2.8], center = true);
 // The bandolier's strap across the back of the mantle.
 color(leather) translate([0, 7.8, 24]) rotate([-6, 0, 0]) rotate([0, -35, 0]) cube([15, 1, 1.6], center = true);
 

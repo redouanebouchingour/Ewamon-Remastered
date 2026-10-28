@@ -5,15 +5,15 @@
   "models": {
     "abysspark": {
       "url": "abysspark.glb",
-      "bytes": 140620
+      "bytes": 150736
     },
     "abysspark_tenjin": {
       "url": "abysspark_tenjin.glb",
-      "bytes": 164792
+      "bytes": 175444
     },
     "abyssrake": {
       "url": "abyssrake.glb",
-      "bytes": 173676
+      "bytes": 211756
     },
     "acier": {
       "url": "acier.glb",
@@ -49,15 +49,15 @@
     },
     "auroracle": {
       "url": "auroracle.glb",
-      "bytes": 184180
+      "bytes": 183176
     },
     "badlander": {
       "url": "badlander.glb",
-      "bytes": 178872
+      "bytes": 188896
     },
     "badlander_majin": {
       "url": "badlander_majin.glb",
-      "bytes": 198832
+      "bytes": 205428
     },
     "bankaiser": {
       "url": "bankaiser.glb",
@@ -65,11 +65,11 @@
     },
     "berkest": {
       "url": "berkest.glb",
-      "bytes": 173916
+      "bytes": 174556
     },
     "blighthex": {
       "url": "blighthex.glb",
-      "bytes": 145184
+      "bytes": 144428
     },
     "blizzhowl": {
       "url": "blizzhowl.glb",
@@ -77,15 +77,15 @@
     },
     "blizzraak": {
       "url": "blizzraak.glb",
-      "bytes": 193888
+      "bytes": 324696
     },
     "bloomdrake": {
       "url": "bloomdrake.glb",
-      "bytes": 222392
+      "bytes": 225488
     },
     "bloomduck": {
       "url": "bloomduck.glb",
-      "bytes": 106192
+      "bytes": 123880
     },
     "bloomsprite": {
       "url": "bloomsprite.glb",
@@ -101,7 +101,7 @@
     },
     "bramblecub": {
       "url": "bramblecub.glb",
-      "bytes": 119432
+      "bytes": 128232
     },
     "briarbear": {
       "url": "briarbear.glb",
@@ -117,7 +117,7 @@
     },
     "budwing": {
       "url": "budwing.glb",
-      "bytes": 203356
+      "bytes": 206192
     },
     "burrowyrm": {
       "url": "burrowyrm.glb",
@@ -125,15 +125,15 @@
     },
     "caldermole": {
       "url": "caldermole.glb",
-      "bytes": 257288
+      "bytes": 341724
     },
     "castlemaw": {
       "url": "castlemaw.glb",
-      "bytes": 208632
+      "bytes": 297092
     },
     "castlemaw_rage": {
       "url": "castlemaw_rage.glb",
-      "bytes": 236552
+      "bytes": 322276
     },
     "chrysotox": {
       "url": "chrysotox.glb",
@@ -141,7 +141,7 @@
     },
     "cindercap": {
       "url": "cindercap.glb",
-      "bytes": 137324
+      "bytes": 148324
     },
     "cirrileap": {
       "url": "cirrileap.glb",
@@ -149,15 +149,15 @@
     },
     "clementar": {
       "url": "clementar.glb",
-      "bytes": 212604
+      "bytes": 214332
     },
     "clementar_majin": {
       "url": "clementar_majin.glb",
-      "bytes": 237852
+      "bytes": 237096
     },
     "coalette": {
       "url": "coalette.glb",
-      "bytes": 192916
+      "bytes": 192340
     },
     "coldplate": {
       "url": "coldplate.glb",
@@ -177,11 +177,11 @@
     },
     "darkone": {
       "url": "darkone.glb",
-      "bytes": 110784
+      "bytes": 122696
     },
     "darkyon": {
       "url": "darkyon.glb",
-      "bytes": 165344
+      "bytes": 175600
     },
     "devourest": {
       "url": "devourest.glb",
@@ -189,7 +189,7 @@
     },
     "dreadmaw": {
       "url": "dreadmaw.glb",
-      "bytes": 171392
+      "bytes": 193560
     },
     "dreambud": {
       "url": "dreambud.glb",
@@ -197,11 +197,11 @@
     },
     "dunescale": {
       "url": "dunescale.glb",
-      "bytes": 176800
+      "bytes": 178268
     },
     "dunevenom": {
       "url": "dunevenom.glb",
-      "bytes": 204052
+      "bytes": 203716
     },
     "dustcub": {
       "url": "dustcub.glb",
@@ -213,7 +213,7 @@
     },
     "embrock": {
       "url": "embrock.glb",
-      "bytes": 154216
+      "bytes": 217572
     },
     "fedoraith": {
       "url": "fedoraith.glb",
@@ -229,11 +229,11 @@
     },
     "flampling": {
       "url": "flampling.glb",
-      "bytes": 106840
+      "bytes": 104904
     },
     "florasage": {
       "url": "florasage.glb",
-      "bytes": 243912
+      "bytes": 274128
     },
     "flowbot": {
       "url": "flowbot.glb",
@@ -241,15 +241,15 @@
     },
     "frofloe": {
       "url": "frofloe.glb",
-      "bytes": 150080
+      "bytes": 229180
     },
     "galaxion": {
       "url": "galaxion.glb",
-      "bytes": 230628
+      "bytes": 272980
     },
     "galeforth": {
       "url": "galeforth.glb",
-      "bytes": 112996
+      "bytes": 131080
     },
     "gemknight": {
       "url": "gemknight.glb",
@@ -261,7 +261,7 @@
     },
     "geoboxer": {
       "url": "geoboxer.glb",
-      "bytes": 186440
+      "bytes": 184544
     },
     "glaciarm": {
       "url": "glaciarm.glb",
@@ -269,11 +269,11 @@
     },
     "glacifang": {
       "url": "glacifang.glb",
-      "bytes": 155984
+      "bytes": 289600
     },
     "glacinid": {
       "url": "glacinid.glb",
-      "bytes": 193916
+      "bytes": 364448
     },
     "glimfin": {
       "url": "glimfin.glb",
@@ -297,7 +297,7 @@
     },
     "gnashfin": {
       "url": "gnashfin.glb",
-      "bytes": 90728
+      "bytes": 110508
     },
     "gravelwisp": {
       "url": "gravelwisp.glb",
@@ -317,7 +317,7 @@
     },
     "hexroach": {
       "url": "hexroach.glb",
-      "bytes": 113352
+      "bytes": 112844
     },
     "hoarfrowl": {
       "url": "hoarfrowl.glb",
@@ -333,15 +333,15 @@
     },
     "hollowolf": {
       "url": "hollowolf.glb",
-      "bytes": 216312
+      "bytes": 237016
     },
     "hyoryu": {
       "url": "hyoryu.glb",
-      "bytes": 125196
+      "bytes": 167748
     },
     "hyoryu_majin": {
       "url": "hyoryu_majin.glb",
-      "bytes": 140000
+      "bytes": 182172
     },
     "ignispectre": {
       "url": "ignispectre.glb",
@@ -365,7 +365,7 @@
     },
     "katamute": {
       "url": "katamute.glb",
-      "bytes": 193020
+      "bytes": 192752
     },
     "kindlegrub": {
       "url": "kindlegrub.glb",
@@ -373,23 +373,23 @@
     },
     "kygra": {
       "url": "kygra.glb",
-      "bytes": 78960
+      "bytes": 124944
     },
     "kykaiser": {
       "url": "kykaiser.glb",
-      "bytes": 117688
+      "bytes": 145636
     },
     "kykaiser_tenjin": {
       "url": "kykaiser_tenjin.glb",
-      "bytes": 128196
+      "bytes": 156108
     },
     "lawlander": {
       "url": "lawlander.glb",
-      "bytes": 191564
+      "bytes": 194084
     },
     "lawlander_tenjin": {
       "url": "lawlander_tenjin.glb",
-      "bytes": 204944
+      "bytes": 206548
     },
     "leafcoon": {
       "url": "leafcoon.glb",
@@ -413,7 +413,7 @@
     },
     "magmolith": {
       "url": "magmolith.glb",
-      "bytes": 173420
+      "bytes": 265388
     },
     "malice": {
       "url": "malice.glb",
@@ -441,11 +441,11 @@
     },
     "moblaze": {
       "url": "moblaze.glb",
-      "bytes": 206420
+      "bytes": 207844
     },
     "moflame": {
       "url": "moflame.glb",
-      "bytes": 174276
+      "bytes": 175452
     },
     "mossling": {
       "url": "mossling.glb",
@@ -461,7 +461,7 @@
     },
     "murkrat": {
       "url": "murkrat.glb",
-      "bytes": 200736
+      "bytes": 224284
     },
     "murmink": {
       "url": "murmink.glb",
@@ -489,7 +489,7 @@
     },
     "noxmyth": {
       "url": "noxmyth.glb",
-      "bytes": 195212
+      "bytes": 200756
     },
     "pebblit": {
       "url": "pebblit.glb",
@@ -497,15 +497,15 @@
     },
     "pebfist": {
       "url": "pebfist.glb",
-      "bytes": 203948
+      "bytes": 202080
     },
     "petraptor": {
       "url": "petraptor.glb",
-      "bytes": 108768
+      "bytes": 208820
     },
     "prismolith": {
       "url": "prismolith.glb",
-      "bytes": 193204
+      "bytes": 198856
     },
     "puffinch": {
       "url": "puffinch.glb",
@@ -513,7 +513,7 @@
     },
     "pyrecap": {
       "url": "pyrecap.glb",
-      "bytes": 198448
+      "bytes": 208480
     },
     "pyremoth": {
       "url": "pyremoth.glb",
@@ -521,11 +521,11 @@
     },
     "pyrothal": {
       "url": "pyrothal.glb",
-      "bytes": 146588
+      "bytes": 248724
     },
     "raidori": {
       "url": "raidori.glb",
-      "bytes": 148936
+      "bytes": 161032
     },
     "raidori_tenjin": {
       "url": "raidori_tenjin.glb",
@@ -533,7 +533,7 @@
     },
     "raikitsune": {
       "url": "raikitsune.glb",
-      "bytes": 136396
+      "bytes": 166560
     },
     "rambull": {
       "url": "rambull.glb",
@@ -541,27 +541,27 @@
     },
     "ravatar": {
       "url": "ravatar.glb",
-      "bytes": 228080
+      "bytes": 232512
     },
     "ravatar_air": {
       "url": "ravatar_air.glb",
-      "bytes": 296280
+      "bytes": 300800
     },
     "ravatar_avatar": {
       "url": "ravatar_avatar.glb",
-      "bytes": 280252
+      "bytes": 284824
     },
     "ravatar_earth": {
       "url": "ravatar_earth.glb",
-      "bytes": 227572
+      "bytes": 232168
     },
     "ravatar_fire": {
       "url": "ravatar_fire.glb",
-      "bytes": 246804
+      "bytes": 251292
     },
     "ravatar_water": {
       "url": "ravatar_water.glb",
-      "bytes": 263436
+      "bytes": 268000
     },
     "ravenmourne": {
       "url": "ravenmourne.glb",
@@ -573,15 +573,15 @@
     },
     "resilith": {
       "url": "resilith.glb",
-      "bytes": 138764
+      "bytes": 138852
     },
     "resilithorn": {
       "url": "resilithorn.glb",
-      "bytes": 182508
+      "bytes": 186200
     },
     "rexaloft": {
       "url": "rexaloft.glb",
-      "bytes": 121808
+      "bytes": 257392
     },
     "rimeidol": {
       "url": "rimeidol.glb",
@@ -589,11 +589,11 @@
     },
     "rimetusk": {
       "url": "rimetusk.glb",
-      "bytes": 204020
+      "bytes": 226620
     },
     "ripshell": {
       "url": "ripshell.glb",
-      "bytes": 191840
+      "bytes": 205436
     },
     "rivetalon": {
       "url": "rivetalon.glb",
@@ -601,11 +601,11 @@
     },
     "roobrawler": {
       "url": "roobrawler.glb",
-      "bytes": 152848
+      "bytes": 161992
     },
     "scalewisp": {
       "url": "scalewisp.glb",
-      "bytes": 123500
+      "bytes": 222772
     },
     "scorpit": {
       "url": "scorpit.glb",
@@ -613,7 +613,7 @@
     },
     "scraphog": {
       "url": "scraphog.glb",
-      "bytes": 200368
+      "bytes": 201904
     },
     "seedrift": {
       "url": "seedrift.glb",
@@ -621,11 +621,11 @@
     },
     "serpyre": {
       "url": "serpyre.glb",
-      "bytes": 144448
+      "bytes": 161708
     },
     "shagtusk": {
       "url": "shagtusk.glb",
-      "bytes": 192836
+      "bytes": 243756
     },
     "shalewing": {
       "url": "shalewing.glb",
@@ -657,11 +657,11 @@
     },
     "solpyre": {
       "url": "solpyre.glb",
-      "bytes": 258456
+      "bytes": 310044
     },
     "solpyre_tenjin": {
       "url": "solpyre_tenjin.glb",
-      "bytes": 301732
+      "bytes": 353420
     },
     "sproutgrub": {
       "url": "sproutgrub.glb",
@@ -681,11 +681,11 @@
     },
     "sunjaw": {
       "url": "sunjaw.glb",
-      "bytes": 245828
+      "bytes": 285188
     },
     "thornback": {
       "url": "thornback.glb",
-      "bytes": 192768
+      "bytes": 194612
     },
     "thornback_tenjin": {
       "url": "thornback_tenjin.glb",
@@ -697,7 +697,7 @@
     },
     "tidalfang": {
       "url": "tidalfang.glb",
-      "bytes": 144800
+      "bytes": 180460
     },
     "tidespine": {
       "url": "tidespine.glb",
@@ -713,11 +713,11 @@
     },
     "toxshade": {
       "url": "toxshade.glb",
-      "bytes": 240168
+      "bytes": 270484
     },
     "toxshade_majin": {
       "url": "toxshade_majin.glb",
-      "bytes": 278696
+      "bytes": 296340
     },
     "trenchtusk": {
       "url": "trenchtusk.glb",
@@ -725,7 +725,7 @@
     },
     "tsunamite": {
       "url": "tsunamite.glb",
-      "bytes": 212872
+      "bytes": 243652
     },
     "tuskling": {
       "url": "tuskling.glb",
@@ -745,7 +745,7 @@
     },
     "veilpup": {
       "url": "veilpup.glb",
-      "bytes": 168796
+      "bytes": 182552
     },
     "velvetomb": {
       "url": "velvetomb.glb",
@@ -757,7 +757,7 @@
     },
     "verdatide": {
       "url": "verdatide.glb",
-      "bytes": 201864
+      "bytes": 265184
     },
     "voidraith": {
       "url": "voidraith.glb",
@@ -765,15 +765,15 @@
     },
     "voidraxis": {
       "url": "voidraxis.glb",
-      "bytes": 236940
+      "bytes": 306384
     },
     "voltaura": {
       "url": "voltaura.glb",
-      "bytes": 121572
+      "bytes": 123176
     },
     "voltide": {
       "url": "voltide.glb",
-      "bytes": 83816
+      "bytes": 92108
     },
     "vysion": {
       "url": "vysion.glb",
@@ -797,11 +797,11 @@
     },
     "yaschamp": {
       "url": "yaschamp.glb",
-      "bytes": 137296
+      "bytes": 158004
     },
     "yasprime": {
       "url": "yasprime.glb",
-      "bytes": 184356
+      "bytes": 205852
     },
     "zaptus": {
       "url": "zaptus.glb",
@@ -809,11 +809,11 @@
     },
     "zenryu": {
       "url": "zenryu.glb",
-      "bytes": 182024
+      "bytes": 209196
     },
     "zenryu_majin": {
       "url": "zenryu_majin.glb",
-      "bytes": 175920
+      "bytes": 203064
     }
   }
 }

@@ -39,12 +39,28 @@ translate([0, 9, 29]) {
   chain([[3.5, -1, 2], [5.5, 1, 0], [6.5, 3, -2]], [0.4, 0.35, 0.3], leatherDk);
 }
 
+// Eye sunk into the skull: turned `yaw` outward along the skin and squashed front-to-back so only its face shows, set
+// in a dark socket under a hard brow ridge of the skin colour that slants down to the snout, so the face itself scowls.
+module socket_eye(p, size, yaw, iris, sclera, pupil, skin, sock, lid = 0.5, tilt = 30, squash = 0.6) {
+  translate(p) rotate([0, 0, yaw]) {
+    color(sock) translate([0, size * 0.45, -size * 0.05]) scale([1.14, 0.55, 1.12]) sphere(size, $fn = 20);
+    scale([1, squash, 1]) eye([0.01, 0, 0], size, iris = iris, sclera = sclera, pupil = pupil, lid = lid, lid_tilt = tilt,
+                              lid_c = skin, slit = 0.35);
+    // The ridge is a wedge rooted behind the eye, so it reads as a ledge of the skull, not a stuck-on bar.
+    color(skin) hull() {
+      translate([size * 0.8, size * 0.25, size * 0.78]) scale([0.32, 0.45, 0.24]) sphere(size, $fn = 12);
+      translate([-size * 0.9, -size * 0.45, size * 0.12]) scale([0.36, 0.45, 0.24]) sphere(size, $fn = 12);
+      translate([0, size * 0.9, size * 0.45]) scale([0.9, 0.5, 0.4]) sphere(size, $fn = 12);
+    }
+  }
+}
+
 // Head: low and jutting forward.
 blob([[[4.5, 4.5, 4], [0, -3, 29]], [[3.5, 3.5, 3], [0, -6.5, 28]]], teal);
 ell([3, 2, 1.5], [0, -8, 26.6], plastron);
 mirror_x() {
-  eye([2.2, -7.4, 29.8], 1.4, iris = eyeGlow, pupil = [0.05, 0.25, 0.3], sclera = eyeGlow, yaw = -20);
-  color(tealDk) translate([2.4, -7.6, 30.9]) rotate([0, -20, -20]) scale([1.6, 0.6, 0.45]) sphere(1, $fn = 12);
+  socket_eye([2.3, -8.7, 29.3], 1.9, 30, concat(eyeGlow, GLOW), [0.75, 1, 1], [0.03, 0.2, 0.25], teal, [0.03, 0.12, 0.12],
+             lid = 0.4);
   spike([2.8, -2, 32], [1.8, 0.5, 5], 1.2, 0.1, tealDk);
 }
 spike([0, -7.5, 30], [0, -1.5, 2.5], 0.8, 0.1, tealDk);

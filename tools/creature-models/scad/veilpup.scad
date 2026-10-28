@@ -56,10 +56,15 @@ color(mask) intersection() {
   skull(1.07);
   translate([0, -2, 24.8]) cube([20, 20, 3], center = true);
 }
-ell([2, 1.6, 1.6], [6.4, 2.5, 24.8], mask); // knot
+ell([2, 1.6, 1.6], [-6.4, 2.5, 24.8], mask); // knot
 mirror_x() petal([1, 2.6, 0.6], [6.6, 4.5, 23.5], [30, 0, 10], mask);
 // The one eye glowing through the band.
-eye([-2.6, -7.5, 24.8], 1.7, iris = glow, sclera = [0.5, 0.9, 1], pupil = [0.05, 0.2, 0.4], yaw = 20);
+eye([2.5, -7.7, 24.7], 1.9, iris = [0.75, 0.97, 1, GLOW], sclera = [0.2, 0.75, 1, GLOW], pupil = [0.02, 0.12, 0.3], yaw = 16,
+    lid = 0.4, lid_tilt = 28, lid_c = mask, slit = 0.4);
+color(mask) hull() {
+  translate([4.6, -6.2, 26.9]) scale([1.1, 1.2, 0.5]) sphere(1, $fn = 10);
+  translate([0.9, -9, 26.2]) scale([0.7, 1, 0.45]) sphere(1, $fn = 8);
+}
 // Muzzle pushing out under the band.
 blob([[[3, 3, 2.3], [0, -8, 21.6]], [[2.2, 2.4, 1.8], [0, -11, 21.6]]], [0.42, 0.44, 0.54]);
 mirror_x() {
@@ -92,6 +97,10 @@ for (i = [0 : len(manes) - 1]) {
 chain([[3, 5, 7], [9, 9, 6], [13, 11, 9]], [2.4, 3.2, 3.6], fur);
 tuft([10, 9.5, 6], [3, 2, -3], 2, fur);
 tuft([12, 10.5, 8], [4, 1, -2], 2, fur);
+// Shaggy locks along the top and back of the brush, a lighter streak among them.
+for (t = [[5, 7.5, 9.5, [0, 3, 2]], [8.5, 10, 9.5, [0.5, 3, 2.5]], [11.5, 12, 10.5, [1, 2.5, 2.5]], [7, 9.5, 4.5, [0.5, 3, -1.5]],
+          [10.5, 12, 6.5, [1, 3, -1.5]], [7, 5.5, 5, [0.5, -2.5, -1]]])
+  tuft([t[0], t[1], t[2]], t[3], 1.6, t[0] == 8.5 || t[0] == 10.5 ? furHi : fur);
 blob([[[4, 4, 4], [14.5, 11.5, 13]], [[2.6, 2.6, 3], [15, 11, 17]]], mane);
 tuft([15, 11, 17], [0.5, 0, 6], 2, mane);
 tuft([14, 11.5, 16], [-3.5, 0.5, 4], 1.8, mane);

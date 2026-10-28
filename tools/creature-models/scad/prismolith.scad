@@ -42,8 +42,13 @@ translate([0, -10, 30]) scale(1.3) translate([0, 8, -27]) {
 blob([[[4.2, 4, 3.6], [0, -8, 27]], [[3, 2.8, 2.4], [0, -11, 25.5]]], ochre);
 ell([3.4, 2, 1.6], [0, -10, 29.4], ochreLight);
 mirror_x() {
-  eye([2.1, -11.9, 26.6], 1.1, iris = violet, pupil = [0.15, 0.08, 0.2], sclera = [0.92, 0.88, 0.95], yaw = -25, flat = 0.4);
-  color(ochreDark) translate([2.2, -12.2, 27.6]) rotate([0, 18, -25]) scale([1.5, 0.6, 0.4]) sphere(1, $fn = 10);
+  // Glowing violet eyes on a dark socket, sunk under a hard brow that slants down to the nose.
+  eye([2.3, -11.9, 26.9], 1.45, iris = [0.78, 0.5, 1, GLOW], pupil = [0.15, 0.06, 0.22], sclera = [0.24, 0.17, 0.3], yaw = 14,
+      flat = 0.5, lid = 0.4, lid_tilt = 30, lid_c = ochreDark, slit = 0.4);
+  color(ochre) hull() {
+    translate([3.4, -10.4, 28.6]) scale([1.3, 1.2, 0.75]) sphere(1, $fn = 10);
+    translate([0.7, -12.2, 27.9]) scale([0.8, 0.9, 0.55]) sphere(1, $fn = 10);
+  }
 }
 ell([1.8, 1, 0.6], [0, -13.4, 24.6], ochreDark);
 // Head crest crystals.

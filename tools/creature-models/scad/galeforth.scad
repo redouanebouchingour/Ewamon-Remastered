@@ -12,7 +12,24 @@ redDark = [0.62, 0.15, 0.1];
 beak = [0.95, 0.5, 0.15, NOGLOW];
 foot = [0.98, 0.55, 0.15, NOGLOW];
 talon = [0.25, 0.2, 0.18];
-iris = [0.85, 0.4, 0.1];
+iris = [1, 0.5, 0.05];
+socket = [0.3, 0.18, 0.1];
+
+// Hard brow ridge over an eye at p (radius s, turned yaw like the eye): a hulled wedge in the skin colour, high at the
+// temple and slanting down towards the nose, overhanging the eye so the face itself scowls.
+module brow(p, s, yaw, drop, c) {
+  translate(p) rotate([0, 0, yaw]) color(c) hull() {
+    translate([s * 1.0, s * 0.05, s * 1.25]) scale([s * 0.6, s * 0.7, s * 0.36]) sphere(1, $fn = 12);
+    translate([-s * 0.95, -s * 0.25, s * (1.25 - drop)]) scale([s * 0.5, s * 0.62, s * 0.32]) sphere(1, $fn = 12);
+    translate([0, s * 0.9, s * 1.1]) scale([s * 1.1, s * 0.6, s * 0.5]) sphere(1, $fn = 12);
+  }
+}
+// Flat scales / plates laid on an ellipsoid (centre cen, radii r): each [azimuth, elevation, size].
+module plates(cen, r, list, th = 0.35, c) {
+  for (t = list) let(az = t[0], el = t[1], sz = t[2])
+    color(c) translate([cen[0] + r[0] * cos(el) * cos(az), cen[1] + r[1] * cos(el) * sin(az), cen[2] + r[2] * sin(el)])
+      rotate([0, 0, az]) rotate([0, 90 - el, 0]) scale([sz, sz * 1.15, th]) sphere(1, $fn = 8);
+}
 
 // Body: a deep chest over short thighs, cream front.
 module bodyShape(k = 1) {
@@ -24,6 +41,10 @@ module bodyShape(k = 1) {
 color(tan) bodyShape();
 color(cream) intersection() { bodyShape(1.015); translate([0, -7, 18]) scale([5.5, 4, 10]) sphere(1, $fn = 20); }
 for (z = [13, 16, 19]) for (x = [-2, 2]) color(tanDark) translate([x + (z % 2), -7.2, z]) rotate([0, 40, 0]) scale([0.9, 0.3, 0.25]) sphere(1, $fn = 8);
+
+// Overlapping feather scallops down the back so it doesn't read as a plain egg from behind.
+for (r = [0 : 3]) for (k = [-2 : 2]) let(z = 26 - r * 3.6, a = 90 + k * 22 + (r % 2) * 11)
+  if (abs(a - 90) < 50) color(r % 2 == 0 ? tanDark : tan) translate([cos(a) * 7.2, sin(a) * 6.4 + 0.3, z]) rotate([0, 0, a - 90]) rotate([-75, 0, 0]) scale([1.7, 2.2, 0.45]) sphere(1, $fn = 10);
 
 // Legs: feathered thighs, orange shanks, talons.
 mirror_x() {
@@ -53,6 +74,9 @@ mirror_x() {
     color(cream) hull() { translate([13.2 + i * 0.2, y + 0.5, 5.5 - (i % 2)]) sphere(0.9, $fn = 10); translate([13.4 + i * 0.25, y + 0.8, 2.8 - (i % 2)]) sphere(0.3, $fn = 8); }
   }
   color(tanDark) translate([10, -1.5, 20]) rotate([0, 15, 0]) scale([1.2, 2.6, 4]) sphere(1, $fn = 14);
+  // Covert feather rows on the outside of the wing.
+  for (r = [0 : 2]) for (k = [0 : 2]) color(r % 2 == 0 ? tanDark : cream)
+    translate([11.2 + r * 0.6, -2.4 + k * 2.4 + (r % 2) * 1.2, 21 - r * 3.4]) rotate([0, 10, 0]) scale([0.6, 1.3, 1.9]) sphere(1, $fn = 10);
 }
 
 module headShape(k = 1) {
@@ -68,8 +92,10 @@ color(cream) intersection() { headShape(1.02); translate([0, -6, 32.5]) scale([5
 // A cream swirl on the forehead.
 color(cream) translate([0, -4.8, 36]) rotate([70, 0, 0]) rotate_extrude(angle = 300, $fn = 16) translate([1, 0]) circle(0.3, $fn = 6);
 mirror_x() {
-  eye([2.3, -5.7, 33.4], 1.25, iris = iris, pupil = [0.1, 0.04, 0.02], yaw = -24, flat = 0.45);
-  color(tanDark) translate([2.4, -6.1, 34.7]) rotate([0, -20, -24]) scale([1.8, 0.7, 0.55]) sphere(1, $fn = 12);
+  color(socket) translate([2.15, -5.3, 33.4]) rotate([0, 0, 14]) scale([1.45, 0.6, 1.25]) sphere(1.2, $fn = 14);
+  eye([2.1, -5.25, 33.4], 1.5, iris = iris, pupil = [0.1, 0.03, 0.0], sclera = [1, 0.95, 0.8], yaw = 14, flat = 0.45,
+      lid = 0.45, lid_tilt = 30, lid_c = socket);
+  brow([2.1, -5.25, 33.4], 1.5, 14, 0.8, tan);
 }
 color(beak) hull() {
   translate([0, -6.2, 31.8]) scale([1.4, 1, 1.1]) sphere(1, $fn = 12);

@@ -44,8 +44,8 @@ for (x = [-2.5, 2.5]) spike([x, -13.4, 9.4], [x * 0.2, -2.2, -1.6], 0.6, 0.05, v
 mirror_x() {
   spike([4.6, -11, 7], [3, 1.5, 1.5], 1, 0.1, shellHi);
   // Burning eyes under the shield.
-  color(eyeC) translate([2.7, -16.4, 7.2]) rotate([0, 0, -30]) scale([1.6, 0.9, 1.1]) sphere(1, $fn = 14);
-  color([1, 0.85, 0.3]) translate([2.6, -17.2, 7.4]) sphere(0.5, $fn = 8);
+  color(eyeC) translate([2.7, -16.4, 7.2]) rotate([0, -25, -30]) scale([1.8, 0.9, 0.7]) sphere(1, $fn = 14);
+  color([1, 0.85, 0.3]) translate([2.6, -17.2, 7.3]) scale([1, 1, 0.7]) sphere(0.45, $fn = 8);
   // Violet mouthparts.
   limb([1.2, -17.4, 4.6], [1.5, -18.4, 3.2], 0.5, 0.3, violet);
   // Mandibles: dark bases, curving to yellow hooks.

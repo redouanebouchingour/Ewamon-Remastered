@@ -22,6 +22,12 @@ for (i = [1 : len(coil) - 2]) {
   a = -100 + i * 30;
   color(greenDk) translate(coil[i]) rotate([0, 0, a]) scale([1, 0.25, 1]) sphere(3.85 - i * 0.12, $fn = 16);
 }
+// Cream underside along the outer bottom edge of the coil, so the ring reads as a belly-down snake, not a hose.
+coilBelly = [for (i = [0 : len(coil) - 1]) let(a = -100 + i * 30, r = 3.8 - i * 0.12) coil[i] + [cos(a), sin(a), 0] * r * 0.5 + [0, 0, -r * 0.42]];
+chain(coilBelly, [for (i = [0 : len(coil) - 1]) (3.8 - i * 0.12) * 0.6], belly);
+// A low dark ridge of fin-scutes along the top of the coil.
+for (i = [1 : len(coil) - 2]) let(a = -100 + i * 30, r = 3.8 - i * 0.12)
+  color(greenDk) translate(coil[i] + [0, 0, r * 0.88]) rotate([0, 0, a]) scale([0.5, 1.6, 0.9]) sphere(1, $fn = 8);
 // Tail rising up behind on the viewer's right, ending in a leaf fin.
 tailEnd = coil[len(coil) - 1];
 chain([tailEnd, [10, 6, 6], [11.5, 7, 11], [11.8, 7, 16]], [2.4, 1.8, 1.3, 0.9], green);
@@ -40,6 +46,22 @@ for (a = [0 : 30 : 330]) {
 }
 color(ruff) translate([-1, -1, 21]) scale([1, 1, 0.45]) sphere(4.8, $fn = 24);
 
+// Eye sunk into the skull: turned `yaw` outward along the skin and squashed front-to-back so only its face shows, set
+// in a dark socket under a hard brow ridge of the skin colour that slants down to the snout, so the face itself scowls.
+module socket_eye(p, size, yaw, iris, sclera, pupil, skin, sock, lid = 0.5, tilt = 30, squash = 0.6) {
+  translate(p) rotate([0, 0, yaw]) {
+    color(sock) translate([0, size * 0.45, -size * 0.05]) scale([1.14, 0.55, 1.12]) sphere(size, $fn = 20);
+    scale([1, squash, 1]) eye([0.01, 0, 0], size, iris = iris, sclera = sclera, pupil = pupil, lid = lid, lid_tilt = tilt,
+                              lid_c = skin, slit = 0.35);
+    // The ridge is a wedge rooted behind the eye, so it reads as a ledge of the skull, not a stuck-on bar.
+    color(skin) hull() {
+      translate([size * 0.8, size * 0.25, size * 0.78]) scale([0.32, 0.45, 0.24]) sphere(size, $fn = 12);
+      translate([-size * 0.9, -size * 0.45, size * 0.12]) scale([0.36, 0.45, 0.24]) sphere(size, $fn = 12);
+      translate([0, size * 0.9, size * 0.45]) scale([0.9, 0.5, 0.4]) sphere(size, $fn = 12);
+    }
+  }
+}
+
 // Head: snouted, tilted slightly to the viewer's left.
 translate([-1.5, -1.5, 26]) rotate([0, 0, -10]) scale(1.35) {
   blob([[[3.8, 4.2, 3.6], [0, 0.5, 0]], [[2.6, 3, 2.2], [0, -4.2, -1]]], green);
@@ -48,11 +70,9 @@ translate([-1.5, -1.5, 26]) rotate([0, 0, -10]) scale(1.35) {
   // Fangs.
   mirror_x() spike([1.6, -5.8, -1.8], [0, 0, -1.6], 0.45, 0.05, claw);
   mirror_x() ell([0.3, 0.25, 0.3], [0.9, -7, -0.2], greenDk);
-  // Red eyes under a green brow.
-  mirror_x() {
-    eye([2.4, -3, 1.2], 1.1, iris = [0.85, 0.08, 0.08], sclera = [1, 0.8, 0.75], yaw = -30);
-    color(greenDk) translate([2.4, -3.5, 2.2]) rotate([0, -15, -30]) scale([1.6, 0.6, 0.5]) sphere(1, $fn = 12);
-  }
+  // Red slit eyes sunk in dark sockets under a hard green brow.
+  mirror_x() socket_eye([2.1, -3.7, 0.9], 1.5, 26, [1, 0.1, 0.08], [1, 0.85, 0.6], [0.15, 0, 0], green, [0.05, 0.12, 0.08],
+                        lid = 0.36, tilt = 30);
   // Spiky blue mane fanning back from the crown.
   for (m = [[0, 1, 3, 0, -30, 6.5], [1.8, 1.5, 2.5, 18, -48, 6], [-1.8, 1.5, 2.5, -18, -48, 6], [2.6, 2.5, 0.5, 35, -72, 5.5],
             [-2.6, 2.5, 0.5, -35, -72, 5.5], [0, 3, 1.5, 0, -70, 7], [1.8, 3.5, -1, 22, -100, 5], [-1.8, 3.5, -1, -22, -100, 5],

@@ -3,6 +3,17 @@
 // thorny brown vines coiled round its arms, body and tail, and clusters of blood-orange fruit split with red light.
 include <lib.scad>
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
 fur = [0.42, 0.27, 0.17];
 furDk = [0.28, 0.17, 0.1];
 cream = [0.55, 0.38, 0.25];
@@ -123,8 +134,8 @@ mirror_x() spike([0.9, -7.1, 25.7], [0, -0.1, -1.1], 0.32, 0.05, fang);
 mirror_x() spike([0.9, -6.9, 24.5], [0, -0.1, 0.9], 0.28, 0.05, fang);
 // Glowing red eyes under furious brows.
 mirror_x() {
-  eye([2.4, -4.4, 28.8], 1.35, iris = glow, pupil = [0.5, 0.02, 0.02], sclera = [1, 0.45, 0.3], yaw = -26, flat = 0.42);
-  color(furDk) translate([2.0, -5, 30]) rotate([0, 28, -26]) scale([1.8, 0.6, 0.4]) sphere(1, $fn = 10);
+  eye([2.4, -4.0, 28.8], 1.65, iris = [1, 0.22, 0.08, GLOW], pupil = [0.4, 0.02, 0.02], sclera = [1, 0.45, 0.3], yaw = 8, flat = 0.42, lid = 0.48, lid_tilt = 32, lid_c = furDk, slit = 0.3);
+  brow([2.4, -4.0, 28.8], 1.65, 0.65, fur, 8);
 }
 // Bristling fur spikes round the head and neck.
 for (sp = [[[4.6, 1, 29], [1.6, 1.2, 1.4]], [[-4.6, 1, 29], [-1.6, 1.2, 1.4]], [[3, 3, 24], [1.6, 1.4, -0.8]],

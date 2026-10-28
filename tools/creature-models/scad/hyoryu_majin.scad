@@ -13,7 +13,7 @@ maneShade = [0.55, 0.48, 0.85];
 shard = [0.85, 0.15, 0.28];
 blade = [0.75, 0.88, 1];
 horn = [0.5, 0.1, 0.25];
-eyeC = [0.95, 0.1, 0.1];
+eyeC = [1, 0.1, 0.1, GLOW];
 
 // Spine path: neck down into a loop to the viewer's right, back across the ground to the left, up into the blade.
 pts = [[-0.5, -2, 28], [0, -0.5, 24], [1, 0.5, 19], [1, 0.5, 14.5], [3.5, 1, 11], [8, 1.5, 13], [12.5, 1.5, 8.5],
@@ -26,6 +26,9 @@ chain([for (i = [0 : 4]) pts[i] + [0, -rs[i] * 0.55, 0]], [for (i = [0 : 4]) rs[
 // Darker dorsal stripe along the back half.
 chain([for (i = [0 : len(pts) - 1]) pts[i] + [0, rs[i] * 0.55, rs[i] * 0.6]], [for (r = rs) r * 0.45], bodyDark);
 
+// Pale belly scutes down the coil, so the serpent body is not a plain tube.
+for (i = [4 : 12]) let(q = (pts[i] + pts[i + 1]) / 2, r = (rs[i] + rs[i + 1]) / 2)
+  color(belly) translate(q + [0, -r * 0.42, -r * 0.2]) scale([r * 0.8, r * 0.62, r * 0.78]) sphere(1, $fn = 12);
 // Crescent ice blade at the tail tip, curving up.
 translate([-16.5, 1, 4]) rotate([62, 0, 0]) scale(1.4) {
   color(blade) linear_extrude(height = 1.2, center = true) difference() {
@@ -64,6 +67,13 @@ module wing(side) {
         translate([side * 1.8, 2, 21] + d * 0.55) scale([2.4, 0.9, 2.4]) sphere(1, $fn = 14);
         translate([side * 1.8, 2, 21] + d) sphere(0.15, $fn = 6);
       }
+  // a vein down the middle of each crystal feather, front and back
+  for (k = [0 : 6]) let(a = 8 + k * 14, l = 11 + (k < 4 ? k : 6 - k) * 2)
+    let(d = [side * sin(a) * l, 3 + k * 0.4, cos(a) * l * 0.95])
+      for (o = [-0.75, 0.75]) color(wingVein) hull() {
+        translate([side * 1.8, 2 + o, 21] + d * 0.2) sphere(0.22, $fn = 6);
+        translate([side * 1.8, 2 + o * 1.1, 21] + d * 0.8) sphere(0.08, $fn = 6);
+      }
   // red icicles hanging under the wing
   for (k = [0 : 5]) let(x = side * (4 + k * 2.2), z = 22.5 + k * 0.9)
     spike([x, 3.2 + k * 0.3, z], [0, 0, -2.2 - (k % 2) * 1.2], 0.45, 0.05, shard);
@@ -77,8 +87,17 @@ translate(pts[0] + [0, -1, 2.6]) scale(1.3) {
   blob([[[2.4, 2.4, 2.2], [0, 0, 0]], [[1.3, 2, 1.1], [0, -3.4, -0.6]]], body);
   ell([1.2, 1.3, 0.6], [0, -3.2, -1.3], belly);
   mirror_x() {
-    eye([1.3, -1.9, 0.6], 0.7, iris = eyeC, pupil = [0.05, 0.15, 0.25], sclera = [0.95, 1, 1], yaw = -32, flat = 0.4);
-    color(bodyDark) translate([1.4, -2.1, 1.3]) rotate([0, -20, -30]) scale([1.1, 0.45, 0.3]) sphere(1, $fn = 10);
+    // Eyes sunk in dark sockets under a hard brow ridge slanting down to the snout.
+    translate([1.3, -1.85, 0.75]) rotate([0, -10, -22]) scale([1.25, 0.4, 0.95]) color([0.04, 0.1, 0.18]) sphere(1, $fn = 14);
+    eye([1.3, -2.05, 0.75], 0.95, iris = eyeC, pupil = [0.03, 0.06, 0.12], sclera = [1, 0.8, 0.3], yaw = -20, flat = 0.4,
+        lid = 0.5, lid_tilt = 32, lid_c = bodyDark, slit = 0.35, squint = 0.15);
+    color(body) hull() {
+      translate([0.4, -2.7, 1.3]) scale([0.4, 0.4, 0.3]) sphere(1, $fn = 10);
+      translate([1.4, -2.3, 1.8]) scale([0.7, 0.45, 0.33]) sphere(1, $fn = 10);
+      translate([2.3, -1.3, 2.1]) scale([0.45, 0.45, 0.35]) sphere(1, $fn = 10);
+    }
+    // long whiskers trailing off the snout
+    chain([[0.6, -4.8, -0.4], [2.2, -5.2, -1.2], [4, -4.2, -2.4], [5, -2.6, -3.6]], [0.1, 0.09, 0.07, 0.03], mane);
     ell([0.22, 0.2, 0.2], [0.5, -5.2, -0.3], bodyDark);
     chain([[1.2, 0.2, 1.6], [2.2, 1.6, 3.8], [2.8, 3.4, 5.4]], [0.5, 0.35, 0.08], horn);
     chain([[1.8, -0.4, 0.6], [3.2, 0.8, 1.4], [4.2, 2, 1.8]], [0.35, 0.25, 0.06], horn);

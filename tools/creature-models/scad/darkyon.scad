@@ -10,7 +10,7 @@ tealHi = [0.3, 0.7, 0.72];
 flameDk = [0.1, 0.25, 0.85];
 flame = [0.2, 0.5, 0.97];
 flameHi = [0.45, 0.85, 1];
-eyeRed = [0.9, 0.12, 0.1];
+eyeRed = [1, 0.12, 0.08, GLOW];
 
 module tongue(p, d, r, c) {
   color(c) hull() {
@@ -35,6 +35,11 @@ color(teal) hull() {
   translate([0, -7.4, 3]) scale([3.6, 0.8, 1]) sphere(1.2);
 }
 for (a = [0 : 24 : 359]) spike([8.4 * sin(a), 0.5 - 7 * cos(a), 4.5], [2 * sin(a), -1.7 * cos(a), -4 + (a / 24 % 2) * 1.2], 1.8, 0.15, shade);
+// A torn second layer over the gown at the knees, and a teal-edged rip or two.
+for (a = [-168 : 24 : 168]) let(k = (a + 168) / 24) color(k % 4 == 1 ? shadeHi : shade) hull() {
+  translate([6.2 * sin(a), 0.4 - 5.2 * cos(a), 14]) rotate([0, 0, -a]) scale([1.8, 0.35, 1.2]) sphere(1, $fn = 8);
+  translate([8 * sin(a), 0.4 - 6.8 * cos(a), 8.5 - (k % 2) * 1.6]) sphere(0.12, $fn = 4);
+}
 // Folds.
 for (a = [-150 : 40 : 150]) if (abs(a) > 30) color(shadeHi) hull() {
   translate([3.8 * sin(a), 0.2 - 3.2 * cos(a), 21]) sphere(0.5);
@@ -53,7 +58,13 @@ mirror_x() {
 
 // Head: a dark hood with a blue fire crest sweeping over the viewer's right eye.
 blob([[[3.8, 3.6, 4], [0, -0.5, 31]], [[2.4, 2.4, 2], [0, 1.4, 34]]], shade);
-eye([-1.5, -3.7, 31], 1.3, iris = eyeRed, pupil = [0.2, 0, 0], sclera = [0.85, 0.82, 0.86], yaw = 12);
+// One big glowing red eye sunk into the hood under a hard brow slanting down to the middle of the face.
+eye([-1.6, -3.55, 30.8], 1.7, iris = [1, 0.6, 0.3, GLOW], pupil = [0.1, 0, 0], sclera = eyeRed, yaw = 10, lid = 0.45,
+    lid_tilt = 30, lid_c = shade, slit = 0.3);
+color(shade) hull() {
+  translate([-3.5, -2.4, 32.9]) scale([1, 1, 0.55]) sphere(1, $fn = 10);
+  translate([-0.2, -4.1, 32.1]) scale([0.7, 0.8, 0.45]) sphere(1, $fn = 8);
+}
 // Hood of blue flame: a big swoop over the head and right eye.
 blob([[[3.8, 3.4, 2.6], [0.6, -0.5, 35]], [[2.2, 1.8, 2.2], [1.6, -3.4, 32]]], flame);
 ell([2.2, 1.6, 1.4], [0.4, -2.6, 36], flameHi);

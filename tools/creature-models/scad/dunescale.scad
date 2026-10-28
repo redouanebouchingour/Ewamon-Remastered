@@ -2,6 +2,17 @@
 // cheeks, a shell of rounded rust-brown boulder plates on its back, violet leg bands and a crystal tail tip.
 include <lib.scad>
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
 sand = [0.88, 0.6, 0.25];
 sandHi = [0.95, 0.72, 0.36, NOGLOW];
 sandDk = [0.74, 0.48, 0.18];
@@ -43,7 +54,10 @@ spike([0, -19, 14.6], [0, -2, 3.8], 1.5, 0.15, sandHi);
 // Small ear horns.
 mirror_x() spike([3.6, -9, 20], [1.2, 1.6, 3], 1.1, 0.1, sandDk);
 // Eyes: violet with a white sclera, set high on the head.
-mirror_x() eye([3.9, -14.4, 17.4], 1.9, iris = violet, pupil = [0.15, 0.06, 0.2], yaw = -40);
+mirror_x() {
+  eye([3.6, -14.1, 17.3], 2.1, iris = [0.62, 0.3, 0.88], pupil = [0.15, 0.06, 0.2], yaw = 22, lid = 0.36, lid_tilt = 24, lid_c = violet, slit = 0.5);
+  brow([3.6, -14.1, 17.6], 1.8, 0.3, sandDk, 22);
+}
 // Mouth line.
 mirror_x() color([0.3, 0.16, 0.06]) hull() {
   translate([0.6, -20.4, 11.8]) sphere(0.2, $fn = 6);

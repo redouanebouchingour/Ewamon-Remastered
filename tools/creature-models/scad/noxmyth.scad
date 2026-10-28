@@ -15,7 +15,7 @@ wingHi = [0.7, 0.16, 0.14];
 moon = [1, 0.75, 0.3];
 gold = [0.3, 0.3, 0.36];
 goldDark = [0.2, 0.2, 0.25];
-eyeGlow = [0.7, 0.45, 1];
+eyeGlow = [0.62, 0.3, 1, GLOW];
 star = [0.95, 0.6, 0.5];
 armour = [0.28, 0.28, 0.34];
 armourHi = [0.42, 0.42, 0.5];
@@ -102,14 +102,29 @@ mirror_x() {
 // Head: lavender face.
 ell([5.4, 4.8, 5], [0, 0, 31.5], skin);
 
-mirror_x() eye([2, -4.4, 31.6], 1.35, iris = eyeGlow, pupil = [0.6, 0.35, 0.9], sclera = [0.35, 0.18, 0.55], yaw = -14);
-// Stern mouth and angled brows.
+// Glowing violet eyes sunk into the face under a hard brow that slants down to the nose: a cold glare.
+mirror_x() {
+  eye([2.05, -3.85, 31.5], 1.6, iris = [0.88, 0.7, 1, GLOW], pupil = [0.25, 0.08, 0.45], sclera = eyeGlow, yaw = 18,
+      lid = 0.45, lid_tilt = 30, lid_c = skin, slit = 0.35);
+  color(skin) hull() {
+    translate([3.7, -3.3, 33.4]) scale([1, 0.9, 0.5]) sphere(1, $fn = 10);
+    translate([0.7, -4.7, 32.8]) scale([0.6, 0.6, 0.4]) sphere(1, $fn = 8);
+  }
+}
+// Stern mouth.
 color(void) translate([0, -4.75, 29.3]) rotate([90, 0, 0]) scale([0.7, 0.18, 0.3]) cylinder(h = 0.4, r = 1, center = true, $fn = 12);
-mirror_x() color(void) translate([2, -4.6, 33]) rotate([0, 18, -14]) scale([1.4, 0.35, 0.3]) sphere(1, $fn = 10);
+
 // Chest armour with a gold crescent, spiked pauldrons.
 blob([[[3.2, 2.4, 2.2], [0, -0.4, 25]], [[2.2, 2, 1.4], [0, -0.6, 22.6]]], armour);
 translate([0, -2.75, 25]) rotate([90, 0, 0]) color(sun) linear_extrude(0.4, center = true) difference() { circle(0.9, $fn = 16); translate([0.45, 0.25]) circle(0.78, $fn = 16); }
 mirror_x() { ell([1.8, 1.8, 1.4], [3, -0.2, 26.6], armourHi); spike([3.4, -0.2, 27.4], [1.2, 0, 1.2], 0.6, 0.05, armour); }
+// Armoured gauntlets with a red trim on the raised forearms, and a plated belt with a red gem.
+mirror_x() {
+  limb([4.75, -1.65, 25.4], [5.4, -2.3, 26.9], 1, 0.9, armour);
+  color(streak) translate([5.45, -2.35, 27]) rotate(_dir_rot([0.65, -0.65, 1.5])) cylinder(h = 0.3, r = 0.95, center = true, $fn = 12);
+}
+color(armourHi) translate([0, -0.4, 22.4]) scale([2.5, 2.1, 0.55]) sphere(1, $fn = 16);
+color(streak) translate([0, -2.4, 22.4]) scale([0.5, 0.35, 0.6]) sphere(1, $fn = 10);
 // Hair: covers back and top, a swoop across the brow, a curl rising to the viewer's right.
 blob([[[5.8, 4.8, 5.4], [0, 1.6, 32.4]], [[4.4, 4, 3.5], [0, 2.5, 27.5]]], hair);
 ell([5, 3.4, 2.2], [0.6, -1.4, 35.8], hair);

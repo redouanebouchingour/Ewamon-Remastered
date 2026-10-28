@@ -1,6 +1,23 @@
 // Bramblecub: a mossy green bear cub with leaf ears, a crown of twigs and a curling vine tail tipped with a leaf.
 include <lib.scad>
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
+// Flat colour patch lying on the ellipsoid (radii r, centre c) at azimuth az (0 = straight back, +Y) and elevation el.
+module patchOn(r, c, az, el, s, col) {
+  color(col) translate(c + [r[0] * sin(az) * cos(el), r[1] * cos(az) * cos(el), r[2] * sin(el)])
+    rotate([0, 0, -az]) rotate([el, 0, 0]) scale([s, s * 0.3, s * 0.8]) sphere(1, $fn = 14);
+}
+
 green = [0.36, 0.66, 0.16];
 greenHi = [0.55, 0.8, 0.24];
 greenDk = [0.2, 0.45, 0.1];
@@ -29,9 +46,15 @@ color(dark) translate([0, -11.4, 20]) rotate([90, 0, 0]) scale([1.8, 0.4, 0.4]) 
 // Determined eyes in dark green sockets.
 mirror_x() {
   ell([3.2, 1.4, 2.6], [4, -8.2, 24.3], greenDk);
-  eye([4, -8.9, 24.3], 2.3, iris = [0.12, 0.1, 0.08], pupil = dark, sclera = [0.12, 0.1, 0.08], yaw = -20);
-  color(greenDk) translate([3.8, -9.4, 26.6]) rotate([0, -20, -20]) scale([2.4, 0.8, 0.6]) sphere(1, $fn = 14);
+  eye([4, -8.5, 24.3], 2.4, iris = [0.12, 0.1, 0.08], pupil = dark, sclera = [0.12, 0.1, 0.08], yaw = 4, shine = true, lid = 0.42, lid_tilt = 24, lid_c = greenDk);
+  brow([4, -8.5, 24.3], 2.4, 0.4, green, 4);
 }
+
+// Mossy mottling over the back of the head and body (the sprite's lighter and darker tufts).
+for (m = [[-35, 12, 3.2, 0], [5, 30, 3.6, 1], [40, 8, 2.8, 0], [-10, -8, 2.6, 2], [30, 45, 2.4, 2], [-45, 40, 2.6, 1]])
+  patchOn([10.5, 9, 8.5], [0, -1, 24], m[0], m[1], m[2], m[3] == 1 ? greenHi : m[3] == 2 ? greenDk : [0.45, 0.72, 0.2]);
+for (m = [[-30, 10, 2.6, 2], [25, 25, 2.4, 1], [50, -5, 2.2, 2]])
+  patchOn([9, 8, 7.5], [0, 1, 9], m[0], m[1], m[2], m[3] == 1 ? greenHi : greenDk);
 
 // Leaf ears with brown inner.
 mirror_x() {

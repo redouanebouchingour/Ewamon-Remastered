@@ -2,6 +2,23 @@
 // shoulder vents, soot-black claws and feet, a fire in its belly and a flame on its tail.
 include <lib.scad>
 
+// Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
+// towards the nose so the face itself scowls.
+module brow(p, s, drop, c, yaw = 0) {
+  color(c) translate(p) rotate([0, 0, yaw]) hull() {
+    translate([s * 1.0, s * 0.1, s * 0.8]) scale([s * 0.55, s * 0.62, s * 0.42]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    translate([-s * 0.8, -s * 0.12, s * (0.7 - drop)]) scale([s * 0.55, s * 0.62, s * 0.4]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+    // Sealed back over the eye's top so no sclera shows above the ridge.
+    translate([s * 0.1, s * 0.2, s * 0.95]) scale([s * 1.05, s * 0.75, s * 0.5]) rotate([0, 90, 0]) sphere(1, $fn = 12);
+  }
+}
+
+// Flat colour patch lying on the ellipsoid (radii r, centre c) at azimuth az (0 = straight back, +Y) and elevation el.
+module patchOn(r, c, az, el, s, col) {
+  color(col) translate(c + [r[0] * sin(az) * cos(el), r[1] * cos(az) * cos(el), r[2] * sin(el)])
+    rotate([0, 0, -az]) rotate([el, 0, 0]) scale([s, s * 0.3, s * 0.8]) sphere(1, $fn = 14);
+}
+
 body = [0.82, 0.16, 0.1];
 bodyDk = [0.6, 0.1, 0.07];
 soot = [0.16, 0.16, 0.18];
@@ -32,6 +49,9 @@ module spots(rx, ry, rz, z0, list) {
   }
 }
 
+// Darker scale patches over the back.
+for (m = [[-25, 15, 2.2], [30, 35, 1.8], [10, -12, 2.4], [-45, -25, 1.6], [45, -5, 1.8]]) patchOn([7.5, 6.5, 7], [0, 0, 9], m[0], m[1], m[2], bodyDk);
+for (m = [[-20, 15, 1.8], [30, 0, 1.6]]) patchOn([6.8, 6.2, 5.8], [0, -1, 23], m[0], m[1], m[2], bodyDk);
 // Torso: taller and leaner than Cindercap.
 blob([[[7.5, 6.5, 7], [0, 0, 9]], [[6.5, 5.6, 6], [0, -0.5, 16]]], body);
 // Belly fire.
@@ -46,8 +66,9 @@ mirror_x() ell([0.35, 0.3, 0.35], [1, -11.4, 21.8], dark);
 color(dark) translate([0, -10.4, 19.8]) rotate([90, 0, 0]) scale([2.6, 0.6, 0.45]) cylinder(h = 0.6, r = 1, center = true, $fn = 16);
 for (x = [-1.4, 1.4]) spike([x, -10.6, 20.2], [0, 0, -0.9], 0.35, 0.05, claw);
 mirror_x() {
-  eye([3.3, -6.8, 23.4], 1.7, iris = [1, 0.75, 0.1], pupil = dark, sclera = [1, 0.95, 0.6], yaw = -20);
-  color(bodyDk) translate([3.3, -7.4, 25.3]) rotate([0, -20, -18]) scale([2.2, 0.9, 0.7]) sphere(1, $fn = 14);
+  eye([3.4, -6.7, 23.2], 2.3, iris = [1, 0.75, 0.1, GLOW], pupil = dark, sclera = [1, 0.95, 0.6], yaw = 6,
+      lid = 0.4, lid_tilt = 32, lid_c = soot, slit = 0.35);
+  brow([3.4, -6.7, 23.2], 2.3, 0.6, bodyDk, 6);
 }
 
 // Two-tier mushroom cap, tilted back off the face.

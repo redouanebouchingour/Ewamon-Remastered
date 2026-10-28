@@ -13,7 +13,7 @@ goldDk = [0.72, 0.52, 0.15];
 belly = [0.96, 0.96, 0.95];
 bellyLine = [0.85, 0.72, 0.4];
 talon = [0.93, 0.93, 0.9];
-eyeC = [0.95, 0.75, 0.1];
+eyeC = [1, 0.85, 0.1, GLOW];
 mane = [0.62, 0.86, 0.94];
 maneHi = [0.97, 0.98, 0.95];
 maneDk = [0.42, 0.68, 0.8];
@@ -49,6 +49,8 @@ color(bellyLine) translate([0, -7, 15]) scale([0.22, 0.3, 4.5]) sphere(1, $fn = 
 blob([[[6.6, 5.5, 2.6], [0, 0, 24.5]]], armour);
 color(gold) translate([0, 0, 22.4]) scale([1, 0.86, 1]) cylinder(h = 0.8, r = 6.9, $fn = 30);
 color(gold) translate([0, -5.6, 24.2]) scale([1.6, 0.6, 1]) sphere(1, $fn = 14);
+// Gold scrollwork curls either side of the emblem.
+mirror_x() color(gold) translate([2.2, -5.25, 24.3]) rotate([75, 0, 15]) rotate_extrude(angle = 280, $fn = 14) translate([0.9, 0]) circle(0.25, $fn = 6);
 mirror_x() {
   ell([4, 4.2, 3.4], [6.6, 0, 24.8], armour);
   color(gold) translate([6.6, 0, 22.2]) scale([4.1, 4.3, 1]) cylinder(h = 0.8, r = 1, $fn = 20);
@@ -64,7 +66,12 @@ translate([0, -1.5, 29.5]) scale(1.2) {
   plate([[-2.4, -3.9, 1.8], [2.4, -3.9, 1.8], [-2.4, -4.6, -0.6], [2.4, -4.6, -0.6], [0, -5.6, -1.6]], 0.45, blue);
   plate([[0, -4.6, 9], [0, -5.4, 2], [0, -6, -1.8], [-0.9, -5.2, 2], [0.9, -5.2, 2]], 0.55, gold);
   mirror_x() plate([[2.2, -3.6, 7], [2.6, -4.6, 2.4], [1.8, -4.8, 1.2], [3.6, -3.4, 2.5]], 0.5, gold);
-  mirror_x() eye([2.3, -4.9, 0.4], 0.75, iris = eyeC, pupil = [0.15, 0.1, 0.05], sclera = [1, 0.92, 0.7], yaw = -25);
+  // Glaring eyes in a dark slit under the visor's brow edge.
+  mirror_x() {
+    color([0.03, 0.05, 0.12]) translate([2.2, -4.55, 0.4]) rotate([0, -22, -22]) scale([1.6, 0.4, 0.95]) sphere(1, $fn = 14);
+    eye([2.2, -4.6, 0.35], 1.05, iris = eyeC, pupil = [0.1, 0.05, 0], sclera = [0.1, 0.12, 0.25], yaw = -22,
+        lid = 0.5, lid_tilt = 32, lid_c = goldDk, slit = 0.35, squint = 0.2);
+  }
   // Swept-back mane: big flowing lobes rising up and curling back.
   plume([[0, 1, 3], [0, 3, 8], [-0.5, 7, 11], [0, 11, 11]], [2.6, 2.4, 2, 1], mane, maneHi);
   for (s = [-1, 1]) {
@@ -76,6 +83,19 @@ translate([0, -1.5, 29.5]) scale(1.2) {
 // Blade wings held down along the sides, tips toward the ground and slightly forward.
 blade([-7, -0.5, 23], [-0.6, -0.35, -0.72], 21, [-1.8, 0.6, 1.6] * 1.4);
 blade([7, -0.5, 23], [0.5, -0.4, -0.77], 20, [1.8, 0.6, 1.4] * 1.4);
+
+// Back: a gold-trimmed back plate between the shoulders and rows of scalloped feathers down the egg, so the back
+// is not a plain blob; feather scallops on the thighs.
+blob([[[5.2, 1.6, 3.2], [0, 5.6, 21.5]], [[2.5, 1.4, 2], [0, 6.2, 18]]], armour);
+color(gold) hull() { translate([-4.6, 6.6, 23.2]) sphere(0.35, $fn = 6); translate([4.6, 6.6, 23.2]) sphere(0.35, $fn = 6); }
+mirror_x() color(gold) hull() { translate([4.6, 6.6, 23.2]) sphere(0.3, $fn = 6); translate([0, 7.4, 16.6]) sphere(0.3, $fn = 6); }
+// downward-pointing feathers
+for (row = [0 : 2]) for (k = [-2 : 2]) let(a = k * 22 + (row % 2) * 11, z = 15.5 - row * 3.2, r = 7.2 - row * 0.15)
+  color(row % 2 == 0 ? blueDk : armour) hull() {
+    translate([r * sin(a), 0.5 + r * cos(a) * 0.9, z]) rotate([0, 0, -a]) scale([1.3, 0.35, 0.6]) sphere(1, $fn = 10);
+    translate([r * sin(a) * 1.01, 0.5 + r * cos(a) * 0.92, z - 2]) sphere(0.25, $fn = 6);
+  }
+mirror_x() for (k = [0 : 1]) color(blueDk) translate([6.4, -1.5 + k * 2.5, 9.6]) rotate([0, 0, 20 - k * 40]) scale([1.4, 0.4, 1.2]) sphere(1, $fn = 10);
 
 // Legs: armoured shins, white talons.
 mirror_x() {
