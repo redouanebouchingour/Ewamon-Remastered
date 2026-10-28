@@ -1,7 +1,8 @@
-// Aonred: an armoured shadow lord floating over a swirling pool of blue fire: a silver crested helm with red eyes,
+// Aonred: an armoured shadow lord floating above the ground: a silver crested helm with red eyes,
 // a pale ruff, black wings wreathed in blue flame, a blue fire phoenix rising from its crown and a glowing blue orb
 // held in each claw; a blue gem on its back.
 include <lib.scad>
+// ground: -1.17   (it floats: the ground where its old fire pool stood, so it hovers as high as before)
 
 shade = [0.13, 0.13, 0.16];
 shadeHi = [0.25, 0.26, 0.3];
@@ -20,14 +21,6 @@ module fire(p, s = 1, lean = 1) {
   chain([p + [0, -0.9, 0] * s, p + [0.6 * lean, -1.1, 2] * s, p + [-0.3 * lean, -0.9, 3.6] * s], [1.2, 0.9, 0.2] * s, flameHi);
 }
 
-// Swirling pool of blue fire on the ground.
-color(flameDk) cylinder(h = 0.8, r1 = 12, r2 = 11.5, $fn = 40);
-for (i = [0 : 3]) color(i % 2 == 0 ? flame : flameHi) translate([0, 0, 0.8 + i * 0.25]) rotate([0, 0, i * 50])
-  rotate_extrude(angle = 260, $fn = 24) translate([10 - i * 2.4, 0]) scale([1, 0.5]) circle(1, $fn = 8);
-for (a = [0 : 60 : 359]) fire([11 * sin(a), 11 * cos(a), 0.6], 0.6, (a / 45) % 2 == 0 ? 1 : -1);
-// Twisting fire column up to the body (it floats).
-chain([[0, 0, 1], [1.2, -0.5, 4], [-1, 0, 7], [0.5, 0, 10]], [2.2, 2.4, 2.6, 3], flame);
-chain([[0.5, -1.6, 2], [1.5, -2, 5], [-0.6, -1.6, 8]], [0.9, 1, 0.6], flameHi);
 
 // Jagged black skirt with silver trim.
 blob([[[5, 4.2, 3], [0, 0, 18]], [[7.5, 6.5, 2], [0, 0, 12]]], shade);

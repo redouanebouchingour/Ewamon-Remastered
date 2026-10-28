@@ -1,5 +1,5 @@
-// Flowbot's rig (rig.mjs): a robot with a monitor head, standing on its own feet (the scad's hover drum is dropped and
-// the rest refitted, so the feet are the ground). Coordinates and colours are scad/flowbot.scad's.
+// Flowbot's rig (rig.mjs): a robot with a monitor head, standing on its own feet. Coordinates and colours are
+// scad/flowbot.scad's.
 //
 // Rotation cheat sheet (degrees, scad frame: Z up, the face looks along -Y, +X is Flowbot's own left):
 //   rx > 0 tips a part's top forward; a hanging arm swings BACK (a forward raise is rx < 0)
@@ -34,7 +34,7 @@ const EYE_Y = -3.45;   // the dot eyes' centre plane in the head frame
 
 const joints = [
   // the root pivots at the feet; the legs hang off it (not the pelvis), so the body can sway with the feet planted
-  { name: 'root', at: [0, 0, 6] },
+  { name: 'root', at: [0, 0, 5.4] },
   { name: 'pelvis', parent: 'root', at: [0, 0, 16] },
   { name: 'legL', parent: 'root', at: [3.3, 0, 14.6] },
   { name: 'legR', parent: 'root', at: [-3.3, 0, 14.6] },
@@ -70,7 +70,6 @@ function assign(c, rgb) {
     if (near(rgb, BUBBLE)) return 'face';
     return 'head';
   }
-  if (z < 6.1) return null;   // the hover drum and its thrusters: Flowbot stands on its feet
   const ax = Math.abs(x);
   const shoulder = Math.hypot((ax - 7) / 2.4, c[1] / 2.4, (z - 24.5) / 2.2) <= 1.06;
   if ((ax >= 6 && z > 9 && z < 27.6) || shoulder) return `${z > 17.9 ? 'arm' : z > 11.9 ? 'fore' : 'hand'}${side}`;
@@ -179,7 +178,7 @@ const clips = {
     pose: (t, u) => {
       const swing = osc(u, 1);                               // +1: the left leg forward
       const stride = 24;
-      const dip = -8.6 * (1 - Math.cos((stride * Math.abs(swing) * Math.PI) / 180));   // hip 8.6 above the soles
+      const dip = -9.2 * (1 - Math.cos((stride * Math.abs(swing) * Math.PI) / 180));   // hip 9.2 above the soles
       return {
         root: { p: [0, 0, dip + 0.25 * Math.abs(osc(u, 2))], r: [5, -3 * swing, 0] },
         legL: { r: [-stride * swing, 0, 0] },
@@ -428,7 +427,7 @@ const clips = {
 };
 
 export default {
-  frame: { height: 38.45, minZ: -0.3 },
+  frame: { height: 32.72, minZ: 5.406 },
   joints,
   assign,
   extras,

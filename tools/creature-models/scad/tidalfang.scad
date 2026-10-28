@@ -1,4 +1,4 @@
-// Tidalfang: a sleek aqua sea dragon standing tall on a rock: a pearly banded belly, a long curved neck, a big-eyed
+// Tidalfang: a sleek aqua sea dragon standing tall: a pearly banded belly, a long curved neck, a big-eyed
 // head with swept horns and frilled fin ears, a pale mint-lilac sail of webbed spines rising behind its shoulders,
 // little clawed arms, and a long tail that loops up its side, sweeps across the front and ends in a finned curl.
 include <lib.scad>
@@ -14,18 +14,12 @@ sailB = [0.8, 0.78, 0.98];
 sailRib = [0.3, 0.72, 0.74];
 claw = [0.9, 0.95, 0.95];
 drop = [0.45, 0.68, 0.95];
-rock = [0.36, 0.3, 0.38];
-rockHi = [0.48, 0.42, 0.5];
 
 // Catmull-Rom spline through control points P, n samples per span: smooth body paths.
 function cr(a, b, c, d, t) = 0.5 * (2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (3 * b - a - 3 * c + d) * t * t * t);
 function spline(P, n) = concat([for (i = [0 : len(P) - 2]) for (k = [0 : n - 1])
   cr(P[max(i - 1, 0)], P[i], P[i + 1], P[min(i + 2, len(P) - 1)], k / n)], [P[len(P) - 1]]);
 function lerp_r(R, n) = concat([for (i = [0 : len(R) - 2]) for (k = [0 : n - 1]) R[i] + (R[i + 1] - R[i]) * k / n], [R[len(R) - 1]]);
-
-// Rocky perch under its feet.
-for (r = [[0, 0, 0.8, 6, 0], [-5, -2, 0.6, 4, 40], [5, -1, 0.6, 4.4, 15], [1, 4, 0.6, 4, 70], [-3, -5, 0.4, 3, 20], [4, -5, 0.4, 3, 60]])
-  color(r[3] > 4.2 ? rock : rockHi) translate([r[0], r[1], r[2]]) rotate([0, 0, r[4]]) scale([1.2, 1, 0.55]) sphere(r[3], $fn = 6);
 
 // Torso and neck: one smooth S from the hips up through a slim chest into a long neck curving forward.
 spine = spline([[0, 1.5, 11], [0, 0.5, 16], [0, -0.5, 21], [0, -1.2, 25.5], [0, -2.4, 29.5], [0, -4, 32.5]], 3);
@@ -108,7 +102,7 @@ mirror_x() {
   limb([6, -3.4, 19.4], [8.6, -1.6, 17.4], 0.3, 0.15, aquaHi);
 }
 
-// Legs: strong thighs, digitigrade shins, clawed feet on the rock.
+// Legs: strong thighs, digitigrade shins, clawed feet.
 mirror_x() {
   ell([3.8, 4.4, 4.6], [4.6, 1, 10.4], aqua);
   chain([[4.8, 0.4, 8.6], [5.6, 3, 5.4], [5.4, 0.8, 3.4]], [2.2, 1.5, 1.2], aqua, $fn = 12);

@@ -13,7 +13,7 @@
 //   node src/build.mjs --index     rewrite creature-models/index.json from the GLBs on disk
 //   A creature with a rigs/<id>.mjs is re-rigged after its build (rig.mjs: skeleton + animation clips).
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Document, NodeIO } from '@gltf-transform/core';
 import { EXTMeshoptCompression, KHRMeshQuantization } from '@gltf-transform/extensions';
@@ -66,7 +66,7 @@ async function build(id) {
   const mesh = read3mf(threeMf);
   if (mesh.tris.length / 3 > MAX_TRIANGLES) throw new Error(`${mesh.tris.length / 3} triangles (max ${MAX_TRIANGLES}): lower $fn`);
   if (mesh.colorOf.some((c) => c.default)) console.warn(`warn ${id}: some geometry has no color()`);
-  const { bytes, glowShare, glowOn } = await toGlb(mesh);
+  const { bytes, glowShare, glowOn } = await toGlb(mesh, groundOf(scad));
   if (GLOW_PREVIEW) await glowPreview(id, mesh, glowOn);
   writeFileSync(join(OUT_DIR, `${id}.glb`), bytes);
   if (!NO_PREVIEW) await preview(id, scad);
@@ -175,7 +175,16 @@ function srgbToLinear(c) {
   return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 }
 
-async function toGlb({ pos, tris, triColor, colorOf }) {
+/**
+ * A floating creature's ground: a `// ground: <z>` line in its scad puts the ground at that scad z instead of at the
+ * model's lowest point, so it hovers that far above the ground in game (the 1 m includes the gap).
+ */
+function groundOf(scad) {
+  const m = /^\/\/\s*ground:\s*(-?[\d.]+)/m.exec(readFileSync(scad, 'utf8'));
+  return m === null ? null : Number(m[1]);
+}
+
+async function toGlb({ pos, tris, triColor, colorOf }, ground = null) {
   // Z-up -> Y-up: (x, y, z) -> (x, z, -y); the -Y-facing model then faces +Z.
   const n = pos.length / 3;
   const P = new Float64Array(pos.length);
@@ -185,8 +194,10 @@ async function toGlb({ pos, tris, triColor, colorOf }) {
     const v = [pos[i * 3], pos[i * 3 + 2], -pos[i * 3 + 1]];
     for (let k = 0; k < 3; k++) { P[i * 3 + k] = v[k]; min[k] = Math.min(min[k], v[k]); max[k] = Math.max(max[k], v[k]); }
   }
-  const s = 1 / (max[1] - min[1]);
-  const off = [(min[0] + max[0]) / 2, min[1], (min[2] + max[2]) / 2];
+  if (ground !== null && ground > min[1]) throw new Error(`ground ${ground} is above the model's lowest point ${min[1].toFixed(2)}`);
+  const floor = ground ?? min[1];
+  const s = 1 / (max[1] - floor);
+  const off = [(min[0] + max[0]) / 2, floor, (min[2] + max[2]) / 2];
   for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) P[i * 3 + k] = (P[i * 3 + k] - off[k]) * s;
 
   // Face normals (area-weighted) and, per position, the faces around it.

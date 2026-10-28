@@ -1,6 +1,7 @@
-// Flampling: a round orange fire chick hovering over a little blaze, a flame crest on its head, burning wingtips,
+// Flampling: a round orange fire chick hovering in the air, a flame crest on its head, burning wingtips,
 // a scowling face with a tiny dark beak and a flame mark on its back.
 include <lib.scad>
+// ground: -1.43   (it hovers: the ground where its old blaze stood, so it floats as high as before)
 
 // Brow ridge over an eye at p (size s, same yaw), overhanging its front; the inner end drops `drop` (share of s)
 // towards the nose so the face itself scowls.
@@ -78,9 +79,3 @@ mirror_x() {
   for (a = [-30, 0, 30]) limb([3.3, -1, 8.5], [3.3 + sin(a) * 1.3, -1 - cos(a) * 1.3, 7.8], 0.4, 0.25, leg);
 }
 
-// Blaze on the ground under it.
-flame([0, 0, 0.8], 0.75);
-flame([4.5, 0.5, 0.6], 0.55, [0.5, 0, 0]);
-flame([-4.5, -0.5, 0.6], 0.55, [-0.5, 0, 0]);
-color(flameRed) translate([0, 0, 0.4]) scale([7.5, 6, 0.8]) sphere(1, $fn = 24);
-for (e = [[-6.5, -2, 6], [6, 2, 7.5], [3, -3, 9]]) color(flameOrange) translate(e) sphere(0.5, $fn = 8);

@@ -14,6 +14,9 @@ one. The worked example is `rigs/flowbot.mjs`; the tool is `src/rig.mjs`; the ga
 - In game, each creature clones the template and an `AnimationMixer` picks the clip. Nothing else in the game had to
   change: palettes, hurt flash, faint dissolve, rims and glow all keep working on the moving parts.
 - First run on a fresh checkout: `pnpm install` (the tool's `sharp` / gltf-transform were not installed yet).
+- To rebuild a model you need a recent OpenSCAD (2024 or later, for `--backend=Manifold` and colour 3MF). A snapshot
+  from files.openscad.org/snapshots works without installing: unzip it and set `OPENSCAD=<dir>/openscad.com`. It
+  gives the same geometry as the committed GLBs (same triangles and bounds); only the compressed bytes differ.
 
 ## The clip contract (the names are the API)
 
@@ -51,7 +54,8 @@ left (the viewer's right). Rotations are degrees in OpenSCAD `rotate([rx, ry, rz
 `frame` is `{ height, minZ }` of the scad model, which the GLB normalised to 1 m. Get it from the GLB, not by
 guessing: dump the GLB's vertices grouped by colour (min / max / average per colour), find two landmarks you know in
 the scad (Flowbot: the three flag stripes 2 units apart gave the scale; the lowest thruster gave minZ), solve, and
-check it against the top of the model. Flowbot: `height 38.45, minZ -0.3`. Wrong numbers put every pivot in the wrong
+check it against the top of the model (or export the scad as an ASCII STL and read its min / max z). Flowbot: `height
+32.72, minZ 5.406`. Wrong numbers put every pivot in the wrong
 place, so it is worth the five minutes.
 
 ## Cutting the mesh into parts (`assign`)
@@ -65,10 +69,13 @@ place, so it is worth the five minutes.
   close-up: Flowbot had no visible cracks at any joint.
 - Split on a joint's z where the visible surface changes hands, e.g. the legs end where the pelvis blob's underside
   is (z 14.3), not at the hip pivot.
-- The scad was a union: surfaces hidden inside other parts are gone. Dropping a part leaves a hole where it touched
-  (Flowbot's feet are open where they met the drum). That's fine when the hole faces the ground; check it anyway.
-- `assign` may return `null` to drop a triangle (a base, a stand, a pedestal). The rest is then refitted to 1 m with
-  its lowest point on the ground. Flowbot's hover drum went this way (`z < 6.1`).
+- The scad was a union: surfaces hidden inside other parts are gone. Dropping a part in the rig leaves a hole where
+  it touched (Flowbot's feet were open where they met its old drum). So remove a part in the scad and rebuild when you
+  can; that closes the surfaces properly.
+- `assign` may return `null` to drop a triangle; the rest is then refitted to 1 m with its lowest point on the
+  ground. Use it only when the scad can't be rebuilt. Flowbot's drum first went this way, then out of the scad.
+- No platforms at all: creatures stand on the game's ground (the 11 that had a base, puddle or pool lost it on
+  2026-10-28). A hovering creature keeps its gap with `// ground: <z>` in its scad (build.mjs), not with a stand.
 - Watch the console: a joint with no geometry prints a warning. That usually means a wrong pivot or a rule that
   never matches.
 
@@ -103,7 +110,7 @@ place, so it is worth the five minutes.
   - only leave the ground on purpose (celebrate hops).
 - Give the robot character with small things: a monitor that "ratchets" in servo steps while scanning, a glitch with
   a blank screen and a reboot overshoot, bolts that flare on the hit and cut out when hurt.
-- Size: Flowbot's 13 clips are about 110 KiB of the 289 KiB file. Constant channels cost one key; `resample` drops
+- Size: Flowbot's 13 clips are about 110 KiB of the 293 KiB file. Constant channels cost one key; `resample` drops
   redundant keys. Watch the client's public byte ceiling (asset-audit `--bytes`); it was already over budget before
   Flowbot.
 

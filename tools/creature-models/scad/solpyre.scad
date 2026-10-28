@@ -1,4 +1,4 @@
-// Solpyre: a crimson phoenix standing in a ring of fire on scorched rock, great wings raised in a V (crimson
+// Solpyre: a crimson phoenix standing on its talons, great wings raised in a V (crimson
 // primaries banded with gold), a blazing crest, a golden sun medallion on its chest and flame streamers for a tail.
 include <lib.scad>
 
@@ -13,7 +13,6 @@ flameOrange = [1, 0.58, 0.1];
 flameCore = [1, 0.9, 0.45];
 talon = [0.42, 0.28, 0.18];
 rock = [0.22, 0.13, 0.1];
-lava = [0.85, 0.3, 0.06];
 beakC = [0.85, 0.55, 0.15];
 beakDk = [0.55, 0.3, 0.08];
 socket = [0.22, 0.03, 0.04];
@@ -82,12 +81,7 @@ module wing() {
   }
 }
 
-// Ring of fire on a scorched rock disc.
-color(rock) translate([0, 0, 0.8]) scale([12, 9, 1.4]) sphere(1, $fn = 32);
-color(lava) translate([0, 0, 1.6]) scale([9.5, 7, 0.9]) sphere(1, $fn = 28);
-for (a = [0 : 30 : 330]) flame([cos(a) * 9.5, sin(a) * 7.2, 1.6], 0.45 + 0.12 * (a % 60 == 0 ? 1 : 0));
-
-// Legs and talons gripping the rock.
+// Legs and talons.
 mirror_x() {
   limb([2.6, 0, 12], [3.2, -0.5, 6.5], 1.6, 1, body);
   limb([3.2, -0.5, 6.5], [3.4, -0.6, 2.6], 0.8, 0.7, talon);

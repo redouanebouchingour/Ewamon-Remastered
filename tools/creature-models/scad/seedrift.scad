@@ -1,4 +1,4 @@
-// Seedrift: a fluffy white dandelion puffball with big plum eyes, little feather wings, twig legs over a green tuft,
+// Seedrift: a fluffy white dandelion puffball with big plum eyes, little feather wings, twig legs,
 // and seed parachutes drifting around it.
 include <lib.scad>
 
@@ -6,8 +6,6 @@ fluff = [0.95, 0.93, 0.86];
 fluffShade = [0.84, 0.81, 0.72];
 fluffCore = [1, 1, 0.97];
 twig = [0.55, 0.38, 0.24];
-moss = [0.62, 0.86, 0.22];
-mossDark = [0.45, 0.7, 0.15];
 plum = [0.45, 0.1, 0.3];
 spark = [0.55, 0.9, 0.3];
 purple = [0.6, 0.25, 0.65];
@@ -48,11 +46,8 @@ mirror_x() {
   for (k = [0 : 3]) petal([5.5 - k * 0.7, 1, 1.4], [R + 4.5, -1, 23 + k * 1.6], [0, 25 - k * 18, 0], k % 2 == 1 ? fluffShade : fluff);
 }
 
-// Twig legs on a green tuft.
+// Twig legs.
 mirror_x() limb([3.2, 0, 12], [3.6, -0.5, 4], 0.8, 0.7, twig);
-color(moss) for (p = [[0, 0, 2], [-3.5, -0.5, 1.8], [3.5, -0.5, 1.8], [-1.8, -2.5, 2.2], [1.8, 2, 2], [-5, 1, 1.4], [5, 1, 1.4]])
-  translate(p) scale([2.6, 2.4, 2]) sphere(1, $fn = 14);
-color(mossDark) translate([0, 0, 0.8]) scale([7, 4, 1]) sphere(1, $fn = 20);
 
 // Floating seed parachutes.
 module seed(p, tilt) {

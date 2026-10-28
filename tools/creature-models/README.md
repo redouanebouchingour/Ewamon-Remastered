@@ -49,6 +49,8 @@ node src/build.mjs --no-preview <id …>   # skip the OpenSCAD preview renders
    - Big creatures need real anatomy, not a ball head: a snout and separate lower jaw, wings as finger bones with
      membrane between them (`scad/rexaloft.scad`), serpents on a smooth spline (`scad/voidraxis.scad`).
    - Floating parts are fine (flames, orbs, halos) but keep them close to the body.
+   - No platforms, pedestals, puddles or ground pools under the creature: it stands on the game's ground. A creature
+     that hovers keeps its gap with a `// ground: <z>` line (the scad z of the ground; `scad/flampling.scad`).
    - Budget: aim for under 25k triangles (the build refuses over 40k). No `minkowski()`; keep `$fn` modest.
 3. `node src/build.mjs <id>` and look at `previews/<id>.png`. Fix what does not read like the sprite (proportions,
    colours, a hidden face, missing features, the back) and rebuild. Two or three passes is normal.

@@ -2829,8 +2829,8 @@ The user's call: most of a zone never moves, so only the player, villagers and c
   skinning node runs before them, so the dissolve holes ride on the moving parts). The card's own lift / squash /
   lunge still move the body as a whole on top. The skinned bounds are computed once and padded × 1.5.
 - **Flowbot:** 23 joints (pelvis, legs, torso, monitor head, face, three eye sets, mouth, two 3-joint arms, six
-  lightning bolts), 13 clips, 289 KiB (the static GLB is 124 KiB; ~110 KiB is animation). The rig drops the scad's
-  hover drum (`assign` returns null for it) and refits the rest, so Flowbot stands on its own feet; its clips keep the
+  lightning bolts), 13 clips, 293 KiB (the static GLB is 108 KiB; ~110 KiB is animation). Its hover drum is gone from
+  the scad (2026-10-28, with the other creatures' platforms), so Flowbot stands on its own feet; its clips keep the
   feet planted (a stride with a hip dip for `walk`). The ^ ^ and x x eyes are extra boxes the scad never had, hidden
   at scale 1e-4 until a clip shows them.
 - **No card bob on a rigged body:** the card's idle bob (`bobOffset`) stays off a rigged body; on top of the clips'

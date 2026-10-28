@@ -33,7 +33,7 @@
     },
     "aonred": {
       "url": "aonred.glb",
-      "bytes": 255540
+      "bytes": 221820
     },
     "archonosis": {
       "url": "archonosis.glb",
@@ -121,7 +121,7 @@
     },
     "burrowyrm": {
       "url": "burrowyrm.glb",
-      "bytes": 136268
+      "bytes": 62356
     },
     "caldermole": {
       "url": "caldermole.glb",
@@ -229,7 +229,7 @@
     },
     "flampling": {
       "url": "flampling.glb",
-      "bytes": 104904
+      "bytes": 73748
     },
     "florasage": {
       "url": "florasage.glb",
@@ -237,7 +237,7 @@
     },
     "flowbot": {
       "url": "flowbot.rig.glb",
-      "bytes": 296032,
+      "bytes": 300072,
       "rig": true
     },
     "frofloe": {
@@ -618,7 +618,7 @@
     },
     "seedrift": {
       "url": "seedrift.glb",
-      "bytes": 175988
+      "bytes": 162388
     },
     "serpyre": {
       "url": "serpyre.glb",
@@ -658,11 +658,11 @@
     },
     "solpyre": {
       "url": "solpyre.glb",
-      "bytes": 310044
+      "bytes": 269436
     },
     "solpyre_tenjin": {
       "url": "solpyre_tenjin.glb",
-      "bytes": 353420
+      "bytes": 312616
     },
     "sproutgrub": {
       "url": "sproutgrub.glb",
@@ -698,7 +698,7 @@
     },
     "tidalfang": {
       "url": "tidalfang.glb",
-      "bytes": 180460
+      "bytes": 178772
     },
     "tidespine": {
       "url": "tidespine.glb",
@@ -714,11 +714,11 @@
     },
     "toxshade": {
       "url": "toxshade.glb",
-      "bytes": 270484
+      "bytes": 246948
     },
     "toxshade_majin": {
       "url": "toxshade_majin.glb",
-      "bytes": 296340
+      "bytes": 273004
     },
     "trenchtusk": {
       "url": "trenchtusk.glb",
@@ -726,7 +726,7 @@
     },
     "tsunamite": {
       "url": "tsunamite.glb",
-      "bytes": 243652
+      "bytes": 245412
     },
     "tuskling": {
       "url": "tuskling.glb",

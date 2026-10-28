@@ -1,5 +1,5 @@
 // Flowbot: a grey robot with a monitor for a head (an orange screen showing a smiling lavender chat bubble), a Dutch
-// flag badge on its chest, cyan-lit joints and fingers, standing on a round hover base, crackling with yellow lightning.
+// flag badge on its chest, cyan-lit joints and fingers, standing on its own two feet, crackling with yellow lightning.
 include <lib.scad>
 
 grey = [0.55, 0.57, 0.6];
@@ -14,14 +14,6 @@ bolt = [1, 0.92, 0.1];
 nlRed = [0.8, 0.12, 0.15];
 nlBlue = [0.15, 0.25, 0.65];
 white = [0.97, 0.97, 0.97];
-
-// Hover base: a drum with a woven dark band, cyan thrusters underneath.
-color(greyDk) translate([0, 0, 1.2]) cylinder(h = 3.2, r1 = 8.4, r2 = 9.4, $fn = 36);
-color(grey) translate([0, 0, 4.4]) cylinder(h = 1, r1 = 9.4, r2 = 8.4, $fn = 36);
-color(greyDk) translate([0, 0, 5.4]) cylinder(h = 0.6, r = 6, $fn = 30);
-for (a = [0 : 30 : 330]) color(grey) translate([8.95 * cos(a), 8.95 * sin(a), 2.8]) rotate([0, 0, a]) scale([0.6, 1.4, 1]) sphere(1, $fn = 10);
-for (a = [15 : 45 : 360]) color(cyan) translate([6 * cos(a), 6 * sin(a), 0.6]) sphere(0.9, $fn = 12);
-color(greyDk) translate([0, 0, 0.6]) cylinder(h = 0.8, r = 7.6, $fn = 30);
 
 // Legs: thighs, knees, shins on small feet.
 mirror_x() {

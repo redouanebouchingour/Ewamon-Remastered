@@ -1,6 +1,6 @@
 // Tsunamite: Tidespine grown into a hulking teal spinosaur: a long crocodile snout full of teeth, dark horns, green
 // eyes, a cream belly, a great purple-teal webbed sail, purple crystal armour on its forearms and hips, a stone-studded
-// paddle at the tail tip and a blue gem on its back, standing in a puddle with bubbles rising.
+// paddle at the tail tip and a blue gem on its back, with bubbles rising.
 include <lib.scad>
 
 teal = [0.13, 0.55, 0.62];
@@ -16,11 +16,7 @@ claw = [0.2, 0.22, 0.26];
 rock = [0.42, 0.52, 0.54];
 rockDk = [0.33, 0.38, 0.45];
 gem = [0.4, 0.85, 1];
-water = [0.62, 0.84, 0.92];
 bubble = [0.82, 0.94, 1];
-
-// Puddle.
-color(water) scale([16, 13, 1]) cylinder(h = 0.25, r = 1, $fn = 32);
 
 // Torso: heavy, leaning slightly forward, cream belly.
 blob([[[7, 6.5, 7], [0, 1.5, 13]], [[5.2, 5, 5], [0, -1, 21]]], teal);

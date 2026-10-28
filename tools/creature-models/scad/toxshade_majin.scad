@@ -15,8 +15,6 @@ red = [1, 0.12, 0.08];
 redHi = [1, 0.6, 0.35];
 eyeV = [1, 0.1, 0.06, GLOW];
 eyeHi = [1, 0.55, 0.3, GLOW];
-smog = [0.27, 0.3, 0.3];
-smogHi = [0.38, 0.41, 0.4];
 fang = [0.95, 0.93, 0.86];
 
 // A shaggy lock of fur: flat at the root, tapering to a point along d.
@@ -168,10 +166,3 @@ for (i = [1 : len(tailPts) - 2]) for (t = [0, 0.5]) let(d = tailPts[i + 1] - tai
 // Barbed hook at the tail tip.
 spike([11.5, 11, 21.5], [-1.5, 0, -3], 0.8, 0.05, crystal);
 spike([12.5, 10.5, 23.5], [1.2, 0, 2.5], 0.6, 0.05, crystal);
-
-// Smog pooling around the feet: one low rolling bank, lumpy at the rim, with a few curls rising.
-color(smog) hull() for (s = [[0, 2, 13, 11], [0, -6, 10, 6]]) translate([s[0], s[1], 0.6]) scale([s[2], s[3], 1.2]) sphere(1, $fn = 24);
-for (i = [0 : 13]) let(a = i * 360 / 14, r = 12.5 + (i % 3) * 1.2)
-  color(i % 2 ? smog : smogHi) translate([r * sin(a), 2 - r * 0.85 * cos(a), 1.2]) scale([3.4, 3.4, 1.6 + (i % 2) * 0.6]) sphere(1, $fn = 12);
-for (s = [[-15, 3, 5], [15, 4, 6], [-13, -8, 4], [13, 11, 4]])
-  chain([[s[0], s[1], 2], [s[0] * 1.1, s[1], s[2] + 1], [s[0] * 1.05, s[1] + 1, s[2] + 3], [s[0], s[1] + 1.5, s[2] + 3.6]], [1.4, 1, 0.6, 0.2], smogHi);
