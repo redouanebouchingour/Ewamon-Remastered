@@ -56,7 +56,7 @@
     },
     "badlander": {
       "url": "badlander.rig.glb",
-      "bytes": 175980,
+      "bytes": 191344,
       "rig": true
     },
     "badlander_majin": {
@@ -108,7 +108,7 @@
     },
     "bramblecub": {
       "url": "bramblecub.rig.glb",
-      "bytes": 130640,
+      "bytes": 127412,
       "rig": true
     },
     "briarbear": {
@@ -140,12 +140,12 @@
     },
     "castlemaw": {
       "url": "castlemaw.rig.glb",
-      "bytes": 194952,
+      "bytes": 201176,
       "rig": true
     },
     "castlemaw_rage": {
       "url": "castlemaw_rage.rig.glb",
-      "bytes": 260484,
+      "bytes": 212904,
       "rig": true
     },
     "chrysotox": {
@@ -164,7 +164,7 @@
     },
     "clementar": {
       "url": "clementar.rig.glb",
-      "bytes": 170680,
+      "bytes": 192744,
       "rig": true
     },
     "clementar_majin": {
@@ -230,7 +230,7 @@
     },
     "elemutt": {
       "url": "elemutt.rig.glb",
-      "bytes": 141596,
+      "bytes": 155908,
       "rig": true
     },
     "embrock": {
@@ -278,7 +278,7 @@
     },
     "gemknight": {
       "url": "gemknight.rig.glb",
-      "bytes": 67928,
+      "bytes": 111464,
       "rig": true
     },
     "gemknight_tenjin": {

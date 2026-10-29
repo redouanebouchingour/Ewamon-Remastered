@@ -47,12 +47,14 @@ silPts = [[0.7, 39.9], [2.7, 39.9], [2.6, 39], [6.4, 39], [6, 37.9], [10.4, 36.5
           [-11.2, 5.2], [-11.6, 8.3], [-8.3, 17.6], [-13.1, 8.7], [-13.8, 10.5], [-13.8, 7.9], [-15.8, 7.8],
           [-19.8, 12.8], [-15.1, 20.8], [-13.6, 21.4], [-13.6, 29.2], [-12.3, 28.8], [-11.8, 32.1], [-11.4, 31],
           [-8.5, 34.3], [-8.5, 37], [-6.9, 36.6], [-3.1, 39.7], [0.6, 39.7]];
-// Chest skull outlines from the sheet (cream on the dark chest; the sockets, nose hole and tooth gaps are the fur).
-craniumPts = [[-0.2, 25.9], [0.6, 25.7], [1.5, 25.0], [1.0, 23.6], [0.2, 22.3], [-1.6, 21.9], [-3.2, 22.6],
-              [-4.8, 21.9], [-6.6, 22.3], [-7.2, 23.8], [-6.6, 25.2], [-5.0, 25.9], [-2.8, 26.2]];
-facePts = [[1.5, 21.9], [1.1, 21], [-0.2, 20.5], [-1.0, 19.2], [-1.1, 17], [-1.2, 18.7], [-2, 18.7], [-2, 16.1],
-           [-2.5, 18.5], [-3.2, 18.7], [-3.2, 16.1], [-3.4, 18.3], [-4.2, 18.7], [-3.8, 17.2], [-4.4, 16.8],
-           [-4.9, 19.6], [-6.9, 21.4], [-6.9, 21.7], [-4.3, 20.7], [-3.4, 21.7], [-1.8, 20.8], [0.6, 21], [1.5, 21.7]];
+// Chest skull (punisher style) traced on a zoom of the sheet: the cream bone, then its dark sockets and nose hole.
+skullPts = [[-6.9, 25.6], [-5, 25.7], [-3.1, 24.4], [-1, 25.4], [1.4, 26], [1.7, 22.8], [2.6, 21.0], [2.2, 19.5],
+            [1.3, 19.1], [-0.4, 19.5], [-0.7, 16.6], [-1.4, 16.3], [-2, 15.7], [-2.6, 16.3], [-3.8, 16.4],
+            [-4.6, 19.5], [-6.1, 19.2], [-6.9, 20.2], [-7.1, 23.6]];
+socketLPts = [[-6.9, 23.6], [-5.5, 22.6], [-3.9, 21.9], [-4.1, 21.2], [-5.5, 21.1], [-6.8, 21.6]];
+socketRPts = [[1.7, 23.9], [0.4, 23.1], [-2.6, 21.9], [-2.4, 21.3], [-0.5, 21.1], [1.2, 21.4], [1.7, 22]];
+noseHolePts = [[-3.3, 21.1], [-2.6, 21.1], [-2.1, 19.6], [-2.6, 19.3], [-3.9, 19.3], [-3.9, 20]];
+toothGapPts = [[[-3.0, 18.6], [-2.8, 18.6], [-2.8, 16.4], [-3.0, 16.4]], [[-1.5, 18.6], [-1.3, 18.6], [-1.3, 16.6], [-1.5, 16.6]]];
 
 // Keeps only what is in front of the picture plane through the origin (the near face of a body).
 module front() { pp(0) translate([-60, -120, -60]) cube([120, 120, 120]); }
@@ -88,61 +90,68 @@ module chest(g = 0) { translate([0, -1, 21]) scale([9.5 + g, 7.5 + g, 7.5 + g]) 
 color(fur) chest();
 blob([[[8.5, 7.5, 5], [0, 0, 14]], [[7.5, 6.5, 4], [0, 0, 10.5]], [[6, 6, 3.5], [1, -1, 8.2]]], fur);
 // neck ruff under the head
-ell([5, 4.5, 3], [1, -5, 28], fur);
-// chest skull: cream patches flush on the chest; the dark sockets, nose hole and tooth gaps are the fur showing
-color(cream) intersection() { chest(0.5); prism(craniumPts); front(); }
-color(cream) intersection() { chest(0.5); prism(facePts); front(); }
+ell([4.5, 4, 2.6], [1, -4, 27.6], fur);
+// chest skull: a cream patch flush on the chest, its sockets, nose hole and tooth gaps dark over it
+color(cream) intersection() { chest(0.45); prism(skullPts); front(); }
+color(ink) intersection() { chest(0.6); union() { prism(socketLPts); prism(socketRPts); prism(noseHolePts);
+  for (g = toothGapPts) prism(g); } front(); }
 // bone belt: a ring of bone teeth round the waist, open at the back
-for (a = [-150 : 15 : 150]) let(x = 8.9 * sin(a), y = -7.8 * cos(a))
+for (a = [-140 : 11 : 140]) let(x = 8.9 * sin(a), y = -7.8 * cos(a))
   color(bone) hull() {
-    translate([x, y, 11.9]) sphere(0.62, $fn = 8);
-    translate([x, y, 14.6]) sphere(0.5, $fn = 8);
+    translate([x, y, 11.7]) sphere(0.82, $fn = 8);
+    translate([x, y, 14.8]) sphere(0.66, $fn = 8);
   }
 
-// ---- head: a blunt badger head, 13 long, turned 32 deg to its right so the camera sees it nearly in profile
-hc = [1, -6.5, 32.5];
+// ---- head: a European badger's, 12 long, seen three-quarter from the front with the snout down-left: a cream face
+// with a cream blaze up the middle, a black stripe from the nose through each red eye over each ear, the open mouth
+// with fangs, small round ears with cream rims. Local frame: facing -Y, origin at the cranium's centre.
+hc = [0.6, -5.6, 32.2];
+hYaw = -12;
+hPitch = 6;
 module headShape(g = 0) {
   hull() {
-    translate([0, 1.5, 0.5]) scale([4.8 + g, 4.5 + g, 5.2 + g]) sphere(1, $fn = 24);     // skull
-    translate([0, -3.5, 1.5]) scale([3.3 + g, 3 + g, 3.8 + g]) sphere(1, $fn = 20);     // forehead block
-    translate([0, -4, -1.8]) scale([2.9 + g, 3 + g, 2.3 + g]) sphere(1, $fn = 20);      // snout
+    translate([0, 1.0, 0.6]) scale([4.9 + g, 4.4 + g, 4.5 + g]) sphere(1, $fn = 24);     // cranium
+    translate([0, -3.3, -0.2]) scale([3.8 + g, 3 + g, 3.3 + g]) sphere(1, $fn = 20);     // muzzle root
+    translate([0, -7.2, -0.9]) scale([2.0 + g, 1.8 + g, 1.8 + g]) sphere(1, $fn = 16);   // snout tip
   }
 }
-module headAt(g = 0) { translate(hc) rotate([0, 0, -32]) headShape(g); }
-color(fur) headAt();
-translate(hc) rotate([0, 0, -32]) {
-  // the cream face: the whole front and top of the head, from the crown to the muzzle
+module headFrame() { translate(hc) rotate([0, 0, hYaw]) rotate([hPitch, 0, 0]) children(); }
+headFrame() {
+  color(fur) headShape();
+  // cream face: everything in front of the ears
   color(cream) intersection() {
-    headShape(0.3);
-    hull() {
-      translate([0, -4.5, 2]) scale([4.8, 4.5, 3.5]) sphere(1, $fn = 16);
-      translate([0, -3, -2]) scale([4.3, 5.2, 2.3]) sphere(1, $fn = 16);
-    }
+    headShape(0.25);
+    translate([-10, -20, -10]) cube([20, 20.5, 20]);
   }
-  // the black band from the snout through the eye to the back of the head, on each side
+  // the two black stripes, nose -> eye -> over the ear, leaving the cream blaze between them
   mirror_x() color(fur) intersection() {
-    headShape(0.5);
+    headShape(0.45);
     hull() {
-      translate([3.2, -6.6, -0.3]) scale([1.4, 1.5, 0.9]) sphere(1, $fn = 12);
-      translate([3.9, -2.6, 0.4]) scale([1.8, 2.4, 1.15]) sphere(1, $fn = 12);
-      translate([3.4, 2.5, 1.2]) scale([2.2, 2.6, 2.0]) sphere(1, $fn = 12);
+      translate([1.1, -7.6, -0.1]) sphere(0.7, $fn = 10);
+      translate([2.8, -3.6, 1.0]) scale([1.25, 1.6, 1.2]) sphere(1, $fn = 12);
+      translate([3.3, 0.6, 3.8]) scale([1.8, 2, 1.8]) sphere(1, $fn = 12);
     }
   }
-  // black snout tip with the nose
-  color(fur) hull() {
-    translate([0, -6.2, -1.4]) scale([2.4, 1.6, 2.0]) sphere(1, $fn = 14);
-    translate([0, -7.6, -1.4]) scale([1.6, 1, 1.5]) sphere(1, $fn = 12);
+  // dark snout tip with the black nose
+  color(fur) translate([0, -7.8, -0.8]) scale([1.7, 1.3, 1.5]) sphere(1, $fn = 14);
+  ell([1.2, 0.8, 0.9], [0, -8.9, -0.5], ink);
+  // the open mouth: a black gape under the muzzle, fangs top and bottom, the lower jaw cream-lipped and dark below
+  color(ink) translate([0, -4.4, -3.0]) scale([3.0, 3.8, 1.3]) sphere(1, $fn = 16);
+  mirror_x() for (y = [-7.2, -6, -4.8, -3.6]) spike([1.5 + (y + 7.2) * 0.45, y - 0.2, -2.0], [0, 0, -1.4], 0.42, 0.05, cream);
+  mirror_x() for (y = [-6.6, -5.0]) spike([1.6 + (y + 7.2) * 0.45, y - 0.2, -4.0], [0, 0, 1.2], 0.38, 0.05, cream);
+  color(cream) translate([0, -3.8, -4.1]) scale([2.8, 3.6, 0.9]) sphere(1, $fn = 14);
+  ell([2.8, 3.4, 1.2], [0, -3.0, -4.8], fur);
+  // red eyes, slanted into a scowl
+  mirror_x() eye([3.05, -3.75, 1.15], 1.25, iris = redDk, sclera = red, pupil = ink, yaw = 45, lid = 0.3, lid_tilt = 30,
+                 lid_c = fur, slit = 0.45, squint = 0.1, shine = true);
+  // brow over each eye
+  mirror_x() color(fur) translate([2.6, -4.3, 2.55]) rotate([0, -25, 35]) scale([1.7, 0.8, 0.45]) sphere(1, $fn = 10);
+  // small round ears with a cream rim
+  mirror_x() {
+    color(fur) translate([4.4, 0.6, 4.3]) rotate([0, -30, 0]) scale([1.15, 0.6, 1.2]) sphere(1, $fn = 14);
+    color(cream) translate([4.3, 0.15, 4.3]) rotate([0, -30, 0]) scale([0.8, 0.2, 0.85]) sphere(1, $fn = 12);
+    color(fur) translate([4.25, 0.0, 4.2]) rotate([0, -30, 0]) scale([0.5, 0.2, 0.6]) sphere(1, $fn = 10);
   }
-  ell([1.5, 1.2, 1.1], [0, -7.3, -1.2], ink);
-  // open mouth: a black gape under the muzzle, small cream fangs, the dark chin below
-  mirror_x() color(ink) translate([3.0, -3.8, -3.6]) scale([2.0, 3.4, 0.9]) sphere(1, $fn = 14);
-  mirror_x() for (y = [-6.4, -5.1, -3.8, -2.5, -1.2]) spike([4.3, y, -3.1], [0.15, 0, -1.2], 0.32, 0.05, cream);
-  ell([3.0, 4, 1.4], [0, -2.5, -4.4], fur);
-  // red eyes, slanted into a scowl, the +X one facing the camera
-  mirror_x() eye([3.9, -2.8, 0.3], 1.2, iris = redDk, sclera = red, pupil = ink, yaw = 50, lid = 0.3, lid_tilt = 30,
-                 lid_c = fur, slit = 0.4, squint = 0.1, shine = true);
-  // small ear tufts at the top front corners (the crest behind the head is the cloak's dome)
-  mirror_x() petal([1, 0.7, 1.4], [1.7, -5.2, 3.9], [0, 15, 0], fur);
 }
 
 // ---- pauldrons: steel domes with a rivet and bone spikes
@@ -157,7 +166,7 @@ module pauldron(s) {
 }
 pauldron(1);
 pauldron(-1);
-for (t = [[11.6, -2.5, 34.6], [14.2, -1.8, 34.2], [16, -1.2, 32.2]]) spike([12, -2, 30.8], t - [12, -2, 30.8], 1.1, 0.1, bone);
+for (t = [[11.6, -2.5, 34.6], [14.2, -1.8, 34.2], [16, -1.2, 32.2]]) spike([12, -2, 30.8], (t - [12, -2, 30.8]) * 1.15, 1.35, 0.1, bone);
 for (t = [[-11.6, -3, 34.2], [-13.2, -3.5, 32.8], [-14, -4, 30.4]]) spike([-11, -1.5, 30.8], t - [-11, -1.5, 30.8], 1.1, 0.1, bone);
 
 // ---- arms: a banded dark upper arm, a bone elbow cap with a rivet, the forearm cannon with steel bands, a dark

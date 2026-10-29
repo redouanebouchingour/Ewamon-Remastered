@@ -31,14 +31,14 @@ tan = [0.82, 0.68, 0.38];
 tanDk = [0.65, 0.49, 0.28];
 cream = [0.94, 0.82, 0.58];
 orange = [0.93, 0.47, 0.06, GLOW];      // the sheet: #ed790e GLOWS (fruit and the ears' outer bands)
-olive = [0.27, 0.23, 0.13];
+olive = [0.30, 0.27, 0.15];
 oliveLt = [0.38, 0.37, 0.21];
 dark = [0.18, 0.14, 0.08];
 ink = [0.10, 0.04, 0.02];
 maroon = [0.47, 0.13, 0.13];
 maroonDk = [0.34, 0.13, 0.08];
 gold = [0.82, 0.68, 0.38];
-leaf = [0.30, 0.52, 0.22, NOGLOW];
+leaf = [0.30, 0.43, 0.20, NOGLOW];
 iris = [0.86, 0.52, 0.22, NOGLOW];
 
 // The half-space in front of depth d0 (pp frame): a marking cut with it only shows on the camera-facing surface.
@@ -98,19 +98,25 @@ color(olive) intersection() {
 sashEndPts = [[-7.6, 16.0], [-9.6, 13.8], [-12.2, 12.2], [-14.4, 11.1], [-14.2, 10.2], [-12.4, 9.5], [-12.1, 7.6],
               [-11.0, 7.6], [-10.6, 9.4], [-9.0, 11.2], [-7.4, 13.2]];
 pp(3.2) {
-  plate(sashEndPts, 1.2, 0.3, maroon);
+  plate(sashEndPts, 1.2, 0.3, [0.71, 0.37, 0.14]);
   translate([0, -0.25, 0]) plate([[-8.6, 14.9], [-10.6, 12.8], [-11.9, 12.0], [-12.1, 11.3], [-10.3, 12.0], [-8.2, 14.4]], 1.2, 0.2, gold);
   translate([0, -0.25, 0]) plate([[-11.2, 10.4], [-13.4, 10.6], [-13.5, 10.0], [-11.4, 9.7]], 1.2, 0.15, olive);
 }
 
 // ---- sleeves: wide draped djellaba sleeves on arms held out sideways, palms up
-module sleeve() {
-  color(olive) hull() {
-    translate([6.2, -1.2, 23.0]) sphere(2.7, $fn = 20);
-    translate([12.3, -2.8, 19.6]) sphere(2.2, $fn = 20);
-    translate([13.0, -2.4, 15.9]) sphere(1.0, $fn = 12);
-    translate([5.8, -1.0, 16.1]) sphere(1.0, $fn = 12);
+module sleeveHull(g = 0) {
+  hull() {
+    translate([6.2, -1.2, 23.0]) sphere(2.7 + g, $fn = 20);
+    translate([12.3, -2.8, 19.6]) sphere(2.2 + g, $fn = 20);
+    translate([13.0, -2.4, 15.9]) sphere(1.0 + g, $fn = 12);
+    translate([5.8, -1.0, 16.1]) sphere(1.0 + g, $fn = 12);
   }
+}
+module sleeve() {
+  color(olive) sleeveHull();
+  // plaid: light bands along the sleeve and dark lines across it
+  color(oliveLt) intersection() { sleeveHull(0.15); union() for (z = [18.0, 21.6]) translate([0, -20, z - 0.45]) cube([30, 40, 0.9]); }
+  color(dark) intersection() { sleeveHull(0.2); union() for (x = [8.2, 10.8]) translate([x - 0.2, -20, 10]) cube([0.4, 40, 20]); }
   color(dark) hull() {
     translate([13.0, -2.6, 15.8]) sphere(1.05, $fn = 12);
     translate([5.8, -1.2, 16.0]) sphere(1.05, $fn = 12);
@@ -129,14 +135,14 @@ module hand() {
 
 // ---- oranges: three per hand with leaves, resting on the palm (placed off the near cluster's sheet positions)
 module cluster() {
-  ell([1.7, 1.7, 1.65], fromSheet(10.3, 26.0, -4.6), orange);
-  ell([1.7, 1.7, 1.65], fromSheet(7.8, 22.8, -4.8), orange);
-  ell([1.8, 1.8, 1.7], fromSheet(12.0, 23.4, -5.4), orange);
-  // leaves: a pair at the top-right, one at the top-left, one low on the right
-  petal([2.0, 0.6, 1.0], fromSheet(13.2, 27.6, -4.4), [0, -35, 30], leaf);
-  petal([1.7, 0.55, 0.8], fromSheet(13.6, 26.0, -4.2), [0, 5, 20], leaf);
-  petal([1.5, 0.5, 0.7], fromSheet(7.4, 26.0, -4.6), [0, -15, 130], leaf);
-  petal([1.3, 0.45, 0.6], fromSheet(14.0, 22.2, -5.2), [0, 20, 10], leaf);
+  ell([2.2, 2.0, 1.95], fromSheet(10.2, 25.5, -4.6), orange);
+  ell([2.2, 2.0, 1.9], fromSheet(8.0, 22.6, -4.8), orange);
+  ell([2.4, 2.1, 1.95], fromSheet(12.4, 23.2, -5.4), orange);
+  // leaves: a pair at the top-right, one at the top-left, one low on the right (small, dark green)
+  petal([1.4, 0.4, 0.6], fromSheet(12.6, 28.4, -4.4), [0, -30, 30], leaf);
+  petal([1.1, 0.4, 0.55], fromSheet(14.2, 24.6, -4.6), [0, 40, 20], leaf);
+  petal([1.0, 0.35, 0.5], fromSheet(6.6, 25.3, -4.6), [0, -25, 30], leaf);
+  petal([0.7, 0.3, 0.4], fromSheet(10.0, 28.0, -4.6), [0, 60, 30], leaf);
 }
 // the far arm reads about two units further out in the art than a mirror of the near one
 for (s = [1, -1]) mirror([s < 0 ? 1 : 0, 0, 0]) translate([s < 0 ? 1.8 : 0, 0, 0]) { sleeve(); hand(); cluster(); }
@@ -161,11 +167,12 @@ color(cream) mark(creamPts, -0.9) skull(0.3);
 module snout(g = 0) {
   hull() {
     translate([0, -5.6, 27.9]) sphere(2.2 + g, $fn = 20);
-    translate([0, -8.4, 27.5]) sphere(1.5 + g, $fn = 16);
+    translate([0, -7.8, 27.5]) sphere(1.45 + g, $fn = 16);
   }
 }
-color(cream) snout();
-ell([0.85, 0.7, 0.6], [0, -9.6, 27.7], maroonDk);
+color(tan) snout();
+ell([1.7, 2.6, 1.1], [0, -6.0, 26.9], cream);   // cream lower jaw
+ell([0.85, 0.7, 0.6], [0, -9.0, 27.7], maroonDk);
 // the smile: a dark line along the near side of the muzzle
 mouthPts = [[-3.4, 26.2], [-1.3, 26.5], [-0.7, 27.5], [-1.3, 27.5], [-1.6, 27.0], [-3.4, 26.7]];
 color(ink) mark(mouthPts, -5) { snout(0.35); skull(0.3); }
@@ -230,16 +237,19 @@ tailPts = [[16, 19.5], [17.1, 19.5], [18.1, 18.9], [17.7, 18.5], [19, 18.5], [19
            [15, 5.4], [13.9, 5.4], [13.7, 4.6], [11.6, 4.1], [6.5, 5], [5.3, 6.3], [5.9, 6.7], [5.5, 8.8], [4.7, 9],
            [4.2, 11.9], [3.4, 12.1], [3.2, 14.2], [6.1, 14.2], [6.3, 13.2], [7.8, 13.2], [9.7, 12.3], [9.9, 12.8],
            [10.8, 13], [11.2, 16.3], [14.5, 18.9], [15.8, 19.3]];
-// a chain of spheres along the tail's spine read off the sheet (tailPts is the traced outline it fills), placed 6.5..9
-// behind the picture plane and 1 unit low for the camera's downward look
-tailSpine = [[4.0, 8.5, 6.5, 3.5], [8.0, 7.4, 7.5, 4.0], [12.4, 7.4, 8.5, 4.3], [15.6, 9.6, 9.0, 3.9],
-             [16.0, 13.2, 9.0, 3.4], [16.8, 16.0, 8.5, 2.8], [17.8, 17.9, 8.0, 2.2]];
-for (i = [0 : len(tailSpine) - 2]) color(tan) hull() for (j = [i, i + 1]) {
-  s = tailSpine[j];
-  translate(fromSheet(s[0], s[1], s[2])) sphere(s[3], $fn = 18);
+// round segments along the tail's spine read off the sheet (sheet x, sheet z, depth behind the picture plane, radius),
+// cut to the traced outline; 1.3 low for the camera's downward look at 7.5 behind the picture plane
+tailSpine = [[4.6, 9.8, 6.0, 3.8], [8.5, 8.8, 7.0, 4.6], [12.6, 9.0, 8.0, 5.0], [15.2, 11.0, 8.5, 4.4],
+             [15.4, 14.6, 8.5, 3.8], [16.4, 17.0, 8.2, 2.8], [17.6, 18.4, 8.0, 1.8]];
+module tailRough(g = 0) {
+  for (i = [0 : len(tailSpine) - 2]) hull() for (j = [i, i + 1]) {
+    t = tailSpine[j];
+    translate(fromSheet(t[0], t[1] - 1.3, t[2])) scale([1, 0.85, 1]) sphere(t[3] + g, $fn = 16);
+  }
 }
+module tailPrism(pts, g = 0.45) { pp(0) translate([0, 0, -1.3]) rotate([90, 0, 0]) linear_extrude(height = 120, center = true) offset(r = g) polygon(pts); }
+color(tan) intersection() { tailRough(); tailPrism(tailPts); }
 // darker fur along the underside
-for (i = [0 : 2]) color(tanDk) hull() for (j = [i, i + 1]) {
-  s = tailSpine[j];
-  translate(fromSheet(s[0], s[1] - s[3] * 0.55, s[2] - 0.4)) scale([1, 1, 0.5]) sphere(s[3] * 0.85, $fn = 14);
-}
+tailUnderPts = [[3.0, 9.8], [5.6, 6.3], [8.5, 4.3], [12.0, 3.6], [14.6, 4.6], [16.6, 6.4], [18.4, 9.8], [17.0, 9.6],
+                [14.0, 7.6], [11.0, 7.0], [8.0, 7.6], [5.6, 9.4]];
+color(tanDk) intersection() { tailRough(0.25); tailPrism(tailPts, 0.6); tailPrism(tailUnderPts, 0); }
