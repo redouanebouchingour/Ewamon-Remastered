@@ -1,56 +1,86 @@
-// Dustcub's rig: a chubby badger cub playing cowboy, fists up for a scrap. The hat, the wheat stalk and the bandana's
-// knot are their own joints. Numbers are scad/dustcub.scad's.
-import { K, TAU, both, merge, osc, rigDef, smooth, win } from './lib/anim.mjs';
-import { any, bipedClips, blob, ell, limb, pair, pick } from './lib/biped.mjs';
+// Dustcub's rig: a chubby badger cub playing cowboy, the right paw raised palm out, the left fist at the hip, a wide
+// stance in spurred boots. The hat, the wheat stalk and the bandana's knot are their own joints. Numbers are
+// scad/dustcub.scad's (the sprite-matched model, 2026-10-28).
+import { K, merge, osc, rigDef, smooth, win } from './lib/anim.mjs';
+import { any, bipedClips, blob, ell, limb, pair, pick, ppFrame } from './lib/biped.mjs';
 import { blinks, eyeKit, mirrorEye } from './lib/face.mjs';
-import { isAny, near } from './lib/geo.mjs';
+import { capD, ellD, isAny, near } from './lib/geo.mjs';
 
-const BAND = [0.18, 0.13, 0.1];
-const HAT = [[0.4, 0.28, 0.18], [0.3, 0.2, 0.13], [0.15, 0.12, 0.1]];
-const BANDANA = [0.8, 0.16, 0.12];
-const WHEAT = [0.9, 0.78, 0.4];
+const FUR = [0.23, 0.17, 0.16];
+const CREAM = [0.78, 0.68, 0.53];
+const TAN = [0.67, 0.58, 0.46];
+const HAT = [[0.40, 0.32, 0.25], [0.33, 0.25, 0.21], [0.50, 0.42, 0.34]];
+const LEATHER = [0.60, 0.48, 0.37];
+const BOOT = [0.35, 0.27, 0.22];
+const STEEL = [0.56, 0.52, 0.48];
+const RED = [0.60, 0.23, 0.23];
+const PINK = [0.62, 0.36, 0.34];
+const BLACK = [0.08, 0.05, 0.05];
 
-const eyeL = { side: 'L', at: [2.5, -5.4, 26.6], size: 1, yaw: -18 };
-export const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: BAND });
+const KNOT = [7.2, 1.8, 25.6];
+const PAW = [-11.7, -4.5, 21.4];
+const STALK = [[-1.0, -11.0, 25.6], [-4.2, -13.5, 26.2]];
+
+const eyeL = { side: 'L', at: [3.35, -6.0, 28.9], size: 1.45, yaw: 22 };
+export const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: FUR });
 
 export const joints = [
   { name: 'root', at: [0, 0, 0] },
-  ...pair('leg*', 'root', [4.1, 0.5, 9.8]),
+  { name: 'legL', parent: 'root', at: [4.6, 0.2, 10] },
+  { name: 'legR', parent: 'root', at: [-4.6, 0.2, 10] },
   { name: 'body', parent: 'root', at: [0, 0, 11] },
-  { name: 'head', parent: 'body', at: [0, -0.5, 22.4] },
-  { name: 'hat', parent: 'head', at: [0, 0.5, 29] },
-  { name: 'wheat', parent: 'head', at: [-1.2, -7.8, 23.6] },
-  ...pair('ear*', 'head', [4.6, 0, 29]),
-  { name: 'knot', parent: 'body', at: [5, 1, 21.8] },
-  ...pair('arm*', 'body', [6, -0.5, 18.5]),
-  ...pair('fore*', 'arm*', [8.5, -2.5, 16]),
-  { name: 'handL', parent: 'foreL', at: [9.5, -4.8, 21.5] },
-  { name: 'handR', parent: 'foreR', at: [-8.2, -5.4, 22.6] },
-  { name: 'tail1', parent: 'body', at: [0, 5.5, 9] },
+  { name: 'head', parent: 'body', at: [0, -0.5, 24.5] },
+  { name: 'hat', parent: 'head', at: [0.7, 0.3, 32.6] },
+  { name: 'wheat', parent: 'head', at: STALK[0] },
+  ...pair('ear*', 'head', [6.6, 0.3, 31]),
+  { name: 'knot', parent: 'body', at: KNOT },
+  { name: 'armL', parent: 'body', at: [7.6, -0.4, 21.6] },
+  { name: 'handL', parent: 'armL', at: [11.6, 1.2, 20.3] },
+  { name: 'armR', parent: 'body', at: [-7.4, -0.6, 21] },
+  { name: 'handR', parent: 'armR', at: [-10.2, -3.2, 19.8] },
   ...face.joints,
 ];
 
+// the lasso coil hangs in the picture plane ppc(-7.5) (pp(-7.5) then x - 0.8), written in its own numbers
+const lassoF = ppFrame(-7.5);
+const lasso = (c) => {
+  const q = lassoF.local(c);
+  q[0] += 0.8;
+  return Math.min(ellD(q, [3.7, 1.3, 4.1], [10.6, 0.3, 9.6]), capD(q, [12.3, 0, 7.2], [12.0, 0.4, 3.8], 0.6));
+};
+const boot = (ankle, toe, heel, spur) => any(
+  blob([[[2.3, 2.3, 2.3], ankle], [[2.0, 1.9, 1.9], toe], [[2.0, 2.0, 2.0], heel]]),
+  ell([3.3, 3.1, 1], [ankle[0], ankle[1], ankle[2] + 2.7]), ell([1.2, 1.2, 1.2], spur));
+
 const parts = [
-  ['leg*', any(blob([[[2.6, 3.8, 1.6], [4.5, -1.2, 1.6]], [[2.4, 2.4, 3], [4.5, 0.5, 4]]]), ell([2.6, 2.6, 0.8], [4.5, 0.5, 6.7]),
-    limb([4.5, 0.5, 7], [4, 0.5, 10], 2.6, 3), ell([0.6, 1, 1], [4.5, 3, 2.4]))],
-  ['tail1', limb([0, 5.5, 9], [0, 8, 8], 1.8, 1.2)],
-  ['body', any(ell([7.2, 6.2, 8], [0, 0, 15]), ell([4.8, 2, 6], [0, -4.6, 14.5]), ell([7.15, 6.7, 1], [0, 0, 11.6]),
-    blob([[[1.4, 1.2, 2.4], [-7.2, -1, 9.5]], [[1, 1, 1], [-7, -1, 12]]]), ell([1, 3, 3], [7.7, 0.5, 9.5]), ell([5.4, 5, 0.8], [0, -0.5, 21.6]))],
-  ['head', any(ell([6.4, 5.8, 5.6], [0, -0.5, 26]), ell([4, 2.4, 3], [0, -4.2, 25.5]),
-    blob([[[2.4, 2.4, 1.8], [0, -6.8, 24.5]], [[1.5, 1.5, 1.2], [0, -8.4, 24.8]]]), ell([1.6, 3, 3.4], [0, -4, 29.2]))],
-  ['ear*', ell([1.6, 1, 1.6], [4.6, 0, 30])],
-  ['arm*', limb([6, -0.5, 18.5], [8.5, -2.5, 16], 2.4, 2.2)],
-  ['foreL', limb([8.5, -2.5, 16], [9.5, -4.5, 20.5], 2.2, 2.2)],
-  ['foreR', limb([-8.5, -2.5, 16], [-8, -5, 21], 2.2, 2.2)],
-  ['handL', ell([2.3, 2, 2.3], [9.5, -4.8, 21.5])],
-  ['handR', any(ell([2.6, 2, 2.6], [-8.2, -5.4, 22.6]), ell([1.4, 0.4, 1.4], [-8.2, -7.4, 22.6]))],
+  ['legL', any(limb([4.6, 0.2, 10], [9.0, 0.8, 5.0], 3.3, 3.0), boot([9.0, 0.8, 2.3], [11.2, 1.6, 1.9], [8.0, 0.3, 2.0], [6.4, -0.5, 2.6]))],
+  ['legR', any(limb([-4.6, 0.2, 10], [-8.1, -2.0, 5.0], 3.3, 3.0), boot([-8.1, -2.0, 2.3], [-9.6, -4.6, 1.9], [-7.0, -1.0, 2.0], [-6.3, 0.0, 1.5]))],
+  ['body', any(ell([9.5, 8.5, 9.0], [0, 0, 15.6]), ell([7.9, 7.0, 1.4], [0, 0, 11.3]), lasso,
+    blob([[[1.9, 1.3, 1.6], [-6.3, -3.4, 13.0]], [[2.0, 1.4, 1.6], [-7.4, -4.4, 9.2]]]), ell([6.2, 5.6, 1], [0, -0.6, 24]))],
+  ['head', any(ell([7.8, 6.2, 5.0], [0, -0.8, 28.8]),
+    blob([[[6.6, 4.4, 3.9], [0, -2.8, 27.5]], [[2.8, 2.4, 2.1], [0.4, -8.2, 26.9]], [[1.9, 1.5, 1.7], [0.5, -10.6, 27.0]]]),
+    ell([2.4, 2.0, 2.2], [6.6, -2.6, 27.0]))],
+  ['ear*', ell([1.7, 1.1, 1.7], [6.6, 0.3, 31.0])],
+  ['armL', limb([7.6, -0.4, 21.6], [11.6, 1.2, 20.3], 2.5, 2.4)],
+  ['handL', ell([2.9, 2.7, 2.8], [11.3, 1.4, 18.2])],
+  ['armR', limb([-7.4, -0.6, 21.0], [-10.2, -3.2, 19.8], 2.5, 2.4)],
+  ['handR', ell([2.5, 2.3, 2.7], PAW)],
 ];
 
 function assign(c, rgb) {
   if (isAny(rgb, HAT, 0.025) && c[2] > 28) return 'hat';
-  if (near(rgb, WHEAT)) return 'wheat';
-  if (near(rgb, BANDANA) && c[0] > 4 && c[1] > -0.5) return 'knot';
-  if (near(rgb, BANDANA)) return 'body';
+  if (near(rgb, RED, 0.03)) return ellD(c, [1.8, 1.6, 1.6], KNOT) < 1.25 || c[0] > 8.2 || (c[1] > 3.2 && c[0] > 6) ? 'knot' : 'body';
+  if (isAny(rgb, [BOOT, STEEL], 0.03) || (near(rgb, BLACK) && c[2] < 4)) return c[0] > 0 ? 'legL' : 'legR';
+  if (near(rgb, LEATHER, 0.03)) return 'body';
+  if (near(rgb, PINK, 0.03)) return 'handR';
+  if (near(rgb, TAN, 0.03)) {
+    if (capD(c, STALK[0], STALK[1], 1.2) < 1.2 || (c[0] < -0.5 && c[1] < -10.5 && c[2] > 24.5)) return 'wheat';
+    if (ellD(c, [1.6, 1.2, 1.6], [Math.abs(c[0]) > 0 ? 6.9 * Math.sign(c[0]) : 6.9, -0.4, 31]) < 1.3) return `ear${c[0] >= 0 ? 'L' : 'R'}`;
+    if (ellD(c, [5, 5, 5], PAW) < 1) return 'handR';
+    if (ellD(c, [4.5, 4.5, 4.5], [9.5, -0.5, 19.5]) < 1) return 'handL';
+    return c[2] < 16 ? 'body' : 'head';
+  }
+  if (near(rgb, CREAM, 0.03) && c[2] < 22) return 'body';
   return pick(c, parts);
 }
 
@@ -60,8 +90,8 @@ const knot = (amp, cycles, u) => ({ knot: { r: [0, 6 * amp * osc(u, cycles), 8 *
 const chew = (u, cycles, amp = 1) => ({ wheat: { r: [0, 4 * amp * osc(u, cycles), 6 * amp * osc(u, cycles, 0.3)] } });
 
 const base = bipedClips({
-  face, tail: ['tail1'], hipH: 10, stride: 20, guard: true, hopH: 3,
-  punch: { arm: [-45, 0, 0], fore: [53, 0, 0] },
+  face, hipH: 10, stride: 18, armSwing: 14,
+  punch: { arm: [-50, 0, 10] },
   add: {
     idle: (t, u) => merge(hatBob(1, 2, u), knot(0.5, 4, u), chew(u, 4)),
     walk: (t, u) => merge(hatBob(3, 2, u), knot(1.4, 2, u), chew(u, 2, 0.6)),
@@ -78,22 +108,21 @@ const base = bipedClips({
 const clips = {
   ...base,
 
-  // fidget: tips the hat with the left paw and winks at the camera
+  // fidget: tips the hat with the raised right paw and winks at the camera
   idle_hattip: {
     seconds: 2.4,
     pose: (t, u) => {
       const up = K(u, [[0, 0], [0.2, 1], [0.7, 1], [0.88, 0]]);
       const tip = win(u, 0.28, 0.62, 0.08);
       const wink = win(u, 0.36, 0.56, 0.05);
-      return {
+      return merge({
         ...face.pose('open'),
         lidL: { s: wink < 0.02 ? 1e-4 : [1, 1, wink] },
-        head: { r: [5 * tip, 0, 14 * up] },
-        armL: { r: [-30 * up, -20 * up, 0] },
-        foreL: { r: [40 * up, 0, 0] },
+        head: { r: [12 * up + 5 * tip, -12 * up, 10 * up] },
+        armR: { r: [-10 * up, 85 * up, 0] },
+        handR: { r: [0, 35 * up, 0] },
         hat: { r: [14 * tip, 0, 0] },
-        ...chew(u, 3, 0.8),
-      };
+      }, chew(u, 3, 0.8));
     },
   },
 

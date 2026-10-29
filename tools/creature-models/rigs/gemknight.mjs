@@ -1,70 +1,110 @@
-// Gemknight's rig: a tall crystal knight, a prism sword held low in the right hand, a kite shield on the left forearm
-// (handL), a cape of strips in two links and a burst of rainbow rays behind it that breathes. The Tenjin form
-// (gemknight_tenjin.mjs) reuses all of this. Numbers are scad/gemknight.scad's.
-import { K, TAU, both, merge, osc, rigDef, smooth, win } from './lib/anim.mjs';
-import { any, bipedClips, blade, ell, limb, mx, pair, pick } from './lib/biped.mjs';
-import { subFrame } from './lib/geo.mjs';
+// Gemknight's rig: a crystal knight in a wide stance, a long crystal blade held low and out in the right hand, a kite
+// shield on the left arm (handL), a rainbow cape billowing out to both sides behind it (two links: collar to billow,
+// billow to hem) and a burst of light behind the helm that breathes. The scad builds everything in the sheet's frame
+// and lowers it by G = 2.8 at the end, so every number here goes through low(). Numbers are scad/gemknight.scad's.
+import { K, TAU, merge, osc, rigDef, smooth, win } from './lib/anim.mjs';
+import { any, bipedClips, ell, fromSheet, limb, mx, pick, plate, ppFrame } from './lib/biped.mjs';
+import { plateD, polyD } from './lib/geo.mjs';
 
-// the sword: grip at the fist, rotate([0, -150, 0]) turns the blade down and out
-export const SWORD = { p: [-11, -3, 16.5], d: [-0.5, 0, -0.866] };
-const SHIELD = subFrame([11.5, -6, 21], [90, 0, -25]);
-const AURA_C = [0, 6, 24];
+const G = 2.8;
+const low = ([x, y, z]) => [x, y, z - G];
+const fs = (sx, z, y) => low(fromSheet(sx, z, y));
+const add3 = (a, b) => a.map((v, i) => v + b[i]);
+const lowF = (f) => ({ local: (c) => f.local([c[0], c[1], c[2] + G]) });
 
-export const joints = [
-  { name: 'root', at: [0, 0, 0] },
-  ...pair('leg*', 'root', [3.6, 0, 17]),
-  { name: 'body', parent: 'root', at: [0, 0, 18] },
-  { name: 'head', parent: 'body', at: [0, -0.6, 32.5] },
-  ...pair('arm*', 'body', [8.6, -0.3, 28.5]),
-  { name: 'foreL', parent: 'armL', at: [10.1, -1.6, 22.6] },
-  { name: 'foreR', parent: 'armR', at: [-10, -1.4, 22.2] },
-  { name: 'handL', parent: 'foreL', at: [10.6, -3.4, 20.5] },
-  { name: 'handR', parent: 'foreR', at: SWORD.p },
-  { name: 'cape1', parent: 'body', at: [0, 4.2, 31] },
-  { name: 'cape2', parent: 'cape1', at: [0, 7.5, 16] },
-];
-
-// the cape's twelve strips: top -> mid on cape1, mid -> bottom on cape2
-const strips = Array.from({ length: 12 }, (_, i) => {
-  const t = i / 11 - 0.5;
-  const top = [t * 12, 4.2, 31];
-  const mid = [t * 18, 7 + Math.abs(t) * 2, 16];
-  const bot = [t * 26 + (t > 0 ? 2 : -2), 9 + Math.abs(t) * 4, 2.5 + Math.abs(t) * 3];
-  return [['cape1', limb(top, mid, 1, 1.2)], ['cape2', limb(mid, bot, 1.2, 1.5)]];
-}).flat();
-
-export const parts = [
-  ['leg*', any(ell([2.8, 3, 4.6], [3.6, 0, 15]), ell([2, 1.6, 2], [3.8, -2.6, 10.5]), ell([2.8, 2.8, 0.6], [3.8, 0, 12.6]),
-    ell([2.4, 2.6, 4.6], [4, 0, 6]), ell([2.6, 4.4, 1.6], [4.2, -1.2, 1.6]))],
-  ['body', any(ell([7.4, 5, 6.4], [0, 0, 26.5]), ell([5.6, 2, 4.8], [0, -3.8, 27]), ell([5.4, 4, 2.6], [0, 0, 20.5]),
-    limb([0, -2.6, 19.5], [0, -3.4, 15.6], 1.2, 1), mx(ell([4, 4, 3.2], [7.4, 0, 31])), mx(ell([4.2, 4.2, 0.9], [7.6, 0, 29.4])),
-    mx(ell([3.4, 3.6, 2.4], [8, 0, 28])), ell([8, 2.4, 1.6], [0, 3.2, 31.6]))],
-  ['head', any(ell([3.6, 3.8, 4.2], [0, -0.6, 36]), ell([3, 3, 1.2], [0, -0.6, 32]))],
-  ['armR', ell([2, 2, 3.6], [-9.2, -0.6, 25])],
-  ['foreR', ell([2, 2, 3.4], [-10.6, -2, 19.5])],
-  ['handR', any(ell([2, 2.2, 2], [-11, -3, 16.5]), blade(SWORD.p, SWORD.d, 17.5, 1.7, 1.6))],
-  ['armL', ell([2, 2, 3.4], [9.6, -0.6, 25.5])],
-  ['foreL', ell([2, 2.4, 3], [10.4, -2.4, 20.5])],
-  ...strips,
-];
-
-/** The shield plate (kite polygon, its facets and a boss) in its own frame. */
-export const onShield = (c) => {
-  const l = SHIELD.local(c);
-  return l[2] > -1 && l[2] < 3 && Math.abs(l[0]) < 6 && l[1] > -11.5 && l[1] < 10.5;
+const LEGS = {
+  L: [fs(2.6, 16.5, -0.2), fs(4.7, 12.8, -1), fs(7.2, 6.6, -1), fs(9.4, 3.4, -2.2)],
+  R: [fs(-1.6, 16.5, 0.4), fs(-3.9, 12.6, -0.4), fs(-6, 6.6, -0.4), fs(-9, 3.4, -2.6)],
 };
+const ARMS = {
+  L: [[5.3, 0.5, 30.2], [8.6, -0.2, 26.4], [11.4, 0.6, 23.4]].map(low),
+  R: [[-5.3, 0.5, 30.2], [-7.4, -0.6, 25.6], [-7.7, -2.2, 20.3]].map(low),
+};
+const H = low([0.6, -0.3, 35.4]);
+const bladePts = [[-9.05, 20.45], [-7.75, 19.35], [-17.6, 8.7], [-20.4, 6.8], [-18.9, 9.8]];
+const kite = [[10.6, 33.6], [16.0, 27.0], [15.6, 20.0], [10.6, 12.9], [6.0, 19.6], [5.0, 27.2]];
 
-export function knightAssign(c, aura = true) {
-  if (onShield(c)) return 'handL';
-  // the rays of the aura: a thin ring of triangles at y 5.5..6 round the back
-  if (aura && c[1] > 5.3 && c[1] < 6.3 && Math.hypot(c[0] / 9, (c[2] - AURA_C[2]) / 12) > 0.92) return 'aura';
-  return pick(c, parts);
-}
+// the cape: the scad's columns [collar, billow, hem] as [sheet x, z, depth], subdivided four times like capePt()
+const capeKeys = [
+  [[-5.8, 30.3, 1.4], [-19.6, 28.4, 1.0], [-20.3, 18.6, 1.2]],
+  [[-4.6, 30.8, 2.4], [-16.0, 24.5, 2.6], [-17.0, 17.6, 2.6]],
+  [[-3.0, 31.0, 3.2], [-11.5, 20.5, 4.0], [-12.6, 13.0, 4.0]],
+  [[-1.0, 31.2, 3.6], [-6.0, 18.5, 5.0], [-6.0, 9.8, 5.0]],
+  [[1.0, 31.2, 3.6], [1.0, 17.5, 5.6], [1.4, 7.7, 5.6]],
+  [[3.0, 31.0, 3.2], [7.0, 18.5, 5.6], [9.0, 9.4, 5.6]],
+  [[4.6, 30.8, 2.4], [13.0, 19.5, 5.0], [16.0, 7.4, 4.6]],
+  [[5.8, 30.3, 1.4], [18.6, 20.0, 3.4], [19.4, 9.0, 3.0]],
+];
+const capeCols = Array.from({ length: (capeKeys.length - 1) * 4 + 1 }, (_, i) => [0, 1, 2].map((row) => {
+  const k = Math.min(Math.floor(i / 4), capeKeys.length - 1);
+  const u = (i % 4) / 4;
+  const a = capeKeys[k][row]; const b = capeKeys[Math.min(k + 1, capeKeys.length - 1)][row];
+  return fs(...a.map((v, j) => v + (b[j] - v) * u));
+}));
+const capeLink = (row) => any(...capeCols.flatMap((col, i) => [limb(col[row], col[row + 1], 1.1),
+  ...(i + 1 < capeCols.length ? [limb(col[row], capeCols[i + 1][row + 1], 1.1)] : [])]));
+
+// the light burst: three flame stars round sheet (1, 28.8) at pp depth 8, 7.6, 7.2, and streaks at pp depth 9
+const coronaR = [9.0, 5.6, 8.0, 5.0, 9.6, 5.4, 7.4, 5.2, 8.6, 5.0, 7.8, 5.6];
+const star = (k) => [[1, 27.5], ...Array.from({ length: 25 }, (_, i) => {
+  const a = ((-8 + (196 * i) / 24) * Math.PI) / 180;
+  const r = coronaR[i % coronaR.length] * k;
+  return [1 + r * Math.cos(a), 28.8 + r * Math.sin(a)];
+})];
+const corona = (c) => Math.min(...[0, 1, 2].map((l) => plateD(lowF(ppFrame(8 - 0.4 * l)).local(c), star(1 - 0.2 * l), 0.4)));
+const streaks = (c) => {
+  const q = lowF(ppFrame(9)).local(c);
+  const r = Math.hypot(q[0] - 0.5, q[2] - 22);
+  return Math.abs(q[1]) < 0.4 && r > 9 && r < 21.5 ? 0.9 : 9;
+};
+const AURA_C = low(ppFrame(8).world([1, 0, 28.8]));
+
+const shieldF = lowF(ppFrame(-6.3));
+const legTest = ([hip, knee, ankle, toe]) => any(limb(hip, knee, 2, 1.75), limb(knee, ankle, 1.7, 1.45), ell([1.6, 1.5, 1.5], add3(knee, [0, -0.7, 0])),
+  limb(add3(ankle, [0, 0, -2]), add3(toe, [0, 0, 0.3]), 1.6, 1), limb(add3(ankle, [0, 0, -3.2]), add3(toe, [0, 0, -0.6]), 1.5, 0.9));
+
+const joints = [
+  { name: 'root', at: [0, 0, 0] },
+  { name: 'legL', parent: 'root', at: LEGS.L[0] },
+  { name: 'legR', parent: 'root', at: LEGS.R[0] },
+  { name: 'body', parent: 'root', at: low([0, 0, 17.5]) },
+  { name: 'head', parent: 'body', at: low([0.6, -0.3, 31.9]) },
+  ...['L', 'R'].flatMap((S) => [
+    { name: `arm${S}`, parent: 'body', at: ARMS[S][0] },
+    { name: `fore${S}`, parent: `arm${S}`, at: ARMS[S][1] },
+    { name: `hand${S}`, parent: `fore${S}`, at: ARMS[S][2] },
+  ]),
+  { name: 'cape1', parent: 'body', at: low([0, 1.8, 30.9]) },
+  { name: 'cape2', parent: 'cape1', at: fs(1, 17.5, 5.6) },
+  { name: 'aura', parent: 'body', at: AURA_C },
+];
+
+const parts = [
+  ['legL', legTest(LEGS.L)], ['legR', legTest(LEGS.R)],
+  ['body', any(ell([3.5, 2.5, 3], low([0, 0.2, 28.4])), ell([3, 2.2, 2], low([0, 0, 24])), ell([3.1, 2.4, 0.7], low([0, 0, 21.6])),
+    ell([3.6, 2.6, 1.4], low([0, 0, 20.4])), ell([3.6, 2.6, 1.2], low([0, 0.1, 17.6])), ell([1, 0.6, 2.9], low([0, -2.3, 18.2])),
+    mx(ell([1.1, 1.6, 2.1], low([3.4, 0.2, 18.2]))), mx(ell([1.5, 0.9, 2.3], low([2.15, -1.75, 18.3]))),
+    mx(ell([2.9, 2.7, 2.4], low([5.3, 0.5, 31.4]))), mx(ell([2.4, 2.1, 1.3], low([5.4, 0.1, 32.9]))), mx(ell([2.7, 2.5, 0.9], low([5.7, 0.5, 29.3]))),
+    mx(ell([1.9, 1, 1.4], low([5.6, -1.8, 31]))), ell([2.5, 2.3, 1.1], low([0.3, 0, 31.3])), limb(low([-4.6, 1.8, 30.9]), low([4.6, 1.8, 30.9]), 1.2))],
+  ['head', any(ell([3, 3, 3.2], H), ell([2.75, 2.75, 1], low([0.6, -0.3, 31.9])), limb(H, low([0.6, -0.3, 32.2]), 2.9))],
+  ...['L', 'R'].flatMap((S) => [
+    [`arm${S}`, limb(ARMS[S][0], ARMS[S][1], 1.6, 1.5)],
+    [`fore${S}`, any(limb(ARMS[S][1], ARMS[S][2], 1.5, 1.7), ell([1.5, 1.4, 1.3], ARMS[S][1]))],
+  ]),
+  ['handL', (c) => plateD(shieldF.local(c), kite, 2.2)],
+  ['handR', any(ell([1.6, 1.5, 1.5], ARMS.R[2]), ell([1.9, 1.6, 1.3], add3(ARMS.R[2], [0, 0, 1.6])),
+    (c) => plateD(lowF(ppFrame(1.6)).local(c), bladePts, 1.4), limb(low(ppFrame(1.6).world([-9.1, 0, 21.2])), low(ppFrame(1.6).world([-6.5, 0, 22.2])), 0.9))],
+  ['cape1', any(capeLink(0), limb(fs(-6.5, 30.2, 1.6), fs(-19.9, 27.6, 0.8), 1.1), limb(fs(-19.6, 25, 0.6), fs(-19.8, 20, 0.6), 1))],
+  ['cape2', capeLink(1)],
+  ['aura', (c) => Math.min(corona(c), streaks(c))],
+];
+
+const assign = (c) => pick(c, parts);
 
 // the aura breathes and turns a little
 const auraPulse = (u, cycles, amp = 1) => ({ aura: { s: 1 + 0.04 * amp * osc(u, cycles), r: [0, 4 * amp * osc(u, cycles / 2, 0.25), 0] } });
 
-export const clipsFor = (extra = {}) => {
+const clipsFor = (extra = {}) => {
   const add = {
     idle: (t, u) => auraPulse(u, 2),
     walk: (t, u) => auraPulse(u, 2, 0.6),
@@ -78,7 +118,7 @@ export const clipsFor = (extra = {}) => {
   };
   for (const [k, f] of Object.entries(extra)) { const a = add[k]; add[k] = (t, u) => merge(a?.(t, u), f(t, u)); }
   const base = bipedClips({
-    hipH: 17, stride: 16, armSwing: 10, hopScale: 0.3, hopH: 3,
+    hipH: 13.7, stride: 16, armSwing: 10, hopScale: 0.3, hopH: 3,
     cape: ['cape1', 'cape2'],
     punch: { arm: [-70, 0, 20], fore: [-25, 0, 0] },
     cheer: { arm: [-10, -115, 0], fore: [-10, 10, 0] },
@@ -127,8 +167,4 @@ export const clipsFor = (extra = {}) => {
   return clips;
 };
 
-export default rigDef({
-  joints: [...joints, { name: 'aura', parent: 'body', at: AURA_C }],
-  assign: (c) => knightAssign(c, true),
-  clips: clipsFor(),
-});
+export default rigDef({ joints, assign, clips: clipsFor() });

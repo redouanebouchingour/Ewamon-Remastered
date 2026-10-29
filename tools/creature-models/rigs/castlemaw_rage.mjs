@@ -1,11 +1,22 @@
 // Castlemaw (Rage)'s rig: Castlemaw's, with the roaring jaw dropped lower (scad/castlemaw_rage.scad), a constant
 // tremble of fury in the idle and a seething fidget in place of the snarl.
 import { K, TAU, both, rigDef, win } from './lib/anim.mjs';
-import { any, blob, spike } from './lib/biped.mjs';
-import { assignWith, clipsFor, face, joints } from './castlemaw.mjs';
+import { any, ell, fromSheet, limb } from './lib/biped.mjs';
+import { assignWith, clipsFor, face, jawAt, joints } from './castlemaw.mjs';
 
-const JAW = any(blob([[[4, 3.2, 1.6], [0, -5, 29.4]], [[1.8, 1.2, 1], [0, -10.6, 27.6]]]), blob([[[2.8, 2.4, 1.4], [0, -8.6, 30]], [[1.4, 0.8, 1.2], [0, -11.6, 29.2]]]),
-  spike([1.5, -11, 28.2], [0, -0.1, 1.5], 0.5), spike([-1.5, -11, 28.2], [0, -0.1, 1.5], 0.5));
+// the shag on the back, its streaks and embers, the lighter locks: only the cloak has these colours (the front drape is
+// near the fur's own colour, so it goes by shape)
+const CLOAK = [[0.47, 0.24, 0.22], [0.63, 0.23, 0.18], [0.94, 0.55, 0.32], [0.29, 0.28, 0.28]];
+const fs = (pts) => pts.map(([sx, z, y]) => fromSheet(sx, z, y));
+const wisp = (pts) => any(...pts.slice(1).map((p, i) => limb(pts[i], p, 0.6)));
+const WISPS = any(wisp(fs([[-8.6, 32.6, -10], [-9.6, 33.6, -10], [-10.1, 35, -10], [-9.8, 36.2, -10], [-10.2, 37.2, -10]])),
+  wisp(fs([[-3.6, 33.2, -11], [-2.4, 34.4, -10], [-0.5, 35.4, -9], [1.2, 36.6, -8], [2, 37.4, -8]])));
+const licks = (pts) => any(...fs(pts).map((p) => ell([1.4, 1.4, 2.2], p)));
+const assign = assignWith({
+  jaw: jawAt(1.3),
+  cloak: CLOAK,
+  extra: [['head', WISPS], ['foreR', licks([[-19.2, 14.8, -8], [-18.2, 17.6, -8], [-17.8, 13.5, -10]])], ['foreL', licks([[17.6, 11.5, -6], [16.4, 9.4, -7]])]],
+});
 
 const tremble = (u, n, amp = 1) => ({ body: { r: [0, 0, 0.6 * amp * Math.sin(TAU * n * u)] }, head: { r: [0, 0.8 * amp * Math.sin(TAU * n * u + 1), 0] } });
 
@@ -35,4 +46,4 @@ const { idle_snarl: _snarl, ...clips } = clipsFor({
   },
 });
 
-export default rigDef({ joints, assign: assignWith(JAW), extras: face.extras, clips });
+export default rigDef({ joints, assign, extras: face.extras, clips });

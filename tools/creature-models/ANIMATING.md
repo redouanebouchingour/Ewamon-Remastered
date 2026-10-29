@@ -140,9 +140,13 @@ itself go in its rig file next to the template's (Joeyjab's `idle_shadowbox`). `
 | `bird.mjs` | root, legL/R, body (pivot low), head, wingL/R (+2), crest1…, tail1…, trail chains, lids | waddle | flap, preen, peck | Puffinch (body is head) |
 | `floater.mjs` | root, body (bobs), head, arm/handL/R, core, tail1… (hanging wisp), wisp1…, eyes, mouth | glide, tail streaming | head spin, cackle | Malice |
 | `serpent.mjs` | root (the coil), spine1…, head, jaw, arm/foreL/R, tail1…, mane…, lids | slither wave | hiss, rear up | Serpyre |
+| `insect.mjs` | root, body (thorax), abdomen, head, jaw, mandL/R, antL1…/antR1…, leg1…leg3 L/R (off the root), wingL/R, wing2L/R, caseL/R, clawL/R, pinchL/R, tail1…, lids | tripod gait (`hang: true` for legs hanging straight down) | groom, buzz, twitch | Hexroach, Scorpit (`stinger`) |
+| `fish.mjs` | root, legL/R, body, head, jaw, finL/R, fin2L/R, dorsal1…, tail1…, lure1…, wisp1…, lids | flop on the fins, or swim with `hover` | gulp, wiggle, lure | Glimfin, Wraithtide (`hover`) |
 
-Still to write as the plans come up: insects (six legs, mandibles, wing cases), blobs (squash and stretch, no
-limbs), fish and other swimmers, big winged dragons (wing bones), long-necked quadrupeds.
+All 203 creatures are rigged (2026-10-29); the 117 non-bipeds on their old models, so each needs a re-rig when its
+sprite-accuracy model lands. Wings, capes, tentacles and orbiting bits that a template lacks are layered in through
+`add` in the rig files. Still to write as the plans come up: blobs (squash and stretch, no limbs), big winged dragons (wing bones),
+long-necked quadrupeds.
 
 ## Writing clips
 
