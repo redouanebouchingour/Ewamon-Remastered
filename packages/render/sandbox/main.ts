@@ -456,6 +456,9 @@ async function main(): Promise<void> {
     (host as unknown as { hooks: { update?: (dt: number) => void }[] }).hooks.unshift({ update: (dt: number) => backdrop.update(dt / 1000) });
     (window as unknown as { __ewaArena: unknown }).__ewaArena = backdrop;
     rig.setFocus(0, 0, 0);
+  } else if (params.get('demo') === 'gallery') {
+    // ?demo=gallery: every 3D creature model on its own floor (gallery.ts builds it and registers the zone root)
+    rig.setFocus(0, 0, 0);
   } else {
     await r.materials.preload(SURFACES_USED);
     const root = buildDiorama(r);
@@ -655,7 +658,8 @@ async function main(): Promise<void> {
   (window as unknown as { __ewaSandbox: typeof api }).__ewaSandbox = api;
   // render part 3 demos: ?demo=lineup | ?demo=battle (creature billboards, arena, VFX, HUD — sandbox/part3.ts)
   const demo = new URLSearchParams(location.search).get('demo');
-  if (demo) void import('./part3.js').then((m) => m.startPart3Demo(r, demo, api as unknown as Record<string, unknown>)).catch((e: unknown) => console.error(e));
+  if (demo === 'gallery') void import('./gallery.js').then((m) => m.startGallery(r, api as unknown as Record<string, unknown>)).catch((e: unknown) => console.error(e));
+  else if (demo) void import('./part3.js').then((m) => m.startPart3Demo(r, demo, api as unknown as Record<string, unknown>)).catch((e: unknown) => console.error(e));
 
   (document.getElementById('time') as HTMLInputElement).addEventListener('input', (e) => api.setTime(Number((e.target as HTMLInputElement).value)));
   (document.getElementById('reduced') as HTMLInputElement).addEventListener('change', (e) => api.setReducedEffects((e.target as HTMLInputElement).checked));
