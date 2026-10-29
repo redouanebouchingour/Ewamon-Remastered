@@ -33,7 +33,7 @@
  */
 import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
-import { BIKE_ITEM, BODIES, HOLLOWED_FLAG, POSTGAME_FLAG, SHADOW_MAX, foosballPlayer, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, shadowNotice, zone as zoneDef } from '@ewa/content';
+import { BIKE_ITEM, BODIES, HOLLOWED_FLAG, POSTGAME_FLAG, SHADOW_MAX, foosballClubIn, foosballPlayer, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, shadowNotice, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
 import type { BattleState, CreatureInstance } from '@ewa/core';
 import { EMOTE_BREAKDANCE, EMOTE_MAX, FISH_REACH_M, SPECTATE_RANGE_M, emoteLengthMs } from '@ewa/protocol';
@@ -51,7 +51,8 @@ import { createBattleController } from '../battle/BattleController';
 import { createCommentator } from '../battle/commentator';
 import { createBattleLogger, teeCommentary } from '../state/professor';
 import { createBuddyLogger, resetBuddyAmbient, setBubbleAnchor, setBuddyPlace, stepBuddyAmbient, uiBusy, useBuddyBubbleStore, useBuddyTalkStore } from '../state/buddy';
-import { bubbleAnchor, buddySnapshot } from './buddyWatch';
+import { bubbleAnchor, buddySnapshot, pageAnchor } from './buddyWatch';
+import { BANTER_NEAR_M, clearBanterLine, createBanterClock, setBanterAnchor, showBanterLine } from '../state/foosballBanter';
 import type { BattleController, BattleView } from '../battle/BattleController';
 import { setBattleActions } from '../battle/controllerRef';
 import { foeIdentity } from '../battle/foe';
@@ -370,6 +371,9 @@ class World implements World3D {
   /** LLM feature 6: the follower pool (its billboard anchors the lead's speech bubble) */
   private followerPool: { billboardOf(owner: string): CreatureBillboard | null } | null = null;
   private readonly bubbleVec = new Vector3();
+  /** the foosball club's banter: which line shows (-1: none) */
+  private readonly banterClock = createBanterClock();
+  private banterLine = -1;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.audio = createAudioDirector();
@@ -2489,6 +2493,7 @@ class World implements World3D {
         this.renderer.actors.setTransform(selfId, this.input.renderX, this.input.renderZ, angle, this.input.moving, this.input.running || this.input.biking);
       }
       this.stepFollowers(selfId, bf === null && !this.inArena && this.approach?.active !== true && this.evolution?.active !== true);
+      this.stepFoosballBanter(frameDt, bf === null && !this.inArena);
       // a recurring rival walking off after its parting line
       this.rivalActor?.update(frameDt);
       this.field?.frame(frameDt, now);
@@ -2726,6 +2731,30 @@ class World implements World3D {
     }
   }
 
+  /**
+   * Per rendered frame: near the Mire Route foosball club (outdoors, out of battle) they argue, a bubble over each
+   * speaker's head (state/foosballBanter.ts); the speaker plays their `talk` clip. A dialogue or panel freezes it.
+   */
+  private stepFoosballBanter(frameDt: number, outdoorsFree: boolean): void {
+    const club = this.zone === null || !outdoorsFree || this.director.pocket !== null ? null : foosballClubIn(this.zone.id);
+    const near = club !== null && Math.hypot(this.input.renderX - club.table.x, this.input.renderZ - club.table.z) < BANTER_NEAR_M;
+    const i = this.banterClock.step(frameDt, near, uiBusy(), club?.banter ?? []) ?? -1;
+    const line = i < 0 || club === null ? null : club.banter[i]!;
+    if (i !== this.banterLine) {
+      this.banterLine = i;
+      if (line === null) clearBanterLine();
+      else {
+        showBanterLine(line.by, line.text);
+        this.renderer.npcModels?.play(line.by, 'talk');
+      }
+    }
+    if (line === null) return;
+    const p = foosballPlayer(line.by);
+    if (p === null) return;
+    const head = this.bubbleVec.set(p.x, (this.stepCollider?.height(p.x, p.z) ?? 0) + p.heightM + 0.25, p.z);
+    setBanterAnchor(pageAnchor(head, this.renderer.camera.camera, this.canvas.getBoundingClientRect()));
+  }
+
   /** LLM feature 6, 2 Hz: where the player is (the talk's facts) and whether the lead has something to say. */
   private stepBuddy(sx: number, sz: number): void {
     const room = this.room;
@@ -2855,6 +2884,7 @@ class World implements World3D {
     setStrikeHook(null);
     setEmoteAction(null);
     resetBuddyAmbient();
+    clearBanterLine();
     this.strikeFx?.finish();
     this.playerStrikeFx?.finish();
     this.evolution?.cancel();

@@ -74,7 +74,12 @@ export function buddySnapshot(w: BuddyWorld): AmbientSnapshot {
 /** The follower's head on the page (px), or null when it is not drawn or off screen. */
 export function bubbleAnchor(bb: CreatureBillboard | null, camera: Camera, rect: { readonly left: number; readonly top: number; readonly width: number; readonly height: number }, tmp: Vector3): { readonly x: number; readonly y: number } | null {
   if (bb === null) return null;
-  const v = bb.topWorld(tmp).project(camera);
+  return pageAnchor(bb.topWorld(tmp), camera, rect);
+}
+
+/** World point `v` on the page (px), or null off screen. Projects `v` in place. */
+export function pageAnchor(v: Vector3, camera: Camera, rect: { readonly left: number; readonly top: number; readonly width: number; readonly height: number }): { readonly x: number; readonly y: number } | null {
+  v.project(camera);
   if (v.z < -1 || v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1) return null;
   return { x: rect.left + (v.x * 0.5 + 0.5) * rect.width, y: rect.top + (-v.y * 0.5 + 0.5) * rect.height };
 }

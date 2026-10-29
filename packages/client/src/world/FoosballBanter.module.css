@@ -1,0 +1,15 @@
+/*
+ * The foosball club's banter bubble: the buddy bubble (BuddyBubble.module.css), always anchored over the speaker's
+ * head (`--bx` / `--by` from World3D, page px). It never takes the pointer.
+ */
+
+.bubble {
+  composes: bubble from './BuddyBubble.module.css';
+}
+
+/* the attribute outranks the composed rule whatever order the sheets land in */
+.bubble[data-by] {
+  inset-block-start: calc(var(--by) - 10px);
+  inset-inline-start: var(--bx);
+  max-inline-size: 220px;
+}

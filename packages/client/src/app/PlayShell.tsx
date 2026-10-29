@@ -14,6 +14,7 @@ import { DialogueBox } from '../world/DialogueBox';
 import { EmoteWheel } from '../world/EmoteWheel';
 import { NpcStrikeFx } from '../world/NpcStrikeFx';
 import { BuddyBubble } from '../world/BuddyBubble';
+import { FoosballBanter } from '../world/FoosballBanter';
 import { BuddyTalk } from '../world/BuddyTalk';
 import { closeBuddyTalk, openBuddyTalk, useBuddyTalkStore } from '../state/buddy';
 import { startVoices } from '../voice/bindVoices';
@@ -241,6 +242,8 @@ export function PlayShell() {
       {/* LLM feature 6: the talk with a party creature, and the lead's speech bubble over the live world */}
       <BuddyTalk />
       {!hasPanel && !inBattle && !inArena && worldCapability() && <BuddyBubble />}
+      {/* the Mire Route foosball club arguing over a klinker, over the speakers' heads */}
+      {!hasPanel && !inBattle && !inArena && worldCapability() && <FoosballBanter />}
       <NpcStrikeFx />
       <FishingPrompt />
       <ChatInput />

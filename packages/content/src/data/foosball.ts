@@ -31,10 +31,18 @@ export interface FoosballPlayer extends FoosballModel {
   readonly defeat: string;
 }
 
+/** One speech bubble of the club's banter: `by` is a player's trainer id. */
+export interface FoosballBanterLine {
+  readonly by: string;
+  readonly text: string;
+}
+
 export interface FoosballClub {
   readonly zoneId: ZoneId;
   readonly table: FoosballModel;
   readonly players: readonly FoosballPlayer[];
+  /** the argument they keep having, line by line over the speaker's head while the player is near (client `FoosballBanter`) */
+  readonly banter: readonly FoosballBanterLine[];
   /** the table and the six round it, grown by the 0.35 m capsule: the client's movement blocker (content `RectSolid` shape) */
   readonly solid: { readonly x: number; readonly z: number; readonly hw: number; readonly hd: number; readonly yaw: number };
 }
@@ -162,6 +170,21 @@ export const FOOSBALL_CLUB: FoosballClub = {
       ],
       defeat: "Ugh. Louder than my hangover, you. Wake me when it's my turn to defend.",
     }),
+  ],
+  // King Klinker swears his shot was a klinker (in, off the back of the goal); Mr Mercedes in goal swears it was not
+  banter: [
+    { by: 'mire_route.foosball_klinker', text: 'Bro that was 100% a klinker' },
+    { by: 'mire_route.foosball_mercedes', text: 'Naaaaaah bro' },
+    { by: 'mire_route.foosball_klinker', text: 'Abi I heard it. It sounds different' },
+    { by: 'mire_route.foosball_mercedes', text: "Bro that so wasn't one. I could see it hit the backboard" },
+    { by: 'mire_route.foosball_klinker', text: "No you didn't" },
+    { by: 'mire_route.foosball_mercedes', text: 'If this is how you wanna win? Fine.' },
+    { by: 'mire_route.foosball_klaas', text: 'Guys. GUYS. Can we PLEASE just keep playing?' },
+    { by: 'mire_route.foosball_kaas', text: 'Shhh. Stop shouting. My head.' },
+    { by: 'mire_route.foosball_mogu', text: 'Klinker or no klinker, I am getting a snack' },
+    { by: 'mire_route.foosball_motor', text: 'Brrrrr. Ball in. Kick-off. Vroom.' },
+    { by: 'mire_route.foosball_klinker', text: 'Abi. Klinker. Write it down.' },
+    { by: 'mire_route.foosball_mercedes', text: 'Fine.' },
   ],
   // the table (1.8 x 0.86 m, its long axis along world z) and the people round it (0.82 m out), grown by the capsule
   solid: { ...world(0, 0), hw: 1.3, hd: 1.25, yaw: 0 },

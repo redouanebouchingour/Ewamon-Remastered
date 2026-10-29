@@ -58,4 +58,13 @@ describe('foosball club', () => {
       expect(fx * (t.x - p.x) + fz * (t.z - p.z)).toBeGreaterThan(0.7);
     }
   });
+
+  it('every banter line is said by a club member, never empty', () => {
+    const ids = new Set(FOOSBALL_CLUB.players.map((p) => p.trainer.id));
+    expect(FOOSBALL_CLUB.banter.length).toBeGreaterThan(0);
+    for (const l of FOOSBALL_CLUB.banter) {
+      expect(ids.has(l.by), l.by).toBe(true);
+      expect(l.text.trim()).not.toBe('');
+    }
+  });
 });
