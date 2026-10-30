@@ -33,8 +33,8 @@
  */
 import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
-import { BIKE_ITEM, BODIES, HOLLOWED_FLAG, POSTGAME_FLAG, SHADOW_MAX, foosballClubIn, foosballPlayer, harvestStateFor, interiorNpcs, interiorTrainers, obstacleRefusal, obstacleRefusalText, shadowNotice, zone as zoneDef } from '@ewa/content';
-import type { BadgeId, ZoneDef, ZoneId } from '@ewa/content';
+import { BIKE_ITEM, BODIES, HOLLOWED_FLAG, POSTGAME_FLAG, SHADOW_MAX, devTeamIn, devTeamMember, devTeamModels, foosballClubIn, foosballPlayer, harvestStateFor, interiorNpcs, interiorTrainers, interiorsFor, obstacleRefusal, obstacleRefusalText, shadowNotice, zone as zoneDef } from '@ewa/content';
+import type { BadgeId, DevTeamModel, ZoneDef, ZoneId } from '@ewa/content';
 import type { BattleState, CreatureInstance } from '@ewa/core';
 import { EMOTE_BREAKDANCE, EMOTE_MAX, FISH_REACH_M, SPECTATE_RANGE_M, emoteLengthMs } from '@ewa/protocol';
 import type { PlayerState, ServerMessage, SpawnState, WatchEvent, ZoneState } from '@ewa/protocol';
@@ -52,7 +52,8 @@ import { createCommentator } from '../battle/commentator';
 import { createBattleLogger, teeCommentary } from '../state/professor';
 import { createBuddyLogger, resetBuddyAmbient, setBubbleAnchor, setBuddyPlace, stepBuddyAmbient, uiBusy, useBuddyBubbleStore, useBuddyTalkStore } from '../state/buddy';
 import { bubbleAnchor, buddySnapshot, pageAnchor } from './buddyWatch';
-import { BANTER_NEAR_M, clearBanterLine, createBanterClock, setBanterAnchor, showBanterLine } from '../state/foosballBanter';
+import { BANTER_NEAR_M, DEV_TEAM_BANTER_REST_MS, clearBanterLine, createBanterClock, setBanterAnchor, showBanterLine } from '../state/foosballBanter';
+import { PocketPetViews } from './PocketPetViews';
 import type { BattleController, BattleView } from '../battle/BattleController';
 import { setBattleActions } from '../battle/controllerRef';
 import { foeIdentity } from '../battle/foe';
@@ -374,6 +375,12 @@ class World implements World3D {
   /** the foosball club's banter: which line shows (-1: none) */
   private readonly banterClock = createBanterClock();
   private banterLine = -1;
+  /** Team Ewamon HQ's banter inside the house (same store and bubble), its models in world coordinates per pocket */
+  private readonly teamBanterClock = createBanterClock(DEV_TEAM_BANTER_REST_MS);
+  private teamBanterLine = -1;
+  private teamModels: { readonly pocket: string; readonly models: readonly DevTeamModel[] } | null = null;
+  /** Team Ewamon HQ: each member's Ewamon beside their chair */
+  private pocketPets: PocketPetViews | null = null;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.audio = createAudioDirector();
@@ -534,6 +541,7 @@ class World implements World3D {
       reducedMotion: () => getEffectiveSettings().reduced,
       blockers: () => this.stepCollider,
       legendaries: () => this.legendaries,
+      pocketPets: () => this.pocketPets,
       obstacles: () => this.stepCollider,
     });
     this.hudWriter.bind(r.hud);
@@ -590,6 +598,13 @@ class World implements World3D {
         height: (x, z) => this.director.handle?.collider.sample(x, z) ?? 0,
         targets: this.targets,
         interactKey: () => this.keyLabel('interact'),
+      });
+      this.pocketPets = new PocketPetViews({
+        parent: group,
+        acquire: (d) => p3.sprites.acquire(d),
+        descriptor: (sp, key) => this.catalog?.descriptor(sp, key) ?? null,
+        leaseSprites: (sp, side, part) => this.leaseSprites(sp, side, part),
+        height: (x, z) => this.director.handle?.collider.sample(x, z) ?? 0,
       });
       // Phase C1: the boss in the alpha treatment (glow rim) marks the den
       this.raidDen = new RaidDen({
@@ -732,10 +747,12 @@ class World implements World3D {
     this.input.setCollider(null);
     this.spawns?.clear();
     this.legendaries?.clear();
+    this.pocketPets?.clear();
     this.raidDen?.clear();
     this.spectators?.clear();
     this.spawns = null;
     this.legendaries = null;
+    this.pocketPets = null;
     this.raidDen = null;
     this.spectators = null;
     // followers: the pool lived on the dead renderer (attachRoom re-feeds the leads to the rebuilt one)
@@ -1920,7 +1937,15 @@ class World implements World3D {
           // the rumour board: the town crier's, the town's Rumours
           const opens =
             inside?.role === 'daycare' ? '/play/daycare' : inside?.role === 'bounty' ? '/play/bounties' : inside?.role === 'crier' ? `/play/rumours?town=${encodeURIComponent(z.id)}` : null;
-          if (inside !== undefined) ui.setDialogue({ speaker: inside.name, lines: inside.lines, index: 0, targetId: inside.id, ...(opens !== null ? { onFinish: () => navigateTo(opens) } : {}) });
+          if (inside === undefined) return;
+          ui.setDialogue({
+            speaker: inside.name, lines: inside.lines, index: 0, targetId: inside.id,
+            ...(opens !== null ? { onFinish: () => navigateTo(opens) } : {}),
+            ...(inside.persona !== undefined ? { persona: inside.persona } : {}),
+          });
+          // Team Ewamon HQ: they look up from the desk; the server counts the talk (achievement ach_original_party)
+          if (inside.model !== undefined) this.renderer.npcModels?.play(inside.id, 'talk');
+          if (devTeamMember(inside.id) !== null) this.ws.send('interact', { targetId: inside.id, kind: 'npc' });
           return;
         }
         const plan = npcPlan(z.id, npc, this.flags());
@@ -1965,6 +1990,12 @@ class World implements World3D {
         this.ws.send('interact', { targetId: t.id, kind: 'item' });
         return;
       case 'lore': {
+        // a hall's readable board (Team Ewamon HQ's pinned list): client-local, nothing over the wire
+        const board = interiorsFor(z.id).flatMap((p) => p.def.boards ?? []).find((b) => b.id === t.id);
+        if (board !== undefined) {
+          ui.setDialogue({ speaker: board.title, lines: board.text, index: 0, targetId: board.id, noTalk: true });
+          return;
+        }
         const l = z.lore.find((x) => x.id === t.id);
         if (l !== undefined) ui.setDialogue({ speaker: l.title, lines: l.text, index: 0, targetId: l.id, noTalk: true });
         this.ws.send('interact', { targetId: t.id, kind: 'lore' });
@@ -2229,6 +2260,7 @@ class World implements World3D {
         if (s.format === 'raid') this.raidDen?.setHidden(true);
         // the legendary statics step aside too: a static's battle copy stands on the stage (in a hall, on the same spot)
         this.legendaries?.setHidden(true);
+        this.pocketPets?.setHidden(true);
         // arena PvP: the stadium's own floor under the ring
         void this.director.enterBattle(this.inArena ? { ...s, terrain: this.backdrop?.terrain ?? ARENA_FALLBACK.terrain } : s);
         // render §10.7.8: a wild battle bursts the tall grass (or sprays the water) round the player as the push-in starts
@@ -2246,6 +2278,7 @@ class World implements World3D {
         this.foe.end();
         this.raidDen?.setHidden(false);
         this.legendaries?.setHidden(false);
+        this.pocketPets?.setHidden(false);
         void this.director.exitBattle();
         // the stage disposed its battlers: their sides and the teams' atlases idle (released after the grace period)
         this.battleSprites.end();
@@ -2494,6 +2527,7 @@ class World implements World3D {
       }
       this.stepFollowers(selfId, bf === null && !this.inArena && this.approach?.active !== true && this.evolution?.active !== true);
       this.stepFoosballBanter(frameDt, bf === null && !this.inArena);
+      this.stepTeamBanter(frameDt, bf === null && !this.inArena);
       // a recurring rival walking off after its parting line
       this.rivalActor?.update(frameDt);
       this.field?.frame(frameDt, now);
@@ -2752,6 +2786,31 @@ class World implements World3D {
     const p = foosballPlayer(line.by);
     if (p === null) return;
     const head = this.bubbleVec.set(p.x, (this.stepCollider?.height(p.x, p.z) ?? 0) + p.heightM + 0.25, p.z);
+    setBanterAnchor(pageAnchor(head, this.renderer.camera.camera, this.canvas.getBoundingClientRect()));
+  }
+
+  /**
+   * Per rendered frame: inside Team Ewamon HQ (content `DEV_TEAM`) the four chat over their desk, a bubble over each
+   * speaker's head, the speaker playing `talk`; the foosball club's store and bubble, its own clock and a shorter rest.
+   */
+  private stepTeamBanter(frameDt: number, free: boolean): void {
+    const p = this.director.pocket;
+    const team = p === null || !free ? null : devTeamIn(p.def.id);
+    if (team !== null && p !== null && this.teamModels?.pocket !== p.def.id) this.teamModels = { pocket: p.def.id, models: devTeamModels(p.at) };
+    const i = this.teamBanterClock.step(frameDt, team !== null, uiBusy(), team?.banter ?? []) ?? -1;
+    const line = i < 0 || team === null ? null : team.banter[i]!;
+    if (i !== this.teamBanterLine) {
+      this.teamBanterLine = i;
+      if (line === null) clearBanterLine();
+      else {
+        showBanterLine(line.by, line.text);
+        this.renderer.npcModels?.play(line.by, 'talk');
+      }
+    }
+    if (line === null) return;
+    const m = this.teamModels?.models.find((x) => x.id === line.by);
+    if (m === undefined) return;
+    const head = this.bubbleVec.set(m.x, (this.stepCollider?.height(m.x, m.z) ?? 0) + m.bubbleM + 0.25, m.z);
     setBanterAnchor(pageAnchor(head, this.renderer.camera.camera, this.canvas.getBoundingClientRect()));
   }
 

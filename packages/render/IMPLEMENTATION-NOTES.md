@@ -2864,3 +2864,13 @@ The user's call: most of a zone never moves, so only the player, villagers and c
   sits in a moved, scaled group, and three culled the table while it stood in plain view. Seven set pieces cost nothing.
 - Ground: the bundle's `setGround` stands them on the zone collider's `sample`.
 - The sandbox places the club whenever it loads `?zone=mire_route`. Test: `npc-models.test.ts`.
+
+## Team Ewamon HQ (2026-10-30, not in the SPEC)
+
+- New interior prop kind `whiteboard` (a white face in a metal frame, marker scribbles, a sticky note, the tray; it
+  casts). The team's desk and the four are `NpcModels` placed by the client only while the player is in their house,
+  so the stage needed no visibility switch. The sandbox places them on `?zone=mirevale&interior=mirevale.house5`
+  (`window.__ewaNpcModels.play(id, clip)` to try a clip).
+- `NpcModelSpec.glow` (opt-in): a second material reading the vertex alpha (the build's glow mask, as on the creature
+  models) as emissive × 1.35, so the desk's monitors and the house front's string lights light up at night. The
+  foosball club stays on the plain material: its builds auto-marked some bright colours, which would start glowing.

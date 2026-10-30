@@ -188,6 +188,8 @@ export interface DialogueUi {
   readonly noTalk?: boolean;
   /** Shop haggling: the shop screen's Haggle opened the keeper's talk (`state/haggle.ts`); it starts typed, beside the panel. */
   readonly haggle?: boolean;
+  /** who the speaker is for NPC talk (content `InteriorNpc.persona`: Team Ewamon HQ's four), instead of a villager */
+  readonly persona?: string;
 }
 
 /**

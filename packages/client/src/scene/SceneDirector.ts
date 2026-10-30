@@ -23,7 +23,7 @@
  * and the prediction collider re-opens its stamped samples (`ObstacleSink.setObstacles`) — on load and on every flag
  * change, only when the cleared set changed.
  */
-import { foosballClubIn, getHeightfield, harvestStateFor, interiorAt, interiorsFor, obstacleAt, obstacleFlag, zone as zoneDef } from '@ewa/content';
+import { DEV_TEAM_FRONT, devTeamFrontIn, devTeamIn, devTeamModels, foosballClubIn, getHeightfield, harvestStateFor, interiorAt, interiorsFor, obstacleAt, obstacleFlag, zone as zoneDef } from '@ewa/content';
 import type { HarvestState, PlacedInterior, ZoneDef, ZoneId } from '@ewa/content';
 import type { BattleFormat } from '@ewa/core';
 import { BATTLER_SEPARATION, BATTLE_DISTANCE, BATTLE_PITCH, BATTLE_YAW_OFFSET, doorOf, fitCentre, headingYaw, trainerSlot } from '@ewa/render';
@@ -44,6 +44,9 @@ import type { PocketActor } from './interiors';
 /** `Renderer.npcModels` id of the foosball table, and the club's blocker id. */
 export const FOOSBALL_TABLE_ID = 'foosball:table';
 const FOOSBALL_BLOCKER = 'foosball';
+/** Team Ewamon HQ's outside: its model handle and its ground groups' blocker ids (`<id>:<k>`) */
+export const DEV_TEAM_FRONT_ID = 'ewa-hq:front';
+const DEV_TEAM_FRONT_BLOCKER = 'ewa-hq-front';
 
 /** §20.2.6 zone banner: 400 in, 2 000 hold, 400 out (the HUD draws it statically; hold only under reduced motion). */
 export const BANNER_MS = 2800;
@@ -221,6 +224,8 @@ export interface SceneDirectorDeps {
   readonly legendaries?: () => { sync(zoneId: ZoneId | null, flags: ReadonlySet<string>): void } | null;
   /** Phase D10: the prediction collider's obstacle hook (read after `onZone` gave it the new zone). */
   readonly obstacles?: () => ObstacleSink | null;
+  /** Team Ewamon HQ: the team's pets (`PocketPetViews`), synced on entering / leaving a pocket. */
+  readonly pocketPets?: () => { sync(p: PlacedInterior | null): void } | null;
 }
 
 /** Phase D10: what re-opens a cleared obstacle's stamped samples for prediction (the client `StepCollider`). */
@@ -262,6 +267,8 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
   /** the pocket the current battle is fought in (hall axis), else null */
   let battleHall: PlacedInterior | null = null;
   let pocket: PlacedInterior | null = null;
+  // Team Ewamon HQ's models stand in place of the zone's set (`placeDevTeam`)
+  let placedDevTeam = false;
   let floors: FloorIndex | null = null;
   let outsideHeading: Heading | null = null;
   let viewYaw: number | null = Number.NaN;
@@ -309,16 +316,42 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
   /**
    * The Mire Route foosball club (content `FOOSBALL_CLUB`): its rigged models play the table, and the table with the six
    * round it blocks the walk (client-side only, like a gate: prediction is stricter than the server, never looser).
+   * Team Ewamon HQ's outside (content `DEV_TEAM_FRONT`) is the same kind of set piece in Mirevale, its bike rack and
+   * bench blocking the same way.
    */
   function placeFoosballClub(id: ZoneId | null): void {
     const club = id === null ? null : foosballClubIn(id);
-    d.renderer.npcModels?.set(club === null ? [] : [
-      { id: FOOSBALL_TABLE_ID, ...club.table },
-      ...club.players.map((p) => ({ id: p.trainer.id, model: p.model, x: p.x, z: p.z, yaw: p.yaw, heightM: p.heightM })),
+    const front = id === null ? null : devTeamFrontIn(id);
+    d.renderer.npcModels?.set([
+      ...(club === null ? [] : [
+        { id: FOOSBALL_TABLE_ID, ...club.table },
+        ...club.players.map((p) => ({ id: p.trainer.id, model: p.model, x: p.x, z: p.z, yaw: p.yaw, heightM: p.heightM })),
+      ]),
+      // its string lights glow (the build's glow mask)
+      ...(front === null ? [] : [{ id: DEV_TEAM_FRONT_ID, model: front.model, x: front.x, z: front.z, yaw: front.yaw, heightM: front.heightM, glow: true }]),
     ]);
+    placedDevTeam = false;
     const b = d.blockers?.() ?? null;
     if (club !== null) b?.addBlocker(FOOSBALL_BLOCKER, club.solid);
     else b?.removeBlocker(FOOSBALL_BLOCKER);
+    DEV_TEAM_FRONT.solids.forEach((s, i) => {
+      if (front !== null) b?.addBlocker(`${DEV_TEAM_FRONT_BLOCKER}:${i}`, s);
+      else b?.removeBlocker(`${DEV_TEAM_FRONT_BLOCKER}:${i}`);
+    });
+  }
+
+  /**
+   * Team Ewamon HQ (content `devTeamModels`): the desk and the four are placed while the player stands in the house
+   * (the models are not tied to a pocket's visibility, and the halls are roofless) and the zone's set comes back on
+   * leaving it. Their actors are never spawned (`pocketActors` skips NPCs with a model); talking is the client's.
+   */
+  function placeDevTeam(p: PlacedInterior | null): void {
+    const inHouse = p !== null && devTeamIn(p.def.id) !== null;
+    if (inHouse) {
+      d.renderer.npcModels?.set(devTeamModels(p.at));
+      placedDevTeam = true;
+    } else if (placedDevTeam) placeFoosballClub(current);
+    d.pocketPets?.()?.sync(p);
   }
 
   function spawnStatic(id: string, look: string, name: string, x: number, z: number, angle: number, npc: boolean, inPocket: boolean): void {
@@ -362,6 +395,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     // empty when the first pocket is entered before the first flag refresh)
     activeActors = pocketActors(z, p, d.flags());
     for (const a of activeActors) spawnStatic(a.id, a.look, a.name, a.x, a.z, a.angle, a.kind === 'npc', true);
+    placeDevTeam(p);
   }
 
   function leavePocketActors(): void {
@@ -378,6 +412,7 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     if (pocket === null) return;
     leavePocketActors();
     pocket = null;
+    placeDevTeam(null);
     viewYaw = Number.NaN;
     handle?.interiors?.setActive(null);
     applyWeather();

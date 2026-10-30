@@ -7,7 +7,10 @@
  * Each model is a `CreatureRigPlayer` on its own clone, so the clip contract is the creatures': `idle` loops (for the
  * club: playing the table), an `idle_*` fidget fires now and then, `play(id, name)` runs any clip once (`talk`,
  * `cheer`) and returns to the loop. The GLB is 1 m tall, its front +Z, its origin the scad's (a person's feet, the
- * table's centre); `heightM` scales it back. One vertex-colour material for all of them.
+ * table's centre); `heightM` scales it back. One vertex-colour material for all of them, and a second one for a spec
+ * with `glow` (Team Ewamon HQ's monitors and string lights): the vertex alpha is the build's glow mask (1 = emissive, as
+ * on the creature models), lit as emissive × `NPC_MODEL.emissiveGain`. Opt-in, so the foosball club's bright colours
+ * that the build's auto rule marked never start glowing.
  */
 import { Group, MeshStandardNodeMaterial } from 'three/webgpu';
 import { attribute, float } from 'three/tsl';
@@ -25,6 +28,8 @@ export interface NpcModelSpec {
   /** radians, three's rotation.y (the model's front is +Z) */
   readonly yaw: number;
   readonly heightM: number;
+  /** its glow-masked colours (vertex alpha) light up; absent = none do */
+  readonly glow?: boolean;
 }
 
 /** What the client drives (`Renderer.npcModels`). */
@@ -37,7 +42,7 @@ export interface NpcModels {
   clips(id: string): readonly string[];
 }
 
-export const NPC_MODEL = Object.freeze({ roughness: 0.82, metalness: 0 });
+export const NPC_MODEL = Object.freeze({ roughness: 0.82, metalness: 0, emissiveGain: 1.35 });
 
 interface Placed {
   readonly spec: NpcModelSpec;
@@ -55,6 +60,8 @@ export interface NpcModelStageOptions {
 export class NpcModelStage implements NpcModels {
   readonly root = new Group();
   readonly material: MeshStandardNodeMaterial;
+  /** `material` plus the glow mask as emissive (specs with `glow`) */
+  readonly glowMaterial: MeshStandardNodeMaterial;
   private readonly source: CreatureModelSource | null;
   private placed: Placed[] = [];
   private ground: ((x: number, z: number) => number) | null = null;
@@ -71,6 +78,14 @@ export class NpcModelStage implements NpcModels {
     m.metalnessNode = float(NPC_MODEL.metalness);
     m.name = 'ewa:npc-model';
     this.material = m;
+    const col = attribute('color', 'vec4') as unknown as Node<'vec4'>;
+    const g = new MeshStandardNodeMaterial();
+    g.colorNode = col.rgb;
+    g.roughnessNode = float(NPC_MODEL.roughness);
+    g.metalnessNode = float(NPC_MODEL.metalness);
+    g.emissiveNode = col.rgb.mul(col.a).mul(NPC_MODEL.emissiveGain);
+    g.name = 'ewa:npc-model-glow';
+    this.glowMaterial = g;
   }
 
   /** The ground the models stand on (the zone's surface); null = y 0. */
@@ -95,7 +110,7 @@ export class NpcModelStage implements NpcModels {
       this.placed.push(p);
       void this.source?.model(spec.model).then((m) => {
         if (m?.rig === undefined || gen !== this.generation || this.disposed) return;
-        p.player = new CreatureRigPlayer(m.rig, this.material, {}, spec.id, LAYERS.default, LAYERS.dynamicShadow);
+        p.player = new CreatureRigPlayer(m.rig, spec.glow === true ? this.glowMaterial : this.material, {}, spec.id, LAYERS.default, LAYERS.dynamicShadow);
         // never culled: the skinned bounds (bone matrices in world space) land off the model once it sits in a moved,
         // scaled group, and a handful of set pieces cost nothing to draw
         p.player.mesh.frustumCulled = false;
@@ -124,6 +139,7 @@ export class NpcModelStage implements NpcModels {
     this.disposed = true;
     this.source?.dispose();
     this.material.dispose();
+    this.glowMaterial.dispose();
     this.root.removeFromParent();
   }
 

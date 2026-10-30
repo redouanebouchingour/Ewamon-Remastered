@@ -4,6 +4,9 @@
  * per rendered frame (`createBanterClock`), writes the line here when it changes and the speaker's head on screen
  * every frame it shows (`setBanterAnchor`); `FoosballBanter` draws it. Walking away resets the argument; a dialogue or
  * a panel freezes it, hidden.
+ *
+ * Team Ewamon HQ (content `DEV_TEAM.banter`) uses the same clock, store and bubble: inside the house the four chat over
+ * their desk, with a shorter rest (`DEV_TEAM_BANTER_REST_MS`). Only one group is ever in reach.
  */
 import { create } from 'zustand';
 
@@ -13,6 +16,8 @@ export const BANTER_NEAR_M = 14;
 export const BANTER_LEAD_MS = 800;
 export const BANTER_GAP_MS = 350;
 export const BANTER_REST_MS = 30_000;
+/** Team Ewamon HQ rests less: the player stands right by the desk and came for them */
+export const DEV_TEAM_BANTER_REST_MS = 12_000;
 
 /** How long a line shows: 1.8 s plus a little per word, at most 4.5 s. */
 export function banterLineMs(text: string): number {
@@ -27,7 +32,7 @@ export interface BanterClock {
   step(dtMs: number, near: boolean, busy: boolean, lines: readonly { readonly text: string }[]): number | null;
 }
 
-export function createBanterClock(): BanterClock {
+export function createBanterClock(restMs: number = BANTER_REST_MS): BanterClock {
   let i = 0;
   let showing = false;
   let left = BANTER_LEAD_MS;
@@ -50,7 +55,7 @@ export function createBanterClock(): BanterClock {
           i++;
           if (i >= lines.length) {
             i = 0;
-            left += BANTER_REST_MS;
+            left += restMs;
           } else {
             left += BANTER_GAP_MS;
           }
@@ -63,7 +68,7 @@ export function createBanterClock(): BanterClock {
 
 export interface BanterLine {
   readonly seq: number;
-  /** the speaker's trainer id */
+  /** the speaker's id (a foosball trainer, a dev-team NPC) */
   readonly by: string;
   readonly text: string;
 }

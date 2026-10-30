@@ -3026,3 +3026,18 @@ the second isolated client (the component over the landing page: the foe and own
   frost away, whichever side attacks. Checked near and far at `/sigfx/?move=Thermal%20Shock[&side=far]`.
 - Kelvyre ships as stills (no flipbook: `spriteCatalog.test` lists it with the stills). Its 3D model and rig
   (`kelvyre.rig.glb`, 192 KiB) came the same day: tools/creature-models `scad/kelvyre.scad`, `rigs/kelvyre.mjs`.
+
+## Team Ewamon HQ (2026-10-30, not in the SPEC)
+
+- Entering Mirevale's house 5 (content `devTeamIn`), the SceneDirector replaces the zone's `npcModels` set with the
+  desk and the four (`devTeamModels`) and puts it back on leaving; `pocketActors` skips NPCs with a `model`, so no
+  character rig doubles them. `PocketPetViews` stands each member's Ewamon beside their chair (the statics' billboard
+  pattern, no interactable, hidden in battle).
+- Their banter reuses the foosball club's clock, store and bubble (`state/foosballBanter.ts`) with its own clock and a
+  12 s rest (`DEV_TEAM_BANTER_REST_MS`): one group is ever in reach. The speaker plays `talk`.
+- Talking: their lines, then C for the LLM with their `persona` (`DialogueUi.persona` -> `NpcPersona.persona`, which
+  replaces "a villager" and the hashed temperament in `systemPrompt`). The client also sends `interact npc` for them,
+  so the server counts `talkTo` for `ach_original_party`.
+- `InteriorDef.boards` are 'lore' targets ("Read") opening the board's text, client-local (nothing over the wire).
+- The house's outside (content `DEV_TEAM_FRONT`) joins Mirevale's `npcModels` set beside the foosball club's slot
+  (`placeFoosballClub` places both kinds per zone) with two client blockers (`ewa-hq-front:<k>`), like the table.

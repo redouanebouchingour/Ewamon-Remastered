@@ -58,6 +58,22 @@ describe('NPC set pieces (npcModels.ts)', () => {
     s.dispose();
   });
 
+  it('a spec with glow draws with the glow material (the vertex alpha as emissive), the rest with the plain one', async () => {
+    const s = new NpcModelStage({ baseUrl: null, source: source() });
+    s.set([{ id: 'lit', model: 'x', x: 0, z: 0, yaw: 0, heightM: 1, glow: true }, { id: 'plain', model: 'y', x: 1, z: 0, yaw: 0, heightM: 1 }]);
+    await settle();
+    const materialOf = (i: number): unknown => {
+      let m: unknown = null;
+      s.root.children[i]!.traverse((n) => { if ((n as { isSkinnedMesh?: boolean }).isSkinnedMesh === true) m = (n as unknown as { material: unknown }).material; });
+      return m;
+    };
+    expect(materialOf(0)).toBe(s.glowMaterial);
+    expect(materialOf(1)).toBe(s.material);
+    expect(s.glowMaterial.emissiveNode).not.toBeNull();
+    expect(s.material.emissiveNode ?? null).toBeNull();
+    s.dispose();
+  });
+
   it('a new set replaces the old one; a model that loads after it is dropped', async () => {
     const s = new NpcModelStage({ baseUrl: null, source: source() });
     s.set([{ id: 'a', model: 'x', x: 0, z: 0, yaw: 0, heightM: 1 }]);

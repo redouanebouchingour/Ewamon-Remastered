@@ -62,7 +62,7 @@ export const INTERIOR = Object.freeze({
  * Prop kinds tall enough to cast a shadow worth its draws (every casting surface group costs one draw per shadow
  * cascade); the rest of the dressing is merged into a non-casting mesh.
  */
-const CASTING_PROPS: ReadonlySet<string> = new Set(['pillar', 'statue', 'banner', 'coil', 'forge', 'throne', 'shelf', 'bookshelf', 'weapon_rack', 'mirror', 'spectators', 'anchor']);
+const CASTING_PROPS: ReadonlySet<string> = new Set(['pillar', 'statue', 'banner', 'whiteboard', 'coil', 'forge', 'throne', 'shelf', 'bookshelf', 'weapon_rack', 'mirror', 'spectators', 'anchor']);
 
 // ---- themes ----------------------------------------------------------------------------------------------------
 
@@ -530,6 +530,22 @@ function propInto(t: Parts, kind: string, kit: Kit, size: readonly [number, numb
       box(t, kit.metal, 0, 0.85, -0.1, 0.8, 0.6, 0.12, 0, 0.02);
       box(t, kit.glow, 0, 0.92, -0.035, 0.66, 0.44, 0.02, 0, 0.005);
       box(t, kit.trim, 0, 0.86, 0.18, 0.6, 0.04, 0.22, 0, 0.008);
+      return true;
+    }
+    case 'whiteboard': {
+      // a wall board (Team Ewamon HQ's pinned list): a white face in a metal frame, marker scribbles, a sticky note,
+      // the marker tray; its bottom edge at 0.95 m, the face toward +z
+      const w = W(1.7) - 0.1; const y0 = 0.95; const h = 1.05;
+      box(t, kit.metal, 0, y0 - 0.03, -0.02, w + 0.08, h + 0.06, 0.05, 0, 0.012);
+      box(t, 'plaster', 0, y0, 0.01, w, h, 0.02, 0, 0.004);
+      const ink = [kit.accent, kit.glow, kit.cloth, kit.trim];
+      for (let r = 0; r < 6; r++) {
+        const len = 0.25 + p.next() * 0.45;
+        box(t, ink[r % ink.length]!, -w / 2 + 0.12 + len / 2 + (r % 2) * 0.06, y0 + h - 0.16 - r * 0.14, 0.025, len, 0.025, 0.006, 0, 0.002);
+      }
+      box(t, kit.glow, w / 2 - 0.32, y0 + h - 0.36, 0.026, 0.3, 0.28, 0.008, 0.08, 0.003);   // the sticky note
+      box(t, kit.metal, 0, y0 - 0.06, 0.06, w * 0.6, 0.03, 0.08, 0, 0.006);                    // the marker tray
+      for (let k = 0; k < 3; k++) box(t, ink[k]!, -0.18 + k * 0.16, y0 - 0.03, 0.06, 0.12, 0.022, 0.022, 0, 0.004);
       return true;
     }
     case 'bed': {

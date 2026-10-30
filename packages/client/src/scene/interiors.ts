@@ -7,7 +7,9 @@
  *   its `leaderAt`, the gym trainers, switches, the shop keeper / nurse (the shop and healer moved inside), the
  *   healer's PC, residents and guides (client-local dialogue) and hidden items;
  * - `FloorIndex` answers "which pocket's floor is (x, z) on" without allocating (the director asks every step);
- * - `pocketActors` lists what the actor pool shows while the player stands in a pocket;
+ * - `pocketActors` lists what the actor pool shows while the player stands in a pocket (an NPC with a `model` is a
+ *   rigged `/npc-models/` model the SceneDirector places instead: Team Ewamon HQ's four);
+ * - readable boards (`InteriorDef.boards`) are 'lore' targets ("Read"), client-local like the residents;
  * - `GateSync` turns `gatesClosedFor(zone, flags)` into collider blockers + `InteriorsHandle.setGateOpen` and switch
  *   tiles into `setSwitchOn` — only on change.
  */
@@ -108,7 +110,7 @@ export interface PocketActor {
 export function pocketActors(zoneId: ZoneId, p: PlacedInterior, flags: ReadonlySet<string> = new Set()): PocketActor[] {
   const out: PocketActor[] = [];
   for (const n of interiorNpcs(zoneId)) {
-    if (n.interior !== p.def.id) continue;
+    if (n.interior !== p.def.id || n.model !== undefined) continue;
     out.push({ id: n.id, look: n.look, name: n.name, x: n.x, z: n.z, angle: n.facing, kind: 'npc' });
   }
   for (const t of p.def.trainers) {
@@ -181,6 +183,10 @@ export function interiorInteractables(zoneId: ZoneId, flags: ReadonlySet<string>
       if (q.kind !== 'pc') continue;
       const [x, z] = localToWorld(p, q.lx, q.lz);
       out.push(makeInteractable(pcId(p.def.id), 'pc', x, z, 'Use', 'the PC', key));
+    }
+    for (const b of p.def.boards ?? []) {
+      const [x, z] = localToWorld(p, b.lx, b.lz);
+      out.push(makeInteractable(b.id, 'lore', x, z, 'Read', b.title, key));
     }
   }
   for (const i of interiorItems(zoneId)) {

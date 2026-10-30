@@ -224,7 +224,7 @@ export interface InteriorSpec {
   readonly rooms: readonly { readonly id: string; readonly arena: InteriorLocalPoint; readonly leaderAt: InteriorLocalPoint | null; readonly bounds: InteriorLocalRect }[];
   /** dressing: counter, shelf, cabinet, pc, bed, table, chair, bookshelf, rug, plant, lamp, bench, crate, barrel, statue,
    * pillar, banner, brazier, spectators, planter, flowerbed, lava_channel, anchor, coil, light_path, crystal, minecart,
-   * candles, mirror, forge, weapon_rack, bridge, cloud, throne, clover_sigil — unknown kinds draw nothing */
+   * candles, mirror, forge, weapon_rack, bridge, cloud, throne, clover_sigil, whiteboard; unknown kinds draw nothing */
   readonly props: readonly { readonly kind: string; readonly lx: number; readonly lz: number; readonly yaw: number; readonly scale: number }[];
 }
 

@@ -45,6 +45,11 @@ export interface NpcPersona {
   readonly lines: readonly string[];
   /** shop haggling (talk/haggle.ts): a shopkeeper the player haggles with, and what it sells */
   readonly shop?: ShopPersona;
+  /**
+   * who they are, written for them (content `InteriorNpc.persona`: Team Ewamon HQ's four, the people who built the first
+   * Ewamon): replaces "a villager" and the hashed temperament. Kept to a few lines: a heavy persona makes gemma think aloud.
+   */
+  readonly persona?: string;
 }
 
 export interface ChatTurn {
@@ -157,9 +162,11 @@ export function systemPrompt(p: NpcPersona): string {
   if (p.shop !== undefined) return shopSystemPrompt(p, p.shop, temperamentOf(p.name));
   const who = p.role !== undefined && p.role !== null ? `${p.name}, the ${p.role.toLowerCase()}` : p.name;
   const where = p.place !== null ? ` in ${p.place}` : '';
+  const self = p.persona !== undefined
+    ? `You are ${p.persona.replace(/\.$/, '')}. You are sitting at your desk${where}, inside Ewamon, a game like Pokémon. `
+    : `You are ${who}${where}, a villager in Ewamon, a game like Pokémon. You are ${temperamentOf(p.name)}. `;
   return (
-    `You are ${who}${where}, a villager in Ewamon, a game like Pokémon. ` +
-    `You are ${temperamentOf(p.name)}. ` +
+    self +
     'You can slap or kick the traveller, give them money or take theirs, give them an Ewamon or take one of theirs, and battle them with your Ewamon: to do it, just say it. ' +
     'If the traveller slaps, kicks, threatens, or insults you, you are furious: yell, curse and swear at them with foul words, insult them back and threaten them. ' +
     'Otherwise chat and answer any question, whatever the subject, with only the words you say out loud. ' +

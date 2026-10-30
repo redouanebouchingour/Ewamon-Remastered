@@ -221,7 +221,9 @@ describe('Phase A interiors (client)', () => {
     const { d, log, targets } = await director('mirevale', flags, b);
     const gates = interiorGates('mirevale');
     expect(gates.length).toBeGreaterThan(0);
-    expect([...live.keys()].sort()).toEqual(gates.map((g) => g.id).sort());
+    // Mirevale also keeps Team Ewamon HQ's outside (bike rack, bench) as two blockers of its own
+    expect([...live.keys()].filter((k) => !k.startsWith('ewa-hq-front:')).sort()).toEqual(gates.map((g) => g.id).sort());
+    expect([...live.keys()].filter((k) => k.startsWith('ewa-hq-front:'))).toHaveLength(2);
     for (const g of gates) {
       expect(live.get(g.id)).toEqual(g.solid);
       expect(log).toContain(`gate ${g.id} false`);
@@ -251,10 +253,11 @@ describe('Phase A interiors (client)', () => {
       ...interiorSwitches('mirevale').flatMap((s) => (s.sets === null ? [] : [s.sets])),
     ];
     d.refreshFlags(new Set(all));
-    expect(live.size).toBe(0);
+    const gateIds = (): string[] => [...live.keys()].filter((k) => !k.startsWith('ewa-hq-front:'));
+    expect(gateIds()).toEqual([]);
     // flags lost (a fresh login on a reset account): the gates close again
     d.refreshFlags(new Set());
-    expect(live.size).toBe(gates.length);
+    expect(gateIds()).toHaveLength(gates.length);
   });
 
   it('a closed gate blocks predicted movement on the real field; removing it lets the step through', () => {

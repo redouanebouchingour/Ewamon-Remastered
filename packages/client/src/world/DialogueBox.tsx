@@ -70,7 +70,7 @@ function placeOf(zoneId: ZoneId | null): string | null {
 function personaOf(d: DialogueUi): NpcPersona {
   const [name, ...role] = d.speaker.split(',');
   const title = role.join(',').trim();
-  const p: NpcPersona = { name: name!.trim(), role: title === '' ? null : title, place: placeOf(useSessionStore.getState().zoneId), lines: d.lines };
+  const p: NpcPersona = { name: name!.trim(), role: title === '' ? null : title, place: placeOf(useSessionStore.getState().zoneId), lines: d.lines, ...(d.persona !== undefined ? { persona: d.persona } : {}) };
   return d.haggle === true ? { ...p, shop: haggleShop() } : p;
 }
 

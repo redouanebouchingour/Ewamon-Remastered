@@ -19,7 +19,7 @@ import {
   createRenderer, paintSurfaceColor, rendererInternals,
 } from '../src/index.js';
 import type { BasicDioramaRig, GraphicsQuality, HarvestLevel, LightSource, Renderer, SurfaceId, WeatherKind, ZoneHandleImpl } from '../src/index.js';
-import { foosballClubIn, zone as contentZone } from '@ewa/content';
+import { devTeamFrontIn, devTeamModels, devTeamIn, foosballClubIn, zone as contentZone } from '@ewa/content';
 import type { ZoneId } from '@ewa/content';
 import { withNeighbours, zoneSpecFor } from '@ewa/client-adapter';
 
@@ -446,6 +446,12 @@ async function main(): Promise<void> {
     // the Mire Route foosball club (content data/foosball.ts), placed like the client's SceneDirector does
     const club = foosballClubIn(zoneId);
     if (club !== null) r.npcModels?.set([{ id: 'table', ...club.table }, ...club.players.map((p) => ({ id: p.trainer.id, model: p.model, x: p.x, z: p.z, yaw: p.yaw, heightM: p.heightM }))]);
+    // Team Ewamon HQ (content data/devTeam.ts): its outside on ?zone=mirevale; on `&interior=mirevale.house5` the desk
+    // and the four instead, as SceneDirector places them
+    const front = devTeamFrontIn(zoneId);
+    if (front !== null) r.npcModels?.set([{ id: 'ewa-hq:front', model: front.model, x: front.x, z: front.z, yaw: front.yaw, heightM: front.heightM, glow: true }]);
+    if (interior !== null && devTeamIn(interior.id) !== null) r.npcModels?.set(devTeamModels(interior));
+    (window as unknown as { __ewaNpcModels: unknown }).__ewaNpcModels = r.npcModels;
   } else if (params.get('demo') === 'arena') {
     // ?demo=arena: the PvP stadium (stage/arenaBackdrop.ts) as the zone root, no zone loaded; part3.ts dresses the
     // ring at the origin. The backdrop's clock runs in a frame hook (scaled ms → s).
