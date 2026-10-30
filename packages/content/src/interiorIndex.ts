@@ -23,7 +23,7 @@ interface ZoneInteriors {
   readonly all: readonly PlacedInterior[];
   readonly warps: readonly WarpDef[];
   readonly trainers: readonly TrainerDef[];
-  readonly npcs: readonly (NpcDef & { readonly role: string; readonly facing: number; readonly interior: string })[];
+  readonly npcs: readonly (NpcDef & { readonly role: string; readonly facing: number; readonly interior: string; readonly persona?: string; readonly model?: string })[];
   readonly switches: readonly WorldSwitch[];
   readonly gates: readonly WorldGate[];
   readonly leaders: readonly WorldLeader[];

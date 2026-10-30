@@ -13,9 +13,9 @@ const targets = (kind: QuestObjective['kind']): number[] =>
     .sort((a, b) => a - b);
 
 describe('Phase D5 achievements', () => {
-  it('30 rows, unique ids that fit quest_progress.quest_id (48), all kind achievement, ride QUESTS after the story', () => {
-    expect(ACHIEVEMENTS).toHaveLength(30);
-    expect(ACHIEVEMENT_IDS.size).toBe(30);
+  it('31 rows, unique ids that fit quest_progress.quest_id (48), all kind achievement, ride QUESTS after the story', () => {
+    expect(ACHIEVEMENTS).toHaveLength(31);
+    expect(ACHIEVEMENT_IDS.size).toBe(31);
     for (const a of ACHIEVEMENTS) {
       expect(a.id.length).toBeLessThanOrEqual(48);
       expect(isAchievement(a)).toBe(true);
@@ -26,7 +26,7 @@ describe('Phase D5 achievements', () => {
       expect(a.rewards.money).toBeGreaterThan(0);
       expect(QuestDefSchema.safeParse(a).success).toBe(true);
     }
-    expect(QUESTS.slice(-30).map((q) => q.id)).toEqual(ACHIEVEMENTS.map((a) => a.id));
+    expect(QUESTS.slice(-31).map((q) => q.id)).toEqual(ACHIEVEMENTS.map((a) => a.id));
     expect(STORY_QUESTS.every((q) => !isAchievement(q))).toBe(true);
     expect(STORY_QUESTS.length + ACHIEVEMENTS.length).toBe(QUESTS.length);
     expect(new Set(QUESTS.map((q) => q.id)).size).toBe(QUESTS.length);

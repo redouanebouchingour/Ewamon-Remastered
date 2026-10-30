@@ -106,8 +106,8 @@ function progression(over: Partial<Progression> = {}): Progression {
 }
 
 describe('Phase D5 achievement model', () => {
-  it('30 achievements apart from the 15 story quests; targets and one progress figure each', () => {
-    expect(achievementQuests()).toHaveLength(30);
+  it('31 achievements apart from the 15 story quests; targets and one progress figure each', () => {
+    expect(achievementQuests()).toHaveLength(31);
     expect(storyQuests()).toHaveLength(15);
     expect(objectiveTarget({ kind: 'dexCaught', count: 60 })).toBe(60);
     expect(objectiveTarget({ kind: 'loginStreak', days: 30 })).toBe(30);

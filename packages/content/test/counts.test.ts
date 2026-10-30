@@ -45,12 +45,12 @@ describe('counts', () => {
     expect(ZONES.length).toBe(21);
     expect(ZONES.map((z) => z.id)).toEqual([...ZONE_ORDER]);
   });
-  it('15 encounter tables, 9 statics, 12 league, 15 story quests + 30 achievements (Phase D5), ≥ 24 beats (33), live-ops 4/7/8, 100 battle-pass levels', () => {
+  it('15 encounter tables, 9 statics, 12 league, 15 story quests + 31 achievements (Phase D5 + the Original Party), ≥ 24 beats (33), live-ops 4/7/8, 100 battle-pass levels', () => {
     expect(ENCOUNTER_TABLES.length).toBe(15);
     expect(LEGENDARY_STATICS.length).toBe(10);
     expect(LEAGUE.length).toBe(12);
     expect(QUESTS.filter((q) => q.kind !== 'achievement').length).toBe(15);
-    expect(QUESTS.filter((q) => q.kind === 'achievement').length).toBe(30);
+    expect(QUESTS.filter((q) => q.kind === 'achievement').length).toBe(31);
     expect(STORY.length).toBeGreaterThanOrEqual(24);
     expect(STORY.length).toBe(33);
     expect(SEASONAL_EVENTS.length).toBe(4);

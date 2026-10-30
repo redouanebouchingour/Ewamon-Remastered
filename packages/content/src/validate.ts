@@ -40,6 +40,7 @@ import { SPECIES } from './data/species';
 import { MOVES, SPREAD_MOVES } from './data/spreadMoves';
 import { ABILITIES } from './data/abilities';
 import { foosballTrainers } from './data/foosball';
+import { DEV_TEAM, DEV_TEAM_NPC_IDS } from './data/devTeam';
 import { ITEMS } from './data/items';
 import { ORBS } from './data/orbs';
 import { CONSUMABLES } from './data/consumables';
@@ -178,7 +179,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   const zoneById = new Map(zones.map((z) => [z.id, z]));
   const tableIds = new Set(ENCOUNTER_TABLES.map((t) => t.id));
   const leagueIds = new Set(LEAGUE.map((l) => l.id));
-  const npcIds = new Set(zones.flatMap((z) => z.npcs.map((n) => n.id)));
+  // Team Ewamon HQ's four (data/devTeam.ts) are interior NPCs the server resolves for talkTo (achievement ach_original_party)
+  const npcIds = new Set([...zones.flatMap((z) => z.npcs.map((n) => n.id)), ...DEV_TEAM_NPC_IDS]);
   const trainerIds = new Set(zones.flatMap((z) => z.trainers.map((t) => t.id)));
   const looks = new Set(LOOKS);
   const legendary = new Set(LEGENDARY_IDS);
@@ -881,7 +883,12 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
           if (!LOOKS.includes(t.look)) err(`zone ${z.id}: interior trainer ${t.id} look '${t.look}' unknown`);
         }
         for (const it of p.def.items) if (!items.some((x) => x.id === it.item) && !consumables.some((x) => x.id === it.item) && !RELICS.some((x) => x.id === it.item)) err(`zone ${z.id}: interior item ${it.id} '${it.item}' unknown`);
+        // a board's reach from the entry is `checkInterior`'s
+        for (const bd of p.def.boards ?? []) if (bd.text.length === 0) err(`zone ${z.id}: board ${bd.id} has no text`);
       }
+      // Team Ewamon HQ: the redressed house exists, its pets are real species
+      if (z.id === 'mirevale' && !pockets.some((p) => p.def.id === DEV_TEAM.interior)) err(`zone ${z.id}: no pocket ${DEV_TEAM.interior} for the dev team`);
+      if (z.id === 'mirevale') for (const m of DEV_TEAM.members) if (!speciesById.has(m.pet.species)) err(`dev team ${m.npc.id}: pet species '${m.pet.species}' unknown`);
       const t = ENCOUNTER_TABLES.find((x) => x.zoneId === z.id);
       if (t !== undefined && t.slots.some((s) => s.medium === 'water')) {
         if (water === 0) err(`zone ${z.id}: table has water slots but the heightfield has no water samples`);

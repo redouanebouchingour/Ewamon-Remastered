@@ -256,6 +256,21 @@ export interface InteriorNpc {
   readonly look: string;
   readonly lines: readonly string[];
   readonly role: InteriorNpcRole;
+  /** who they are for the LLM talk (client `talk/npcChat.ts`), in place of the hashed villager temperament; absent = a villager */
+  readonly persona?: string;
+  /** drawn as this rigged `/npc-models/` model instead of a character rig (`look` stays the fallback); absent = a rig */
+  readonly model?: string;
+}
+
+/** Text on a wall the player reads (a pinned board): an interior's lore tablet, client-local like the residents' lines. */
+export interface InteriorBoard {
+  /** globally unique: `<interior id>.<local id>` */
+  readonly id: string;
+  readonly lx: number;
+  readonly lz: number;
+  readonly title: string;
+  /** one dialogue page per entry */
+  readonly text: readonly string[];
 }
 
 export interface InteriorItem {
@@ -301,6 +316,8 @@ export interface InteriorDef {
   readonly npcs: readonly InteriorNpc[];
   readonly items: readonly InteriorItem[];
   readonly props: readonly InteriorProp[];
+  /** readable boards (the Team Ewamon HQ's pinned list); absent = none */
+  readonly boards?: readonly InteriorBoard[];
   /**
    * A hall too small for an arena (a relic shrine, a 9 × 8 m house): its fights form outside, at the building's door
    * approach, where the town has the floor a battle needs. Absent: a hall without rooms fights where the player stands.

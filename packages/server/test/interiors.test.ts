@@ -11,12 +11,15 @@
  *   - the spawn director never rolls a spawn inside a pocket footprint;
  *   - a full Mirevale gym walk with real inputs: t1 → gate → both root-stones → t2 → gate → leader gate → Mira → badge;
  *   - a relic shrine (data/shrines.ts): the guardian and the relic refuse until their flags (`requires`), the guardian
- *     fights at the shrine's door approach, and the relic is taken once the guardian is beaten.
+ *     fights at the shrine's door approach, and the relic is taken once the guardian is beaten;
+ *   - Team Ewamon HQ (data/devTeam.ts): its four resolve for `interact npc` and talking to each is `talkTo` progress,
+ *     the four together complete `ach_original_party`; any other house resident still never resolves.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { matchMaker } from '@colyseus/core';
 import {
   BADGE_ORDER,
+  DEV_TEAM,
   allZones,
   beatDoneFlag,
   encounterTableFor,
@@ -575,4 +578,23 @@ describe('relic shrines', () => {
     expect(await flagsOf(acc)).toContain(shrineRelicFlag(shrine));
     await j.room.leave(true);
   }, 180_000);
+});
+
+describe('Team Ewamon HQ (data/devTeam.ts)', () => {
+  it('the four resolve for talkTo; together they complete ach_original_party; a plain resident never resolves', async () => {
+    const P = interiorsFor('mirevale').find((p) => p.def.id === DEV_TEAM.interior)!;
+    const acc = await register(s);
+    // beside the desk on its west side: within talking range of all four
+    const [x, z] = localToWorld(P, -1.75, -0.9);
+    const j = await inZone(acc, 'mirevale', x, z);
+    for (const m of DEV_TEAM.members) {
+      const out = await interact(j, 'npc', m.npc.id, () => j.msgs.some((x) => x.type === 'progressionDelta' && x.questProgress?.some((q) => q.questId === 'ach_original_party' && q.objectiveId === m.npc.id.split('.').pop()) === true));
+      expect(ofType(out, 'error')).toEqual([]);
+    }
+    const entries = ofType(j.msgs, 'progressionDelta').flatMap((m) => m.questProgress ?? []).filter((q) => q.questId === 'ach_original_party');
+    expect(new Set(entries.filter((q) => q.done).map((q) => q.objectiveId))).toEqual(new Set(['red1', 'mohaned', 'yasser', 'yasin']));
+    const resident = interiorsFor('mirevale').flatMap((p) => p.def.npcs).find((n) => n.id.endsWith('.resident'))!;
+    const out = await interact(j, 'npc', resident.id);
+    expect(ofType(out, 'error')).toEqual([{ type: 'error', code: 'notFound', detail: null }]);
+  }, 60_000);
 });

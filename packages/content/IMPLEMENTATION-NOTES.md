@@ -948,3 +948,25 @@ there (17 forms rise past their species, e.g. hyoryu 3.5 → Majin 3.8 m); the r
 - Signature move Thermal Shock (Ice 120, 90 %, 5 PP, burn at the default 30 %, non-contact), pinned at L39 so the L60
   reward knows it beside Ice Beam, Flame Dash and Extrasensory. 181 species, 201 moves, 29 abilities, 15 story quests;
   the "all species" achievement target is 181.
+
+## Team Ewamon HQ (2026-10-30, not in the SPEC; an easter egg)
+
+- `data/devTeam.ts`: Mirevale's house 5 (the only plain 9 × 8 house) is the office of the four students who built the
+  first Ewamon in 2022 for the HvA EWA project: Red1, Internet Friend (Mohaned), King Smali (Yasser) and Mr Ching
+  (Yasin). `withDevTeam` joins the house wrapper chain like `withShrine`: same template, size, entry and exit, so no
+  pocket moves and the zone plan is untouched; only the hall's own walls change (the Mirevale heightfield and the
+  client's zoneSpecFor digests moved, nothing else).
+- The four are `InteriorNpc`s (role `resident`) with two new optional fields: `model` (a rigged `/npc-models/` model the
+  client places instead of a character rig) and `persona` (who they are for the LLM talk). `npcsOf` passes both on.
+- `InteriorDef.boards` (optional): readable text in a hall, the interior counterpart of a lore tablet; client-local.
+  `checkInterior` requires each board reachable from the entry. The team's board reads the pinned 5/12/22 Discord task
+  list and the 8/10.
+- Their banter (15 lines) loops over their heads while the player is inside; their pets (Darkone, Moflame, Resilian,
+  Yaschamp) stand beside their chairs (`devTeamPets`). `devTeamModels(at)` gives the desk and the four in world
+  coordinates for the client and the render sandbox.
+- Achievement `ach_original_party` (31 achievements now): four `talkTo` objectives, one per member. `validate` counts
+  the four as known NPC ids. Never a story gate.
+- The outside (`DEV_TEAM_FRONT`): one rigged set piece on the house's door (the Yaschamp pixel logo on a blade sign, the
+  team's group picture; four bikes, a pallet bench, pizza boxes, string lights). The plan building is untouched: the
+  door is measured from `zonePlan('mirevale').doors` like the foosball table, and `devTeam.test` fails if the plan ever
+  moves it. Its bike rack and bench are client-side blockers that keep the door approach clear.

@@ -239,7 +239,7 @@ describe('/play/profile', () => {
     // Phase D5: the achievements are the kind 'achievement' rows (the shrine's First Night is a story quest again)
     expect(within(panel).getByRole('listitem', { name: /First Catch/ })).toBeTruthy();
     expect(within(panel).queryByRole('listitem', { name: /First Night/ })).toBeNull();
-    expect(within(panel).getByText('0 of 30 earned')).toBeTruthy();
+    expect(within(panel).getByText('0 of 31 earned')).toBeTruthy();
 
     fireEvent.change(within(panel).getByLabelText('Title'), { target: { value: 'Witness' } });
     // the character picker: one portrait radio per content body, the saved one checked

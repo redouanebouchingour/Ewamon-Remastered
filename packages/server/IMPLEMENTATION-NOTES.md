@@ -1558,3 +1558,10 @@ cannot be skipped: a trainer who sees the player starts the sequence, "!" over t
   re-checks both on every read, so a band sold or a partner traded away shows the creature's own look.
 - Only forms with `kind` majin / tenjin are offered (ravatar's relic forms and the automatic forms are not), and a
   bandborn creature is treated like any other: the band of the form's kind is needed.
+
+## Team Ewamon HQ (2026-10-30, not in the SPEC)
+
+- `findTarget` `'npc'` resolves the four of Mirevale's house 5 (content `DEV_TEAM_NPC_IDS`) beside the zone's NPCs,
+  so the client's `interact npc` on them runs the plain-conversation path: `talkTo` quest progress (achievement
+  `ach_original_party`), nothing else. Every other interior NPC still never resolves (client-local dialogue).
+  Test: `interiors.test.ts` "Team Ewamon HQ".

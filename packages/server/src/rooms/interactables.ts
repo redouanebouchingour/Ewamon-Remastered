@@ -7,7 +7,7 @@
  * coordinates). A league trainer is challenged where it stands in its hall (`interiorLeaders` x/z, checked at 4 m).
  * `LEAGUE_MARKER` (0, −26) is only the fallback for a league trainer with no hall (IMPLEMENTATION-NOTES R5).
  */
-import { OBSTACLE_INTERACT_M, foosballTrainers, leaderSpot, LEAGUE, interiorItems, interiorLeaders, interiorSwitches, interiorTrainers, interiorWarps, staticsFor } from '@ewa/content';
+import { DEV_TEAM_NPC_IDS, OBSTACLE_INTERACT_M, foosballTrainers, leaderSpot, LEAGUE, interiorItems, interiorNpcs, interiorLeaders, interiorSwitches, interiorTrainers, interiorWarps, staticsFor } from '@ewa/content';
 import type { GroundItemDef, LeagueTrainer, LegendaryStatic, LoreTabletDef, NpcDef, ObstacleDef, TrainerDef, WarpDef, WorldSwitch, ZoneDef } from '@ewa/content';
 import type { InteractKind } from '@ewa/protocol';
 
@@ -41,7 +41,8 @@ export function leaguePosition(zone: ZoneDef, leagueId: string, flags: ReadonlyS
 /**
  * `npc` covers NpcDef ids and TrainerDef ids — the zone's and the halls' (the client targets whichever actor it
  * faces; trainers are actors with `kind: 'trainer'` in the render spec). `gym` resolves LeagueTrainer ids fought in
- * this zone. Interior NPCs (shopkeepers, residents) are client-local dialogue and never resolve here.
+ * this zone. Interior NPCs (shopkeepers, residents) are client-local dialogue and never resolve here, except Team
+ * Ewamon HQ's four (content `DEV_TEAM_NPC_IDS`): talking to them is `talkTo` progress (achievement `ach_original_party`).
  */
 /** `flags`: the player's flags (a hall leader may greet elsewhere until a story flag — content `leaderSpot`). */
 export function findTarget(zone: ZoneDef, kind: InteractKind, targetId: string, flags: ReadonlySet<string> = new Set()): InteractTarget | null {
@@ -49,6 +50,8 @@ export function findTarget(zone: ZoneDef, kind: InteractKind, targetId: string, 
     case 'npc': {
       const npc = zone.npcs.find((n) => n.id === targetId);
       if (npc !== undefined) return { kind: 'npc', npc, x: npc.x, z: npc.z };
+      const team = DEV_TEAM_NPC_IDS.includes(targetId) ? interiorNpcs(zone.id).find((n) => n.id === targetId) : undefined;
+      if (team !== undefined) return { kind: 'npc', npc: team, x: team.x, z: team.z };
       const trainer = zone.trainers.find((t) => t.id === targetId) ?? interiorTrainers(zone.id).find((t) => t.id === targetId) ?? foosballTrainers(zone.id).find((t) => t.id === targetId);
       if (trainer !== undefined) return { kind: 'trainer', trainer, x: trainer.x, z: trainer.z };
       return null;

@@ -7,6 +7,7 @@
  */
 import { BADGE_ORDER } from '../types';
 import type { QuestDef, QuestObjective } from '../types';
+import { DEV_TEAM } from './devTeam';
 
 type Reward = QuestDef['rewards'];
 const reward = (money: number, items: Readonly<Record<string, number>> = {}): Reward => ({ money, items, creature: null, flag: null });
@@ -91,6 +92,9 @@ export const ACHIEVEMENTS: readonly QuestDef[] = [
   ach('ach_streak_7', 'A Week of Mornings', 'Log in seven days in a row.', 1, one('streak', 'Reach a 7-day streak', { kind: 'loginStreak', days: 7 }), reward(1500, { superpotion: 3 })),
   ach('ach_streak_30', 'A Month of Mornings', 'Log in thirty days in a row.', 2, one('streak', 'Reach a 30-day streak', { kind: 'loginStreak', days: 30 }), reward(6000, { rarecandy: 2 })),
   ach('ach_streak_100', 'The Habit', 'Log in a hundred days in a row.', 3, one('streak', 'Reach a 100-day streak', { kind: 'loginStreak', days: 100 }), reward(15000, { rarecandy: 3, star_piece: 2 })),
+  // ---- the easter egg: the four who built the first Ewamon (data/devTeam.ts) ----
+  ach('ach_original_party', 'The Original Party', 'Somewhere in Mirevale, the people who started it all are still at their desk. Talk to each of them.', 1,
+    DEV_TEAM.members.map((m) => ({ id: m.npc.id.split('.').pop()!, label: `Talk to ${m.npc.name}`, objective: { kind: 'talkTo', npcId: m.npc.id } as const })), reward(2022, { rarecandy: 1 })),
 ];
 
 export const ACHIEVEMENT_IDS: ReadonlySet<string> = new Set(ACHIEVEMENTS.map((a) => a.id));

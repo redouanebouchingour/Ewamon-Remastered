@@ -37,6 +37,7 @@ import { withBountyBoard } from './data/bounties';
 import { withShrine } from './data/shrines';
 import { hideoutBounds, hideoutDoor, hideoutHall, hideoutsFor } from './data/hideouts';
 import { withTownCrier } from './data/rumours';
+import { withDevTeam } from './data/devTeam';
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
@@ -136,7 +137,8 @@ export function interiorDefFor(
       // breeding: Mirevale's house 1 is the Daycare (its resident keeps it; the hall and its footprint are unchanged)
       // the bounty board: Skyrend (no Healer, no Mart) keeps it in its first house, the Marshal's Office
       // the relic shrines (postgame): one house in each elemental town (data/shrines.ts; the hall and footprint unchanged)
-      return withShrine(withTownCrier(withBountyBoard(withDaycare(houseHall(zone.id, b.id, 'the house', b.w * b.d < 50 ? 's' : 'm', townIndex)))));
+      // Team Ewamon HQ: Mirevale's house 5 is the original team's office (data/devTeam.ts; the hall and footprint unchanged)
+      return withDevTeam(withShrine(withTownCrier(withBountyBoard(withDaycare(houseHall(zone.id, b.id, 'the house', b.w * b.d < 50 ? 's' : 'm', townIndex))))));
     default:
       return null;
   }
@@ -551,7 +553,7 @@ export function trainersOf(p: PlacedInterior): readonly TrainerDef[] {
 
 export function npcsOf(
   p: PlacedInterior,
-): readonly (NpcDef & { readonly role: string; readonly facing: number })[] {
+): readonly (NpcDef & { readonly role: string; readonly facing: number; readonly persona?: string; readonly model?: string })[] {
   return p.def.npcs.map((n) => {
     const [x, z] = localToWorld(p, n.lx, n.lz);
     return {
@@ -566,6 +568,8 @@ export function npcsOf(
       react: [],
       role: n.role,
       facing: localYawToWorld(p, n.facing),
+      ...(n.persona !== undefined ? { persona: n.persona } : {}),
+      ...(n.model !== undefined ? { model: n.model } : {}),
     };
   });
 }
@@ -898,6 +902,10 @@ export function checkInterior(h: Heightfield, p: PlacedInterior): string[] {
   for (const it of itemsOf(p))
     if (!reachNear(h, full.reach, it.x, it.z, INTERACT_M))
       errs.push(`${id}: item ${it.id} not reachable`);
+  for (const b of p.def.boards ?? []) {
+    const [bx, bz] = localToWorld(p, b.lx, b.lz);
+    if (!reachNear(h, full.reach, bx, bz, INTERACT_M)) errs.push(`${id}: board ${b.id} not reachable`);
+  }
   // a legendary that waits in this hall (data/hideouts.ts): on the floor and reachable once the Champion is beaten
   for (const s of LEGENDARY_STATICS) {
     if (s.zoneId !== p.def.zoneId || s.interior?.building !== p.def.building) continue;
