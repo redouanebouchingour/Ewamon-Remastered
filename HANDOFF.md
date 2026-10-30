@@ -113,7 +113,9 @@ fail under machine load and pass alone).
   half), the reward of the new postgame quest q15 The Divided Core (Forgewall: the Champion, 140 witnessed, 30 wins;
   L60). Signature move Thermal Shock (Ice 120, 30 % burn) with its cinematic (`sigfx/Thermal.tsx`: the fire half of
   its embers turns toward the target in both views), portrait and premix `sig_thermal_shock`. Atlas `a-104`, 54.84 of
-  55.57 MB (0.73 MB left). No 3D model yet: it renders as a sprite where the others have rigs.
+  55.57 MB (0.73 MB left). 3D model `tools/creature-models/scad/kelvyre.scad` (split down x = 0, cracks and facets
+  laid on as seeded short blades, flat flame plates), rigged on the biped template with flickering flame joints and
+  two fidgets of its own (`idle_flare`, `idle_shake`).
 - **astaroth #180** (2026-10-26, inspired by Asta and the devils of Black Clover): a Dark/Ghost legendary, the tenth
   static (L60 after the title), animated front and back from the user's two videos (keyed loops, 32 and 18 pages).
   It waits in the **Sunken Crypt**, a hidden building of its own at the back of Vesperveil's graveyard (content

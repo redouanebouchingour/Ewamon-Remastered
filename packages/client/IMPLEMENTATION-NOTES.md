@@ -3024,5 +3024,5 @@ the second isolated client (the component over the landing page: the foe and own
 - Kelvyre's fire half faces its target in both sprites (the front looks left, the back away to the right), so the
   embers / frost group flips with `scaleX(clamp(-1, cos(var(--ang) * 1deg) * 100, 1))`: embers toward the target,
   frost away, whichever side attacks. Checked near and far at `/sigfx/?move=Thermal%20Shock[&side=far]`.
-- Kelvyre ships as stills (no flipbook: `spriteCatalog.test` lists it with the stills) and has no 3D model yet; the
-  sprite card stays its look with "Ewamons as 3D models" on.
+- Kelvyre ships as stills (no flipbook: `spriteCatalog.test` lists it with the stills). Its 3D model and rig
+  (`kelvyre.rig.glb`, 192 KiB) came the same day: tools/creature-models `scad/kelvyre.scad`, `rigs/kelvyre.mjs`.
