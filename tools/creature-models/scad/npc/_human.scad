@@ -61,7 +61,8 @@ module human(
   bs = [s * girth, s * girth, s];
   bc = beard_c == undef ? hair_c : beard_c;
   wc = brow_c == undef ? hair_c * 0.85 : brow_c;
-  musta = mustache == undef ? (beard == "full" || beard == "short") : mustache;
+  bearded = beard == "full" || beard == "short" || beard == "trim";
+  musta = mustache == undef ? (bearded || beard == "goatee") : mustache;
   armc = sleeve == "long" ? shirt_c : skin;
   cuff = cuff_c == undef ? shirt_c * 0.85 : cuff_c;
 
@@ -76,8 +77,12 @@ module human(
                          [[15.5, 8.8, 5] + [gr, gr, gr], [0, 0.8, 132]], [[9, 7, 4] + [gr, gr, gr], [0, 1, 136]]], shirt_c);
   module neck(gr) limb([0, 0.5, 134], [0, 0.5, 149], 5.6 + gr, 5.2 + gr, skin);
   module uarm(m, gr) mirror([m, 0, 0]) {
-    sl = B_SHOULDER + B_ARM * (sleeve == "none" ? 0.12 : 0.33);
-    if (sleeve != "none") {
+    sl = B_SHOULDER + B_ARM * (sleeve == "none" ? 0.12 : sleeve == "rolled" ? 0.45 : 0.33);
+    if (sleeve == "rolled") {
+      // a long sleeve rolled up to just above the elbow: a thick fold of cloth (cuff_c) at its end
+      limb(B_SHOULDER, sl, 7.0 + gr, 6.0 + gr, shirt_c);
+      color(cuff) translate(sl) rotate([0, -4.2, 0]) scale([6.5 + gr, 6.5 + gr, 2.1 + gr]) sphere(1, $fn = 28);
+    } else if (sleeve != "none") {
       limb(B_SHOULDER, sl, 7.0 + gr, 6.6 + gr, shirt_c);
       color(shirt_c) translate(sl) rotate([0, -4.2, 0]) scale([6.85 + gr, 6.85 + gr, 1.3 + gr]) sphere(1, $fn = 28);
     } else limb(B_SHOULDER, sl, 6.2 + gr, 5.6 + gr, skin);
@@ -175,13 +180,13 @@ module human(
   module face() {
     for (m = [-1, 1]) eye([m * 5.3, ys(5.3, 1.6) + 0.75, 1.6], 2.75, iris = eye_c, yaw = m * 16);
     color(blush) translate([0, -13.4, -3.3]) scale([2.4, 2.1, 2.6]) sphere(1, $fn = 22);
-    if (beard == "full" || beard == "short") color(bc) for (m = [0, 1]) mirror([m, 0, 0])
+    if (bearded) color(bc) for (m = [0, 1]) mirror([m, 0, 0])
       translate([12.35, 0.6, -2.5]) scale([1.3, 2.6, 4.6]) sphere(1, $fn = 16);
   }
   // the jaw: chin (and beard) as one shell under the head, with the grin cut into it
   module jaw_shape() {
-    if (beard == "full" || beard == "short") color(bc) {
-      t = beard == "full" ? 1 : 0.55;
+    if (bearded) color(bc) {
+      t = beard == "full" ? 1 : beard == "short" ? 0.55 : 0.12;   // "trim": a close, neat beard
       intersection() {
         hull() {
           translate([0, -1, -6]) scale([13 + 0.6 * t, 12.4 + 0.8 * t, 11.5]) sphere(1, $fn = 32);
@@ -191,9 +196,16 @@ module human(
         multmatrix([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0.55, 1, -5.2 + 0.55 * 12], [0, 0, 0, 1]])
           translate([-30, -30, -40]) cube([60, 34.5, 40]);
       }
-    } else color(beard == "stubble" ? skin * 0.86 + bc * 0.14 : skin) intersection() {
-      scale(SKULL + [0.7, 0.9, 0.7]) sphere(1, $fn = 40);
-      translate([-9.4, -20, -20]) cube([18.8, 16, 20 + MOUTH_TOP + 0.6]);
+    } else {
+      color(beard == "stubble" ? skin * 0.86 + bc * 0.14 : skin) intersection() {
+        scale(SKULL + [0.7, 0.9, 0.7]) sphere(1, $fn = 40);
+        translate([-9.4, -20, -20]) cube([18.8, 16, 20 + MOUTH_TOP + 0.6]);
+      }
+      // a goatee: a short chin beard under the grin (the moustache comes with it)
+      if (beard == "goatee") color(bc) hull() {
+        translate([0, -7.6, -13.6]) scale([5.4, 4.4, 5]) sphere(1, $fn = 24);
+        translate([0, -9.6, -10.4]) scale([4.6, 2.6, 2.4]) sphere(1, $fn = 20);
+      }
     }
   }
   module grin_hole() color([0.32, 0.08, 0.1]) {
@@ -230,7 +242,7 @@ module human(
     B() difference() { hand(m, 0); farm(m, GAP); }
   }
   B() difference() { pelvis(0); spine(GAP); thigh(0, GAP); thigh(1, GAP); }
-  B() difference() { spine(0); chest(GAP); }
+  B() difference() { spine(0); chest(GAP); uarm(0, GAP); uarm(1, GAP); }
   B() difference() { chest(0); neck(GAP); uarm(0, GAP); uarm(1, GAP); }
   B() neck(0);
   difference() {

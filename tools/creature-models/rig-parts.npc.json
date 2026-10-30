@@ -1,4 +1,10 @@
 {
+  "ewa_desk": {"desk":31106},
+  "ewa_hq_front": {"front":37822},
+  "ewa_mohaned": {"root":0,"pelvis":1720,"thighL":1196,"shinL":1400,"footL":1224,"thighR":1196,"shinR":1400,"footR":1224,"spine":1122,"chest":2546,"neck":956,"head":6286,"jaw":2254,"browL":104,"browR":104,"uarmL":1910,"farmL":736,"handL":856,"uarmR":1910,"farmR":736,"handR":856},
+  "ewa_red1": {"root":0,"pelvis":1720,"thighL":1196,"shinL":1400,"footL":1224,"thighR":1196,"shinR":1400,"footR":1224,"spine":1118,"chest":1924,"neck":956,"head":10610,"jaw":2294,"browL":98,"browR":124,"uarmL":1910,"farmL":736,"handL":856,"uarmR":1910,"farmR":736,"handR":856},
+  "ewa_yasin": {"root":0,"pelvis":1720,"thighL":1196,"shinL":1400,"footL":1224,"thighR":1196,"shinR":1400,"footR":1224,"spine":1146,"chest":1924,"neck":956,"head":6144,"jaw":2322,"browL":104,"browR":104,"uarmL":1926,"farmL":720,"handL":856,"uarmR":1926,"farmR":720,"handR":856},
+  "ewa_yasser": {"root":0,"pelvis":1720,"thighL":1196,"shinL":1400,"footL":1224,"thighR":1196,"shinR":1400,"footR":1224,"spine":1114,"chest":1924,"neck":956,"head":8488,"jaw":1170,"browL":104,"browR":104,"uarmL":1910,"farmL":736,"handL":856,"uarmR":1910,"farmR":736,"handR":856},
   "fb_kaas_croissant": {"root":444,"pelvis":1720,"thighL":1196,"shinL":1400,"footL":1224,"thighR":1196,"shinR":1400,"footR":1224,"spine":966,"chest":3194,"neck":956,"head":6158,"jaw":896,"browL":104,"browR":104,"uarmL":1850,"farmL":1052,"handL":916,"uarmR":1850,"farmR":1052,"handR":916,"shades":212,"fingerL":2,"fingerR":2},
   "fb_king_klinker": {"root":0,"pelvis":1720,"thighL":1196,"shinL":1400,"footL":1224,"thighR":1196,"shinR":1400,"footR":1224,"spine":994,"chest":1724,"neck":956,"head":6782,"jaw":2348,"browL":104,"browR":104,"uarmL":1834,"farmL":736,"handL":856,"uarmR":1834,"farmR":736,"handR":856,"fingerR":1},
   "fb_klaas_faak": {"root":0,"pelvis":1720,"thighL":1196,"shinL":1400,"footL":1224,"thighR":1196,"shinR":1400,"footR":1224,"spine":972,"chest":1724,"neck":956,"head":6854,"jaw":2380,"browL":104,"browR":104,"uarmL":1834,"farmL":1068,"handL":916,"uarmR":1834,"farmR":1068,"handR":916},

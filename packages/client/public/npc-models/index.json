@@ -3,6 +3,36 @@
   "heightMeters": 1,
   "facing": "+z",
   "models": {
+    "ewa_desk": {
+      "url": "ewa_desk.rig.glb",
+      "bytes": 211392,
+      "rig": true
+    },
+    "ewa_hq_front": {
+      "url": "ewa_hq_front.rig.glb",
+      "bytes": 246656,
+      "rig": true
+    },
+    "ewa_mohaned": {
+      "url": "ewa_mohaned.rig.glb",
+      "bytes": 187916,
+      "rig": true
+    },
+    "ewa_red1": {
+      "url": "ewa_red1.rig.glb",
+      "bytes": 209964,
+      "rig": true
+    },
+    "ewa_yasin": {
+      "url": "ewa_yasin.rig.glb",
+      "bytes": 183188,
+      "rig": true
+    },
+    "ewa_yasser": {
+      "url": "ewa_yasser.rig.glb",
+      "bytes": 196976,
+      "rig": true
+    },
     "fb_kaas_croissant": {
       "url": "fb_kaas_croissant.rig.glb",
       "bytes": 203636,

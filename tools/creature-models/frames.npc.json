@@ -1,4 +1,10 @@
 {
+  "ewa_desk": {"height":124.2,"minZ":0,"cx":0,"cy":0,"size":[200.8,246.6981,124.2],"triangles":31106},
+  "ewa_hq_front": {"height":250,"minZ":0,"cx":0,"cy":0,"size":[887,100.0792,250],"triangles":37822},
+  "ewa_mohaned": {"height":191.7874,"minZ":0,"cx":0,"cy":0,"size":[54.1193,42.7637,191.7874],"triangles":29736},
+  "ewa_red1": {"height":195.0839,"minZ":0,"cx":0,"cy":0,"size":[55.6587,40.3024,195.0839],"triangles":33488},
+  "ewa_yasin": {"height":188.7539,"minZ":0,"cx":0,"cy":0,"size":[60.6678,39.9496,188.7539],"triangles":29064},
+  "ewa_yasser": {"height":195.9617,"minZ":0,"cx":0,"cy":0,"size":[51.4374,42.8505,195.9617],"triangles":30224},
   "fb_kaas_croissant": {"height":184.0464,"minZ":0,"cx":0,"cy":0,"size":[47.7196,33.2648,184.0464],"triangles":30030},
   "fb_king_klinker": {"height":189.8078,"minZ":0,"cx":0,"cy":0,"size":[54.5526,36.9847,189.8078],"triangles":29224},
   "fb_klaas_faak": {"height":192.1071,"minZ":0,"cx":0,"cy":0,"size":[54.9466,39.2425,192.1071],"triangles":30090},

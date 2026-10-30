@@ -93,6 +93,19 @@ with `_` are shared parts that `--all` skips.
 - `foosball_table`: a joint per rod (spin + slide), the ball and the two score beads; `idle` is a match loop,
   `idle_goal` / `cheer` a goal each way.
 - Each person's height (max z - min z / 100) is their `heightM` in content `data/foosball.ts`; rebuild, then update it.
+- Team Ewamon HQ (2026-10-30, `mirevale.house5`): `ewa_red1`, `ewa_mohaned`, `ewa_yasser`, `ewa_yasin` and the static
+  `ewa_desk` set (desk, chairs with jackets, monitors, props). The people are built standing like the others but
+  rigged seated: `rigs/npc/_seated.mjs` swaps `human()`'s playing loop for a typing loop (hips back and down onto a
+  46 cm seat, vertical shins over the feet, hands on the keyboard) and adds a seated `talk` and `cheer`; the desk
+  contract (seat, desk edge, keyboard, mouse, screen, in the person's own frame) is at the top of that file and the
+  seat positions in the desk frame at the top of `ewa_desk.scad`. Their `heightM` is still the standing frame height
+  (the scale), not the seated one. Shared parts (collar, headset) live in `scad/npc/_ewa_team.scad`; `_human.scad`
+  gained `sleeve = "rolled"` and the beards `"trim"` and `"goatee"`. The monitors show Red1's original 2022 sprites:
+  `node scad/npc/gen-ewa-screens.mjs` turns the old repo's PNGs into the committed `scad/npc/_ewa_screens.scad` (one
+  module per sprite, merged pixel runs, `a` = GLOW or NOGLOW), so builds never need that repo. `ewa_hq_front` is the
+  house's outside (static, origin = the door's centre on the wall plane): the team logo (`ewa_logo`, 48 px) on a
+  blade sign, a plank sign, a bike rack, a pallet bench group and string lights; its header lists the kept-clear
+  zones and the collision rects.
 - Rigged parts are whole closed shells: a prop that touches a part of another joint fuses into it
   (`HUMAN_DEBUG=1 node src/rig.mjs --npc <id>` lists shells per joint). Build before rigging (the frame comes from the
   build cache).
