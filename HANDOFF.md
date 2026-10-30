@@ -65,7 +65,7 @@ fail under machine load and pass alone).
 | render | interiors, doubles stage, shiny glow, surf ripple, weather, art pass, density dressing, neighbour skirt, fixed light layout + off-scene zone prepare, device-lost recovery; 14 move motion styles (63 → 64 VFX ids with `form_tenjin`); battle-form auras (flames / light, sigil ring, rim); M3 town art for Saltmourn, Skyrend, Cinderhold, Stormrook (`albedoCal`, `Palette.grassTone`, `lava_glow` emissive, plaza clutter) | `npx vitest run packages/render`; `.design/audits/M3-render-audit.md` |
 | sprites | 199 sprite keys (180 species + battle forms), 100 atlases, creature byte ceiling 55,574,528 (53 MiB, raised 2026-10-27 for kykaiser_tenjin; 52 MiB from 2026-10-26 for the type-gap lines; 44 MiB from 2026-10-25, 41 MiB from 2026-10-24); 11 animated legendaries, 22 flipbook sides, anim ceiling 25 MiB (raised 2026-10-26 for astaroth) | `pnpm --filter @ewa/sprite-pipeline` tests |
 | arena PvP | out-of-world battles: Standard, Level 50, Ranked (Lv 50, the only rated kind), Weekly Cup, friend invites, AI Training; healed copies (no hp / exp); a dedicated `arena` room + stadium; the in-world challenge and Mirevale ranked queue unchanged | `npx vitest run packages/server/test/arena.test.ts packages/client/test/arena.test.tsx`; SPEC §30.4.10, §20.9.9d |
-| audio | 380 jobs (188 sfx ids) from the 58 user-approved CC0 downloads, no new downloads since; 73.33 MiB of 80; credits + licences shipped; 14 signature-move premixes (`sig_*`, `sig_demon_lords_descent` since 2026-10-26) and 2 bond sounds | `npx vitest run tools/audio-pipeline`; `IMPLEMENTATION-NOTES.md` "Phase E4 downloads" |
+| audio | 380 jobs (188 sfx ids) from the 58 user-approved CC0 downloads, no new downloads since; 73.33 MiB of 80; credits + licences shipped; 15 signature-move premixes (`sig_*`, `sig_thermal_shock` since 2026-10-30) and 2 bond sounds | `npx vitest run tools/audio-pipeline`; `IMPLEMENTATION-NOTES.md` "Phase E4 downloads" |
 
 ## Since 2026-10-06 (post-plan additions)
 
@@ -107,6 +107,13 @@ fail under machine load and pass alone).
   enlarged 8x nearest into `assets-src/creatures/`, copies of the 128 px files in `.design/imagegen/concepts/`.
   52.88 MB at the top rung: the creature ceiling went to 52 MiB (the user's call), and acceptance test 4 gives these
   34 pixel-art species an edge-share bound of 90 %. Existing moves and abilities otherwise; no signature moves.
+- **kelvyre #181** (2026-10-30, inspired by Mewtwo with a twist): a Fire/Ice mythical made in a lab, its body split
+  down the middle, one half living fire and the other glacial ice. Pixel-art stills (gpt-image, low budget; concept in
+  `.design/imagegen/concepts/kelvyre/`), the new ability Thermal Divide (no burn or freeze, Fire and Ice moves deal
+  half), the reward of the new postgame quest q15 The Divided Core (Forgewall: the Champion, 140 witnessed, 30 wins;
+  L60). Signature move Thermal Shock (Ice 120, 30 % burn) with its cinematic (`sigfx/Thermal.tsx`: the fire half of
+  its embers turns toward the target in both views), portrait and premix `sig_thermal_shock`. Atlas `a-104`, 54.84 of
+  55.57 MB (0.73 MB left). No 3D model yet: it renders as a sprite where the others have rigs.
 - **astaroth #180** (2026-10-26, inspired by Asta and the devils of Black Clover): a Dark/Ghost legendary, the tenth
   static (L60 after the title), animated front and back from the user's two videos (keyed loops, 32 and 18 pages).
   It waits in the **Sunken Crypt**, a hidden building of its own at the back of Vesperveil's graveyard (content

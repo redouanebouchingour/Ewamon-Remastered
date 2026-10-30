@@ -1,0 +1,31 @@
+Image 1 is a battle sprite from an indie creature-collecting RPG called Ewamon. Draw ONE new original creature in
+exactly the same pixel art style as image 1, but do not copy its design.
+
+Pixel art style (most important): a true low-resolution pixel art sprite drawn on a grid of about 100 by 100 pixels,
+then enlarged with nearest-neighbour scaling so every art pixel is a big, crisp square block, exactly like image 1.
+Thick dark outline around the whole silhouette. Flat cel shading with only 2 or 3 tones per colour, hard edges between
+tones. Big simple shapes, a clean readable silhouette, large expressive eyes. No fine texture, no gradients,
+no soft airbrush shading, no anti-aliasing, no blur, no painterly detail.
+
+Creature: Kelvyre, a mythical Fire and Ice creature made in a ruined laboratory by fusing two elemental cores into one
+body. A tall, lean, upright humanoid feline with a smooth rounded head, two short swept-back horns, narrow glowing eyes,
+a long thick tail, strong digitigrade legs and long arms with three blunt fingers on each hand. Its body is split
+exactly down the middle from the top of the head to between the feet:
+- its LEFT half (the side nearer the viewer's left) is living FIRE: dark charcoal-red skin with glowing molten orange
+  cracks, a crest of flames rising from the horn and shoulder on that side, an ember-orange eye, flickering flame tufts
+  on the elbow;
+- its RIGHT half is glacial ICE: pale icy blue crystal skin with white frost facets, sharp ice spikes on the horn,
+  shoulder and forearm on that side, an ice-blue eye.
+A thin bright white-gold seam glows along the centre line where the two halves meet. Around its neck sits a broken
+metal containment ring, melted and dripping on the fire side, frosted over on the ice side. Its long tail curls out to
+the side: icy blue crystal along its length, ending in a burning orange flame at the tip. One hand is raised at chest
+height, a small flame floating over the fire palm. Calm, cold, superior expression.
+
+Pose and framing: front battle sprite, 3/4 view facing slightly to the left, full body, standing, arms held close to
+the body, centered, with empty space around it, the same scale as image 1.
+
+Colours: fire half #3a1a1a, #c2361c, #ff7a2a, #ffc24a; ice half #2f6fa8, #7cc3ee, #d8f2ff; seam #fff3c4; dark outline
+#2a2d3c.
+
+Background: perfectly flat solid magenta #ff00ff, the same as image 1, no shadow, no scenery. No magenta or pink on
+the creature. No text, no border, no watermark, only one creature.

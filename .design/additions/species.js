@@ -1024,6 +1024,29 @@ const EWAMON_SPECIES_ADDITIONS = {
     backSprite: "astaroth(back).webp",
     habitat: [], evolvesInto: null, evolvesAt: null,
   },
+
+  // A mythical made in a ruined laboratory, inspired by Mewtwo with a twist: two elemental cores fused into one body
+  // that never mixed. It is split exactly down the middle, living fire on one side and glacial ice on the other, with a
+  // broken containment ring at its neck. Quest q15 gives it after the Champion.
+  kelvyre: {
+    id: "kelvyre", name: "Kelvyre",
+    flavor: "Someone once tried to make the perfect creature by forcing a core of fire and a core of ice into one body. The cores never mixed. Kelvyre burns on one side and freezes on the other, and the seam between them glows white. It tore off its containment ring the night it woke, and it has not trusted anyone since.",
+    type: ["Fire", "Ice"],
+    baseHp: 108, baseAtk: 142, baseDef: 92, baseSpd: 138,
+    rarity: "mythical", catchRate: 3,
+    sizeScale: 1.35,
+    expYield: 300,
+    moves: ["Ember", "Ice Shard", "Psych Wave", "Calm Mind"],
+    // Thermal Shock is its signature move (client battle/signatures.ts): pinned as the newest move (L39) so the quest
+    // reward (L60) knows it, beside Ice Beam, Flame Dash and Extrasensory
+    learnableMoves: ["Frost Bite", "Will-O-Wisp", "Mind Crush", "Heat Wave", "Ice Beam", "Flame Dash", "Extrasensory", "Thermal Shock"],
+    learnLevels: { "Thermal Shock": 39 },
+    abilities: ["Thermal Divide"],
+    role: "Special Attacker",
+    frontSprite: "kelvyre(front).png",
+    backSprite: "kelvyre(back).png",
+    habitat: [], evolvesInto: null, evolvesAt: null,
+  },
 };
 
 module.exports = { EWAMON_SPECIES_ADDITIONS };

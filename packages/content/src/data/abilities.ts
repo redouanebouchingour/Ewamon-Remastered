@@ -162,6 +162,15 @@ export const ABILITIES: readonly AbilityDef[] = [
     hooks: [{ kind: 'modifySpeed', whenWeather: 'rain', mul: 2 }],
   },
   {
+    id: 'Thermal Divide',
+    name: 'Thermal Divide',
+    description: 'Cannot be burned or frozen. Fire- and Ice-type moves deal half damage to it.',
+    hooks: [
+      { kind: 'statusImmunity', statuses: ['burn', 'freeze'] },
+      { kind: 'modifyDamage', side: 'defender', moveTypes: ['Fire', 'Ice'], mul: 0.5 },
+    ],
+  },
+  {
     id: 'Thick Fat',
     name: 'Thick Fat',
     description: 'Reduces damage from Fire and Ice moves',

@@ -41,6 +41,7 @@ export const SHINY_DERIVED: Readonly<Record<string, VariantPalette>> = {
   hollowmane: { hue: 174, saturation: 1.6, lightness: 0.85 }, // jade from 338°, chroma 0.04, value 0.42
   hyoryu: { hue: 78, saturation: 1.05, lightness: 1 }, // violet from 194°, chroma 0.29, value 0.72
   joeyjab: { hue: -125, saturation: 1.05, lightness: 1 }, // violet from 37°, chroma 0.37, value 0.67
+  kelvyre: { hue: -80, saturation: 1.05, lightness: 1 }, // magenta from 22°, chroma 0.41, value 0.70
   kindlegrub: { hue: -109, saturation: 1.05, lightness: 1 }, // violet from 21°, chroma 0.31, value 0.54
   kygra: { hue: 55, saturation: 1.05, lightness: 1 }, // violet from 217°, chroma 0.27, value 0.48
   lumyth: { hue: 148, saturation: 1.05, lightness: 1 }, // gold from 258°, chroma 0.27, value 0.70

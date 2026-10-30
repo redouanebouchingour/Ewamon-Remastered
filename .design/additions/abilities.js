@@ -25,6 +25,15 @@ const EWAMON_ABILITY_ADDITIONS = {
     desc: "Holding an Original Master Relic, it takes that element's form, type and signature-move type as it enters battle. The Vial of Spirit Water wakes the Avatar State below 30% HP.",
     hooks: [],
   },
+  // kelvyre: the fire half cannot freeze, the ice half cannot burn, and the seam soaks up the extremes of both
+  "Thermal Divide": {
+    name: "Thermal Divide",
+    desc: "Cannot be burned or frozen. Fire- and Ice-type moves deal half damage to it.",
+    hooks: [
+      { kind: "statusImmunity", statuses: ["burn", "freeze"] },
+      { kind: "modifyDamage", side: "defender", moveTypes: ["Fire", "Ice"], mul: 0.5 },
+    ],
+  },
 };
 
 module.exports = { EWAMON_ABILITY_ADDITIONS };

@@ -190,6 +190,7 @@
     "sfx/sig_cosmic_miracle_1",
     "sfx/sig_cosmic_pyre_1",
     "sfx/sig_crimson_lotus_prison_1",
+    "sfx/sig_demon_lords_descent_1",
     "sfx/sig_foxfire_voltage_1",
     "sfx/sig_hollow_crescent_1",
     "sfx/sig_kamehameha_1",
@@ -394,8 +395,8 @@
       },
       "sfx": {
         "derived": 17,
-        "direct": 238,
-        "total": 255,
+        "direct": 239,
+        "total": 256,
         "unmapped": 0
       },
       "stem": {
@@ -411,14 +412,14 @@
         "unmapped": 0
       }
     },
-    "covered": 383,
+    "covered": 384,
     "fraction": 1,
-    "total": 383
+    "total": 384
   },
-  "entries": 315,
+  "entries": 316,
   "failed": [],
   "ingested": [
-    "sfx/sig_demon_lords_descent_1"
+    "sfx/sig_thermal_shock_1"
   ],
   "missing": [],
   "ok": true,

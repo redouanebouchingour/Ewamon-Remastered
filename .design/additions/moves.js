@@ -33,6 +33,9 @@ const EWAMON_MOVE_ADDITIONS = {
   // astaroth's signature move (pinned as its newest learnable move): the demon lord dissolves into smoke, a five-leaf
   // clover sigil flares under the foe and it drops onto it with both blades. Learned by astaroth only.
   "Demon Lord's Descent": { power: 120, type: "Dark", pp: 5, effect: "flinch", accuracy: 90 },
+  // kelvyre's signature move (pinned as its newest learnable move): the seam down its body splits open and it fires a
+  // beam of absolute cold wrapped in white flame. Ice, but the shock of both can burn. Learned by kelvyre only.
+  "Thermal Shock": { power: 120, type: "Ice", pp: 5, effect: "burn", accuracy: 90, contact: false },
 };
 
 module.exports = { EWAMON_MOVE_ADDITIONS };

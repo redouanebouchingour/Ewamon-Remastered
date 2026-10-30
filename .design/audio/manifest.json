@@ -1719,6 +1719,20 @@
     {
       "bus": "sfx",
       "gainDb": 6,
+      "id": "sig_thermal_shock",
+      "maxConcurrent": 1,
+      "prompt": {
+        "durationSec": 2.3,
+        "instrumental": true,
+        "negative": "music, melody, speech, words, voice, crowd, background ambience, room reverb, long echo tail, hiss, hum, clipping, distortion",
+        "seed": 732992167,
+        "text": "A cold shimmer under a fire swell, a fire crackle and a glass chime trading places faster and faster, a roaring beam with a fire thrust and a cold rush, then a deep boom with a fire burst and a heavy glass shatter together and a hiss of steam."
+      },
+      "variants": 1
+    },
+    {
+      "bus": "sfx",
+      "gainDb": 6,
       "id": "sig_vendetta_volley",
       "maxConcurrent": 1,
       "prompt": {

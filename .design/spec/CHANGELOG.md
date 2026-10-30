@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-10-30 kelvyre. One entry. -->
+
+## 2026-10-30 · `00-spine.md` §2.3 dexNumber, §3.4 QUESTS / ACHIEVEMENTS, §3.10 counts; `20-client.md` §20.9.5; `40-pipelines.md` §40.1 accounting, §40.6 species set; `50-verification-budget.md` rule 11, §50.4.2, §50.5 · kelvyre (#181), a Fire/Ice mythical from quest q15
+Why: the user asked for a new mythical heavily based on Mewtwo with a twist: Fire/Ice, its body split down the middle, one half living fire and the other glacial ice. Kelvyre (108 / 142 / 92 / 138, the new ability Thermal Divide: no burn or freeze, Fire and Ice moves deal half) is the reward of the new postgame quest q15 The Divided Core (Forgewall: the Champion, 140 witnessed, 30 wins; L60). Its signature move Thermal Shock (Ice 120, 90 %, 5 PP, 30 % burn, non-contact) is pinned at L39 and plays its own cinematic and premix. 181 species, 201 moves, 29 abilities, 15 story quests, 90 families.
+Evidence: content `validate` (181/181 obtainable), `counts`, `coverage`, `families`, `shiny` tests; client `signatures.test.tsx`, `spriteCatalog.test.ts`; sprite pipeline 105 atlases, 54.84 MB at the top rung, every existing atlas byte-identical; `/sigfx/?move=Thermal%20Shock` checked near and far.
+Affects: `.design/additions/{species,moves,abilities,heights}.js`; content `data/{species,moves,abilities,quests,statics,achievements,shinyDerived}.ts`, `flags.ts`, `schema.ts`, `validate.ts`; client `battle/{signatures,moveStyles}.ts`, `battle/sigfx/{Thermal.tsx,thermal.module.css,index.ts}`, `public/{creatures,signature,audio}`; `tools/audio-pipeline/cc0-tools/{mix.py,gen-sources.mjs}`.
+
 <!-- 2026-10-28 the jump key. One entry. -->
 
 ## 2026-10-28 · `20-client.md` §20.4.5 bindings · jump: a 2 u hop over 780 ms that the camera follows

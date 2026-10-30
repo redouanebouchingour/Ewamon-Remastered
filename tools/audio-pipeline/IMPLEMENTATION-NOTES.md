@@ -316,3 +316,15 @@ Then run `pnpm --filter @ewa/audio-pipeline ingest` and `pnpm --filter @ewa/audi
   it. Built only from already-approved CC0 downloads; nothing new fetched. Not auditioned by ear.
 - Rebuild: `python _tools/mix.py sig_demon_lords_descent_1` (from `assets-src/audio/cc0/`), `node _tools/gen-sources.mjs`,
   then `ingest`, `credits` and `process -- --provider cc0`. Only the 2 new files, the manifest and the credits change.
+
+## kelvyre's signature sound (2026-10-30)
+
+- 1 new sfx id `sig_thermal_shock` (384 jobs; 73.49 MiB of 80) for Thermal Shock, timed from the cinematic's charge
+  (impact at windup 700 + travel 300 = 1.00 s): a cold shimmer under a fire swell, a fire crackle and a glass chime
+  trading places faster and faster as the two cores circle (0.12 to 0.64 s), the helix's beam roar with a fire thrust
+  and a cold rush at 0.70 s, then the split blast on the impact: a low boom, a fire burst and a heavy glass shatter
+  together, a second shatter and a hiss of steam. Built only from already-approved CC0 downloads; nothing new fetched.
+  Not auditioned by ear.
+- `process` rewrites `public/audio/` from the manifest and dropped `emote_whip_nae_nae.mp3` (and its manifest entry),
+  a clip added to `public/audio` by hand outside the pipeline; both were restored before the commit. Check
+  `git status packages/client/public/audio` after a `process` run until that clip has a source manifest entry.

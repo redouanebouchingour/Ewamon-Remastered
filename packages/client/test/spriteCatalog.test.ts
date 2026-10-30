@@ -129,11 +129,11 @@ describe.skipIf(!existsSync(REAL))('sprite catalog on the shipped manifest', () 
     expect(cat.descriptor('kygra', 't:kygra')!.backFullHeight).toBeUndefined();
   });
 
-  it('the 10 legacy legendaries / mythicals and astaroth animate on both sides; nothing else does (hyoryu and the Elemutt line came as stills)', () => {
+  it('the 10 legacy legendaries / mythicals and astaroth animate on both sides; nothing else does (hyoryu, the Elemutt line and kelvyre came as stills)', () => {
     const animated = Object.keys(m.sprites).filter((id) => cat.animAtlasesOf(id).length > 0).sort();
     // hyoryu (post-legacy legendary) was delivered as still sprites: it ships static until animated art exists
-    // the Elemutt line (mythical) likewise came as stills
-    const stills = new Set(['hyoryu', 'elemutt', 'katamute', 'ravatar']);
+    // the Elemutt line and kelvyre (mythicals) likewise came as stills
+    const stills = new Set(['hyoryu', 'elemutt', 'katamute', 'ravatar', 'kelvyre']);
     expect(animated).toEqual([...LEGENDARY_IDS, ...MYTHICAL_IDS].filter((id) => !stills.has(id)).sort());
     for (const id of animated) {
       const d = cat.descriptor(id, `t:${id}`)!;

@@ -37,7 +37,8 @@ export const LEGENDARY_IDS: readonly string[] = [
   'hyoryu',
   'astaroth',
 ];
-// the Elemutt line (the Harmonic Cycle): a mythical family; elemutt comes from quest q13 and evolves into the other two
-export const MYTHICAL_IDS: readonly string[] = ['lumyth', 'noxmyth', 'elemutt', 'katamute', 'ravatar'];
+// the Elemutt line (the Harmonic Cycle): a mythical family; elemutt comes from quest q13 and evolves into the other two.
+// kelvyre (Fire/Ice, post-legacy) is the reward of quest q15.
+export const MYTHICAL_IDS: readonly string[] = ['lumyth', 'noxmyth', 'elemutt', 'katamute', 'ravatar', 'kelvyre'];
 /** The battle pass level 50 choice: the two single mythicals (the Elemutt line is a quest family). */
 export const BATTLE_PASS_MYTHICALS: readonly string[] = ['lumyth', 'noxmyth'];

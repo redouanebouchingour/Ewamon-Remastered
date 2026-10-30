@@ -220,6 +220,23 @@ export const QUESTS: readonly QuestDef[] = [
     ],
     rewards: { money: 20000, items: { [SPIRIT_WATER_VIAL]: 1 }, creature: null, flag: null },
   },
+  // Kelvyre, the divided mythical: a core of fire and a core of ice forced into one body in Forgewall's old foundry
+  // laboratory. It answers only a trainer who has seen almost everything the world has to show.
+  {
+    id: 'q15_divided_core',
+    title: 'The Divided Core',
+    summary: 'Something in the sealed foundry lab burns on one side and freezes on the other. It will only come out for the Champion who has witnessed nearly every species and won thirty fights.',
+    giver: null,
+    zoneId: 'forgewall',
+    act: 3,
+    requires: [],
+    objectives: [
+      { id: 'champion', label: 'Beat Champion Zeon', objective: { kind: 'flag', flag: 'champion:zeon:beaten' } },
+      { id: 'witness_140', label: 'Witness 140 species', objective: { kind: 'catchSpecies', count: 140 } },
+      { id: 'wins_30', label: 'Win 30 battles of any kind', objective: { kind: 'winBattles', format: 'any', count: 30 } },
+    ],
+    rewards: { money: 20000, items: {}, creature: { species: 'kelvyre', level: 60 }, flag: 'mythical_divided' },
+  },
   // Phase D5: the achievements (kind 'achievement', giver null) ride the same list, so they auto-progress and claim
   ...ACHIEVEMENTS,
 ];

@@ -651,6 +651,26 @@ sfx('sig_demon_lords_descent_1', [
     (KS + 'spaceEngineLow_002.ogg', 1.02, -20, 0.6, 'lowpass=f=500,afade=t=in:d=0.1,afade=t=out:st=0.3:d=0.3'),
 ], 2.2, fout=0.5)
 
+# Thermal Shock (the seam opens and the fire and ice cores circle each other over the charge 0.00-0.70, faster and
+# faster; the helix fires at 0.70 and hits at 1.00, holding to ~1.6): a cold shimmer under a fire swell, a fire crackle
+# and a glass chime trading places as the cores circle, quickening, the helix's beam roar with a fire thrust and a cold
+# rush, then the split blast: a low boom, a fire burst and a heavy glass shatter together, a hiss of steam after
+sfx('sig_thermal_shock_1', [
+    (MS + 'magical_4.ogg', 0.0, -8, 0.7, 'afade=t=in:d=0.2'),
+    (R3 + 'spell_fire_06.ogg', 0.0, -12, 0.8, 'afade=t=in:d=0.3'),
+    *[(R3 + 'spell_fire_06.ogg' if k % 2 == 0 else KI + f'glass_00{1 + k // 2}.ogg', t, -14 if k % 2 == 0 else -12, 1.2 + 0.04 * k, 'afade=t=out:st=0.12:d=0.06')
+      for k, t in enumerate((0.12, 0.26, 0.37, 0.46, 0.53, 0.59, 0.64))],
+    (KS + 'forceField_002.ogg', 0.40, -10, 0.8, ''),
+    (KS + 'laserLarge_002.ogg', 0.70, 0, 0.75, ''),
+    (KS + 'thrusterFire_002.ogg', 0.72, -8, 0.8, ''),
+    (A6, 0.72, -12, 1.1, 'afade=t=out:st=0.4:d=0.3'),
+    (KS + 'lowFrequency_explosion_000.ogg', 1.00, 0, 1.0, ''),
+    (R3 + 'spell_fire_06.ogg', 1.00, -3, 0.7, ''),
+    (KX + 'impactGlass_heavy_000.ogg', 1.00, -2, 1.0, ''),
+    (KX + 'impactGlass_heavy_004.ogg', 1.04, -5, 1.1, ''),
+    (R5 + 'sfx100v2_glass_05.ogg', 1.08, -8, 1.0, ''),
+    (R5 + 'sfx100v2_air_02.ogg', 1.15, -12, 0.8, 'highpass=f=2500,afade=t=out:st=0.4:d=0.3'),
+], 2.3, fout=0.6)
 
 
 # ─── bond cinematics (client battle/bond.ts) ─────────────────────────────────────────────────────────────────────────

@@ -78,7 +78,7 @@ describe('zone sets', () => {
       // 130 legacy + hollowmane, dustcub, badlander, veilpup, hollowolf, castlemaw, lawlander, hyoryu, cryptorb, ultraze, vysion
       // (.design/additions) + the hollowmane_rage and castlemaw_rage form sprites + the 16 Majin / Tenjin form sprites (4 from
       // species.js, 12 from patches.js)
-      expect(legacy.species.size).toBe(203);
+      expect(legacy.species.size).toBe(204);
       const forms = [...legacy.species.keys()].filter((id) => /_(majin|tenjin)$/.test(id)).sort();
       expect(forms).toEqual([
         'abysspark_tenjin', 'acier_majin', 'badlander_majin', 'clementar_majin', 'gemknight_tenjin', 'glimmereen_tenjin', 'hyoryu_majin', 'infernomorel_majin', 'kykaiser_tenjin',

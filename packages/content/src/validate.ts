@@ -409,8 +409,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   for (const f of FLAG_REGISTRY) if (!f.id.includes(':') && !/^[a-z0-9_]+$/.test(f.id)) err(`flag registry: '${f.id}' is not snake_case`);
 
   // ── 3. counts ──
-  if (species.length !== 180) err(`SPECIES.length ${species.length} !== 180`);
-  if (moves.length !== 200) err(`MOVES.length ${moves.length} !== 200`); // 193 legacy + Hollow Crescent, Vendetta Volley, Aurora Requiem, Crimson Lotus Prison, Cosmic Convergence, Comet Tap, Demon Lord's Descent (.design/additions/moves.js)
+  if (species.length !== 181) err(`SPECIES.length ${species.length} !== 181`);
+  if (moves.length !== 201) err(`MOVES.length ${moves.length} !== 201`); // 193 legacy + Hollow Crescent, Vendetta Volley, Aurora Requiem, Crimson Lotus Prison, Cosmic Convergence, Comet Tap, Demon Lord's Descent, Thermal Shock (.design/additions/moves.js)
   // Phase D6: every curated spread move exists, and only damaging or foe-targeted moves spread
   for (const [id, sp] of Object.entries(SPREAD_MOVES).sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
     const m = moves.find((x) => x.id === id);
@@ -418,8 +418,8 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
     else if (m.spread !== sp || m.target !== 'foe') err(`SPREAD_MOVES: '${id}' must be a foe-targeted move carrying spread '${sp}'`);
   }
   if (TYPE_NAMES.length !== 19) err(`TYPE_NAMES.length ${TYPE_NAMES.length} !== 19`);
-  // 25 legacy + Inner Chi, Stance Change, Avatar Cycle (.design/additions/abilities.js)
-  if (ABILITIES.length !== 28) err(`ABILITIES.length ${ABILITIES.length} !== 28`);
+  // 25 legacy + Inner Chi, Stance Change, Avatar Cycle, Thermal Divide (.design/additions/abilities.js)
+  if (ABILITIES.length !== 29) err(`ABILITIES.length ${ABILITIES.length} !== 29`);
   if (items.length !== 17) err(`ITEMS.length ${items.length} !== 17`);
   if (orbs.length !== 10) err(`ORBS.length ${orbs.length} !== 10`);
   if (zones.length !== 21) err(`ZONES.length ${zones.length} !== 21`);
@@ -430,7 +430,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
   });
   {
     const dex = [...species.map((s) => s.dexNumber)].sort((a, b) => a - b);
-    for (let i = 0; i < dex.length; i++) if (dex[i] !== i + 1) { err(`dex numbers are not dense 1..180 (got ${dex[i]} at ${i})`); break; }
+    for (let i = 0; i < dex.length; i++) if (dex[i] !== i + 1) { err(`dex numbers are not dense 1..181 (got ${dex[i]} at ${i})`); break; }
     const ids = new Set(species.map((s) => s.id));
     if (ids.size !== species.length) err('duplicate species ids');
     if (moveIds.size !== moves.length) err('duplicate move ids');
@@ -492,9 +492,9 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
       while (cur !== undefined && cur.evolvesFrom !== null && hops < 8) { cur = speciesById.get(cur.evolvesFrom); hops++; }
       if (hops >= 8) err(`species ${s.id}: evolution chain has a cycle or exceeds depth`);
     }
-    // roster-coverage: 73 roots (57 non-legendary legacy families + hollowmane + dustcub + veilpup + castlemaw + cryptorb + the 12 legendary/mythical singles, hyoryu and astaroth the post-legacy ones), each a tree root
+    // roster-coverage: 73 roots (57 non-legendary legacy families + hollowmane + dustcub + veilpup + castlemaw + cryptorb + the 12 legendary/mythical singles, hyoryu and astaroth the post-legacy ones, plus kelvyre), each a tree root
     const families = species.filter((s) => s.evolvesFrom === null).length;
-    if (families !== 89) err(`evolution families (roots) ${families} !== 89`);
+    if (families !== 90) err(`evolution families (roots) ${families} !== 90`);
   }
 
   // ── 7 + 8. roster coverage and RC rules ──

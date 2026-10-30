@@ -1,0 +1,259 @@
+/*
+ * Thermal Shock (kelvyre; signatures.ts): clock 3200 ms, keyframe % = ms / 32; impact 2100.
+ * 1100–1800 the seam down the attacker splits open, embers rise and frost turns, the fire and ice cores circle each
+ * other faster and faster · 1800 released: the helix races to the target (300 ms), its split head ahead of it ·
+ * 2100 lands: a split blast (fire one side, ice the other), a white seam through the target, shards and embers fly
+ * apart · 2420 the helix thins out, gone by 2800.
+ */
+
+.seam {
+  opacity: 0;
+  transform-origin: 50% 50%;
+  animation: therm-seam 3200ms linear calc(0ms - var(--skip)) both;
+}
+
+.seamCore {
+  animation: therm-flicker 120ms ease-in-out infinite alternate;
+}
+
+/* kelvyre's fire half faces the target in both sprites (the front looks left, the back away to the right): +x turns
+   toward the target, whichever side attacks */
+.sides {
+  opacity: 0;
+  transform: scaleX(clamp(-1, cos(var(--ang) * 1deg) * 100, 1));
+  animation: therm-sides 3200ms linear calc(0ms - var(--skip)) both;
+}
+
+.ember {
+  animation: therm-ember 620ms linear infinite;
+}
+
+.ember:nth-child(2n) {
+  animation-duration: 520ms;
+  animation-delay: -200ms;
+}
+
+.ember:nth-child(3n) {
+  animation-duration: 700ms;
+  animation-delay: -380ms;
+}
+
+.frost {
+  animation: therm-frost 900ms linear infinite;
+}
+
+.sides > g:nth-child(2n) .frost {
+  animation-duration: 760ms;
+  animation-direction: reverse;
+}
+
+.cores {
+  opacity: 0;
+  animation: therm-cores 3200ms linear calc(0ms - var(--skip)) both;
+}
+
+.orbit {
+  animation: therm-orbit 3200ms cubic-bezier(0.5, 0, 0.9, 0.4) calc(0ms - var(--skip)) both;
+}
+
+.pulse {
+  animation: therm-pulse 150ms ease-in-out infinite alternate;
+}
+
+.haloGate {
+  opacity: 0;
+  animation: therm-halo-gate 3200ms linear calc(0ms - var(--skip)) both;
+}
+
+.halo {
+  animation: therm-halo 320ms ease-out infinite;
+}
+
+.beam {
+  opacity: 0;
+  animation: therm-beam 3200ms linear calc(0ms - var(--skip)) both;
+}
+
+.beamPulse {
+  animation: therm-beam-pulse 90ms ease-in-out infinite alternate;
+}
+
+.strand {
+  animation: therm-strand 260ms linear infinite;
+}
+
+.s2 {
+  animation-duration: 180ms;
+}
+
+.head {
+  opacity: 0;
+  animation: therm-head 3200ms linear calc(0ms - var(--skip)) both;
+}
+
+.blast,
+.shock,
+.ground,
+.split,
+.shard,
+.spark {
+  opacity: 0;
+}
+
+.blast {
+  animation: therm-blast 3200ms cubic-bezier(0.2, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.shock {
+  animation: therm-shock 3200ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.ground {
+  animation: therm-ground 3200ms cubic-bezier(0.1, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+.split {
+  transform-origin: 50% 50%;
+  animation: therm-split 3200ms ease-out calc(0ms - var(--skip)) both;
+}
+
+.shard,
+.spark {
+  animation: therm-fling 3200ms cubic-bezier(0.15, 0.8, 0.3, 1) calc(0ms - var(--skip)) both;
+}
+
+/* 1080–1250 the seam opens down the body · held · 1820–1950 closes as the helix fires */
+@keyframes therm-seam {
+  0%, 33.75% { opacity: 0; transform: scaleY(0.1); }
+  39% { opacity: 1; transform: scaleY(1); }
+  56.25% { opacity: 1; transform: scaleY(1.04); }
+  61%, 100% { opacity: 0; transform: scaleY(1.1) scaleX(0.3); }
+}
+
+@keyframes therm-flicker {
+  from { opacity: 0.8; }
+  to { opacity: 1; }
+}
+
+/* 1150–1800 embers and frost on each side of the seam */
+@keyframes therm-sides {
+  0%, 35.9% { opacity: 0; }
+  39% { opacity: 1; }
+  55% { opacity: 1; }
+  58%, 100% { opacity: 0; }
+}
+
+@keyframes therm-ember {
+  0% { opacity: 0; transform: translateY(30px) scale(0.6); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-220px) scale(1.1); }
+}
+
+@keyframes therm-frost {
+  from { transform: rotate(0deg) scale(0.9); }
+  50% { transform: rotate(180deg) scale(1.15); }
+  to { transform: rotate(360deg) scale(0.9); }
+}
+
+/* 1120 two sparks · grow through the charge · 1790 pull together · 1830 flare on release · the helix's root till 2420 */
+@keyframes therm-cores {
+  0%, 34.4% { opacity: 0; transform: scale(0.05); }
+  35% { opacity: 1; transform: scale(0.15); }
+  46.9% { opacity: 1; transform: scale(0.6); }
+  55% { opacity: 1; transform: scale(0.95); }
+  55.9% { opacity: 1; transform: scale(0.75); }
+  57.2% { opacity: 1; transform: scale(1.35); }
+  59.4% { opacity: 1; transform: scale(1); }
+  75.6% { opacity: 1; transform: scale(1); }
+  82.8%, 100% { opacity: 0; transform: scale(0.2); }
+}
+
+/* the cores circle each other faster and faster, then spin as one in the helix's root */
+@keyframes therm-orbit {
+  0%, 34.4% { transform: rotate(0deg) scale(1); }
+  56.25% { transform: rotate(1080deg) scale(0.5); }
+  100% { transform: rotate(2880deg) scale(0.35); }
+}
+
+@keyframes therm-pulse {
+  from { transform: scale(0.92); }
+  to { transform: scale(1.06); }
+}
+
+@keyframes therm-halo-gate {
+  0%, 35.9% { opacity: 0; }
+  40.6% { opacity: 1; }
+  55.9% { opacity: 1; }
+  57.5%, 100% { opacity: 0; }
+}
+
+@keyframes therm-halo {
+  from { opacity: 0.9; transform: scale(0.9); }
+  to { opacity: 0; transform: scale(1.6); }
+}
+
+/* 1800–2100 the helix stretches from the cores to the target · holds to 2420 · thins out by 2720 · gone 2800 */
+@keyframes therm-beam {
+  0%, 56.1% { opacity: 0; transform: scale(0.001, 0.6); }
+  56.25% { opacity: 1; transform: scale(0.001, 0.6); animation-timing-function: cubic-bezier(0.25, 0.5, 0.45, 1); }
+  65.625% { opacity: 1; transform: scale(calc((var(--dist) - 120) / 1000), 1.1); }
+  67.5% { opacity: 1; transform: scale(calc((var(--dist) - 120) / 1000), 1); }
+  75.6% { opacity: 1; transform: scale(calc((var(--dist) - 120) / 1000), 1); }
+  80% { opacity: 1; transform: scale(calc((var(--dist) - 120) / 1000), 0.45); }
+  85% { opacity: 0.6; transform: scale(calc((var(--dist) - 120) / 1000), 0.06); }
+  87.5%, 100% { opacity: 0; transform: scale(calc((var(--dist) - 120) / 1000), 0.02); }
+}
+
+@keyframes therm-beam-pulse {
+  from { transform: scaleY(0.94); }
+  to { transform: scaleY(1.06); }
+}
+
+/* the strands flow toward the target */
+@keyframes therm-strand {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -80; }
+}
+
+/* the head leads the helix: 1800 at the cores · 2100 on the target · swallowed by the blast at 2150 */
+@keyframes therm-head {
+  0%, 56.1% { opacity: 0; transform: translateX(0) rotate(0deg) scale(0.6); }
+  56.25% { opacity: 1; transform: translateX(0) rotate(0deg) scale(0.6); animation-timing-function: cubic-bezier(0.25, 0.5, 0.45, 1); }
+  65.625% { opacity: 1; transform: translateX(calc((var(--dist) - 120) * 1px)) rotate(540deg) scale(1.2); }
+  67.2%, 100% { opacity: 0; transform: translateX(calc((var(--dist) - 120) * 1px)) rotate(600deg) scale(1.8); }
+}
+
+/* 2090 the split blast swells · 2450 still burning and freezing · 2780 gone */
+@keyframes therm-blast {
+  0%, 65.3% { opacity: 0; transform: scale(0.15); }
+  67.5% { opacity: 1; transform: scale(0.95); }
+  76.6% { opacity: 0.95; transform: scale(1.2); }
+  86.9%, 100% { opacity: 0; transform: scale(1.4); }
+}
+
+@keyframes therm-shock {
+  0%, 65.5% { opacity: 0; transform: scale(0.2); }
+  65.9% { opacity: 1; }
+  78.1%, 100% { opacity: 0; transform: scale(2.7); }
+}
+
+@keyframes therm-ground {
+  0%, 65.6% { opacity: 0; transform: scale(0.3); }
+  66.2% { opacity: 1; }
+  81.25%, 100% { opacity: 0; transform: scale(1.9); }
+}
+
+/* 2100 a white seam cuts down through the target, widens and fades */
+@keyframes therm-split {
+  0%, 65.5% { opacity: 0; transform: scaleY(0.05); }
+  66.5% { opacity: 1; transform: scaleY(1); }
+  71% { opacity: 1; transform: scaleY(1) scaleX(1.6); }
+  80%, 100% { opacity: 0; transform: scaleY(1.05) scaleX(3); }
+}
+
+/* shards fly right, embers fly left */
+@keyframes therm-fling {
+  0%, 65.6% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.4); }
+  67% { opacity: 1; transform: translate(calc(var(--tx) * 0.3), calc(var(--ty) * 0.3)) rotate(80deg) scale(1.2); }
+  85.9%, 100% { opacity: 0; transform: translate(var(--tx), calc(var(--ty) + 70px)) rotate(300deg) scale(0.7); }
+}

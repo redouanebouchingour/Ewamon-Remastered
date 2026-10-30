@@ -4470,6 +4470,48 @@
         "bytes": 8748
       },
       "normalScale": 0.5
+    },
+    {
+      "id": "a-104",
+      "species": [
+        "kelvyre"
+      ],
+      "size": 2048,
+      "slots": 2,
+      "albedo": {
+        "url": "atlases/a-104.albedo.webp",
+        "mips": [
+          "atlases/a-104.albedo.m1.webp",
+          "atlases/a-104.albedo.m2.webp",
+          "atlases/a-104.albedo.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 88,
+        "bytes": 183844
+      },
+      "normal": {
+        "url": "atlases/a-104.normal.webp",
+        "mips": [
+          "atlases/a-104.normal.m1.webp",
+          "atlases/a-104.normal.m2.webp",
+          "atlases/a-104.normal.m3.webp"
+        ],
+        "codec": "webp-lossy",
+        "quality": 92,
+        "bytes": 54536
+      },
+      "emissive": {
+        "url": "atlases/a-104.emissive.webp",
+        "mips": [
+          "atlases/a-104.emissive.m1.webp",
+          "atlases/a-104.emissive.m2.webp",
+          "atlases/a-104.emissive.m3.webp"
+        ],
+        "codec": "webp-lossless",
+        "quality": null,
+        "bytes": 10184
+      },
+      "normalScale": 0.5
     }
   ],
   "zones": {
@@ -10424,6 +10466,51 @@
       "sizeScale": 1.05,
       "home": "a-079",
       "thumb": "thumbs/katamute_front.webp"
+    },
+    "kelvyre": {
+      "front": {
+        "atlas": "a-104",
+        "px": [
+          1024,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0.5,
+          0.5,
+          1,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "bodyV": 0.8604,
+        "pixelScale": 7.221311,
+        "source": "front/kelvyre(front).png"
+      },
+      "back": {
+        "atlas": "a-104",
+        "px": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "uv": [
+          0,
+          0.5,
+          0.5,
+          1
+        ],
+        "footV": 0.08,
+        "aspect": 1,
+        "bodyV": 0.8604,
+        "pixelScale": 7.221311,
+        "source": "back/kelvyre(back).png"
+      },
+      "sizeScale": 1.35,
+      "home": "a-104",
+      "thumb": "thumbs/kelvyre_front.webp"
     },
     "kindlegrub": {
       "front": {
@@ -18014,7 +18101,7 @@
       "thumb": "thumbs/zenryu_majin_front.webp"
     }
   },
-  "totalBytes": 54583894,
+  "totalBytes": 54840406,
   "animAtlases": [
     {
       "id": "anim-astaroth-back",

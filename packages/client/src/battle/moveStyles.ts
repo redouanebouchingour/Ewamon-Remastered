@@ -160,6 +160,8 @@ export const MOVE_STYLE: Readonly<Record<string, MoveStyle>> = {
   'Sucker Punch': 'punch',
   'Sunbreaker Barrage': 'punch',
   Tackle: 'tackle',
+  // kelvyre: a helix of flame and ice round a white line
+  'Thermal Shock': 'beam',
   'Thunder Claw': 'slash',
   'Thunder Fang': 'bite',
   Thunderbolt: 'bolt',

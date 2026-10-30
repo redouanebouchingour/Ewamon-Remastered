@@ -3236,6 +3236,108 @@
       }
     ]
   },
+  "sfx/sig_thermal_shock_1": {
+    "file": "mix/sig_thermal_shock_1.wav",
+    "licence": "CC0-1.0",
+    "author": "SketchMan3; Kenney (kenney.nl); rubberduck; JaggedStone",
+    "url": "https://opengameart.org/content/wind-whoosh-loop",
+    "title": "Premix: sig_thermal_shock_1",
+    "parts": [
+      {
+        "file": "ambience/wind-woosh-loop.ogg",
+        "author": "SketchMan3",
+        "url": "https://opengameart.org/content/wind-whoosh-loop",
+        "title": "wind whoosh loop"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_heavy_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_heavy_000",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_impact-sounds/Audio/impactGlass_heavy_004.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/impact-sounds",
+        "title": "Impact Sounds: impactGlass_heavy_004",
+        "licenceFile": "KENNEY-impact-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_interface-sounds/Audio/glass_001.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/interface-sounds",
+        "title": "Interface Sounds: glass_001",
+        "licenceFile": "KENNEY-interface-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_interface-sounds/Audio/glass_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/interface-sounds",
+        "title": "Interface Sounds: glass_002",
+        "licenceFile": "KENNEY-interface-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_interface-sounds/Audio/glass_003.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/interface-sounds",
+        "title": "Interface Sounds: glass_003",
+        "licenceFile": "KENNEY-interface-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/forceField_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: forceField_002",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/laserLarge_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: laserLarge_002",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/lowFrequency_explosion_000.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: lowFrequency_explosion_000",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      },
+      {
+        "file": "kenney/kenney_sci-fi-sounds/Audio/thrusterFire_002.ogg",
+        "author": "Kenney (kenney.nl)",
+        "url": "https://kenney.nl/assets/sci-fi-sounds",
+        "title": "Sci-fi Sounds: thrusterFire_002",
+        "licenceFile": "KENNEY-sci-fi-sounds-License.txt"
+      },
+      {
+        "file": "rubberduck/80-CC0-RPG-SFX/spell_fire_06.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/node/86018",
+        "title": "80 CC0 RPG SFX: spell_fire_06"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_air_02.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_air_02"
+      },
+      {
+        "file": "rubberduck/sfx_100_v2/sfx100v2_glass_05.ogg",
+        "author": "rubberduck",
+        "url": "https://opengameart.org/content/100-cc0-sfx-2",
+        "title": "100 CC0 SFX #2: sfx100v2_glass_05"
+      },
+      {
+        "file": "subs/magic-spell-sfx/magical_4.ogg",
+        "author": "JaggedStone",
+        "url": "https://opengameart.org/content/magic-spell-sfx",
+        "title": "Magic Spell SFX: magical_4"
+      }
+    ]
+  },
   "sfx/sig_foxfire_voltage_1": {
     "file": "mix/sig_foxfire_voltage_1.wav",
     "licence": "CC0-1.0",

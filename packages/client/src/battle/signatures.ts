@@ -20,7 +20,7 @@ import type { MoveAnimDef } from './moveAnims';
 /** The bespoke effect layer each cinematic draws (sigfx/index.ts). */
 export type SignatureFx =
   | 'crescent' | 'volley' | 'pyre' | 'grace' | 'sunbreaker' | 'foxfire' | 'kamehameha' | 'miracle' | 'devour' | 'bankai' | 'rift' | 'aurora' | 'lotus'
-  | 'convergence' | 'descent';
+  | 'convergence' | 'descent' | 'thermal';
 
 export interface SignatureCinematic {
   readonly fx: SignatureFx;
@@ -179,6 +179,14 @@ export const SIGNATURE_CINEMATICS: Readonly<Record<string, SignatureCinematic>> 
     palette: { accent: '#bfe8ff', deep: '#0a1430', hot: '#ffffff' },
     leadMs: 1100, windupMs: 500, travelMs: 300, totalMs: 3000, sfx: ['wind_gust'], aimSfx: 'sig_cosmic_convergence',
     anim: { recoverMs: 380, attackerPose: 'windup' },
+  },
+  // kelvyre: the seam down its body splits open while a fire core and an ice core circle each other, then a helix of
+  // flame and ice races to the foe and the blast splits down the middle, half burning, half frozen
+  'Thermal Shock': {
+    fx: 'thermal', species: 'kelvyre', portrait: 'kelvyre', glint: [38, 24], lines: ['Thermal', 'Shock'], kicker: MYTHICAL,
+    palette: { accent: '#ff7a2a', deep: '#0a1a30', hot: '#9ad8ff' },
+    leadMs: 1100, windupMs: 700, travelMs: 300, totalMs: 3200, sfx: ['wind_gust', 'cry_ice'], aimSfx: 'sig_thermal_shock',
+    anim: { recoverMs: 400, attackerPose: 'windup' },
   },
 };
 

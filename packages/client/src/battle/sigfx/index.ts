@@ -15,6 +15,7 @@ import { MiracleFx } from './Miracle';
 import { PyreFx } from './Pyre';
 import { RiftFx } from './Rift';
 import { SunbreakerFx } from './Sunbreaker';
+import { ThermalFx } from './Thermal';
 import { VolleyFx } from './Volley';
 import type { FxProps } from './kit';
 
@@ -34,4 +35,5 @@ export const SIG_FX: Readonly<Record<SignatureFx, (p: FxProps) => ReactElement>>
   lotus: LotusFx,
   convergence: ConvergenceFx,
   descent: DescentFx,
+  thermal: ThermalFx,
 };

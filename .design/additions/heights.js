@@ -97,6 +97,7 @@ const EWAMON_HEIGHTS = {
   // mythicals
   lumyth: 1.2, noxmyth: 2.2,
   elemutt: 0.5, katamute: 1.3, ravatar: 2.6,
+  kelvyre: 2.1,
 
   // battle forms (`<species>_<form>`): the form rises, flares or bulks past the species' own height
   abysspark_tenjin: 1.0,

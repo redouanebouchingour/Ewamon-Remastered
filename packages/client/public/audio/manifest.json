@@ -111,7 +111,7 @@
       "urlFallback": "/audio/ambience/vesper.m4a?v=38fd9649"
     }
   },
-  "builtAt": "2026-10-26T11:46:21.696Z",
+  "builtAt": "2026-10-30T13:05:22.632Z",
   "sfx": {
     "anvil_strike": {
       "bus": "sfx",
@@ -2215,6 +2215,20 @@
           "hash": "f2ba3a03dc875fd4ce8670072081eb674ee6cb3312ff8de7b7fc90bba94d9df4",
           "url": "/audio/sfx/sig_sunbreaker_barrage_1.webm?v=f2ba3a03",
           "urlFallback": "/audio/sfx/sig_sunbreaker_barrage_1.m4a?v=f2ba3a03"
+        }
+      ],
+      "gainDb": 6,
+      "maxConcurrent": 1
+    },
+    "sig_thermal_shock": {
+      "bus": "sfx",
+      "clips": [
+        {
+          "bytes": 20131,
+          "durationSec": 2.294,
+          "hash": "2a785d23d8680a9ea561400c5f9657978b10469a8f4499ff61adfbde3009f84f",
+          "url": "/audio/sfx/sig_thermal_shock_1.webm?v=2a785d23",
+          "urlFallback": "/audio/sfx/sig_thermal_shock_1.m4a?v=2a785d23"
         }
       ],
       "gainDb": 6,

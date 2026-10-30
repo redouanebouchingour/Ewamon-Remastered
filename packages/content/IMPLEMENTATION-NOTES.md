@@ -936,3 +936,15 @@ there (17 forms rise past their species, e.g. hyoryu 3.5 → Majin 3.8 m); the r
 - Talking: their lines, paging past the last (the challenge) starts the battle, Escape walks away; once beaten, their
   `defeat` line and the challenge again (the server keeps the cooldown). The lines double as the NPC chat persona.
 - The battle shows their `look` (a KayKit body), not the rigged model.
+
+## kelvyre (#181), the divided mythical (2026-10-30)
+
+- `kelvyre` (Fire/Ice mythical, 108 / 142 / 92 / 138, 2.1 m): a Mewtwo-inspired lab creature split down the middle,
+  one half fire and the other ice. A single mythical (`MYTHICAL_IDS`, its own family: 90), the reward of the new
+  postgame quest `q15_divided_core` (Forgewall, giver null: the Champion, 140 witnessed, 30 wins; L60, flag
+  `mythical_divided`). Not in the battle-pass choice, so `BATTLE_PASS_MYTHICALS` stays lumyth / noxmyth.
+- New ability Thermal Divide (`.design/additions/abilities.js`): `statusImmunity` burn + freeze and a defender
+  `modifyDamage` 0.5 for Fire and Ice moves, both existing hook kinds (core unchanged, fuzz digests unchanged).
+- Signature move Thermal Shock (Ice 120, 90 %, 5 PP, burn at the default 30 %, non-contact), pinned at L39 so the L60
+  reward knows it beside Ice Beam, Flame Dash and Extrasensory. 181 species, 201 moves, 29 abilities, 15 story quests;
+  the "all species" achievement target is 181.

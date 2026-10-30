@@ -53,6 +53,7 @@ export const FLAG_REGISTRY: readonly FlagEntry[] = [
   { id: 'grove_restored', setBy: 'q10_restore_the_grove' },
   { id: 'mythical_night', setBy: 'q11_first_night' },
   { id: 'mythical_morning', setBy: 'q12_first_morning' },
+  { id: 'mythical_divided', setBy: 'q15_divided_core' },
   // server + league setsFlags
   { id: 'champion:zeon:beaten', setBy: 'zeon' },
   { id: 'elite:veil:beaten', setBy: 'veil' },

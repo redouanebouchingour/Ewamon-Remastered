@@ -3013,3 +3013,16 @@ the second isolated client (the component over the landing page: the foe and own
   (`SpectatorViews`) follow the battle setting, everything else the overworld one (render IMPLEMENTATION-NOTES
   "3D creatures"). The sprite catalog names each descriptor's body (`model: spriteId ?? speciesId`); the GLBs are
   served from `public/creature-models/` (built by `tools/creature-models`).
+
+## kelvyre's Thermal Shock cinematic (2026-10-30)
+
+- `battle/sigfx/Thermal.tsx`: the white-gold seam down Kelvyre's body splits open while a fire core and an ice core
+  circle each other faster and faster; released, a helix of flame and ice round a white line races to the foe; the
+  blast splits down the middle (fire one side, ice the other) with a white seam through the target, shards and embers
+  flying apart. Lead 1100, windup 700, travel 300 (impact at 2100), total 3200 ms, the Kamehameha clock; premix
+  `sig_thermal_shock`; portrait `public/signature/kelvyre.webp`.
+- Kelvyre's fire half faces its target in both sprites (the front looks left, the back away to the right), so the
+  embers / frost group flips with `scaleX(clamp(-1, cos(var(--ang) * 1deg) * 100, 1))`: embers toward the target,
+  frost away, whichever side attacks. Checked near and far at `/sigfx/?move=Thermal%20Shock[&side=far]`.
+- Kelvyre ships as stills (no flipbook: `spriteCatalog.test` lists it with the stills) and has no 3D model yet; the
+  sprite card stays its look with "Ewamons as 3D models" on.
