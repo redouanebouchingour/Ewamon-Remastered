@@ -123,6 +123,10 @@ fail under machine load and pass alone).
   persona each, their Ewamon stand beside them, and a whiteboard reads the pinned Discord list and the 8/10. Talking to
   all four completes the achievement `ach_original_party` (31 achievements). Outside, a student-house set piece on the
   door (`ewa_hq_front`): the team's Yaschamp logo on a blade sign, bikes, a pallet bench, pizza boxes, string lights.
+  Since the team's own retelling: sharper personas and lines (Yasin's short fuse, Mohaned the scapegoat, Yasser the
+  "neutral" one, Red1 the clown and his if statements), 24 banter lines, and on about 1 visit in 7 Mohaned is out
+  delivering kapsalons (his chair empty, not talkable, the others' banter about him). The twelve 2022 originals carry an
+  "OG 2022" mark in the Ewadex.
 - **astaroth #180** (2026-10-26, inspired by Asta and the devils of Black Clover): a Dark/Ghost legendary, the tenth
   static (L60 after the title), animated front and back from the user's two videos (keyed loops, 32 and 18 pages).
   It waits in the **Sunken Crypt**, a hidden building of its own at the back of Vesperveil's graveyard (content

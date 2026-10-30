@@ -11,6 +11,12 @@
  * (`tools/creature-models --npc`, served from `/npc-models/`), placed by the client in the pocket's frame. Talking to
  * all four completes the achievement `ach_original_party` (the server resolves these interior NPCs for `talkTo`).
  * Never a story gate.
+ *
+ * The lines and personas follow Red1 and Yasser's own retelling (2026-10-30): Yasin the leader with the short fuse,
+ * Mohaned the one who always gets blamed (and the kapsalon run), Yasser the cheerful "neutral" one with the if
+ * statements, Red1 the youngest and the clown. On some visits Mohaned is out delivering kapsalons (`DEV_TEAM.away`):
+ * his chair stands empty and the others' banter is about him. The twelve original 2022 species are `OG_2022_SPECIES`
+ * (the Ewadex marks them).
  */
 import type { InteriorBoard, InteriorDef, InteriorNpc, InteriorPlacement } from '../types';
 import { toWorld } from '../plan';
@@ -39,6 +45,11 @@ export interface DevTeam {
   readonly desk: { readonly model: string; readonly lx: number; readonly lz: number; readonly yaw: number; readonly heightM: number };
   readonly members: readonly DevTeamMember[];
   readonly banter: readonly DevTeamBanterLine[];
+  /**
+   * Mohaned's kapsalon run: on a visit, with `chance` (the client rolls once per entry), `member`'s chair stands empty,
+   * his model and his "Talk to" are gone, and the others chat `banter` instead (never by `member`).
+   */
+  readonly away: { readonly member: string; readonly chance: number; readonly banter: readonly DevTeamBanterLine[] };
   readonly board: InteriorBoard;
 }
 
@@ -103,76 +114,113 @@ export const DEV_TEAM: DevTeam = {
     seat({
       key: 'red1', name: 'Red1', model: 'ewa_red1', heightM: 1.951, side: 1, end: 1, pet: 'darkone',
       persona:
-        'Red1 (Redouane), the frontender of the four HvA students who built the first Ewamon in 2022 for the EWA project. ' +
-        'You drew every Ewamon yourself in pixel art: Darkone is you (Redone, plus your favourite mythical), Moflame you made to roast Mohaned. ' +
-        'Proud, playful, the biggest Pokémon fan of the team',
+        'Red1 (Redouane), the youngest of the four HvA students who built the first Ewamon in 2022 for the EWA project. ' +
+        'The designer, the frontender, the sprite maker and the battle frontend: you drew every Ewamon in pixel art (Darkone is you, Moflame you made to roast Mohaned). ' +
+        'Being the youngest you are the clown: you troll, you are a bit annoying, and you sneakily send Yasser dumb gifs about the beef between Mohaned and Yasin. ' +
+        'When the loop broke you built the whole Ewadex out of if statements, and you defend it: bro, if it works, it works',
       lines: [
-        'Ewa! Welcome to the EWA room. Hogeschool van Amsterdam, Enterprise Web Application. They said: build a board game. We said: what about Pokémon?',
-        'Every Ewamon in here I drew myself, pixel by pixel. Darkone is me: Redone, plus my favourite mythical. Darkone better quality, by the way. Check the channel.',
-        'Moflame? Based on Mohaned. We flame him so much he literally caught fire. Yaschamp is Yasin, Resilian is Yasser backwards.',
-        'Frontend, HTML, CSS, the wiki, the docs, the starter page after you register. All me. The border text on the homepage too. Do not touch it.',
-        'Five months of this. Best project I ever did, because all four of us actually loved it.',
+        'Ewa! Welcome to the EWA room. Hogeschool van Amsterdam, Enterprise Web Application. Every other team made a card game. We made a whole game.',
+        'Designer, frontender, sprite maker, battle frontend. Everything you see in here, I drew. Front sprites and back sprites, pixel by pixel.',
+        'Darkone is me. Moflame is Mohaned, because we flame him. Yaschamp is Yasin, Resilian is Yasser backwards.',
+        'We have a professor now, Prof. Wynn. Nice lady. But the original EWA professor? Ian Fordbred. Gave me a study delay. Half of Ewamon got one. We do not forgive.',
+        'The Ewadex was one big pile of if statements. If number 1, if number 2... The loop broke, the ifs did not. Bro, if it works, it works.',
+        'Back then we designed a whole world map. Never used it, nobody knew how to make a map. Look at us now.',
+        'Yo, I saw a groovy steal time on the route the other day. If you know, you know.',
+        'I am the youngest, so I am the clown. Somebody has to send the gifs.',
       ],
     }),
     seat({
       key: 'mohaned', name: 'Internet Friend', model: 'ewa_mohaned', heightM: 1.918, side: -1, end: 1, pet: 'moflame',
       persona:
-        'Mohaned, called Internet Friend, the database and backend guy of the four HvA students who built the first Ewamon in 2022. ' +
-        'You did the database, JWT tokens and deployment. The team roasts you all the time and Red1 turned you into Moflame. ' +
-        'Calm, a bit sarcastic, secretly proud',
+        'Mohaned, called Internet Friend, one of the four HvA students who built the first Ewamon in 2022. ' +
+        'You did the database, JWT, deployment and CI/CD, the jobs the others got stressed about, and you always help when someone needs you. ' +
+        'But you are the one who always gets blamed, and you are far too nonchalant about your mistakes: you once left in the middle of a deadline to deliver kapsalons for 3.50 an hour, ' +
+        'and your sorry never sounds like you mean it ("Yeah, shit man, sorry. I had to work, right?")',
       lines: [
-        'Hey. Database guy. Every Ewamon you own is a row I connected to a user. You are welcome.',
-        'JWT tokens, access and refresh. Username and email checks on register. Deployment. Nobody sees it, everybody needs it.',
-        'Red1 made Moflame out of me. A fire dog. Because they flame me. Very funny. It is still a starter though, so who is laughing now?',
-        'Search for a player who does not exist and you get my alert. Small thing. Still proud of it.',
+        'Hey. Internet Friend. Database, JWT, deployment, CI/CD. The stuff that makes the others sweat. Need help? I got you.',
+        'Every Ewamon you own is a row I connected to a user. You are welcome.',
+        'The profile page took a while. A long while. It is a very good profile page.',
+        'The tests? Oh, those worked for me ages ago. I just never said anything.',
+        'The kapsalons? Yeah, shit man, sorry. I had to work, right? I knew I was not allowed. But okay.',
+        'Red1 made Moflame out of me. A fire dog. Still a starter though, so who is laughing now?',
       ],
     }),
     seat({
       key: 'yasser', name: 'King Smali', model: 'ewa_yasser', heightM: 1.96, side: -1, end: -1, pet: 'resilian',
       persona:
-        'Yasser, called King Smali, the feature builder of the four HvA students who built the first Ewamon in 2022. ' +
-        'You built the shop, the wallet, unique Ewamon in the store and profile picture uploads. Red1 made you into Resilian, your name backwards as a bug. ' +
-        'Confident, funny, a big Pokémon fan',
+        'Yasser, called King Smali, one of the four HvA students who built the first Ewamon in 2022. ' +
+        'You built the shop, the wallet and a bit of everything, and you grind until 4am until it works. ' +
+        'The most cheerful and the friendliest of the four. You swear you are neutral in the beef between Mohaned and Yasin (you are not, not about the kapsalons). ' +
+        'You know your shop was the ugliest ever made, and you do not care: if it works, it works',
       lines: [
-        'Welcome, welcome. King Smali. I build features. The shop? Mine. The wallet? Also mine.',
-        'Buy a unique Ewamon in the store, upload a profile picture, win money after a battle. All features by the King.',
-        'Resilian is me. Ressay: Yasser backwards. Red1 turned me into a flying bug and honestly? It goes hard.',
-        'Me and Red1 are the real Pokémon fans of this team. The other two just pretend.',
+        'Welcome, welcome! King Smali. Shop, wallet, a bit of everything. Pull up a chair.',
+        'Ugliest shop ever made. But you could buy Ewamon in it. If it works, it works.',
+        'I drew one sprite, Nerohat. My wrist was finished after. Red1 did the back sprite. Respect.',
+        'Assessment day, my turn comes, and right then the server trips. The project will not run. 6.1. Wallah, of all the moments.',
+        'Mo versus Ching? I am neutral. Fully neutral. Okay, about the kapsalons, maybe I have a side.',
+        'Resilian is me. Ressay, Yasser backwards. A flying bug and honestly? It goes hard.',
       ],
     }),
     seat({
       key: 'yasin', name: 'Mr Ching', model: 'ewa_yasin', heightM: 1.888, side: 1, end: -1, pet: 'yaschamp',
       persona:
         'Yasin, called Mr Ching, the team lead of the four HvA students who built the first Ewamon in 2022. ' +
-        'You built the whole turn-based battle system and most of the hard backend. Red1 made you into Yaschamp, the Moroccan boxer. ' +
-        'Calm leader, tired from late nights, determined',
+        'You built the battle system, which was the real project, and you are the hardest worker and the smartest of the four. ' +
+        'You have a short fuse: you go off about almost everything, mostly at Mohaned, and whoever makes a mistake gets hammered hardest by you. Your crash outs are always valid',
       lines: [
-        'Mr Ching. Team lead. I built the battle system: turn based, two players, invite links. The whole engine.',
-        'Yaschamp is me. Boxer, Moroccan, champion. Look at those gloves. That is a real one.',
-        'First deadline we stayed up till 5am on Discord. Everyone waiting on me to finish the battle. We did not make it. Wallah, it was so close.',
-        'So we went for the redo deadline. And we nailed it. Presented it, 8 out of 10. Not bad for four guys and a Pokémon dream.',
-        'Devops too. If the server is down, it is not me. It is probably Mohaned.',
+        'Mr Ching. Team lead. The battle system was the project. Everything else was extra.',
+        'Yaschamp is me. Moroccan boxer. These gloves knocked out Duha. If you know, you know.',
+        'Do not make mistakes next to me. I will find them. And I will talk about them.',
+        'The night before the first deadline they kept saying: Yasin always fixes it. I knew it was not going to make it. I just did not want to say it.',
+        'Then Red1 says: boys, look outside. Blue sky. Birds. We did not make it. So we nailed the redo. 8 out of 10.',
+        'Mohaned went to deliver kapsalons. During a deadline. For 3.50 an hour. I am still not over it.',
       ],
     }),
   ],
-  // a night on Discord before the first deadline (the 5/12 task split, Red1's @here, the battle that would not finish)
+  // a night on Discord before the first deadline (Red1's @here, the tests, the if statements, the battle that would not finish)
   banter: [
     { by: RED1, text: '@here darkone better quality, check it' },
     { by: YASIN, text: 'Clean. Now the battle needs a second player' },
     { by: MOHANED, text: 'JWT is in. Who broke register again?' },
-    { by: RED1, text: 'Not me. I was on the border text for the homepage' },
-    { by: YASSER, text: 'Shop is live. You can buy Ewamon now. Wallet works' },
-    { by: MOHANED, text: 'Bro why is Moflame literally me' },
-    { by: RED1, text: 'Because we flame you. It is in the name' },
-    { by: YASSER, text: 'And Resilian? My name backwards? A bug?' },
-    { by: RED1, text: 'A flying bug KING. Wallah you are welcome' },
-    { by: MOHANED, text: 'Ewa, it is 4am. Ching, is the battle done?' },
-    { by: YASIN, text: 'Turns work. Damage works. Nog één bug, I swear' },
+    { by: YASIN, text: 'Who do you think. Check your own commit, Mo' },
+    { by: MOHANED, text: 'Yeah, shit man, sorry' },
+    { by: YASIN, text: 'That sorry is not from the heart' },
+    { by: RED1, text: 'Smali, check your DMs. New gif' },
+    { by: YASSER, text: 'Bro stop, I am neutral in this' },
+    { by: YASSER, text: 'BOYS. THE TESTS. THEY FINALLY WORK' },
+    { by: MOHANED, text: 'Oh, those worked for me ages ago' },
+    { by: YASSER, text: 'And you said NOTHING??' },
+    { by: YASIN, text: 'Red1, why is the Ewadex all if statements' },
+    { by: RED1, text: 'Bro. If it works, it works' },
+    { by: RED1, text: 'Yo, I saw a groovy steal time on the route yesterday' },
+    { by: YASSER, text: 'If you know, you know' },
+    { by: MOHANED, text: 'Ching, it is 4am. Is the battle done?' },
+    { by: YASIN, text: 'Nog één bug, I swear' },
+    { by: RED1, text: 'Boys. Look outside. It is light. Birds' },
     { by: YASSER, text: 'We are not making this deadline, are we' },
     { by: YASIN, text: 'Then we nail the redo' },
     { by: RED1, text: 'Redo deadline. 8/10. Write it down' },
+    { by: YASSER, text: 'If Ewamon cards ever drop, the OGs get 30th anniversary cards' },
+    { by: RED1, text: 'The OGs are our Kanto. Respect them' },
     { by: YASIN, text: 'Yaschamp says: one more round' },
   ],
+  away: {
+    member: MOHANED,
+    chance: 1 / 7,
+    banter: [
+      { by: YASIN, text: 'Where is Mo?' },
+      { by: RED1, text: 'Delivering kapsalons again' },
+      { by: YASIN, text: 'During a DEADLINE??' },
+      { by: YASSER, text: '3.50 an hour, bro' },
+      { by: YASIN, text: 'I am going to crash out' },
+      { by: RED1, text: 'Valid crash out' },
+      { by: YASSER, text: 'I am neutral. Okay no, this one is not okay' },
+      { by: RED1, text: 'Smali, gif incoming' },
+      { by: YASIN, text: 'When he is back he does the database AND the profile page' },
+      { by: RED1, text: 'The profile page? See you in 100 years' },
+      { by: YASSER, text: 'Moflame is just sitting there waiting, man' },
+    ],
+  },
   board: {
     id: id('board'),
     // where the player reads it: in front of the board on the back wall
@@ -183,10 +231,34 @@ export const DEV_TEAM: DevTeam = {
       'Red1 · 5/12/22, 11:51 PM. moo: connect ewamons to users, the database. Red1 (soulking): json object with gender done, a new page with a starter Ewamon (a must after registering).',
       'Everyone: get the data from the back end. Yasser: shop with buyable Ewamons, the wallet. Yasin: devops, the battle system working with 2 players, invite links generated.',
       "Under it, in red marker: 'First deadline: missed. 5am on Discord, waiting on the battle.' Next to it, in green: 'Redo deadline: presented. 8/10.'",
+      'A printout taped beside it, THE OGs: Moflame, Resilian, Miscarmen, Mismagmen, Yahit, Yaschamp, Raidori, Kygra, Smellduck, Acier, Nerohat, Darkone. Under it, in pen: our Kanto. If Ewamon cards ever drop, these get 30th anniversary cards.',
       'A sticky note in the corner: HvA · EWA project · Ewamon. Java, Spring Boot, Angular, PostgreSQL. We built it because we loved it.',
     ],
   },
 };
+
+/**
+ * The twelve Ewamon of the very first Ewamon (the 2022 HvA EWA project): drawn by Red1, Nerohat by Yasser. The Ewadex
+ * marks them "OG 2022". Their evolutions came later and are not on the list.
+ */
+export const OG_2022_SPECIES: readonly string[] = [
+  'moflame', 'resilian', 'miscarmen', 'mismagmen', 'yahit', 'yaschamp', 'raidori', 'kygra', 'smellduck', 'acier', 'nerohat', 'darkone',
+];
+
+/** One of the twelve originals (`OG_2022_SPECIES`). */
+export function isOg2022(speciesId: string): boolean {
+  return OG_2022_SPECIES.includes(speciesId);
+}
+
+/** What the team chats about this visit: the night before the deadline, or the kapsalon run while `away` is out. */
+export function devTeamBanter(away: string | null): readonly DevTeamBanterLine[] {
+  return away === DEV_TEAM.away.member ? DEV_TEAM.away.banter : DEV_TEAM.banter;
+}
+
+/** Rolls one visit (`random` in [0, 1)): the member out delivering kapsalons, or null when all four are in. */
+export function devTeamAwayRoll(random: number): string | null {
+  return random < DEV_TEAM.away.chance ? DEV_TEAM.away.member : null;
+}
 
 /** The team's house, or null. */
 export function devTeamIn(interiorId: string): DevTeam | null {
@@ -217,13 +289,16 @@ export interface DevTeamModel {
   readonly glow?: boolean;
 }
 
-/** The desk set and the four in world coordinates for a pocket placed at `at` (client SceneDirector, render sandbox). */
-export function devTeamModels(at: Pick<InteriorPlacement, 'x' | 'z' | 'yaw'>): readonly DevTeamModel[] {
+/**
+ * The desk set and the four in world coordinates for a pocket placed at `at` (client SceneDirector, render sandbox),
+ * without `away` (the member out on a kapsalon run, `devTeamAwayRoll`).
+ */
+export function devTeamModels(at: Pick<InteriorPlacement, 'x' | 'z' | 'yaw'>, away: string | null = null): readonly DevTeamModel[] {
   const d = DEV_TEAM.desk;
   const [dx, dz] = toWorld(at, d.lx, d.lz);
   return [
     { id: DEV_TEAM_DESK_ID, model: d.model, x: dx, z: dz, yaw: d.yaw + at.yaw, heightM: d.heightM, bubbleM: d.heightM, glow: true },
-    ...DEV_TEAM.members.map((m) => {
+    ...DEV_TEAM.members.filter((m) => m.npc.id !== away).map((m) => {
       const [x, z] = toWorld(at, m.npc.lx, m.npc.lz);
       return { id: m.npc.id, model: m.npc.model, x, z, yaw: m.npc.facing + at.yaw, heightM: m.heightM, bubbleM: m.headM };
     }),

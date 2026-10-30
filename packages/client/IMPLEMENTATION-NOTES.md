@@ -3041,3 +3041,9 @@ the second isolated client (the component over the landing page: the foe and own
 - `InteriorDef.boards` are 'lore' targets ("Read") opening the board's text, client-local (nothing over the wire).
 - The house's outside (content `DEV_TEAM_FRONT`) joins Mirevale's `npcModels` set beside the foosball club's slot
   (`placeFoosballClub` places both kinds per zone) with two client blockers (`ewa-hq-front:<k>`), like the table.
+- The kapsalon visit: entering the house the director rolls once (`devTeamAwayRoll`, deps `random`, default
+  Math.random) and keeps it until the player leaves; while Mohaned is out his model is not placed and his "Talk to" is
+  disabled. `director.devTeamAway` tells World3D which banter to run (`devTeamBanter`). Client-only: the server never
+  knows, and `ach_original_party` simply waits for a visit with all four in.
+- The Ewadex entry shows an "OG 2022" chip (gold outline, `data-testid=dex-og`) on the twelve 2022 originals (content
+  `isOg2022`).

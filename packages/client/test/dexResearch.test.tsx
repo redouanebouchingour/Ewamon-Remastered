@@ -83,6 +83,15 @@ describe('the Dex with research', () => {
     expect(within(tile).getByText('New')).toBeTruthy();
   });
 
+  it('marks one of the twelve 2022 originals OG 2022, and only those', () => {
+    withDex({ moflame: 1, bramblecub: 1 }, ['moflame', 'bramblecub']);
+    renderAt('/play/dex?id=moflame');
+    expect(screen.getByTestId('dex-og').textContent).toBe('OG 2022');
+    cleanup();
+    renderAt('/play/dex?id=bramblecub');
+    expect(screen.queryByTestId('dex-og')).toBeNull();
+  });
+
   it('plays the reveal once when a new entry opens', async () => {
     withDex({ bramblecub: 1 }, ['bramblecub'], null);
     renderAt('/play/dex?id=bramblecub');

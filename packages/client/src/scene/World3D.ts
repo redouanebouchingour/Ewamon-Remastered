@@ -33,7 +33,7 @@
  */
 import { getStateCallbacks } from '@colyseus/sdk';
 import { Group, Vector3 } from 'three/webgpu';
-import { BIKE_ITEM, BODIES, HOLLOWED_FLAG, POSTGAME_FLAG, SHADOW_MAX, devTeamIn, devTeamMember, devTeamModels, foosballClubIn, foosballPlayer, harvestStateFor, interiorNpcs, interiorTrainers, interiorsFor, obstacleRefusal, obstacleRefusalText, shadowNotice, zone as zoneDef } from '@ewa/content';
+import { BIKE_ITEM, BODIES, HOLLOWED_FLAG, POSTGAME_FLAG, SHADOW_MAX, devTeamBanter, devTeamIn, devTeamMember, devTeamModels, foosballClubIn, foosballPlayer, harvestStateFor, interiorNpcs, interiorTrainers, interiorsFor, obstacleRefusal, obstacleRefusalText, shadowNotice, zone as zoneDef } from '@ewa/content';
 import type { BadgeId, DevTeamModel, ZoneDef, ZoneId } from '@ewa/content';
 import type { BattleState, CreatureInstance } from '@ewa/core';
 import { EMOTE_BREAKDANCE, EMOTE_MAX, FISH_REACH_M, SPECTATE_RANGE_M, emoteLengthMs } from '@ewa/protocol';
@@ -378,7 +378,7 @@ class World implements World3D {
   /** Team Ewamon HQ's banter inside the house (same store and bubble), its models in world coordinates per pocket */
   private readonly teamBanterClock = createBanterClock(DEV_TEAM_BANTER_REST_MS);
   private teamBanterLine = -1;
-  private teamModels: { readonly pocket: string; readonly models: readonly DevTeamModel[] } | null = null;
+  private teamModels: { readonly pocket: string; readonly away: string | null; readonly models: readonly DevTeamModel[] } | null = null;
   /** Team Ewamon HQ: each member's Ewamon beside their chair */
   private pocketPets: PocketPetViews | null = null;
 
@@ -2796,9 +2796,14 @@ class World implements World3D {
   private stepTeamBanter(frameDt: number, free: boolean): void {
     const p = this.director.pocket;
     const team = p === null || !free ? null : devTeamIn(p.def.id);
-    if (team !== null && p !== null && this.teamModels?.pocket !== p.def.id) this.teamModels = { pocket: p.def.id, models: devTeamModels(p.at) };
-    const i = this.teamBanterClock.step(frameDt, team !== null, uiBusy(), team?.banter ?? []) ?? -1;
-    const line = i < 0 || team === null ? null : team.banter[i]!;
+    // a kapsalon visit (the director's roll): his chair is empty and the others talk about him
+    const away = this.director.devTeamAway;
+    if (team !== null && p !== null && (this.teamModels?.pocket !== p.def.id || this.teamModels.away !== away)) {
+      this.teamModels = { pocket: p.def.id, away, models: devTeamModels(p.at, away) };
+    }
+    const banter = team === null ? [] : devTeamBanter(away);
+    const i = this.teamBanterClock.step(frameDt, team !== null, uiBusy(), banter) ?? -1;
+    const line = i < 0 || team === null ? null : banter[i]!;
     if (i !== this.teamBanterLine) {
       this.teamBanterLine = i;
       if (line === null) clearBanterLine();

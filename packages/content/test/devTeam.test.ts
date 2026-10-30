@@ -3,7 +3,7 @@
  * footprint (no pocket moves), the four replace the resident, the board reads, and the achievement counts all four.
  */
 import { describe, expect, it } from 'vitest';
-import { DEV_TEAM, DEV_TEAM_FRONT, DEV_TEAM_HOUSE, QUESTS, SPECIES, devTeamFrontIn, devTeamIn, devTeamMember, interiorNpcs, interiorsFor, zonePlan } from '../src/index';
+import { DEV_TEAM, DEV_TEAM_FRONT, DEV_TEAM_HOUSE, OG_2022_SPECIES, QUESTS, SPECIES, devTeamAwayRoll, devTeamBanter, devTeamFrontIn, devTeamIn, devTeamMember, devTeamModels, interiorNpcs, interiorsFor, isOg2022, zonePlan } from '../src/index';
 
 const EM_DASH = String.fromCharCode(0x2014);
 
@@ -41,11 +41,41 @@ describe('Team Ewamon HQ', () => {
     for (const l of DEV_TEAM.banter) expect(ids.has(l.by)).toBe(true);
     const text = [
       ...DEV_TEAM.banter.map((l) => l.text),
+      ...DEV_TEAM.away.banter.map((l) => l.text),
       ...DEV_TEAM.members.flatMap((m) => [m.npc.name, m.npc.persona, ...m.npc.lines]),
       DEV_TEAM.board.title,
       ...DEV_TEAM.board.text,
     ].join('\n');
     expect(text.includes(EM_DASH)).toBe(false);
+  });
+
+  it("on a kapsalon visit Mohaned's chair is empty: his model is gone and the others chat about him", () => {
+    const away = DEV_TEAM.away;
+    expect(devTeamMember(away.member)?.npc.name).toBe('Internet Friend');
+    expect(away.chance).toBeGreaterThan(0);
+    expect(away.chance).toBeLessThan(0.5);
+    expect(devTeamAwayRoll(0)).toBe(away.member);
+    expect(devTeamAwayRoll(away.chance)).toBeNull();
+    expect(devTeamAwayRoll(0.99)).toBeNull();
+    expect(devTeamBanter(null)).toBe(DEV_TEAM.banter);
+    expect(devTeamBanter(away.member)).toBe(away.banter);
+    const ids = new Set(DEV_TEAM.members.map((m) => m.npc.id));
+    for (const l of away.banter) {
+      expect(ids.has(l.by)).toBe(true);
+      expect(l.by).not.toBe(away.member);
+    }
+    const at = { x: 0, z: 0, yaw: 0 };
+    expect(devTeamModels(at).map((m) => m.id)).toContain(away.member);
+    const without = devTeamModels(at, away.member).map((m) => m.id);
+    expect(without).not.toContain(away.member);
+    expect(without).toHaveLength(DEV_TEAM.members.length);
+  });
+
+  it('the twelve OG species are real and isOg2022 knows them', () => {
+    expect(OG_2022_SPECIES).toHaveLength(12);
+    for (const id of OG_2022_SPECIES) expect(SPECIES.some((s) => s.id === id)).toBe(true);
+    for (const m of DEV_TEAM.members) expect(isOg2022(m.pet.species)).toBe(true);
+    expect(isOg2022('moblaze')).toBe(false);
   });
 
   it('ach_original_party asks to talk to all four', () => {

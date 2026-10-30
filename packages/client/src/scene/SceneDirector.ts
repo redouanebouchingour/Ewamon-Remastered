@@ -23,7 +23,7 @@
  * and the prediction collider re-opens its stamped samples (`ObstacleSink.setObstacles`) — on load and on every flag
  * change, only when the cleared set changed.
  */
-import { DEV_TEAM_FRONT, devTeamFrontIn, devTeamIn, devTeamModels, foosballClubIn, getHeightfield, harvestStateFor, interiorAt, interiorsFor, obstacleAt, obstacleFlag, zone as zoneDef } from '@ewa/content';
+import { DEV_TEAM, DEV_TEAM_FRONT, devTeamAwayRoll, devTeamFrontIn, devTeamIn, devTeamModels, foosballClubIn, getHeightfield, harvestStateFor, interiorAt, interiorsFor, obstacleAt, obstacleFlag, zone as zoneDef } from '@ewa/content';
 import type { HarvestState, PlacedInterior, ZoneDef, ZoneId } from '@ewa/content';
 import type { BattleFormat } from '@ewa/core';
 import { BATTLER_SEPARATION, BATTLE_DISTANCE, BATTLE_PITCH, BATTLE_YAW_OFFSET, doorOf, fitCentre, headingYaw, trainerSlot } from '@ewa/render';
@@ -188,6 +188,8 @@ export interface SceneDirector {
   /** Phase A: the pocket whose floor the player stands on (null outside); call after every step / warp / correction. */
   updatePocket(x: number, z: number): void;
   readonly pocket: PlacedInterior | null;
+  /** Team Ewamon HQ: the member out on a kapsalon run this visit (content `devTeamAwayRoll`), else null. */
+  readonly devTeamAway: string | null;
   /**
    * The rig's current yaw (radians), or null in first person (every hall wall stands); forwarded to `interiors.setView`
    * when it changed while a pocket is active.
@@ -226,6 +228,8 @@ export interface SceneDirectorDeps {
   readonly obstacles?: () => ObstacleSink | null;
   /** Team Ewamon HQ: the team's pets (`PocketPetViews`), synced on entering / leaving a pocket. */
   readonly pocketPets?: () => { sync(p: PlacedInterior | null): void } | null;
+  /** Team Ewamon HQ's kapsalon roll, once per visit (content `devTeamAwayRoll`); default Math.random */
+  readonly random?: () => number;
 }
 
 /** Phase D10: what re-opens a cleared obstacle's stamped samples for prediction (the client `StepCollider`). */
@@ -269,6 +273,8 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
   let pocket: PlacedInterior | null = null;
   // Team Ewamon HQ's models stand in place of the zone's set (`placeDevTeam`)
   let placedDevTeam = false;
+  // the member out on a kapsalon run this visit (rolled on entering, kept until leaving)
+  let devTeamAway: string | null = null;
   let floors: FloorIndex | null = null;
   let outsideHeading: Heading | null = null;
   let viewYaw: number | null = Number.NaN;
@@ -344,13 +350,23 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
    * Team Ewamon HQ (content `devTeamModels`): the desk and the four are placed while the player stands in the house
    * (the models are not tied to a pocket's visibility, and the halls are roofless) and the zone's set comes back on
    * leaving it. Their actors are never spawned (`pocketActors` skips NPCs with a model); talking is the client's.
+   * Each visit rolls Mohaned's kapsalon run once (content `devTeamAwayRoll`): while he is out his model is not placed
+   * and his "Talk to" is off.
    */
   function placeDevTeam(p: PlacedInterior | null): void {
     const inHouse = p !== null && devTeamIn(p.def.id) !== null;
     if (inHouse) {
-      d.renderer.npcModels?.set(devTeamModels(p.at));
+      if (!placedDevTeam) devTeamAway = devTeamAwayRoll((d.random ?? Math.random)());
+      d.renderer.npcModels?.set(devTeamModels(p.at, devTeamAway));
       placedDevTeam = true;
-    } else if (placedDevTeam) placeFoosballClub(current);
+    } else {
+      devTeamAway = null;
+      if (placedDevTeam) placeFoosballClub(current);
+    }
+    for (const m of DEV_TEAM.members) {
+      const e = d.targets.staticEntries().find((x) => x.id === m.npc.id);
+      if (e !== undefined) e.enabled = m.npc.id !== devTeamAway;
+    }
     d.pocketPets?.()?.sync(p);
   }
 
@@ -535,6 +551,9 @@ export function createSceneDirector(d: SceneDirectorDeps): SceneDirector {
     },
     get pocket() {
       return pocket;
+    },
+    get devTeamAway() {
+      return devTeamAway;
     },
     get pocketActors() {
       return activeActors;

@@ -970,3 +970,8 @@ there (17 forms rise past their species, e.g. hyoryu 3.5 → Majin 3.8 m); the r
   team's group picture; four bikes, a pallet bench, pizza boxes, string lights). The plan building is untouched: the
   door is measured from `zonePlan('mirevale').doors` like the foosball table, and `devTeam.test` fails if the plan ever
   moves it. Its bike rack and bench are client-side blockers that keep the door approach clear.
+- From Red1 and Yasser's retelling: new personas and lines, 24 banter lines (the tests Mohaned kept quiet about, the
+  Ewadex made of if statements, the dawn after the missed deadline). `DEV_TEAM.away`: Mohaned's kapsalon run, rolled by
+  the client once per visit (`devTeamAwayRoll`, 1 in 7) with its own banter (`devTeamBanter(away)`, never by him);
+  `devTeamModels(at, away)` leaves him out. `OG_2022_SPECIES` / `isOg2022`: the twelve originals (validated as real
+  species), marked in the client's Ewadex. The board gained the OG list.

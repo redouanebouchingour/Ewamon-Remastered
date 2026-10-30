@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
-import { RELICS, RESEARCH_LEVEL_POINTS, RESEARCH_MAX_LEVEL, researchProgressOf } from '@ewa/content';
+import { RELICS, RESEARCH_LEVEL_POINTS, RESEARCH_MAX_LEVEL, isOg2022, researchProgressOf } from '@ewa/content';
 import { VARIANT_KEYS } from '@ewa/protocol';
 import type { BattleFormDef, SpeciesDef, TypeName, VariantKey } from '@ewa/core';
 import { hushEntry, playCry, readEntry } from '../../audio/dexVoice';
@@ -201,6 +201,11 @@ export function DexEntry({ sp, state, research, counters, variants, alpha, shiny
               <TypeBadge key={t} type={t} />
             ))}
             <span className={cx(s.rarity, s[`r_${sp.rarity}`])}>{sp.rarity}</span>
+            {isOg2022(sp.id) && (
+              <span className={s.og} title="One of the twelve originals, drawn for the very first Ewamon (HvA EWA project, 2022)" data-testid="dex-og">
+                OG 2022
+              </span>
+            )}
             <span className={s.height} title="How tall it stands, as it is drawn in the world" data-testid="dex-height">
               {formatHeight(creatureHeightM(sp, form, view.alpha))}
             </span>

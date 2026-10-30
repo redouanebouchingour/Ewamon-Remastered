@@ -40,7 +40,7 @@ import { SPECIES } from './data/species';
 import { MOVES, SPREAD_MOVES } from './data/spreadMoves';
 import { ABILITIES } from './data/abilities';
 import { foosballTrainers } from './data/foosball';
-import { DEV_TEAM, DEV_TEAM_NPC_IDS } from './data/devTeam';
+import { DEV_TEAM, DEV_TEAM_NPC_IDS, OG_2022_SPECIES } from './data/devTeam';
 import { ITEMS } from './data/items';
 import { ORBS } from './data/orbs';
 import { CONSUMABLES } from './data/consumables';
@@ -889,6 +889,7 @@ export function validate(opts: ValidateOptions = {}, tables: ContentTables = DEF
       // Team Ewamon HQ: the redressed house exists, its pets are real species
       if (z.id === 'mirevale' && !pockets.some((p) => p.def.id === DEV_TEAM.interior)) err(`zone ${z.id}: no pocket ${DEV_TEAM.interior} for the dev team`);
       if (z.id === 'mirevale') for (const m of DEV_TEAM.members) if (!speciesById.has(m.pet.species)) err(`dev team ${m.npc.id}: pet species '${m.pet.species}' unknown`);
+      if (z.id === 'mirevale') for (const sp of OG_2022_SPECIES) if (!speciesById.has(sp)) err(`dev team: OG species '${sp}' unknown`);
       const t = ENCOUNTER_TABLES.find((x) => x.zoneId === z.id);
       if (t !== undefined && t.slots.some((s) => s.medium === 'water')) {
         if (water === 0) err(`zone ${z.id}: table has water slots but the heightfield has no water samples`);

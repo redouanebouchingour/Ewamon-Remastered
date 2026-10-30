@@ -260,7 +260,7 @@ export type { ObstacleRefusal, StampField } from './obstacles';
 export { FOOSBALL_CLUB, foosballClubIn, foosballPlayer, foosballTrainers } from './data/foosball';
 export type { FoosballBanterLine, FoosballClub, FoosballModel, FoosballPlayer } from './data/foosball';
 // ─── Team Ewamon HQ (Mirevale house 5 redressed: the original team at their desk) ─────────
-export { DEV_TEAM, DEV_TEAM_DESK_ID, DEV_TEAM_FRONT, DEV_TEAM_HOUSE, DEV_TEAM_NPC_IDS, devTeamFrontIn, devTeamIn, devTeamMember, devTeamModels, devTeamPets } from './data/devTeam';
+export { DEV_TEAM, DEV_TEAM_DESK_ID, DEV_TEAM_FRONT, DEV_TEAM_HOUSE, DEV_TEAM_NPC_IDS, OG_2022_SPECIES, devTeamAwayRoll, devTeamBanter, devTeamFrontIn, devTeamIn, devTeamMember, devTeamModels, devTeamPets, isOg2022 } from './data/devTeam';
 export type { DevTeam, DevTeamBanterLine, DevTeamFront, DevTeamMember, DevTeamModel } from './data/devTeam';
 
 // ─── the zone plan (layout, buildings, lights, props, footprints; audit R1) ───

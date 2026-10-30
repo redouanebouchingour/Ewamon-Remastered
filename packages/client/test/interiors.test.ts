@@ -7,6 +7,9 @@
  */
 import { describe, expect, it } from 'vitest';
 import { leaderSpot,
+  DEV_TEAM,
+  DEV_TEAM_HOUSE,
+  devTeamModels,
   LEAGUE,
   getHeightfield,
   interiorGates,
@@ -345,5 +348,55 @@ describe('Phase D7 overworld weather on the client', () => {
     const door = interiorWarps('mirevale').find((w) => w.id === 'mirevale.gym.out')!;
     d.updatePocket(door.toX, door.toZ);
     expect(weather().at(-1)).toBe('weather rain');
+  });
+});
+
+describe('Team Ewamon HQ on the client', () => {
+  /** A Mirevale director whose kapsalon rolls come from `rolls`, recording every npc-model set it places. */
+  async function hq(rolls: number[]) {
+    const w = fakeWorld();
+    const sets: string[][] = [];
+    Object.assign(w.r, { npcModels: { set: (specs: readonly { readonly id: string }[]) => sets.push(specs.map((s) => s.id)) } });
+    const targets = new InteractionTargets(() => undefined);
+    const d = createSceneDirector({
+      renderer: w.r, hud: new HudWriter(null), audio: createAudioDirector({ createContext: () => null }), targets, selfId: () => 'me',
+      flags: () => new Set(), interactKey: () => 'E', onZone: () => undefined, setInputEnabled: () => undefined, setAccentType: () => undefined,
+      reducedMotion: () => false, random: () => rolls.shift() ?? 0.99,
+    });
+    await d.loadZone('mirevale', 'intact');
+    const house = interiorsFor('mirevale').find((p) => p.def.id === DEV_TEAM_HOUSE)!;
+    const out = interiorWarps('mirevale').find((x) => x.id === `${DEV_TEAM_HOUSE}.out`)!;
+    const talkable = (id: string): boolean | undefined => targets.staticEntries().find((e) => e.id === id)?.enabled;
+    return { d, sets, house, out, talkable };
+  }
+
+  it('all four are in on most visits: the desk and four models, every one talkable', async () => {
+    const { d, sets, house, talkable } = await hq([0.99]);
+    const [ex, ez] = entryOf(house);
+    d.updatePocket(ex, ez);
+    expect(d.devTeamAway).toBeNull();
+    expect(sets.at(-1)).toEqual(devTeamModels(house.at).map((m) => m.id));
+    for (const m of DEV_TEAM.members) expect(talkable(m.npc.id), m.npc.id).toBe(true);
+  });
+
+  it("a kapsalon visit: Mohaned's model and his Talk to are gone for the visit, and back on the next one", async () => {
+    const { d, sets, house, out, talkable } = await hq([0, 0.99]);
+    const mo = DEV_TEAM.away.member;
+    const [ex, ez] = entryOf(house);
+    d.updatePocket(ex, ez);
+    expect(d.devTeamAway).toBe(mo);
+    expect(sets.at(-1)).not.toContain(mo);
+    expect(sets.at(-1)).toHaveLength(DEV_TEAM.members.length);
+    expect(talkable(mo)).toBe(false);
+    // walking about inside keeps the roll
+    d.updatePocket(ex + 0.2, ez);
+    expect(d.devTeamAway).toBe(mo);
+    // leave and come back: a new roll, he is in
+    d.updatePocket(out.toX, out.toZ);
+    expect(d.devTeamAway).toBeNull();
+    expect(talkable(mo)).toBe(true);
+    d.updatePocket(ex, ez);
+    expect(d.devTeamAway).toBeNull();
+    expect(sets.at(-1)).toContain(mo);
   });
 });
