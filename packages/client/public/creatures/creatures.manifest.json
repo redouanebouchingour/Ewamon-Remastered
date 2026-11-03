@@ -1698,7 +1698,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 88,
-        "bytes": 270452
+        "bytes": 318138
       },
       "normal": {
         "url": "atlases/a-039.normal.webp",
@@ -1709,7 +1709,7 @@
         ],
         "codec": "webp-lossy",
         "quality": 92,
-        "bytes": 128446
+        "bytes": 131198
       },
       "emissive": {
         "url": "atlases/a-039.emissive.webp",
@@ -1720,7 +1720,7 @@
         ],
         "codec": "webp-lossless",
         "quality": null,
-        "bytes": 454
+        "bytes": 746
       },
       "normalScale": 0.5
     },
@@ -4831,8 +4831,8 @@
         ],
         "footV": 0.08,
         "aspect": 1,
-        "bodyV": 0.8135,
-        "pixelScale": 1.984234,
+        "bodyV": 0.8604,
+        "pixelScale": 0.894416,
         "source": "front/acier(front).png"
       },
       "back": {
@@ -4851,8 +4851,8 @@
         ],
         "footV": 0.08,
         "aspect": 1,
-        "bodyV": 0.8096,
-        "pixelScale": 1.970917,
+        "bodyV": 0.8604,
+        "pixelScale": 0.914849,
         "source": "back/acier(back).png"
       },
       "sizeScale": 1.15,
@@ -18101,7 +18101,7 @@
       "thumb": "thumbs/zenryu_majin_front.webp"
     }
   },
-  "totalBytes": 54840406,
+  "totalBytes": 54891304,
   "animAtlases": [
     {
       "id": "anim-astaroth-back",

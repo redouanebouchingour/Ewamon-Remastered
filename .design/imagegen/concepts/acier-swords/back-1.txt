@@ -1,0 +1,19 @@
+Image 1 is the new front sprite of Acier, a Steel/Fighting creature from our monster-collecting game. Image 2 is Acier's old back sprite. Image 3 is a reference sheet of its four swords, left to right: A, B, C, D.
+
+Draw the BACK battle sprite of the creature in image 1: the same creature seen from behind, in a 3/4 rear view facing away toward the upper right, framed and posed like image 2 (wide stance, seen from behind and slightly to the side).
+
+Correct anatomy, very important: exactly FOUR arms and no others, two shoulders on each side of its broad back, an upper and a lower shoulder. Each arm is one solid, continuous limb joined to the torso, no gaps, no floating parts, no arm crossing over the head. Each fist grips exactly one sword:
+- the two upper arms raise sword A and sword B high,
+- the two lower arms hold sword C and sword D lower down, one held out, one point-down beside the leg.
+
+The four swords, the same as in image 1 and image 3, simplified into pixel art:
+- A, Ichigo Kurosaki's Shikai Zangetsu (Bleach): a long, curved cleaver blade with no crossguard, black along the spine, silver-grey along the edge, a wrapped grip with a long white cloth strip trailing from it.
+- B, Ichigo's true Bankai Zangetsu (Bleach): a huge, wide silver-grey blade curving into a hooked point, a slim black inner blade up its middle, a black grip with a red diamond wrap, a dark chain looping from the blade to the grip.
+- C, Asta's Demon-Slayer Sword (Black Clover): a huge, thick, broad black blade with pale grey-white crackle patches, a gothic-arch point, a black crossguard with flared ends, a round pommel.
+- D, Guts' Dragon Slayer (Berserk): a very long, straight, wide slab of grey iron with a groove down the middle, a sharp point, a chunky block crossguard, a brown leather grip.
+All four swords fully visible, none hidden behind the body, not touching the canvas edges.
+
+From behind show: the grey riveted plates of the back and the four shoulders, the back of the dark helm with the edge of the gold visor-mask just visible at the side, the gold belt, the backs of the gold greaves, the white-tipped feet. Same colours as image 1.
+
+Art style: match image 1 and image 2 exactly, the same big chunky square pixels (crisp and hard-edged), the same thick dark outline, flat 2 to 3 tone shading. No gradients, no anti-aliasing, no blur, no fine texture. Full body, centered. Do not draw an aura, glow, flames or smoke.
+Background: one perfectly flat solid magenta #FF00FF, no gradient, no ground shadow. No magenta or hot pink in the creature or the swords. No text, no letters, no frame, no second creature. Square 1:1.

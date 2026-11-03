@@ -2,7 +2,7 @@
 import type { VariantPalette } from '../types';
 
 export const SHINY_DERIVED: Readonly<Record<string, VariantPalette>> = {
-  acier: { hue: -70, saturation: 1.6, lightness: 0.85 }, // rose from 45°, chroma 0.07, value 0.38
+  acier: { hue: -67, saturation: 1.6, lightness: 0.85 }, // rose from 42°, chroma 0.06, value 0.41
   alloylark: { hue: -98, saturation: 1.05, lightness: 1 }, // magenta from 40°, chroma 0.14, value 0.48
   ampmite: { hue: -106, saturation: 1.05, lightness: 1 }, // magenta from 48°, chroma 0.27, value 0.46
   astaroth: { hue: 165, saturation: 1.6, lightness: 1.3 }, // jade from 347°, chroma 0.05, value 0.15

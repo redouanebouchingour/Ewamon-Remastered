@@ -1745,12 +1745,12 @@
       {
         "albedo": 88,
         "normal": 92,
-        "totalBytes": 54840406
+        "totalBytes": 54891304
       }
     ],
     "thumbs": {
       "count": 204,
-      "bytes": 1106584,
+      "bytes": 1106752,
       "rungs": {
         "q32/aq100/a8": 2,
         "q40/aq100/a8": 3,
@@ -1764,5 +1764,5 @@
       }
     }
   },
-  "totalBytes": 54840406
+  "totalBytes": 54891304
 }
