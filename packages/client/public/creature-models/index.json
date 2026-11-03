@@ -5,12 +5,12 @@
   "models": {
     "abysspark": {
       "url": "abysspark.rig.glb",
-      "bytes": 154720,
+      "bytes": 185036,
       "rig": true
     },
     "abysspark_tenjin": {
       "url": "abysspark_tenjin.rig.glb",
-      "bytes": 177896,
+      "bytes": 188560,
       "rig": true
     },
     "abyssrake": {
@@ -20,17 +20,17 @@
     },
     "acier": {
       "url": "acier.rig.glb",
-      "bytes": 141324,
+      "bytes": 152048,
       "rig": true
     },
     "acier_majin": {
       "url": "acier_majin.rig.glb",
-      "bytes": 192904,
+      "bytes": 194432,
       "rig": true
     },
     "alloylark": {
       "url": "alloylark.rig.glb",
-      "bytes": 103508,
+      "bytes": 109264,
       "rig": true
     },
     "ampmite": {
@@ -40,17 +40,17 @@
     },
     "aonred": {
       "url": "aonred.rig.glb",
-      "bytes": 204888,
+      "bytes": 252056,
       "rig": true
     },
     "archonosis": {
       "url": "archonosis.rig.glb",
-      "bytes": 121596,
+      "bytes": 175324,
       "rig": true
     },
     "astaroth": {
       "url": "astaroth.rig.glb",
-      "bytes": 163188,
+      "bytes": 197576,
       "rig": true
     },
     "augurvane": {

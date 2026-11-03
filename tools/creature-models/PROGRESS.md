@@ -69,3 +69,9 @@ blizzhowl. Remodelled, re-rigged (no warnings), checked in the sandbox; snowlet 
 waiting for the user's go on the direction (2026-11-03). Front IoU: clementar 0.74, fennorange 0.81, burrowyrm 0.83,
 glimp 0.88, snowlet 0.83, blizzhowl 0.74. Known leftovers: fennorange's tail is a flat slab, burrowyrm's eyes are
 smaller than drawn, blizzhowl's tails shade grey in the OpenSCAD preview (pale blue in game).
+
+Pool (from 2026-11-03, the user's go): six Opus agents at a time, one creature or one family each, queue and state in
+`sprite-match-queue.md` in the session notes folder. Agents check rigs on a no-HMR sandbox (`EWA_SANDBOX_NO_HMR=1`,
+port 5192); eight at once overloaded the machine. Shared JSONs are staged per id by content at each commit.
+Committed: abysspark, abysspark_tenjin, acier, acier_majin (modelled from the 2026-11-03 four-armed redraw), alloylark,
+aonred, archonosis, astaroth.

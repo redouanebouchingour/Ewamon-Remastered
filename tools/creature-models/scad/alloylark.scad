@@ -1,85 +1,182 @@
-// Alloylark: a small steel songbird, charcoal body with a riveted gold collar plate, a swept steel helm crest over cyan
-// eyes, wings of blade feathers spread wide and a blade-feather tail tipped in cyan.
+// Alloylark: a steel songbird in a low forward crouch, drawn side-on facing left. Dark body, a gold breastplate,
+// a silver helm whose ridge runs from the beak tip back over the eye to a swept point, a crest blade and a forward
+// horn, cyan slit eyes, a round steel pauldron over each wing root, wings of long silver blade feathers raised up and
+// back, a short blade tail, thigh plates and grey-taloned dark feet (one stepped forward).
+//
+// Checklist (front sheet, x = sheet x, z):
+//   head: dark, x -21..-6, z 22..31; cyan slit eye at (-12.2, 29.7), 0.5 x 1.7; grey cheek patch under the eye
+//     (-16..-9, 24..27); rounded steel guard behind the eye (-10..-5, 26..31)
+//   helm ridge (silver): (-24.5, 26) beak tip -> (-2.5, 35.5) swept tip, over the eye
+//   crest blade (silver): (-17, 31) -> (-7, 39.8); forward horn (silver): (-19, 29.5) -> (-25, 36.3)
+//   dark forehead tuft (-21, 27) -> (-24.3, 31); dark lower beak under the ridge's tip (-23.7, 25)
+//   gold breastplate x -17..-4, z 12.5..25.4, a band right round the chest (the back art shows its back half)
+//   pauldron (steel, light) (-5..2, 16.5..25.5); flank plate (1..6, 13..19); thigh plate (-3..4, 9..14.5)
+//   near wing: blades from the shoulder (1..6, 21..25) to tips (22.7, 37.8), (25, 31), (21, 22.8), dark coverts
+//   tail: blades (5..10, 10..17) -> (18.3, 16.2), (16, 10.8), a dark short one to (11, 17.8)
+//   near leg: hip (2.5, 10) -> ankle (3.5, 3.5), talons down to z 0 at x -1..7.4
+//   far leg stepped forward: (-6, 10) -> ankle (-10.5, 5), talons to (-16, 0.5), (-15.5, 3.8), back toe (-6, 3.3)
+//   back art: wings spread wide, gold band round the back, cyan tips on the tail blades and short cyan blades under
+//     the wings. The magenta fringe in the art is a glow on the outline, not a part.
+// The art is a profile: the bird's axis is turned T degrees towards its right (the game's 30° turn then shows it
+// side-on). S(s, z, w) is the local point that lands on sheet (s, z) at lateral offset w (+w = the creature's left).
 include <lib.scad>
 
-body = [0.22, 0.22, 0.27];
-bodyHi = [0.34, 0.34, 0.4];
-steel = [0.72, 0.73, 0.8];
-steelDk = [0.5, 0.5, 0.58];
-gold = [0.92, 0.68, 0.12];
-goldDk = [0.62, 0.42, 0.06];
-cyan = [0.15, 0.82, 0.78];
-beak = [0.3, 0.3, 0.36];
+T = 25;
+KA = sin(30 + T);   // sheet units per unit along the axis
+KW = cos(30 + T);   // sheet units per unit of lateral offset
+function S(s, z, w = 0) = let(y = (s - KW * w) / KA) [w, y, z - 0.17 * (-0.82 * w + 0.57 * y)];
 
-// A flat blade feather from p along d, width w (flat in the plane holding d and `flat` normal).
-module blade(p, d, w, c, tip = undef, th = 0.35) {
+dark = [0.2, 0.19, 0.25];
+darkLt = [0.26, 0.25, 0.31];
+steel = [0.72, 0.73, 0.79];
+steelLt = [0.86, 0.86, 0.91];
+steelDk = [0.58, 0.59, 0.66];
+silver = [0.86, 0.86, 0.91];
+silverMid = [0.78, 0.79, 0.85];
+gold = [0.88, 0.65, 0.2, NOGLOW];
+goldDk = [0.5, 0.3, 0.06];
+cyan = [0.25, 0.85, 0.9, NOGLOW];
+
+// A flat blade feather from a to b (local points), half-width w at 40 %, half-thickness th; its flat face stands in
+// the vertical plane through a and b (_dir_rot).
+module blade(a, b, w, c, th = 0.45, tipc = undef, tipl = 0.25) {
+  d = b - a;
   l = norm(d);
-  translate(p) rotate(_dir_rot(d)) {
+  translate(a) rotate(_dir_rot(d)) {
     color(c) hull() {
-      scale([w, th, 0.8]) sphere(1, $fn = 10);
-      translate([0, 0, l * 0.45]) scale([w * 0.9, th, 1]) sphere(1, $fn = 10);
-      translate([0, 0, l]) sphere(0.1, $fn = 4);
+      scale([w * 0.75, th, 0.6]) sphere(1, $fn = 10);
+      translate([0, 0, l * 0.5]) scale([w, th, l * 0.08]) sphere(1, $fn = 12);
+      translate([w * 0.25, 0, l * 0.84]) scale([w * 0.55, th * 0.9, l * 0.05]) sphere(1, $fn = 10);
+      translate([0, 0, l]) sphere(0.15, $fn = 4);
     }
-    if (tip != undef) color(tip) hull() {
-      translate([0, 0, l * 0.78]) scale([w * 0.45, th * 1.15, 0.6]) sphere(1, $fn = 8);
-      translate([0, 0, l * 1.0]) sphere(0.12, $fn = 4);
+    if (tipc != undef) color(tipc) hull() {
+      translate([0, 0, l * (1 - tipl)]) scale([w * 0.62, th * 1.15, 0.4]) sphere(1, $fn = 10);
+      translate([0, 0, l * 1.01]) sphere(0.15, $fn = 4);
     }
   }
 }
 
-// Body: a plump egg leaning forward.
-blob([[[6.5, 6.5, 6.5], [0, 1, 14]], [[5.2, 5, 5], [0, -1.5, 19]]], body);
-// Gold collar band all around the upper chest, with a larger riveted plate on the breast.
-color(gold) translate([0, -0.6, 19.5]) scale([6.3, 6.1, 2.6]) sphere(1, $fn = 28);
-color(gold) translate([0, -3.6, 15.8]) rotate([12, 0, 0]) scale([5.4, 3.6, 5.2]) sphere(1, $fn = 24);
-color(goldDk) translate([0, -6.95, 16]) rotate([12, 0, 0]) cube([0.4, 0.6, 7.5], center = true);
-color(goldDk) translate([0, -6.9, 15.6]) rotate([12, 0, 0]) cube([7.5, 0.6, 0.4], center = true);
-mirror_x() for (z = [13.2, 18]) color([1, 0.9, 0.55]) translate([2.6, -6.9, z]) sphere(0.45, $fn = 8);
-
-// Head: round charcoal head under a steel helm, crest blades swept back.
-ell([4.6, 4.6, 4.4], [0, -2.4, 25.5], body);
-color(steel) translate([0, -2, 26.6]) scale([4.9, 5, 3.8]) difference() {
-  sphere(1, $fn = 28);
-  translate([0, 0, -1.3]) cube(2.4, center = true);
-}
-// Visor brow ridge over the eyes.
-color(steel) translate([0, -5.6, 27.3]) rotate([-8, 0, 0]) scale([4.6, 1.6, 1.2]) sphere(1, $fn = 18);
-blade([0, -4, 29.5], [0, 10, 7], 1.8, steel);
-blade([-2, -3, 29], [-3, 10, 4.5], 1.6, steelDk);
-blade([2, -3, 29], [3, 10, 4.5], 1.6, steelDk);
-blade([0, -1, 28.5], [0, 8, 1.5], 1.2, steel);
-// Beak: short, dark, hooked.
-color(beak) hull() {
-  translate([0, -6.4, 25.2]) scale([1.4, 1, 1.2]) sphere(1, $fn = 14);
-  translate([0, -9.2, 24.4]) sphere(0.25, $fn = 8);
-}
-// Cyan eyes set in the dark face under the visor.
-mirror_x() {
-  color(cyan) translate([2.5, -5.6, 26.2]) rotate([0, 0, -25]) scale([1.5, 0.6, 1]) sphere(1, $fn = 14);
-  color("white") translate([2.2, -6.0, 26.5]) sphere(0.3, $fn = 8);
-}
-
-// Wings: blade feathers fanning up and out from the shoulders, steel over a dark coverts pad.
-mirror_x() {
-  ell([3.4, 3, 3.8], [5.2, 1.2, 18.5], steelDk);
-  for (i = [0 : 4]) {
-    a = 62 - i * 14;           // elevation of the blade
-    l = 17 - abs(i - 1) * 1.6;
-    blade([6, 1.5 + i * 0.4, 19 - i * 0.6], [l * cos(a), 3 + i * 1.2, l * sin(a)], 2.8, i % 2 == 0 ? steel : steelDk,
-          tip = i > 2 ? cyan : undef);
+// A blade whose flat face is turned `roll` degrees about its own axis (wing feathers lying in the wing's plane).
+module bladeR(a, b, w, c, roll = 0, th = 0.45, tipc = undef) {
+  d = b - a;
+  l = norm(d);
+  translate(a) rotate(_dir_rot(d)) rotate([0, 0, roll]) {
+    color(c) hull() {
+      scale([w * 0.75, th, 0.6]) sphere(1, $fn = 10);
+      translate([0, 0, l * 0.5]) scale([w, th, l * 0.08]) sphere(1, $fn = 12);
+      translate([w * 0.25, 0, l * 0.84]) scale([w * 0.55, th * 0.9, l * 0.05]) sphere(1, $fn = 10);
+      translate([0, 0, l]) sphere(0.15, $fn = 4);
+    }
+    if (tipc != undef) color(tipc) hull() {
+      translate([0, 0, l * 0.75]) scale([w * 0.62, th * 1.15, 0.4]) sphere(1, $fn = 10);
+      translate([0, 0, l * 1.01]) sphere(0.15, $fn = 4);
+    }
   }
-  // Short covert blades over the wing root.
-  for (i = [0 : 2]) blade([5.5, 0.5, 20 - i * 1.8], [6, 1.5, 3 - i * 2], 1.3, steel);
 }
 
-// Tail: a fan of blade feathers angled back and down, tipped in cyan.
-for (i = [-2 : 2]) blade([i * 0.8, 5.5, 11], [i * 3, 12, -4 + abs(i) * 0.5], 2.2, abs(i) % 2 == 0 ? steel : steelDk, tip = cyan);
+// Chest: tipped forward, the gold band laid on it.
+CH = S(-10.5, 18.5);
+CHR = [5.2, 5.6, 7];
+CHT = [22, 0, 0];
+WR = -35;   // the wing blades' roll: their upper faces turned up to the light
 
-// Legs: steel-plated thighs, thin dark shanks, three forward talons and a back spur.
-mirror_x() {
-  ell([2.8, 3, 3], [3.6, -0.5, 9.5], steelDk);
-  limb([3.8, -0.6, 8], [4.4, -1, 2], 1.3, 1.1, steelDk);
-  ell([1.6, 1.6, 1.4], [4.4, -1, 4.5], steel);
-  for (a = [-30, 0, 30]) limb([4.4, -1, 1.6], [4.4 + sin(a) * 3.4, -1 - cos(a) * 3.6, 0.6], 0.8, 0.4, beak);
-  limb([4.4, -1, 1.6], [4.4, 1.6, 0.6], 0.55, 0.3, beak);
+rotate([0, 0, -T]) {
+  // ---- Body: chest, back, belly and rump in one hull, the neck up to the head.
+  color(dark) hull() {
+    translate(CH) rotate(CHT) scale(CHR) sphere(1, $fn = 28);
+    translate(S(-3, 19.5)) scale([5.2, 5, 4.5]) sphere(1, $fn = 24);
+    translate(S(-2, 12.5)) scale([5, 6, 4]) sphere(1, $fn = 24);
+    translate(S(5, 14.5)) scale([3.8, 5, 3.4]) sphere(1, $fn = 20);
+  }
+  ell([3.8, 3.8, 4.4], S(-12.5, 23.5), dark);
+  // Gold breastplate: a band of the chest, grown a little, tipped so it rises towards the shoulders.
+  color(gold) intersection() {
+    translate(CH) rotate(CHT) scale(CHR + [0.35, 0.35, 0.35]) sphere(1, $fn = 32);
+    translate(CH) rotate([-38, 0, 0]) translate([0, -3, 1.5]) cube([20, 16, 12], center = true);
+  }
+  // The band's back half, round the upper back (the back art).
+  color(gold) intersection() {
+    translate(S(-3, 19.5)) scale([5.55, 5.35, 4.85]) sphere(1, $fn = 28);
+    translate(S(-3, 19.5)) rotate([-12, 0, 0]) translate([0, 2, -0.5]) cube([14, 8, 5.5], center = true);
+  }
+  // Seams on the plate: one down the breast, one across it.
+  color(goldDk) intersection() {
+    translate(CH) rotate(CHT) scale(CHR + [0.45, 0.45, 0.45]) sphere(1, $fn = 32);
+    translate(CH) rotate([-38, 0, 0]) translate([0, -3, -0.5]) cube([20, 16, 0.35], center = true);
+  }
+  color(goldDk) intersection() {
+    translate(CH) rotate(CHT) scale(CHR + [0.45, 0.45, 0.45]) sphere(1, $fn = 32);
+    translate(CH) rotate([-38, 0, 0]) translate([0, -3, 1.5]) cube([20, 16, 12], center = true);
+    translate(CH) rotate([0, 0, 0]) translate([0, -4.5, 0]) cube([20, 0.35, 16], center = true);
+  }
+
+  // ---- Head: dark, round at the back, narrowing to the beak under the helm.
+  color(dark) hull() {
+    translate(S(-13.5, 27.3)) scale([4.4, 6, 4.4]) sphere(1, $fn = 24);
+    translate(S(-18.5, 25.8)) scale([3, 3, 2.8]) sphere(1, $fn = 16);
+  }
+  // Lower beak: a dark point under the helm's tip.
+  color(dark) hull() {
+    translate(S(-19.5, 25.6)) scale([1.6, 1.6, 1.3]) sphere(1, $fn = 12);
+    translate(S(-23.8, 25.1)) sphere(0.2, $fn = 6);
+  }
+  // Helm ridge: broad over the crown, a sharp point forward (the beak's top) and a swept point back.
+  color(silver) hull() {
+    translate(S(-24.8, 26.2)) sphere(0.3, $fn = 6);
+    translate(S(-19, 28.7)) scale([2.4, 2.4, 1.4]) sphere(1, $fn = 14);
+    translate(S(-13, 31.2)) scale([3.6, 3.4, 1.6]) sphere(1, $fn = 18);
+    translate(S(-7.5, 33.3)) scale([2, 2.4, 1.3]) sphere(1, $fn = 12);
+    translate(S(-2.4, 35.6)) sphere(0.3, $fn = 6);
+  }
+  // Steel guard behind the eye, the cheek patch under it (both sides).
+  mirror_x() {
+    color(steelLt) translate(S(-8.5, 28.4, 2.2)) scale([2.6, 2.8, 2.6]) sphere(1, $fn = 16);
+    color(steel) translate(S(-14.5, 25.6, 3.3)) rotate([0, 0, 10]) scale([1.4, 3.4, 1.5]) sphere(1, $fn = 14);
+  }
+  // Crest blade, forward horn and the dark forehead tuft.
+  blade(S(-15.5, 30.5), S(-7, 39.8), 2.3, silver, th = 0.6);
+  blade(S(-18, 29.3), S(-25.2, 36.4), 1.9, silver, th = 0.55);
+  blade(S(-19, 27), S(-24.5, 31.2), 1.8, darkLt, th = 0.6);
+  // Cyan slit eyes on the sides of the head.
+  mirror_x() color(cyan) translate(S(-12.3, 29.4, 3.9)) rotate([0, 0, -20]) scale([0.5, 0.85, 1.15]) sphere(1, $fn = 12);
+
+  // ---- Wings: a steel pauldron over each root, dark coverts, three long blades raised up and back.
+  mirror_x() {
+    color(steelLt) translate(S(-1.5, 21, 4.3)) rotate([15, 0, 0]) scale([2.4, 4.6, 5]) sphere(1, $fn = 20);
+    color(steelLt) translate(S(4, 16, 3.4)) rotate([-15, 0, 0]) scale([2.2, 5, 3.4]) sphere(1, $fn = 16);
+    // grey rump plate over the tail root
+    color(steel) translate(S(8.5, 12.5, 2.2)) rotate([-10, 0, 0]) scale([2, 4.2, 2.4]) sphere(1, $fn = 14);
+    color(steelDk) hull() {
+      translate(S(3, 23.5, 5.5)) scale([1.4, 3, 2.8]) sphere(1, $fn = 12);
+      translate(S(12, 26.5, 7.5)) scale([0.6, 3.4, 2.8]) sphere(1, $fn = 10);
+    }
+    bladeR(S(0.5, 24.5, 5.5), S(22.7, 37.8, 9.5), 2.8, silver, roll = WR, th = 0.6);
+    bladeR(S(4.5, 24, 6), S(25, 31, 10), 2.6, silver, roll = WR, th = 0.6);
+    bladeR(S(5.5, 21.5, 6), S(21, 22.8, 10), 2.4, silverMid, roll = WR, th = 0.6);
+    // Short cyan blade tucked under the wing (the back art).
+    blade(S(7, 19.5, 4.5), S(10, 17.5, 9), 0.7, cyan, th = 0.35);
+  }
+
+  // ---- Tail: blades fanned back from the rump, the lower ones tipped cyan (the back art).
+  mirror_x() {
+    blade(S(5, 14.5, 1.2), S(18.3, 16.2, 2.6), 1.7, silver, th = 0.5);
+    blade(S(5, 12.5, 1.2), S(16, 10.6, 3), 1.6, steelLt, th = 0.5, tipc = cyan);
+    blade(S(6, 15.8, 0.6), S(11.5, 17.8, 1.2), 1.2, steelDk, th = 0.45);
+  }
+
+  // ---- Legs. Thigh plates both sides; the near (left, +X) leg back and straight, the far one stepped forward.
+  mirror_x() color(steel) translate(S(0.5, 12, 3.4)) rotate([20, 0, 0]) scale([2.2, 4.4, 3.2]) sphere(1, $fn = 16);
+  // near leg
+  limb(S(2.2, 10.5, 3), S(3.3, 3.6, 3), 1.8, 1.3, darkLt);
+  ell([1.3, 1.3, 1.2], S(3.3, 3.2, 3), darkLt);
+  limb(S(3.3, 3, 3), S(-1.3, 0.5, 4.2), 1.2, 0.3, silverMid);
+  limb(S(3.3, 3, 3), S(1.6, 0.25, 3), 1.2, 0.3, silverMid);
+  limb(S(3.3, 3, 3), S(7.2, 0.5, 2.4), 1.2, 0.3, silverMid);
+  // far leg: a heavy dark thigh down to the stepped-forward foot
+  limb(S(-3, 11.5, -3), S(-8.5, 7.5, -3), 2.8, 1.8, dark);
+  limb(S(-5, 10, -3), S(-10.3, 5.2, -3), 1.8, 1.3, darkLt);
+  ell([1.3, 1.3, 1.2], S(-10.4, 5, -3), darkLt);
+  limb(S(-10.4, 5, -3), S(-16, 0.5, -3.6), 1.2, 0.3, silverMid);
+  limb(S(-10.4, 5, -3), S(-15.6, 3.8, -2.4), 1.2, 0.3, silverMid);
+  limb(S(-10.4, 5, -3), S(-6, 3.2, -3), 0.9, 0.25, darkLt);
 }

@@ -1,7 +1,7 @@
-// Acier Majin's rig: Acier's body and swords (the scad keeps every number), plus a menacing fidget of its own. The
-// crest horns, crack bands, bone spikes and the chain on the cleaver follow their nearest part.
+// Acier Majin's rig: the same body, pose and swords as Acier (scad/acier_majin.scad keeps every joint number of
+// scad/acier.scad), so it takes Acier's joints, parts and clips, plus a menacing fidget of its own. The horns follow the head and the shoulders.
 import { K, TAU, both, rigDef, win } from './lib/anim.mjs';
-import { pick } from './lib/biped.mjs';
+import { any, pick, spike } from './lib/biped.mjs';
 import { clipsFor, joints, parts } from './acier.mjs';
 
 const clips = {
@@ -27,4 +27,8 @@ const clips = {
   },
 };
 
-export default rigDef({ joints, assign: (c) => pick(c, parts), clips });
+// the bronze horns on the upper shoulders stay with the body (the inner -X one sits next to the helm)
+const horns = ['body', any(spike([-5.3, 0.2, 22.4], [0.2, 0, 3], 0.62), spike([-3.4, -0.6, 21.6], [0.3, -0.1, 2.5], 0.55),
+  spike([5, 0, 22.4], [-0.1, 0, 2.3], 0.55), spike([7.3, 0.3, 21.8], [0.4, 0, 2.9], 0.62))];
+
+export default rigDef({ joints, assign: (c) => pick(c, [...parts, horns]), clips });
