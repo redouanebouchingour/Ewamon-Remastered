@@ -35,7 +35,7 @@
     },
     "ampmite": {
       "url": "ampmite.rig.glb",
-      "bytes": 134864,
+      "bytes": 171032,
       "rig": true
     },
     "aonred": {
@@ -60,7 +60,7 @@
     },
     "auroracle": {
       "url": "auroracle.rig.glb",
-      "bytes": 166900,
+      "bytes": 241280,
       "rig": true
     },
     "badlander": {
@@ -75,17 +75,17 @@
     },
     "bankaiser": {
       "url": "bankaiser.rig.glb",
-      "bytes": 220008,
+      "bytes": 230348,
       "rig": true
     },
     "berkest": {
       "url": "berkest.rig.glb",
-      "bytes": 189336,
+      "bytes": 225896,
       "rig": true
     },
     "blighthex": {
       "url": "blighthex.rig.glb",
-      "bytes": 149328,
+      "bytes": 227128,
       "rig": true
     },
     "blizzhowl": {
@@ -95,7 +95,7 @@
     },
     "blizzraak": {
       "url": "blizzraak.rig.glb",
-      "bytes": 289828,
+      "bytes": 222180,
       "rig": true
     },
     "bloomdrake": {
@@ -110,7 +110,7 @@
     },
     "bloomsprite": {
       "url": "bloomsprite.rig.glb",
-      "bytes": 189308,
+      "bytes": 207564,
       "rig": true
     },
     "blossomsail": {

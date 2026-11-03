@@ -1,66 +1,119 @@
-// Ampmite's rig: a low armoured beetle-mite on six splayed legs: the thorax carries the two capacitor bulbs and their
-// lightning, the rear three shell segments are the abdomen, a big lowered head (scaled 1.45 about the neck) with rust
-// mandibles, and slate antennae ending in sparks. Its eyes are gold compound domes: no face kit. Numbers are
-// scad/ampmite.scad's.
+// Ampmite's rig: a low armoured beetle-mite on six splayed legs. Its carapace is yawed 20 degrees (BODY_YAW, drawn
+// side-on): the legs, the thorax and the abdomen carry that yaw as their rest frame, so the insect template's swings
+// and lifts act along the body; the head faces -Y again (rest rz +20 off the body). The thorax carries capacitor bulb
+// A and its sparks, the abdomen bulb B and its sparks; the gold compound eyes are their own joints (no lids: they
+// flare in the discharge fidget); slate mandibles, antennae of three links with the spark bursts on the last. Numbers
+// are scad/ampmite.scad's.
 import { merge, osc, rigDef, win } from './lib/anim.mjs';
-import { any, ell, limb, pick, spike } from './lib/biped.mjs';
-import { chainHit, fold, side } from './lib/geo.mjs';
+import { capD, chainHit, closest, ellD, fold, petalD, side, subFrame } from './lib/geo.mjs';
 import { insectClips } from './lib/insect.mjs';
 
-const H = (p) => [p[0] * 1.45, -8 + (p[1] + 8) * 1.45, 10 + (p[2] - 10) * 1.45];
-const ANT = [[1.6, -13.5, 13.5], [3, -15.5, 17], [5, -16, 22], [6.6, -15.5, 26]];
-const ANT_R = [0.55, 0.5, 0.45, 0.35];
-const MAND = [[1.6, -14.8, 6.6], [2.2, -17, 6], [1, -18.2, 6]].map(H);
-// [y, splay, reach] of leg(); hip [5, y, 8.5]
-const LEGS = [[-5, -5, 6], [2, 0, 6.5], [9, 5, 6]].map(([y, splay, reach]) => ({
-  hip: [5, y, 8.5], knee: [5 + reach * 0.6, y + splay * 0.4, 10], foot: [5 + reach, y + splay, 1.2],
-}));
-const SEGS = [[[0, -4, 11], [6.5, 5.5, 4.6]], [[0, 3, 11], [7, 4.5, 5]], [[0, 8.5, 10.5], [6.4, 4, 4.6]],
-  [[0, 13.5, 9.8], [5.6, 3.8, 4]], [[0, 17.8, 9.2], [4.4, 3.2, 3.2]]];
+const BODY_YAW = -20;
+const HC = [-3.4, -13.6, 11.2];
+const SEGS = [
+  [[0, -5.6, 12.6], [6.2, 4.4, 5.4]],
+  [[0, -0.6, 13.2], [7.4, 4.8, 6]],
+  [[0, 4.8, 12.8], [7.6, 4.2, 6]],
+  [[0, 9.2, 11.8], [7, 3.8, 5.6]],
+  [[0, 13, 10.2], [5.9, 3.4, 4.8]],
+  [[0, 16.2, 8.6], [4.5, 2.8, 3.8]],
+  [[0, 18.8, 7.2], [3, 2.1, 2.7]],
+];
+const BULB_A = [[-1, -5.6, 22.6], 4.3, 17];
+const BULB_B = [[3.6, 10.6, 23.6], 4.9, 15];
+const add3 = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+// [anchor, scale] of the bulb sparks (each about 11.4 × scale tall)
+const SPARKS_A = [[add3(BULB_A[0], [-1.6, -1.2, 3.6]), 0.62]];
+const SPARKS_B = [[add3(BULB_B[0], [0.6, 0.2, 4.6]), 0.72], [add3(BULB_B[0], [3.6, -1.6, 2.6]), 0.55]];
+const EYE = [5.4, -2, 1.1];
+const EYE_R = [2.4, 2.8, 3.05];
+const EYE_YAW = -35;
+const ANT = [[1.9, -2.6, 5], [4.4, -2.4, 8.6], [8.2, -1, 12.4], [12.2, 1.2, 15.6]];
+const ANT_R = [0.55, 0.5, 0.45, 0.4];
+const MAND = [[2.6, -3.8, -3.6], [2.3, -5.8, -4.4], [0.9, -6.8, -4.8]];
+const MAND_R = [1.2, 0.9, 0.45];
+const FANG = [[3.1, -4.4, -4.2], [3.3, -5, -6.3], [2.8, -5.4, -7.5]];
+const FANG_R = [0.75, 0.6, 0.25];
+const LEGS = [
+  [[5, -6, 10.2], [10.8, -10.4, 11.6], [13.5, -13.6, 0]],
+  [[6.4, -1.2, 10.2], [12.8, -2.2, 12], [16, -3, 0]],
+  [[6.4, 3.8, 10.2], [14.2, 8.4, 11.4], [17.5, 12, 0]],
+];
+const ANKLE = 1.45;
 
+const B = subFrame([0, 0, 0], [0, 0, BODY_YAW], 1);   // body frame <-> world
+const W = (p) => B.world(p);
+const mir = (p) => [-p[0], p[1], p[2]];
+const H = (p) => add3(HC, p);
+
+const yawRot = [0, 0, BODY_YAW];
 const joints = [
   { name: 'root', at: [0, 0, 0] },
-  ...LEGS.flatMap(({ hip }, i) => [
-    { name: `leg${i + 1}L`, parent: 'root', at: hip },
-    { name: `leg${i + 1}R`, parent: 'root', at: [-hip[0], hip[1], hip[2]] },
+  ...LEGS.flatMap(([hip], i) => [
+    { name: `leg${i + 1}L`, parent: 'root', at: W(hip), rot: yawRot },
+    { name: `leg${i + 1}R`, parent: 'root', at: W(mir(hip)), rot: yawRot },
   ]),
-  { name: 'body', parent: 'root', at: [0, 0, 7] },
-  { name: 'abdomen', parent: 'body', at: [0, 6, 10] },
-  { name: 'head', parent: 'body', at: [0, -8, 10] },
-  { name: 'mandL', parent: 'head', at: MAND[0] },
-  { name: 'mandR', parent: 'head', at: [-MAND[0][0], MAND[0][1], MAND[0][2]] },
+  { name: 'body', parent: 'root', at: W([0, -1, 9]), rot: yawRot },
+  { name: 'abdomen', parent: 'body', at: W([0, 2.4, 12]) },
+  { name: 'head', parent: 'body', at: W([0, -9.3, 11.2]), rot: [0, 0, -BODY_YAW] },
+  { name: 'eyeL', parent: 'head', at: H(EYE) },
+  { name: 'eyeR', parent: 'head', at: H(mir(EYE)) },
+  { name: 'mandL', parent: 'head', at: H(MAND[0]) },
+  { name: 'mandR', parent: 'head', at: H(mir(MAND[0])) },
   ...['L', 'R'].flatMap((S) => [0, 1, 2].map((i) => ({
-    name: `ant${S}${i + 1}`, parent: i === 0 ? 'head' : `ant${S}${i}`, at: [ANT[i][0] * (S === 'L' ? 1 : -1), ANT[i][1], ANT[i][2]],
+    name: `ant${S}${i + 1}`, parent: i === 0 ? 'head' : `ant${S}${i}`, at: H(S === 'L' ? ANT[i] : mir(ANT[i])),
   }))),
 ];
 
-const legTest = ({ hip, knee, foot }) => any(limb(hip, knee, 1.6, 1.3), limb(knee, foot, 1.3, 0.9), ell([1.6, 1.6, 1.6], knee),
-  ell([0.8, 0.8, 0.8], foot), spike(foot, [-0.3, -1.8, -1], 0.8), spike(foot, [1.1, -1.8, -1], 0.8));
-const segTest = (list) => any(...list.map(([p, r]) => ell(r, p)), ...list.map(([p, r]) => ell([r[0] * 1.04, r[1] * 0.96, r[2] * 0.8], [p[0], p[1], p[2] - r[2] * 0.25])));
-const parts = [
-  ...LEGS.map((l, i) => [`leg${i + 1}*`, legTest(l)]),
-  ['body', any(segTest(SEGS.slice(0, 2)), ell([4.4, 4.4, 4.4], [-4.4, -1.5, 19.5]), ell([4.8, 4.8, 4.8], [4.8, 6, 19.5]),
-    limb([-4.4, -1.5, 22], [-4, -2.5, 31], 3), limb([4.8, 6, 22], [5.8, 5, 31.5], 3), limb([8.8, 6, 21], [12, 6, 27], 1.5),
-    limb([-1, 2, 22], [-0.6, 2, 26.5], 1.2))],
-  ['abdomen', segTest(SEGS.slice(2))],
-  ['head', any(ell([5.4, 4.6, 4.2].map((v) => v * 1.45), H([0, -11, 9])), ell([4, 3.6, 2.8].map((v) => v * 1.45), H([0, -11.6, 10.6])),
-    ...[1, -1].map((s) => ell([3.4, 2.4, 3.5], H([2.6 * s, -14.4, 9.6]))), ...[1, -1].map((s) => ell([3.2, 1.8, 1.5], H([3.4 * s, -12.6, 6.8]))))],
-];
+// leg i in the body frame, folded onto +X
+function legD(f, [hip, knee, foot]) {
+  const ank = [foot[0], foot[1], ANKLE];
+  const mid = knee.map((v, k) => v + (ank[k] - v) * 0.5);
+  const h = Math.atan2(foot[1] - hip[1], foot[0] - hip[0]);
+  const claws = [-55, 0, 55].map((a) => {
+    const d = [Math.cos(h + (a * Math.PI) / 180), Math.sin(h + (a * Math.PI) / 180), 0];
+    const p1 = [ank[0] + d[0] * 1.3, ank[1] + d[1] * 1.3, ank[2] + 0.1];
+    const p2 = [ank[0] + d[0] * 2.2, ank[1] + d[1] * 2.2, ank[2] - 1.3];
+    return Math.min(capD(f, ank, p1, 0.55, 0.4), capD(f, p1, p2, 0.4, 0.15));
+  });
+  return Math.min(ellD(f, [1.5, 1.5, 1.5], hip), capD(f, hip, knee, 1.2, 0.95), ellD(f, [1.25, 1.25, 1.25], knee),
+    capD(f, knee, mid, 1.45, 0.95), capD(f, mid, ank, 0.75, 0.55), ...claws);
+}
+const segD = (bl, list) => Math.min(...list.map(([p, r]) => ellD(bl, [r[0] * 1.05, r[1] * 1.0, r[2] * 1.07], p)));
+// a bulb: the glass, its cup and stalk; a spark burst: an ellipsoid round the bolt
+const bulbD = (bl, [p, r, foot]) => Math.min(ellD(bl, [r, r, r], p),
+  capD(bl, [p[0], p[1], foot], [p[0], p[1], p[2] - r], 2.2, 2.2));
+const sparkD = (bl, sparks) => Math.min(...sparks.map(([a, s]) => ellD(bl, [3.2 * s, 3.2 * s, 6.2 * s], add3(a, [0, 0, 5.4 * s]))));
 
 function assign(c) {
-  const f = fold(c);
-  const S = side(c);
-  const m = chainHit(f, MAND, [0.8, 0.6, 0.25].map((r) => r * 1.45));
-  if (m.d < 1.15 && f[1] < -16.5) return `mand${S}`;
-  if (f[0] > 5.6 && f[1] < -14 && f[2] > 25.5) return `ant${S}3`;     // the spark tips
-  const a = chainHit(f, ANT, ANT_R);
-  if (a.d < 1.5 && f[2] > 13.5 && f[1] < -12) return `ant${S}${a.i + 1}`;
-  return pick(c, parts);
+  const h = [c[0] - HC[0], c[1] - HC[1], c[2] - HC[2]];
+  const hf = fold(h);
+  const hS = side(h);
+  // the antenna's spark burst rides on its last link
+  if (hf[2] > ANT[3][2] - 1 && Math.hypot(hf[0] - ANT[3][0], hf[1] - ANT[3][1]) < 6.5) return `ant${hS}3`;
+  const bl = B.local(c);
+  const bf = fold(bl);
+  const bS = side(bl);
+  const a = chainHit(hf, ANT, ANT_R);
+  return closest([
+    [`ant${hS}${a.i + 1}`, a.d * 1.15],
+    [`mand${hS}`, Math.min(chainHit(hf, MAND, MAND_R).d, capD(hf, [1.6, -6, -4.6], [1.6, -6.3, -5.9], 0.42, 0.15),
+      capD(hf, [0.7, -6.6, -4.8], [0.7, -6.8, -5.9], 0.35, 0.15))],
+    [`eye${hS}`, Math.min(petalD(hf, EYE_R, EYE, [0, 0, EYE_YAW]) * 0.97, ellD(hf, [0.7, 0.7, 0.7], add3(EYE, [1, -1.87, 1.35])))],
+    ['head', Math.min(ellD(h, [6, 5, 5.8]), ellD(h, [4.6, 3.8, 2.8], [0, -1.3, 3]), ellD(h, [0.7, 1.4, 1.6], [0, -3.6, 3.4]),
+      petalD(hf, [2, 4, 4.7], [5.1, 2.4, -1.9], [0, 0, -12]), ellD(hf, [1, 0.6, 0.8], [2.1, -4.7, -1.4]), chainHit(hf, FANG, FANG_R).d)],
+    ...LEGS.map((l, i) => [`leg${i + 1}${bS}`, legD(bf, l)]),
+    ['body', Math.min(segD(bl, SEGS.slice(0, 2)), ellD(bl, [4.4, 2.6, 4.2], [0, -9.3, 11.2]), ellD(bf, [1.2, 1.2, 1.2], [7, -0.6, 12.4]),
+      bulbD(bl, BULB_A), sparkD(bl, SPARKS_A))],
+    ['abdomen', Math.min(segD(bl, SEGS.slice(2)), capD(bf, [1.1, 20.2, 6.4], [1.7, 21.8, 4], 0.6, 0.15),
+      bulbD(bl, BULB_B), sparkD(bl, SPARKS_B))],
+  ]);
 }
 
 const clips = insectClips({ ant: 3, stride: 14, lift: 12 });
 
-// fidget: the capacitors charge (the bulbs swell) and discharge in a jolt that rattles the whole mite
+// fidget: the capacitors charge (the bulbs swell) and discharge in a jolt that rattles the whole mite, the compound
+// eyes flaring with it
 clips.idle_discharge = {
   seconds: 2,
   pose: (t, u) => {
@@ -69,7 +122,10 @@ clips.idle_discharge = {
     return merge({
       root: { p: [0, 0, 0.6 * jolt] },
       body: { r: [0, 2 * osc(u, 24) * jolt, 0], s: 1 + 0.025 * charge },
+      abdomen: { s: 1 + 0.02 * charge },
       head: { r: [-6 * jolt, 0, 0] },
+      eyeL: { s: 1 + 0.06 * charge + 0.08 * jolt },
+      eyeR: { s: 1 + 0.06 * charge + 0.08 * jolt },
       mandL: { r: [0, 0, 12 * jolt] },
       mandR: { r: [0, 0, -12 * jolt] },
       antL1: { r: [-10 * jolt, -8 * jolt, 0] },
