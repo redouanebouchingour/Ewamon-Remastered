@@ -9,8 +9,8 @@ IMPLEMENTATION-NOTES "Rigged creatures").
 ## How it fits together
 
 - `build.mjs` makes the static `<id>.glb` from the scad (one mesh, vertex colours, 1 m tall, feet on y = 0).
-- `rig.mjs <id>` reads that GLB plus `rigs/<id>.mjs` and writes `<id>.rig.glb`: a skeleton, rigid skin weights (one
-  joint per triangle) and the clips baked at 30 fps. `index.json` then serves the rigged file (`rig: true`).
+- `rig.mjs <id>` reads that GLB plus `rigs/<id>.mjs` and writes `<id>.rig.glb`: a skeleton, skin weights (one joint
+  per triangle, blended across the seams between parts, below) and the clips baked at 30 fps. `index.json` then serves the rigged file (`rig: true`).
 - The client ships the rig only. The first rig moves the static GLB from `packages/client/public/creature-models/` to
   `glb/<id>.glb` here, where it stays as the rig's input; `build.mjs` writes a rigged creature's static GLB there too.
   A rig is about 1.17 × its static GLB, so rigging all 203 adds about 5.5 MiB to the public folder.
@@ -91,6 +91,18 @@ it). `rig.mjs` reads it, so a rig file needs no `frame` and rebuilding a model n
 - **Put each pivot at the centre of a ball.** Shoulders, elbows, wrists and the neck all sit inside a sphere or
   cylinder in the scad. A sphere rotating about its own centre stays put, so rigid skinning shows no seams. Check the
   close-up: Flowbot had no visible cracks at any joint.
+- **Seams blend (2026-11-03).** The scad is a union, so the surface inside every overlap is gone. With one joint per
+  triangle, a turning part opened a crack into the hollow body (Joeyjab's tail links, hips and headband, Moflame's
+  head, Malice's hat). `rig.mjs` now blends the skin weights across each seam: half and half on the edge shared by two
+  joints' triangles, back to the triangle's own joint over 3.5 cm (`seamBand` in the rig file). A pair blends when one
+  joint is the other's parent, or they are siblings of a different kind (legL and body off the root, not legL and legR,
+  which only touch). A joint that shrinks below half on its own (hidden or swapped eyes, a squashed mouth) keeps a
+  rigid seam, or the seam would be pulled into it. The run prints the pairs it left rigid; `RIG_SEAMS=1` lists the
+  blended ones and `RIG_PARTS=1` shows the blend as mixed part colours.
+- Overrides in the rig file: `rigid: [name]`, `seams: { allow: [[a, b]], deny: [[a, b]] }`, or `seams: false` for none.
+  Flowbot has `seams: false`: its joints are true balls, and blending dragged the torso's skin round the shoulder
+  balls when the arms went up. Refuse a pair the same way when two parts only touch and a clip pulls them apart (the
+  skin would stretch a web between them).
 - Split on a joint's z where the visible surface changes hands, e.g. the legs end where the pelvis blob's underside
   is (z 14.3), not at the hip pivot.
 - The scad was a union: surfaces hidden inside other parts are gone. Dropping a part in the rig leaves a hole where

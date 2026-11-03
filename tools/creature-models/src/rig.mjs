@@ -1,8 +1,11 @@
-// Rigs a built creature GLB: a skeleton, rigid skin weights and baked animation clips, from rigs/<id>.mjs.
+// Rigs a built creature GLB: a skeleton, skin weights (one joint per triangle, blended across the seams between parts)
+// and baked animation clips, from rigs/<id>.mjs.
 //
 //   node src/rig.mjs <id …>     the static <id>.glb -> packages/client/public/creature-models/<id>.rig.glb (+ index.json)
 //   node src/rig.mjs --all      every rigs/<id>.mjs
-//   RIG_PARTS=1 node src/rig.mjs <id>   colours each joint's triangles apart (checking assign(); re-rig after)
+//   RIG_PARTS=1 node src/rig.mjs <id>   colours each joint's triangles apart, the seam blends as mixed colours (checking
+//                                       assign(); re-rig after)
+//   RIG_SEAMS=1 node src/rig.mjs <id>   also lists the seams the skin blends across (seamWeights)
 //   node src/rig.mjs --npc …    the NPC set (rigs/npc/ -> public/npc-models/, paths.mjs)
 //
 // The static GLB (build.mjs) is the input. The first rig moves it from the client's public folder to glb/
@@ -26,6 +29,8 @@
 //   clips   { [name]: { seconds, pose(t, u) => { [joint]: { r?: [rx, ry, rz], p?: [dx, dy, dz], s?: n | [x, y, z] } } } }
 //           sampled at FPS; t in seconds, u = t / seconds. r rotates in the joint's frame (degrees, rotate() order),
 //           p offsets it (scad units), s scales it. A joint a clip leaves out holds its rest pose.
+//   rigid?, seams?, seamBand?   how the skin blends across the seams between joints (seamWeights): joints never to
+//           blend, pairs to add or refuse ({ allow: [[a, b]], deny: [[a, b]] }) or false for none, the band in metres
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -42,6 +47,8 @@ const EPS = 1e-5;
 const CLIP_GAP = 0.1;
 const round6 = (x) => Math.round(x * 1e6) / 1e6;
 const PARTS_VIEW = process.env.RIG_PARTS === '1';
+/** How far (metres on the 1 m creature) the skin weights blend away from a seam between two joints (seamWeights). */
+const SEAM_BAND = 0.035;
 /** A distinct linear colour per joint index (the golden-angle hue walk), for RIG_PARTS=1. */
 function partColour(i) {
   const h = (i * 137.508) % 360;
@@ -106,22 +113,44 @@ export async function rig(id) {
     j.restS = scale3(j.scale ?? 1);
   }
 
-  // mesh: the kept triangles on their joints, plus the extras' boxes
+  // the clips, sampled at FPS (the seams need each joint's smallest scale; baked into the animation further down)
+  const sampled = {};
+  for (const [name, clip] of Object.entries(def.clips)) {
+    const frames = Math.max(1, Math.round(clip.seconds * FPS));
+    const times = [];
+    const poses = [];
+    for (let f = 0; f <= frames; f++) {
+      const t = (f / frames) * clip.seconds;
+      times.push(t);
+      poses.push(clip.pose(t, t / clip.seconds) ?? {});
+    }
+    for (const jn of Object.keys(poses[0])) if (!index.has(jn)) throw new Error(`${id}: clip ${name} moves unknown joint '${jn}'`);
+    sampled[name] = { times, poses };
+  }
+  const minScale = J.map((j) => Math.min(...scale3(j.scale ?? 1)));
+  for (const { poses } of Object.values(sampled)) for (const pose of poses) for (const [jn, q] of Object.entries(pose)) {
+    if (q.s !== undefined) minScale[index.get(jn)] = Math.min(minScale[index.get(jn)], ...scale3(q.s));
+  }
+
+  // mesh: the kept triangles on their joints (blended across the seams), plus the extras' boxes
   const pos = [];
   const nrm = [];
   const col = [];
   const jnt = [];
   const used = J.map(() => 0);
-  for (const [tri, name] of kept) {
+  for (const [, name] of kept) if (!index.has(name)) throw new Error(`${id}: assign() returned unknown joint '${name}'`);
+  const glbAt = (v) => toGlb(toScad([src.pos[v * 3], src.pos[v * 3 + 1], src.pos[v * 3 + 2]]));
+  const seams = seamWeights(kept.map(([tri, name]) => [tri, index.get(name)]), src.pos, glbAt, J, index, def, minScale);
+  for (const [t, [tri, name]] of kept.entries()) {
     const ji = index.get(name);
-    if (ji === undefined) throw new Error(`${id}: assign() returned unknown joint '${name}'`);
     used[ji]++;
-    for (const v of tri) {
-      pos.push(...toGlb(toScad([src.pos[v * 3], src.pos[v * 3 + 1], src.pos[v * 3 + 2]])));
+    for (const [c, v] of tri.entries()) {
+      const w = seams.weights[t * 3 + c];
+      pos.push(...glbAt(v));
       nrm.push(src.nrm[v * 3], src.nrm[v * 3 + 1], src.nrm[v * 3 + 2]);
-      if (PARTS_VIEW) col.push(...partColour(ji), 0);
+      if (PARTS_VIEW) col.push(...w.reduce((s, [wj, x]) => add(s, partColour(wj).map((y) => y * x)), [0, 0, 0]), 0);
       else col.push(src.col[v * 4], src.col[v * 4 + 1], src.col[v * 4 + 2], src.col[v * 4 + 3]);
-      jnt.push(ji);
+      jnt.push(w);
     }
   }
   for (const e of def.extras ?? []) {
@@ -137,7 +166,7 @@ export async function rig(id) {
       const nn = norm3(qRotate(J[ji].worldQ, qRotate(boxQ, scadToGlbDir(n))));
       nrm.push(...nn);
       col.push(...lin, 0);
-      jnt.push(ji);
+      jnt.push([[ji, 1]]);
     }
     used[ji]++;
   }
@@ -149,7 +178,7 @@ export async function rig(id) {
   const n = jnt.length;
   const joints = new Uint8Array(n * 4);
   const weights = new Float32Array(n * 4);
-  for (let i = 0; i < n; i++) { joints[i * 4] = jnt[i]; weights[i * 4] = 1; }
+  for (let i = 0; i < n; i++) for (const [s, [ji, w]] of jnt[i].entries()) { joints[i * 4 + s] = ji; weights[i * 4 + s] = w; }
   if (J.length > 255) throw new Error(`${id}: ${J.length} joints (max 255)`);
   const acc = (type, arr) => doc.createAccessor().setType(type).setArray(arr).setBuffer(buffer);
   const prim = doc.createPrimitive()
@@ -178,19 +207,6 @@ export async function rig(id) {
   // extras; the game cuts it back into the named clips (creatureRig.ts splitClips). One track per moving channel instead
   // of one per channel per clip keeps the JSON small, and every clip carries every channel any clip moves, so a
   // cross-fade never falls back to rest.
-  const sampled = {};
-  for (const [name, clip] of Object.entries(def.clips)) {
-    const frames = Math.max(1, Math.round(clip.seconds * FPS));
-    const times = [];
-    const poses = [];
-    for (let f = 0; f <= frames; f++) {
-      const t = (f / frames) * clip.seconds;
-      times.push(t);
-      poses.push(clip.pose(t, t / clip.seconds) ?? {});
-    }
-    for (const jn of Object.keys(poses[0])) if (!index.has(jn)) throw new Error(`${id}: clip ${name} moves unknown joint '${jn}'`);
-    sampled[name] = { times, poses };
-  }
   const moved = { r: new Set(), p: new Set(), s: new Set() };
   for (const { poses } of Object.values(sampled)) for (const pose of poses) for (const [jn, q] of Object.entries(pose)) for (const ch of ['r', 'p', 's']) if (q[ch] !== undefined) moved[ch].add(jn);
   const table = {};
@@ -250,7 +266,123 @@ export async function rig(id) {
     renameSync(input, join(STATIC_DIR, `${id}.glb`));
   }
   if (dropped > 0) console.log(`rig ${id}: dropped ${dropped} triangles, refitted to scad z ${lo.toFixed(2)}..${hi.toFixed(2)}`);
-  console.log(`rig ${id}: ${J.length} joints, ${Object.keys(def.clips).length} clips (${Object.keys(def.clips).join(', ')}), ${(bytes.length / 1024).toFixed(0)} KiB`);
+  console.log(`rig ${id}: ${J.length} joints, ${Object.keys(def.clips).length} clips (${Object.keys(def.clips).join(', ')}), ${seams.blended.length} seams blended, ${(bytes.length / 1024).toFixed(0)} KiB`);
+  if (process.env.RIG_SEAMS === '1') console.log(`rig ${id}: seams blended: ${seams.blended.join(', ')}`);
+  if (seams.rigid.length > 0) console.log(`rig ${id}: seams left rigid: ${seams.rigid.join(', ')}`);
+}
+
+/**
+ * Skin weights for the static mesh's triangles. The scad is a union, so where two parts meet the surface inside the
+ * overlap is gone: with one joint per triangle, a turning part opens a crack into the hollow body. So the weights blend
+ * across each seam (an edge shared by two joints' triangles): half and half on it, back to the triangle's own joint
+ * over SEAM_BAND (or the rig's `seamBand`), and the skin stretches instead. A pair blends when one joint is the other's
+ * parent, or they are siblings of a different kind (legL and body off the root, not legL and legR, which only touch);
+ * a seam stays rigid where a joint shrinks below half on its own (hidden or swapped eyes, a squashed mouth decal),
+ * since a blended seam would be pulled into it. A true ball joint (Flowbot's shoulders: a ball turning on its own
+ * centre) never opened, and blending drags its neighbour's skin round, so refuse it in the rig file. The rig file can name
+ * more rigid joints (`rigid: [name]`), add or refuse pairs (`seams: { allow: [[a, b]], deny: [[a, b]] }`) or turn the
+ * blending off (`seams: false`, Flowbot: ball joints throughout).
+ * Weights are per position, so every copy of a seam vertex moves the same. Returns [[joint, weight] …] per triangle
+ * corner (at most 4, summing to 1), the pairs blended and the pairs left rigid.
+ */
+function seamWeights(tris, srcPos, glbAt, J, index, def, minScale) {
+  const band = def.seamBand ?? SEAM_BAND;
+  const names = (a, b) => [J[a].name, J[b].name].sort().join('/');
+  const named = (list) => new Set((list ?? []).map((pair) => {
+    for (const n of pair) if (!index.has(n)) throw new Error(`seams: unknown joint '${n}'`);
+    return names(index.get(pair[0]), index.get(pair[1]));
+  }));
+  const allowList = named(def.seams?.allow);
+  const denyList = named(def.seams?.deny);
+  if (def.seams === false) return { weights: tris.flatMap(([, ji]) => [[[ji, 1]], [[ji, 1]], [[ji, 1]]]), blended: [], rigid: [] };
+  const rigid = J.map((j) => (def.rigid ?? []).includes(j.name));
+  const shrinks = minScale.map((s) => s < 0.5);
+  const parent = J.map((j) => (j.parent === undefined ? -1 : index.get(j.parent)));
+  const kind = (n) => n.replace(/\d+$/, '').replace(/[LR]$/, '').replace(/\d+$/, '');
+  const allowed = (a, b) => {
+    if (rigid[a] || rigid[b] || denyList.has(names(a, b))) return false;
+    // a child shrinks with its parent, so only the child's own scale pulls the seam apart
+    if (parent[b] === a) return !shrinks[b];
+    if (parent[a] === b) return !shrinks[a];
+    if (shrinks[a] || shrinks[b]) return false;
+    return allowList.has(names(a, b)) || (parent[a] === parent[b] && kind(J[a].name) !== kind(J[b].name));
+  };
+
+  // one id per distinct position (the static mesh splits vertices at colour and normal changes)
+  const ids = new Map();
+  const at = [];
+  const corner = tris.map(([tri]) => tri.map((v) => {
+    const key = `${srcPos[v * 3]},${srcPos[v * 3 + 1]},${srcPos[v * 3 + 2]}`;
+    if (!ids.has(key)) { ids.set(key, at.length); at.push(glbAt(v)); }
+    return ids.get(key);
+  }));
+  const jointsAt = at.map(() => new Set());
+  const edges = new Map();
+  for (const [t, [, ji]] of tris.entries()) {
+    for (let c = 0; c < 3; c++) {
+      const a = corner[t][c];
+      const b = corner[t][(c + 1) % 3];
+      jointsAt[a].add(ji);
+      const key = a < b ? `${a},${b}` : `${b},${a}`;
+      if (!edges.has(key)) edges.set(key, { a, b, js: new Set() });
+      edges.get(key).js.add(ji);
+    }
+  }
+  // the seam segments per blended pair, with their bounds grown by the band for a quick reject
+  const seams = new Map();
+  const left = new Set();
+  for (const { a, b, js } of edges.values()) {
+    if (js.size < 2) continue;
+    const list = [...js];
+    for (let x = 0; x < list.length; x++) for (let y = x + 1; y < list.length; y++) {
+      const [p, q] = [list[x], list[y]];
+      if (!allowed(p, q)) { left.add(names(p, q)); continue; }
+      const key = names(p, q);
+      if (!seams.has(key)) seams.set(key, { joints: [p, q], segs: [], lo: [Infinity, Infinity, Infinity], hi: [-Infinity, -Infinity, -Infinity] });
+      const s = seams.get(key);
+      s.segs.push([at[a], at[b]]);
+      for (const v of [at[a], at[b]]) for (let k = 0; k < 3; k++) { s.lo[k] = Math.min(s.lo[k], v[k] - band); s.hi[k] = Math.max(s.hi[k], v[k] + band); }
+    }
+  }
+  const partners = J.map(() => []);
+  for (const s of seams.values()) { partners[s.joints[0]].push([s.joints[1], s]); partners[s.joints[1]].push([s.joints[0], s]); }
+  // full weight on the seam, none at the band's edge (a smoothstep)
+  const fade = (d) => { const u = Math.min(1, d / band); return 1 - u * u * (3 - 2 * u); };
+
+  const cache = new Map();
+  const weightsAt = (id, own) => {
+    if (rigid[own]) return [[own, 1]];
+    // the joints meeting here that blend with this one (through each other: a triple point is one group)
+    const group = new Set([own]);
+    for (const g of group) for (const x of jointsAt[id]) if (!group.has(x) && allowed(g, x)) group.add(x);
+    const key = `${id}:${[...group].sort((a, b) => a - b).join(',')}`;
+    if (cache.has(key)) return cache.get(key);
+    const score = new Map([...group].map((g) => [g, 1]));
+    const p = at[id];
+    for (const g of group) for (const [x, s] of partners[g]) {
+      if (group.has(x) || p.some((v, k) => v < s.lo[k] || v > s.hi[k])) continue;
+      let d = Infinity;
+      for (const [a, b] of s.segs) d = Math.min(d, segDist(p, a, b));
+      if (d < band) score.set(x, Math.max(score.get(x) ?? 0, fade(d)));
+    }
+    const top = [...score].sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 4);
+    const sum = top.reduce((s, [, w]) => s + w, 0);
+    const out = top.map(([j, w]) => [j, w / sum]);
+    cache.set(key, out);
+    return out;
+  };
+  const weights = [];
+  for (const [t, [, ji]] of tris.entries()) for (const id of corner[t]) weights.push(weightsAt(id, ji));
+  return { weights, blended: [...seams.keys()], rigid: [...left].filter((k) => !seams.has(k)) };
+}
+
+/** The distance from point p to the segment a-b. */
+function segDist(p, a, b) {
+  const ab = sub(b, a);
+  const ap = sub(p, a);
+  const len = ab[0] * ab[0] + ab[1] * ab[1] + ab[2] * ab[2];
+  const u = len === 0 ? 0 : Math.max(0, Math.min(1, (ap[0] * ab[0] + ap[1] * ab[1] + ap[2] * ab[2]) / len));
+  return Math.hypot(ap[0] - u * ab[0], ap[1] - u * ab[1], ap[2] - u * ab[2]);
 }
 
 /** Warns when frames.json no longer describes the GLB (the scad changed, the GLB or the frame was not refreshed). */

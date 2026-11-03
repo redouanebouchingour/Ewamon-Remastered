@@ -432,4 +432,7 @@ export default {
   assign,
   extras,
   clips,
+  // ball joints throughout (shoulders, elbows, wrists, neck): rigid skinning shows no seams, and blending would drag
+  // the torso's skin round the shoulder balls when the arms go up (rig.mjs seamWeights)
+  seams: false,
 };

@@ -2814,7 +2814,8 @@ The user's call: most of a zone never moves, so only the player, villagers and c
 
 - **What:** a 3D body can carry a skeleton and named animation clips. `tools/creature-models` rig.mjs turns a static
   `<id>.glb` plus `rigs/<id>.mjs` (joints, a per-triangle part rule, extra expression geometry, clips as functions of
-  time) into `<id>.rig.glb`: rigid skin weights (one joint per triangle), the clips baked at 30 fps, resampled,
+  time) into `<id>.rig.glb`: skin weights (one joint per triangle, blended across the seams between parts since
+  2026-11-03, so a turning part stretches the skin instead of cracking the hollow union), the clips baked at 30 fps, resampled,
   quantized + meshopt (filter mode: quaternion / exponential keys, octahedral normals). `index.json` serves the rigged
   file (`rig: true`) in place of the static one, which then lives in `tools/creature-models/glb/` as the rig's input (not
   shipped). Any skinned GLB with clips of these names plugs in the same way (a
