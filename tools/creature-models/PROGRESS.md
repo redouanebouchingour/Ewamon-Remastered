@@ -28,3 +28,44 @@ rigging sessions (the user, 2026-10-29): no reports, no coordination messages.
    (`src/measure.mjs`, `src/compare.mjs`, `MODELLING.md`, `PROGRESS.md`, `scad/lib.scad`), never `git add -A`; the
    rigging session has uncommitted work in `rigs/`, `src/rig.mjs`, `glb/` and the render package.
 4. `pnpm check` before a commit to main (close any headless Chrome first).
+
+## Sprite-match wave (started 2026-11-03)
+
+The user's bar this time: Flowbot, Joeyjab, Malice, Glowtent and Toxiveil look almost identical to their sprites; every
+other model must get there, face first (eye count, size, colour, expression; head shape; mouth; ears; horns;
+markings). Known miss: Clementar had one eye (the far eye was modelled as a wink line). Each fixed model is rebuilt AND
+re-rigged (its `rigs/<id>.mjs` parts, pivots and eyeKit follow the new scad), then checked in the sandbox
+(`?demo=rig&species=<id>`) over headless Chrome. The per-agent brief is `sprite-match-brief.md` in the session notes
+folder; its content: MODELLING.md for the scad, ANIMATING.md for the re-rig, one headless Chrome per agent on its own
+CDP port against one shared sandbox.
+
+Survey (2026-11-03): all 204 scads rendered next to their sprites (OpenSCAD, the preview camera). Tiers:
+
+- At the bar, leave: flowbot, joeyjab, malice, glowtent, toxiveil.
+- Close, face or detail fixes: augurvane, bloomduck, bramblecub, brookrawl, castlemaw, castlemaw_rage, cindercap,
+  coldplate, corvlet, craterhulk, cryptorb, darkone, devourest, dreadmaw, dreambud, dunevenom, elemutt, gemknight,
+  glimfin, gnashfin, gravelwisp, gustling, hoarfrowl, kindlegrub, kelvyre, leafcoon, lumistar, meteorb, moflame,
+  mossling, mudbub, mufflo, nerohat, puffinch, pyremoth, pyrothal, ravenmourne, rexaloft, scalewisp, scorpit,
+  seedrift, serpyre, smellduck, sproutgrub, starwhim, tombdune, trenchtusk, tuskling, twinklit, umbrit, wickling,
+  wooltug, yahit, zaptus, dustcub, badlander, infernomorel, infernomorel_majin.
+- Big misses (silhouette, pose, proportions or the face read as another creature): everything else, notably
+  abysspark(_tenjin), acier(_majin), alloylark, ampmite, aonred, archonosis, astaroth, auroracle, bankaiser, berkest,
+  blighthex, blizzhowl, blizzraak, bloomdrake, bloomsprite, blossomsail, bogmaw, briarvaunt, budwing, burrowyrm,
+  caldermole, chrysotox, cirrileap, clementar(_majin), coalette, darkyon, dunescale, embrock, fedoraith, fennorange,
+  fibrostis, flampling, florasage, frofloe, galeforth, geoboxer, glaciarm, glacifang, glacinid, glimmereen(_tenjin),
+  glimp, grubolt, gustuff, hexroach, hollowmane(_rage), hollowolf, hyoryu(_majin), ignispectre, ironcarab, katamute,
+  lawlander(_tenjin), luxtrik, lumyth, magmolith, mantleaf, mesadrake, miscarmen, mismagmen, moblaze, murkrat,
+  murmink, nebucloak, necrogeist(_majin), nettlewisp, noxmyth, pebblit, pebfist, petraptor, pyrecap, raidori(_tenjin),
+  raikitsune, rambull, the six ravatars, resilian, resilith, resilithorn, rimeidol, rimetusk, ripshell, rivetalon,
+  roobrawler, scraphog, shagtusk, shalewing, shardling, shiveruff, slushpup, snapling, snowlet, solpyre(_tenjin),
+  stellaria, stormchick, sunjaw, thornback(_tenjin), thundrix, tidalfang, tidespine, toxshade(_majin), tsunamite,
+  ultraze, veilpup, velvetomb, venobulb, verdatide, voidraith, voidraxis, voltaura, voltide, vysion, wraithtide,
+  yaschamp, yasprime, zenryu(_majin), abyssrake, badlander_majin, gemknight_tenjin, kygra, kykaiser(_tenjin),
+  lithokrysm, prismolith.
+
+First batch (one per body plan, shown to the user before the rest): clementar, fennorange, burrowyrm, glimp, snowlet,
+blizzhowl. Remodelled, re-rigged (no warnings), checked in the sandbox; snowlet and blizzhowl took a second pass
+(spike-cone fur read as a blowfish / a spiky disc: use soft lobes and pillow tails, not cones). Not committed yet:
+waiting for the user's go on the direction (2026-11-03). Front IoU: clementar 0.74, fennorange 0.81, burrowyrm 0.83,
+glimp 0.88, snowlet 0.83, blizzhowl 0.74. Known leftovers: fennorange's tail is a flat slab, burrowyrm's eyes are
+smaller than drawn, blizzhowl's tails shade grey in the OpenSCAD preview (pale blue in game).

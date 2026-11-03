@@ -1,44 +1,64 @@
-// Glimp's rig: a big soap-bubble body (the body is the head) on two bubble feet, bubble hands floating at its sides,
-// a crown of little bubbles with a candle-wick flame that flickers. Biped template. Numbers are scad/glimp.scad's.
+// Glimp's rig: a big soap-bubble body (the body is the head) on two bubble feet, bubble hands at its sides, a crown
+// of little bubbles with a thin stalk and a feather wisp at its tip that flickers. Biped template. Numbers are
+// scad/glimp.scad's (remodelled on the sprite 2026-11-03).
 import { TAU, hash, merge, rigDef, wave } from './lib/anim.mjs';
 import { any, bipedClips, ell, limb, pick } from './lib/biped.mjs';
-import { eyeKit, mirrorEye } from './lib/face.mjs';
+import { eyeKit } from './lib/face.mjs';
 import { isAny, near } from './lib/geo.mjs';
 
-const PEARL = [0.9, 0.94, 1];
-const WICK = [0.6, 0.72, 0.95];
-const FLAME = [[0.98, 0.86, 0.5], [0.9, 0.9, 0.7]];
+const PINK = [0.99, 0.86, 0.94];
+const STALK = [0.66, 0.76, 0.93];
+const WISP = [[0.94, 0.81, 0.86], [0.97, 0.88, 0.72], [0.99, 0.95, 0.82]];
 
-const eyeL = { side: 'L', at: [3.8, -9.75, 16.4], size: 1.6, yaw: -20, flat: 0.5 };
-const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], parent: 'body', skin: PEARL });
+// the body ellipsoid and the scad's onBody(): a point on its surface at heading psi (deg from -Y towards +X)
+const B = [14.6, 13.6, 12.6];
+const BZ = 18.3;
+const rad = (d) => (d * Math.PI) / 180;
+const onBody = (psi, z, out = 0) => {
+  const k = Math.sqrt(Math.max(0, 1 - ((z - BZ) / B[2]) ** 2));
+  const s = Math.sin(rad(psi)); const c = Math.cos(rad(psi));
+  return [B[0] * k * s + out * s, -B[1] * k * c - out * c, z];
+};
+
+// the face is turned 10 deg towards the viewer as drawn, so the two eyes are not mirrors: the near (+X) one at
+// heading 30.5, the far one at -10.9 (scad EPSI), both at EZ = 21.1, sunk 0.35
+const EYE = 2.3;
+const EZ = 21.1;
+const eyeL = { side: 'L', at: onBody(30.5, EZ, -0.35), size: EYE, yaw: 30.5, flat: 0.6 };
+const eyeR = { side: 'R', at: onBody(-10.9, EZ, -0.35), size: EYE, yaw: -10.9, flat: 0.6 };
+const face = eyeKit({ eyes: [eyeL, eyeR], parent: 'body', skin: PINK });
 
 const joints = [
   { name: 'root', at: [0, 0, 0] },
-  { name: 'legL', parent: 'root', at: [4.4, 0, 6] },
-  { name: 'legR', parent: 'root', at: [-4.4, 0, 6] },
+  { name: 'legL', parent: 'root', at: [6.6, -0.8, 5.6] },
+  { name: 'legR', parent: 'root', at: [-6.6, -0.8, 5.6] },
   { name: 'body', parent: 'root', at: [0, 0, 6] },
-  { name: 'armL', parent: 'body', at: [9.4, -0.3, 13] },
-  { name: 'armR', parent: 'body', at: [-9.4, -0.3, 13] },
-  { name: 'crest1', parent: 'body', at: [0, 0, 24.5] },
-  { name: 'crest2', parent: 'crest1', at: [0.6, 0, 29] },
+  { name: 'armL', parent: 'body', at: [13, -1.4, 12.8] },
+  { name: 'armR', parent: 'body', at: [-13, -1.4, 12.8] },
+  { name: 'crest1', parent: 'body', at: [0.5, 0.5, 30.5] },
+  { name: 'crest2', parent: 'crest1', at: [5.5, 0.6, 35.9] },
   ...face.joints,
 ];
 
 const parts = [
-  ['body', ell([11, 10.5, 10.5], [0, 0, 14.5])],
-  ['crest1', any(...[0, 45, 90, 135, 180, 225, 270, 315].map((a) => ell([2, 2, 1.8], [Math.cos((a * Math.PI) / 180) * 3.6, Math.sin((a * Math.PI) / 180) * 3.2, 24.6])))],
-  ['arm*', any(ell([2.4, 2.2, 2.4], [11.2, -0.5, 12.5]), ell([0.7, 0.4, 0.6], [11.4, -2.6, 13.5]))],
-  ['leg*', any(limb([4.4, 0, 6], [4.6, -0.4, 2.6], 2, 2), ell([2.8, 3.2, 2.2], [4.6, -1, 2.2]), ell([0.7, 0.5, 0.5], [3.8, -3.6, 3]))],
-  ['legL', ell([0.8, 0.8, 0.8], [9, -5, 1.2])],   // the stray bubble by the left foot
+  ['body', ell(B, [0, 0, BZ])],
+  ['crest1', any(
+    ell([3, 2.8, 2.7], [-0.4, -1.4, 32.3]), ell([1.8, 1.7, 1.7], [4.6, -2.2, 31.2]), ell([2.3, 2.2, 2.3], [7.4, 0.6, 30.6]),
+    ell([2.6, 2.4, 2.4], [-1, 3.2, 31.8]), ell([1.7, 1.6, 1.6], [-5.2, 1.4, 30.2]), ell([1.6, 1.5, 1.5], [3.6, 3.4, 31.2]),
+    ell([0.8, 0.6, 0.6], [-1.6, -3.6, 33.6]), ell([0.6, 0.5, 0.5], [6.6, -1.2, 32]),
+    limb([2.4, 0.6, 31], [4.2, 0.6, 34], 0.85, 0.75), limb([4.2, 0.6, 34], [5.4, 0.6, 35.8], 0.75, 0.72))],
+  ['arm*', any(ell([2.9, 2.6, 3], [15.4, -1.6, 12.8]), ell([0.7, 0.4, 0.8], [15.4, -4.1, 14]))],
+  ['leg*', any(ell([3.7, 3.9, 3.7], [6.6, -0.8, 3.7]), ell([1.8, 1.8, 1.7], [10.2, -1.4, 1.9]), ell([1.4, 0.6, 1], [6.2, -4.2, 3.6]), ell([0.6, 0.4, 0.5], [5.4, -4.4, 4.6]))],
+  ['legL', ell([0.75, 0.75, 0.75], [17, -3, 1.1])],   // the stray bubble by the near foot
 ];
 
 function assign(c, rgb) {
-  if (isAny(rgb, FLAME, 0.03)) return 'crest2';
-  if (near(rgb, WICK, 0.03)) return c[2] > 27 ? 'crest2' : 'crest1';
+  if (isAny(rgb, WISP, 0.025)) return 'crest2';
+  if (near(rgb, STALK, 0.03)) return 'crest1';
   return pick(c, parts);
 }
 
-// the flame flickers on beats counted in u (whole steps per loop), the crown sways a beat behind the body
+// the wisp flickers on beats counted in u (whole steps per loop), the crown sways a beat behind the body
 const flicker = (u, steps, amp = 1) => {
   const k = hash(Math.floor(u * steps) % steps);
   return { crest2: { s: [1 + 0.12 * amp * (k - 0.5), 1, 1 + 0.25 * amp * (k - 0.3)], r: [0, 8 * amp * (k - 0.5), 0] } };
@@ -46,15 +66,15 @@ const flicker = (u, steps, amp = 1) => {
 const crown = (u, amp, cycles) => wave(['crest1'], u, { cycles, amp: [amp, 0, amp * 0.6] });
 const fx = { idle: [2, 2, 24], walk: [4, 2, 12], idle_look: [2, 2, 20], windup: [3, 1, 6], lunge: [6, 1, 6], hurt: [8, 3, 8], recoil: [4, 1, 6], faint: [3, 1, 18], celebrate: [6, 3, 12], enter: [5, 1, 10], exit: [4, 2, 8] };
 const add = Object.fromEntries(Object.entries(fx).map(([n, [a, c, s]]) => [n, (t, u) => merge(crown(u, a, c), flicker(u, s, n === 'faint' ? 0.3 : 1))]));
-// the flame shrinks to an ember in the faint
+// the wisp curls up small in the faint
 add.faint = (t, u) => merge(crown(u, 3, 1), { crest2: { s: Math.max(0.35, 1 - 0.65 * Math.min(1, u / 0.7)) } });
 
-const base = bipedClips({ face, hipH: 6, stride: 16, hopH: 3, armSwing: 20, add });
+const base = bipedClips({ face, hipH: 5.6, stride: 16, hopH: 3, armSwing: 20, add });
 
 const clips = {
   ...base,
 
-  // fidget: blows on its own flame, which bends away and flares back up
+  // fidget: blows on its own wisp, which bends away and springs back up
   idle_blow: {
     seconds: 2.2,
     pose: (t, u) => {

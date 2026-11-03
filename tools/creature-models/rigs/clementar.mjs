@@ -5,9 +5,9 @@
 // sits 1.8 further out than a mirror of the near one (the scad's `translate([1.8, 0, 0])`). Numbers are
 // scad/clementar.scad's.
 import { K, both, merge, osc, rigDef, win } from './lib/anim.mjs';
-import { any, bipedClips, ell, limb, pick, ppFrame, fromSheet, plate } from './lib/biped.mjs';
+import { any, bipedClips, ell, limb, mx, pick, ppFrame, fromSheet, plate } from './lib/biped.mjs';
 import { blinks, eyeKit } from './lib/face.mjs';
-import { plateD } from './lib/geo.mjs';
+import { subFrame } from './lib/geo.mjs';
 
 const TAN = [0.82, 0.68, 0.38];
 
@@ -15,22 +15,34 @@ const TAN = [0.82, 0.68, 0.38];
 const far = ([x, y, z]) => [-(x + 1.8), y, z];
 const SHOULDER = [6.2, -1.2, 23.0];
 const WRIST = [12.3, -2.8, 19.6];
-const NEAR_EAR = { d: -5.2, dz: 0.9, base: [4.5, 31.6] };
-const FAR_EAR = { d: 3.0, dz: -0.4, base: [-6.2, 31.0] };
-const earAt = (e) => ppFrame(e.d).world([e.base[0], 0, e.base[1] + e.dz]);
-
-const farEarPts = [[-7.9, 30.9], [-8.6, 32.4], [-9.6, 34.4], [-10.3, 36.7], [-10.5, 39.3], [-10.1, 39.9], [-9.0, 39.8],
-  [-7.7, 36.8], [-6.7, 34.4], [-5.2, 32.2], [-4.6, 31.0], [-5.6, 30.2]];
-const nearEarPts = [[1.0, 32.3], [2.0, 34.6], [4.3, 36.7], [6.8, 39.2], [7.4, 39.9], [9.2, 39.6], [9.0, 37.0], [8.4, 34.6],
-  [7.5, 32.4], [5.5, 30.8], [3.0, 31.2]];
+// the ears: mirror_x() translate(EAR_AT) rotate(EAR_ROT) plates of earPts (x outward, z up from the root), the bands
+// 0.42 to 0.5 in front and the back panel 0.42 behind; the pivot where the ear's inner base meets the skull
+const EAR = subFrame([6.0, -2.5, 31.3], [-6, 13, 16]);
+const earPts = [[-4.0, 1.4], [-3.6, 2.6], [-2.9, 4.0], [-0.5, 6.0], [1.4, 7.7], [2.6, 8.9], [3.6, 9.3], [4.5, 8.8], [4.7, 6.0],
+  [4.4, 3.2], [3.4, 1.2], [1.6, -0.4], [-0.4, -0.9], [-2.6, -0.3]];
+const EAR_PIVOT = EAR.world([-2.0, 0, 0.6]);
 const sashEndPts = [[-7.6, 16.0], [-9.6, 13.8], [-12.2, 12.2], [-14.4, 11.1], [-14.2, 10.2], [-12.4, 9.5], [-12.1, 7.6],
   [-11.0, 7.6], [-10.6, 9.4], [-9.0, 11.2], [-7.4, 13.2]];
-// the tail's spine (sheet x, sheet z, depth, radius), 1.3 low like the scad
-const TAIL = [[4.6, 9.8, 6.0, 3.8], [8.5, 8.8, 7.0, 4.6], [12.6, 9.0, 8.0, 5.0], [15.2, 11.0, 8.5, 4.4],
-  [15.4, 14.6, 8.5, 3.8], [16.4, 17.0, 8.2, 2.8], [17.6, 18.4, 8.0, 1.8]].map(([sx, z, d, r]) => [fromSheet(sx, z - 1.3, d), r]);
+// the tail's spine (sheet x, sheet z, depth, radius), 1.3 low like the scad; its segments are scaled 0.9 in y
+const TAIL = [[4.8, 11.6, 4.8, 3.2], [7.9, 9.2, 6.4, 4.2], [11.4, 8.7, 7.4, 4.7], [14.4, 10.6, 7.8, 4.3],
+  [15.3, 13.9, 7.8, 3.6], [16.4, 16.8, 7.6, 2.7], [17.6, 18.7, 7.4, 1.7], [19.1, 19.2, 7.2, 0.7]].map(([sx, z, d, r]) => [fromSheet(sx, z - 1.3, d), r]);
 
-const eye = { side: 'L', at: [2.3, -6.3, 29.9], size: 1.1, yaw: 20, flat: 0.5 };
-const face = eyeKit({ eyes: [eye], skin: TAN });
+// the head (scad SKULL, JAW, RUFF, MUZ1 / MUZ2, NOSE, FEZ)
+const SKULL = [[0, -2.6, 30.2], [5.2, 4.3, 3.3]];
+const JAW = [[0, -4.6, 27.3], [2.9, 2.8, 2.1]];
+const RUFF = [[3.5, -3.8, 28.3], [1.8, 1.7, 1.45]];
+const FEZ = [0, -3.4, 32.2];
+
+// two eyes, each eye() squashed about its centre by EYE_SQ: translate(EYE) scale(EYE_SQ) translate(-EYE) eye(EYE, ...)
+const EYE = [2.4, -6.3, 30.3];
+const EYE_SQ = [1.3, 1, 0.62];
+const eyeAt = (k) => {
+  const at = [k * EYE[0], EYE[1], EYE[2]];
+  return { side: k > 0 ? 'L' : 'R', at, size: 1.05, yaw: k * 24, flat: 0.5,
+    frame: subFrame(at.map((v, i) => v * (1 - EYE_SQ[i])), [0, 0, 0], EYE_SQ) };
+};
+// the lid ellipsoid flattened to the almond eye (the frame scales its size by 1.3 all round)
+const face = eyeKit({ eyes: [eyeAt(1), eyeAt(-1)], skin: TAN, lid: [1.1, 1.05, 0.62] });
 
 const joints = [
   { name: 'root', at: [0, 0, 0] },
@@ -39,8 +51,8 @@ const joints = [
   { name: 'skirt', parent: 'root', at: [0, 0, 14.5] },
   { name: 'body', parent: 'root', at: [0, 0, 14.5] },
   { name: 'head', parent: 'body', at: [0, -2, 26.5] },
-  { name: 'earL', parent: 'head', at: earAt(NEAR_EAR) },
-  { name: 'earR', parent: 'head', at: earAt(FAR_EAR) },
+  { name: 'earL', parent: 'head', at: EAR_PIVOT },
+  { name: 'earR', parent: 'head', at: [-EAR_PIVOT[0], EAR_PIVOT[1], EAR_PIVOT[2]] },
   { name: 'armL', parent: 'body', at: SHOULDER },
   { name: 'armR', parent: 'body', at: far(SHOULDER) },
   { name: 'handL', parent: 'armL', at: WRIST },
@@ -62,7 +74,6 @@ const robe = (c) => {
   const over = Math.abs(c[2] - z) / 1.4;
   return Math.hypot(c[0] / rx, (c[1] - cy) / ry) + over;
 };
-const earTest = (e, pts) => (c) => { const q = ppFrame(e.d).local(c); return plateD([q[0], q[1], q[2] - e.dz], pts, 1.3); };
 const sleeve = (m) => any(limb(m(SHOULDER), m(WRIST), 2.7, 2.2), limb(m(SHOULDER), m([5.8, -1.0, 16.1]), 2.7, 1.0),
   limb(m(WRIST), m([13.0, -2.4, 15.9]), 2.2, 1.0), limb(m([5.8, -1.0, 16.1]), m([13.0, -2.4, 15.9]), 1.3), limb(m([9.8, -2.6, 17.4]), m([9, -1.8, 20.5]), 2.2));
 const hand = (m) => any(limb(m([14.0, -4.8, 19.5]), m([16.6, -5.4, 19.8]), 2.1, 1.1), limb(m([13.4, -5.0, 20.2]), m([12.0, -6.2, 21.8]), 0.7),
@@ -74,12 +85,11 @@ const id = (p) => p;
 
 const parts = [
   ['body', any(robe, ell([2.4, 1.5, 2.4], [0, -4.2, 24.8]), plate(sashEndPts, 1.2, ppFrame(3.2)))],
-  ['head', any(ell([4.8, 4.6, 3.6], [0, -1.2, 30.2]), ell([2.4, 3.2, 2.4], [5.4, -1.6, 31]), ell([2.4, 3.2, 2.4], [-5.4, -1.6, 31]),
-    ell([3.2, 3.4, 2.0], [0, -4, 27.2]), ell([3.3, 3.6, 2.3], [0, -4, 29.2]), limb([0, -5.6, 27.9], [0, -7.8, 27.5], 2.2, 1.45),
-    ell([1.7, 2.6, 1.1], [0, -6, 26.9]), ell([0.85, 0.7, 0.6], [0, -9, 27.7]), limb([0, -3.2, 32.6], [0, -3.2, 37.8], 2.75, 2.35),
-    ell([1.7, 1.2, 1.0], [2.3, -6.3, 29.9]))],
-  ['earL', earTest(NEAR_EAR, nearEarPts)],
-  ['earR', earTest(FAR_EAR, farEarPts)],
+  ['head', any(ell(SKULL[1], SKULL[0]), ell(JAW[1], JAW[0]), mx(ell(RUFF[1], RUFF[0])),
+    ell([2.4, 2.3, 2.1], [0, -5.7, 28.4]), ell([1.2, 1.1, 1.0], [0, -8.8, 27.9]), limb([0, -5.7, 28.4], [0, -8.8, 27.9], 2.0, 1.0),
+    ell([0.75, 0.6, 0.55], [0, -9.8, 28.2]), mx(ell([1.45, 0.75, 0.8], EYE)),
+    limb(FEZ, [FEZ[0], FEZ[1], FEZ[2] + 5.5], 2.95, 2.5), limb([0, -3.4, 37.75], [2.0, -2.9, 37.5], 0.3), limb([2.0, -2.9, 37.5], [2.75, -3.1, 34.8], 0.35))],
+  ['ear*', plate(earPts, 1.4, EAR)],
   ['armL', sleeve(id)], ['armR', sleeve(far)],
   ['handL', hand(id)], ['handR', hand(far)],
   ['legL', foot([4.8, -1.6], [7.2, -5.8])], ['legR', foot([-5.2, -3.6], [-7.4, -7.4])],
@@ -129,7 +139,8 @@ const clips = {
     },
   },
 
-  // fidget: the sly one. A slow knowing tilt of the head, the open eye closes to a smug ∩, ears tip back
+  // fidget: the sly one. A slow knowing tilt of the head and a wink: the near eye shuts to a smug ∩ while the far one
+  // stays half-lidded, ears tip back
   idle_wink: {
     seconds: 2.2,
     pose: (t, u) => {
@@ -138,7 +149,8 @@ const clips = {
         body: { r: [0, 0, 4 * on] },
         head: { r: [-4 * on, 10 * on, 14 * on] },
         ...both('ear', { r: [10 * on, -6 * on, 0] }),
-        ...(u > 0.3 && u < 0.7 ? face.pose('happy') : face.pose('open', 0.3 * on)),
+        ...face.pose('open', 0.3 * on),
+        ...(u > 0.3 && u < 0.7 ? { lidL: { s: [1, 1, 1] }, happyL: { s: 1 } } : {}),
         ...both('hand', { r: [-6 * on, 0, 0] }),
         ...hem(u, 1, 0.5),
       };

@@ -1,71 +1,94 @@
 // Fennorange's rig: a fennec kit hugging a big orange, in a fez, huge ears. The arms only hug, so they are paws the
-// template does not swing (pawL / pawR); the orange, the fez and the scarf end are joints of their own. Numbers are
-// scad/fennorange.scad's.
+// template does not swing (pawL / pawR); the orange, the fez and the two scarf ends are joints of their own. Numbers
+// are scad/fennorange.scad's (remodelled to the sprite 2026-11-03).
 import { K, TAU, both, merge, osc, rigDef, smooth, win } from './lib/anim.mjs';
-import { any, bipedClips, blob, ell, limb, pair, pick } from './lib/biped.mjs';
+import { any, bipedClips, blob, ell, inFrame, limb, mx, pair, pick, plate, slab, spike } from './lib/biped.mjs';
 import { blinks, eyeKit, mirrorEye } from './lib/face.mjs';
-import { isAny, near } from './lib/geo.mjs';
+import { isAny, near, rot, subFrame } from './lib/geo.mjs';
 
-const FUR = [0.86, 0.73, 0.48];
-const FEZ = [[0.5, 0.08, 0.1], [0.42, 0.06, 0.08], [0.15, 0.45, 0.2]];
-const SCARF = [[0.6, 0.15, 0.12], [0.25, 0.42, 0.2]];
-const FRUIT = [[0.96, 0.52, 0.1], [1, 0.66, 0.25], [0.3, 0.55, 0.2]];
+const FUR = [0.84, 0.70, 0.40];
+const ORANGE = [0.96, 0.51, 0.07];
+const FEZ = [[0.50, 0.10, 0.14], [0.36, 0.05, 0.09]];
+const GREEN = [0.26, 0.38, 0.19];
+const SCARF = [GREEN, [0.62, 0.14, 0.12]];
+const FRUITC = [ORANGE, [1, 0.62, 0.16], [0.34, 0.5, 0.22]];
+const INK = [0.12, 0.03, 0.01];
 const tails = ['tail1', 'tail2'];
 
-const eyeL = { side: 'L', at: [2.8, -5.1, 24.6], size: 1.75, yaw: -24, flat: 0.42 };
-const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: FUR });
-// the ear() module: base p, tip p + d, width w
-const EAR = { p: [4.4, 0, 27], d: [8.5, 3, 9.5], w: 3.9 };
-const at = (k) => EAR.p.map((v, i) => v + EAR.d[i] * k);
+// the eyes: eye() inside translate(EYE) rotate([0, 0, 16]) scale([1.3, 1, 0.95]); the lids sized to that scale
+const EYE = [4.55, -6.0, 22.6];
+const eyeL = { side: 'L', at: EYE, size: 1.6, yaw: 16, flat: 0.5 };
+const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: FUR, lid: [1.5, 1.1, 1.05] });
+
+// the ear plate: translate([4.6, 0.6, 0]) rotate([0, 0, 22]) plate(EAR shifted by -2.78 in x)
+const EAR = [[2.2, 27.5], [2.7, 30.4], [4.5, 32.2], [6.5, 33.5], [9, 34.8], [11.2, 35.6], [12, 37], [11, 38.3],
+  [11.4, 39.2], [13.5, 38.9], [14.6, 37.5], [15, 35.5], [14.8, 33], [13.8, 30], [12.1, 26.6], [9.5, 24.6], [7, 23.2],
+  [5.2, 23.5], [3.5, 25]].map(([x, z]) => [x - 2.78, z]);
+const earFrame = subFrame([4.6, 0.6, 0], [0, 0, 22]);
+// the tail plume: pp(2) translate([1.5, 0, 0]) slab(TAIL, 4.8)
+const TAIL = [[5, 8], [5.6, 6.5], [8.3, 5.9], [11, 6.8], [13.1, 8.8], [13.9, 11.5], [13.9, 13.8], [13.3, 16], [13.1, 17.7],
+  [15, 18.9], [13.9, 19.8], [11.6, 19.8], [8.9, 18.5], [7.3, 17], [6.5, 15.8], [6, 13], [5.6, 10.5]];
+const tailFrame = subFrame(rot([0, 0, 30], [1.5, 2, 0]), [0, 0, 30]);
+const FR = [-7.6, -2.6, 14.3];
+const TORSO = [[[4.7, 4.1, 4.6], [0, 0.4, 10.5]], [[3.3, 3, 2.8], [0, 0, 15.2]], [[3.9, 3.6, 3.6], [0, -1.1, 8.6]]];
 
 const joints = [
   { name: 'root', at: [0, 0, 0] },
-  ...pair('leg*', 'root', [3, 0.2, 6]),
-  { name: 'body', parent: 'root', at: [0, 0, 6] },
-  { name: 'orange', parent: 'body', at: [-5.2, -4, 11.5] },
-  { name: 'scarf', parent: 'body', at: [2.3, -3.8, 16.3] },
-  ...pair('paw*', 'body', [3.8, -0.5, 15]),
-  { name: 'head', parent: 'body', at: [0, -0.3, 17.6] },
-  { name: 'fez', parent: 'head', at: [0.4, 0, 28.6] },
-  ...pair('ear*', 'head', EAR.p),
-  { name: 'tail1', parent: 'body', at: [1.5, 4, 6] },
-  { name: 'tail2', parent: 'tail1', at: [9.5, 6.5, 10.5] },
+  ...pair('leg*', 'root', [3.3, 0.6, 7.2]),
+  { name: 'body', parent: 'root', at: [0, 0, 7.2] },
+  { name: 'orange', parent: 'body', at: FR },
+  { name: 'scarf', parent: 'body', at: [4.2, -0.6, 17.2] },
+  { name: 'scarfB', parent: 'body', at: [0, 3.3, 16.8] },
+  ...pair('paw*', 'body', [3.4, -0.45, 15.25]),
+  { name: 'head', parent: 'body', at: [0, -0.6, 17.4] },
+  { name: 'fez', parent: 'head', at: [0.2, 0.4, 27.6] },
+  ...pair('ear*', 'head', [4.8, 0.3, 26.8]),
+  { name: 'tail1', parent: 'body', at: [1.2, 3.2, 6.5] },
+  { name: 'tail2', parent: 'tail1', at: [8.5, 7.2, 11] },
   ...face.joints,
 ];
 
 const parts = [
-  ['leg*', any(ell([2.6, 2.8, 3.2], [3, 0.2, 5.2]), limb([3, 0, 4], [3, -0.5, 1.4], 1.8, 1.5), ell([1.8, 2.6, 1.2], [3, -1.6, 1.2]))],
-  ['body', any(blob([[[5.6, 4.8, 5], [0, 0.5, 9]], [[4.4, 3.8, 4], [0, 0, 14.5]]]), ell([3.6, 2.2, 4.5], [0, -3.1, 10]))],
-  ['head', any(ell([7.2, 6.2, 6], [0, -0.5, 23]), blob([[[3.4, 2.4, 2.4], [0, -5, 21.6]], [[1.8, 1.8, 1.4], [0, -7, 21.8]]]))],
-  ['head', limb([5.6, -1, 21.5], [7.8, -1, 20.1], 1.6, 0.3)],
-  ['head', limb([-5.6, -1, 21.5], [-7.8, -1, 20.1], 1.6, 0.3)],
-  ['ear*', any(limb(EAR.p, at(0.45), EAR.w * 0.7), limb(at(0.45), at(1), EAR.w * 0.8, 0.4))],
-  ['pawR', limb([-3.8, -0.5, 15], [-4.6, -4.4, 14], 1.3, 1.1)],
-  ['pawL', any(limb([3.8, -0.5, 15], [0, -5, 12.2], 1.3, 1.1), ell([1.3, 1.2, 1.1], [-0.6, -5.4, 12]))],
-  ['tail1', limb([1.5, 4, 6], [7, 6.5, 7], 1.6, 3.4)],
-  ['tail1', limb([7, 6.5, 7], [9.5, 6.5, 11], 3.4, 3.6)],
-  ['tail2', any(ell([3.4, 3, 2.6], [9.8, 6.5, 13.4]), limb([9.8, 6.5, 13.4], [10.2, 6, 18], 3, 1.2))],
+  ['leg*', any(ell([2.8, 3.1, 3.4], [3.3, 0.6, 7.2]), limb([3.9, 0.4, 5], [4.6, -0.4, 1.8], 1.8, 1.45), ell([1.9, 2.7, 1.15], [4.8, -1.3, 1.15]))],
+  ['body', blob(TORSO)],
+  ['head', any(
+    ell([8, 6.4, 5.8], [0, -1, 23]), ell([7.5, 6.1, 3.6], [0, -1.4, 20.6]),
+    blob([[[2.6, 2.2, 2], [0, -5.6, 20.4]], [[1.5, 1.3, 1.2], [0, -8.1, 20.5]]]), ell([0.8, 0.6, 0.55], [0, -9.35, 20.9]),
+    mx(spike([7.2, -1.8, 21.8], [1.8, -0.2, -0.5], 1.1)), mx(spike([7, -1.4, 20.6], [1.3, 0, -1.1], 0.9)),
+    mx(ell([2.6, 1.8, 2], EYE)),
+  )],
+  ['ear*', plate(EAR, 2, earFrame)],
+  ['pawL', any(limb([3.4, -0.5, 15.3], [3.1, -3.6, 13], 1.55, 1.45), limb([3.1, -3.6, 13], [-2.2, -4.7, 13.6], 1.45, 1.3), ell([1.4, 1.3, 1.2], [-2.8, -4.6, 13.7]))],
+  ['pawR', any(limb([-3.4, -0.4, 15.2], [-5, -0.8, 12.4], 1.4, 1.2), limb([-5, -0.8, 12.4], [-5.8, -1.6, 10.9], 1.2, 1.1), ell([1.2, 1.2, 1.05], [-6.1, -1.9, 10.6]))],
+  ['tail1', limb([1.2, 3.2, 6.5], [4.5, 5.2, 7.8], 1.4, 2.2)],
+  ['plume', slab(TAIL, 4.8, 1.6, tailFrame)],
+];
+const scarfParts = [
+  ['scarf', inFrame(subFrame([5.3, -0.4, 15.4], [0, -30, 10]), ell([1.25, 0.5, 2.3]))],
+  ['scarfB', inFrame(subFrame([0, 3.75, 13.6], [10, 0, 0]), ell([1.25, 0.5, 3.4]))],
+  ['body', ell([4.3, 4, 1.75], [0, -0.2, 16.9])],
 ];
 
 function assign(c, rgb) {
-  if (isAny(rgb, FEZ) && c[2] > 28) return 'fez';
-  if (isAny(rgb, FRUIT)) {
-    if (c[1] > 3 && c[0] > 5) return 'tail2';                        // the tail's orange tip, not the fruit
-    if (Math.hypot(c[0] + 5.2, c[1] + 4, c[2] - 11.5) < 6.5) return 'orange';
-  }
-  if (near(rgb, [1, 0.58, 0.12]) || near(rgb, [0.93, 0.5, 0.12])) return pick(c, parts.filter(([n]) => n === 'ear*' || n === 'tail2'));
-  if (isAny(rgb, SCARF)) return c[2] < 15.4 && c[1] < -2.4 ? 'scarf' : 'body';
+  if (isAny(rgb, FEZ)) return 'fez';
+  if ((near(rgb, GREEN) || near(rgb, INK)) && c[2] > 28.5) return 'fez';           // the star and the tassel
+  const dFruit = Math.hypot(c[0] - FR[0], c[1] - FR[1], c[2] - FR[2]);
+  if (isAny(rgb, FRUITC) && dFruit < 8 && c[2] > 9.5 && c[0] < -2.5) return 'orange';
+  if (near(rgb, GREEN) && c[0] < -5) return 'orange';                              // the calyx star and the stem
+  if (isAny(rgb, SCARF)) return pick(c, scarfParts);
   const j = pick(c, parts);
-  // the tail is one hull of long thin triangles: a single fur link and the tip, split by height
-  if (j.startsWith('tail')) return c[2] > 11 ? 'tail2' : 'tail1';
+  if (j === 'plume') return c[2] > 11.5 ? 'tail2' : 'tail1';
   return j;
 }
 
-const scarf = (u, cycles, amp = 1) => ({ scarf: { r: [6 * amp * osc(u, cycles, 0.2), 4 * amp * osc(u, cycles, 0.45), 0] } });
+const scarf = (u, cycles, amp = 1) => ({
+  scarf: { r: [6 * amp * osc(u, cycles, 0.2), 4 * amp * osc(u, cycles, 0.45), 0] },
+  scarfB: { r: [4 * amp * osc(u, cycles, 0.3), 0, 3 * amp * osc(u, cycles, 0.55)] },
+});
 const hug = (u, cycles, amp = 1) => ({ ...both('paw', { r: [2 * amp * osc(u, cycles), 0, 0] }), orange: { r: [0, 0, 1.5 * amp * osc(u, cycles)] } });
 
 const base = bipedClips({
-  face, tail: tails, hipH: 6, stride: 18, hopH: 2.5,
+  face, tail: tails, hipH: 7.2, stride: 18, hopH: 2.5,
   add: {
     idle: (t, u) => merge(scarf(u, 2), hug(u, 2), { fez: { r: [0, 2 * osc(u, 1, 0.3), 0] } }),
     walk: (t, u) => merge(scarf(u, 2, 2.2), hug(u, 2, 1.5), { fez: { r: [3 * osc(u, 2), 0, 0] }, orange: { p: [0, 0, 0.3 * Math.abs(osc(u, 2))] } }),

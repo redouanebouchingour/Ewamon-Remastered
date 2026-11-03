@@ -90,7 +90,7 @@
     },
     "blizzhowl": {
       "url": "blizzhowl.rig.glb",
-      "bytes": 131620,
+      "bytes": 233644,
       "rig": true
     },
     "blizzraak": {
@@ -150,7 +150,7 @@
     },
     "burrowyrm": {
       "url": "burrowyrm.rig.glb",
-      "bytes": 68080,
+      "bytes": 108100,
       "rig": true
     },
     "caldermole": {
@@ -185,7 +185,7 @@
     },
     "clementar": {
       "url": "clementar.rig.glb",
-      "bytes": 205764,
+      "bytes": 200804,
       "rig": true
     },
     "clementar_majin": {
@@ -275,7 +275,7 @@
     },
     "fennorange": {
       "url": "fennorange.rig.glb",
-      "bytes": 124840,
+      "bytes": 156988,
       "rig": true
     },
     "fibrostis": {
@@ -360,7 +360,7 @@
     },
     "glimp": {
       "url": "glimp.rig.glb",
-      "bytes": 102780,
+      "bytes": 133468,
       "rig": true
     },
     "glowtent": {
@@ -820,7 +820,7 @@
     },
     "snowlet": {
       "url": "snowlet.rig.glb",
-      "bytes": 90688,
+      "bytes": 127556,
       "rig": true
     },
     "solpyre": {
