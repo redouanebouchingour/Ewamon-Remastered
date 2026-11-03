@@ -1,99 +1,114 @@
-// Bloomdrake's rig: a caterpillar-dragon on three pairs of stubby legs, so it uses the insect template (tripod walk):
-// the front segments and the neck base are the body, the back segments the abdomen, the head rides the upper neck
-// with its antlers, the leaf wings are spread in a V, and the tail stem (tail1) carries the sunflower (tail2).
-// Template gap: insect.mjs swings sprawled legs forward with rz; these legs hang straight down, so the walk adds the
-// stride as rx here. The head sits inside the scad's `translate([0, 0, 3.6]) scale(0.93)` (headF), the wings inside
-// `translate([4, 4, 18]) rotate([0, 0, 12]) rotate([0, 12, 0])` (wingF). Numbers are scad/bloomdrake.scad's.
+// Bloomdrake's rig: a caterpillar-dragon on four pairs of stubby legs, so it uses the insect template with hanging legs
+// (`hang`, tripod phases over four pairs): the upright chest, the neck and the first three body pods are the body, the
+// pods curling back to its left are the abdomen, the head carries the antlers, the leaf wings are spread in a V, and
+// the tail stem (tail1) carries the flower (tail2). Numbers are scad/bloomdrake.scad's: the head block is
+// `translate(HC)`, each pod `translate(p) rotate([0, 0, -heading])`, each wing `translate(WR) rotate([0, 0, 18])`.
 import { K, TAU, merge, osc, rigDef, win } from './lib/anim.mjs';
 import { insectClips } from './lib/insect.mjs';
 import { eyeKit, mirrorEye } from './lib/face.mjs';
-import { blobD, capD, chainHit, closest, ellD, fold, isAny, near, rot, side, subFrame, unrot } from './lib/geo.mjs';
+import { capD, chainHit, closest, ellD, fold, near, side, subFrame } from './lib/geo.mjs';
 
-const GREEN = [0.36, 0.6, 0.27];
-const GREEN_DK = [0.22, 0.42, 0.2];
-const ANTLER = [0.5, 0.36, 0.25];
-const CLAW = [0.85, 0.25, 0.18];
-const FLOWER = [[0.95, 0.45, 0.12], [0.82, 0.28, 0.1], [0.42, 0.25, 0.1]];
+const SKIN = [0.45, 0.56, 0.32];
+const FEATHER = [[0.41, 0.52, 0.3], [0.48, 0.6, 0.35]];
+const RED = [0.8, 0.36, 0.22];
+const ANTLER = [0.62, 0.47, 0.33];
+const FLOWER = [[0.95, 0.6, 0.24], [0.8, 0.34, 0.14], [0.52, 0.34, 0.15], [0.92, 0.74, 0.42]];
 
-const headF = subFrame([0, 0, 3.6], [0, 0, 0], 0.93);
-const wingF = subFrame([4, 4, 18], [0, 12, 12]);
-const SEGS = [[0, 7, 6.8], [4.5, 7, 6.6], [9, 6.6, 6.2], [13.5, 6, 5.6], [17.5, 5.2, 5], [21.2, 4.4, 4.2], [24.6, 3.5, 3.6], [27.6, 2.6, 3]];
-const STEM = [[0, 29, 3.4], [-4, 31, 5], [-9, 30, 8], [-12, 27, 12]];
-const NECK = [[0, -1, 8], [0, -3, 14], [0, -3.5, 21]];
-const LEG_Y = [0, 8, 15];
+const HC = [0, 0.2, 21.8];
+const headF = subFrame(HC);
+const CH = [0, -2];
+const CHS = [[6.0, [4.3, 3.9, 2.6]], [9.4, [4.5, 4.1, 2.6]], [12.8, [4.2, 3.8, 2.5]], [16.0, [3.6, 3.3, 2.4]]];
+const PODS = [
+  [1, 1.5, 6.1, 19, [4.0, 3.2, 3.4]],
+  [2.25, 4.5, 5.9, 34, [3.8, 3.0, 3.3]],
+  [4.73, 7, 5.7, 48, [3.7, 3.0, 3.25]],
+  [7.5, 9.2, 5.5, 54, [3.6, 2.9, 3.15]],
+  [10.3, 11, 5.2, 61, [3.4, 2.8, 3.0]],
+  [13.2, 12.3, 4.8, 69, [3.0, 2.6, 2.7]],
+  [15.9, 13.2, 4.2, 72, [2.3, 2.3, 2.2]],
+];
+const STEM = [[15.9, 13.2, 4.1], [17.5, 13.6, 6.0], [18.0, 13.6, 9.8], [17.9, 13.4, 13.6]];
+const STEM_R = [2.0, 1.5, 1.15, 0.9];
+const WR = [2.2, 2.0, 14.6];
 
-const eyeL = { side: 'L', at: [4.3, -10.5, 23.4], size: 2.2, yaw: 22, flat: 0.45, frame: headF };
-const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: GREEN });
+// the legs as the scad's legPair() places them: hip top (z 3.4) and foot (z 1.1), per pair and side
+const LEG_DEF = [[0, -2.3, 0, 2.6], [2.25, 4.5, 40, 2.6], [6.1, 8.1, 48, 2.6], [10.3, 11, 62, 2.4]];
+const LEGS = LEG_DEF.flatMap(([x, y, a, o], i) => [1, -1].map((sg) => {
+  const n = [Math.cos(a * Math.PI / 180) * sg, -Math.sin(a * Math.PI / 180) * sg];
+  const h = [x + n[0] * o, y + n[1] * o];
+  return { name: `leg${i + 1}${sg > 0 ? 'L' : 'R'}`, top: [h[0], h[1], 3.4], foot: [h[0] + n[0] * 0.4, h[1] + n[1] * 0.4, 1.1] };
+}));
+
+const eyeL = { side: 'L', at: [3.4, -3.4, 1.2], size: 1.75, yaw: 28, flat: 0.45, frame: headF };
+const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: SKIN });
 
 const joints = [
   { name: 'root', at: [0, 0, 0] },
-  ...LEG_Y.flatMap((y, i) => [
-    { name: `leg${i + 1}L`, parent: 'root', at: [4.6, y, 4] },
-    { name: `leg${i + 1}R`, parent: 'root', at: [-4.6, y, 4] },
-  ]),
-  { name: 'body', parent: 'root', at: [0, 3, 3] },
-  { name: 'abdomen', parent: 'body', at: [0, 11.2, 5.8] },
+  ...LEGS.map((l) => ({ name: l.name, parent: 'root', at: l.top })),
+  { name: 'body', parent: 'root', at: [0.5, 1.5, 4] },
+  { name: 'abdomen', parent: 'body', at: [6.1, 8.1, 5.6] },
   { name: 'tail1', parent: 'abdomen', at: STEM[0] },
   { name: 'tail2', parent: 'tail1', at: STEM[3] },
-  { name: 'head', parent: 'body', at: [0, -3.2, 17.5] },
-  { name: 'wingL', parent: 'body', at: [4, 4, 18] },
-  { name: 'wingR', parent: 'body', at: [-4, 4, 18] },
+  { name: 'head', parent: 'body', at: [0, -0.8, 18.0] },
+  { name: 'wingL', parent: 'body', at: WR },
+  { name: 'wingR', parent: 'body', at: [-WR[0], WR[1], WR[2]] },
   ...face.joints,
 ];
 
-// the six leaf feathers of a wing, in the wing's own frame
-const wingD = (f) => {
-  const q = wingF.local(f);
-  return Math.min(...[0, 1, 2, 3, 4, 5].map((k) => {
-    const l = 13 + (5 - Math.abs(k - 1.5)) * 1.6;
-    return ellD(unrot([0, 18 + k * 11, 0], q), [2, 0.6, l * 0.55], [0, 0, l * 0.55]);
-  }), capD(q, [0, 0, 0], rot([0, 0, 0], [Math.sin(0.314) * 20, 0, Math.cos(0.314) * 20]), 1.2, 0.5));
+const podD = (c, i) => {
+  const [x, y, z, a, r] = PODS[i];
+  return ellD(subFrame([x, y, z], [0, 0, -a]).local(c), [r[0] * 1.25, r[1] * 1.05, r[2] * 1.12]);
 };
+const pods = (c, lo, hi) => Math.min(...PODS.slice(lo, hi).map((_, k) => podD(c, lo + k)));
 const headD = (c) => {
   const q = headF.local(c);
-  return Math.min(blobD(q, [[[9, 7.6, 6.8], [0, -3.5, 22]], [[6.8, 4.6, 4.2], [0, -9, 20.4]]]), ellD(q, [3.6, 3, 1.6], [0, -1, 27.6]),
-    ellD(q, [2.4, 2.4, 1.2], [0, 2, 26]), ellD(fold(q), [2.4, 2.4, 1.4], [4.2, -1, 26.6]));
+  const f = fold(q);
+  return Math.min(
+    ellD(q, [5.6, 4.8, 4.5], [0, 0.3, 0.6]), ellD(q, [6.0, 4.2, 3.0], [0, -0.6, -1.6]), ellD(q, [3.8, 3.3, 2.6], [0, -4.0, -1.4]),
+    ellD(q, [2.9, 2.6, 1.6], [0, -2.0, 4.25]), ellD(q, [2.5, 2.3, 1.3], [0, 1.0, 4.7]), ellD(q, [2.3, 2.0, 1.6], [0, 3.6, 3.0]),
+    ellD(q, [2.2, 2.0, 1.6], [0, 4.9, 0.3]),
+    ellD(f, [1.6, 1.4, 2.0], [5.9, 1.3, 3.7]), ellD(f, [1.8, 1.2, 1.0], [6.4, 0.9, 0.5]),
+  );
 };
+const chestD = (c) => Math.min(
+  ...CHS.map(([z, r]) => ellD(c, [r[0] * 1.06, r[1] * 1.06, r[2] * 1.06], [CH[0], CH[1], z])),
+  ...CHS.map(([z, r]) => ellD(c, [2.2, 1.4, 1.6], [CH[0], CH[1] + r[1] * 0.8, z + 0.3])),
+  ellD(fold(c), [1.6, 2.2, 2.2], [3.2, -0.8, 12.6]), ellD(fold(c), [1.4, 2.0, 2.0], [3.2, -0.8, 15.8]),
+);
+const legD = (c, l) => capD(c, l.top, l.foot, 2.1, 1.8);
 
 function assign(c, rgb) {
-  const f = fold(c);
   const S = side(c);
-  if (near(rgb, CLAW) || (near(rgb, GREEN_DK) && c[2] < 4.6 && f[0] > 3.4)) {
-    const i = LEG_Y.reduce((b, y, k) => (Math.abs(c[1] - y) < Math.abs(c[1] - LEG_Y[b]) ? k : b), 0);
-    return `leg${i + 1}${S}`;
+  if (FLOWER.some((f) => near(rgb, f, 0.015))) return 'tail2';
+  if (near(rgb, ANTLER, 0.015)) return 'head';
+  if (FEATHER.some((f) => near(rgb, f, 0.015))) return `wing${S}`;
+  if (near(rgb, RED, 0.03)) {
+    if (c[2] < 2.2) return closest(LEGS.map((l) => [l.name, legD(c, l)]));
+    return headD(c) < 1.6 ? 'head' : `wing${S}`;
   }
-  if (isAny(rgb, FLOWER, 0.03)) return 'tail2';
-  if (near(rgb, ANTLER, 0.03) && c[2] > 26) return 'head';
-  const stem = chainHit(c, STEM, [1.8, 1.4, 1.1, 0.9]);
-  const neck = chainHit(c, NECK, [5.6, 4.8, 4.2]);
-  const segD = (lo, hi) => Math.min(...SEGS.slice(lo, hi).map(([y, r, z]) => ellD(c, [r * 1.05, 3.4, r], [0, y, z])));
+  const stem = chainHit(c, STEM, STEM_R);
   return closest([
-    ['tail1', stem.d * (c[1] > 28.4 || c[0] < -1.5 ? 1 : 1.5)],
-    [`wing${S}`, wingD(f)],
-    ['head', Math.min(headD(c), neck.i === 1 && neck.t > 0.5 ? neck.d : Infinity)],
-    ['body', Math.min(segD(0, 3), neck.i === 0 || neck.t <= 0.5 ? neck.d : Infinity, ellD(c, [5.2, 9, 2.5], [0, 6, 2.6]))],
-    ['abdomen', segD(3, 8)],
+    ...LEGS.map((l) => [l.name, legD(c, l) * (c[2] < 2.6 ? 0.85 : 1.1)]),
+    ['head', headD(c)],
+    ['body', Math.min(chestD(c), pods(c, 0, 3))],
+    ['abdomen', pods(c, 3, 7)],
+    ['tail1', stem.d * (c[2] > 6 ? 0.9 : 1.15)],
   ]);
 }
 
-// the walk's stride for legs hanging straight down: rx, on the template's tripod phases
-const stride = (u) => Object.fromEntries(LEG_Y.flatMap((_, i) => ['L', 'R'].map((S) => {
-  const ph = (i % 2 === 0) === (S === 'L') ? 0 : 0.5;
-  return [`leg${i + 1}${S}`, { r: [-14 * osc(u, 1, ph), 0, 0] }];
-})));
 const wings = (a) => ({ wingL: { r: [0, -a, 0] }, wingR: { r: [0, a, 0] } });
 
 const clips = {
   ...insectClips({
-    face, tail: ['tail1', 'tail2'], stride: 4, lift: 10, buzz: 18,
+    face, tail: ['tail1', 'tail2'], legs: 4, hang: true, stride: 12, lift: 10, buzz: 18,
     add: {
-      walk: (t, u) => merge(stride(u), wings(4 * osc(u, 2))),
+      walk: (t, u) => wings(4 * osc(u, 2)),
       idle: (t, u) => merge(wings(3 * osc(u, 1)), { tail2: { r: [0, 0, 6 * osc(u, 1, 0.3)] } }),
       celebrate: (t, u) => wings(20 * Math.abs(Math.sin(TAU * 2 * u))),
     },
   }),
 
-  // fidget: shakes its antlered head like a stag, then the sunflower tail turns to face the sun and bobs
+  // fidget: shakes its antlered head like a stag, then the flower on its tail turns to the sun and bobs
   idle_bloom: {
     seconds: 2.8,
     pose: (t, u) => {
@@ -109,4 +124,7 @@ const clips = {
   },
 };
 
-export default rigDef({ joints, assign, extras: face.extras, clips });
+// the rear legs stand under the abdomen's pods: blend them into it like the front ones into the body
+const seams = { allow: [['abdomen', 'leg3L'], ['abdomen', 'leg3R'], ['abdomen', 'leg4L'], ['abdomen', 'leg4R']] };
+
+export default rigDef({ joints, assign, extras: face.extras, clips, seams });
