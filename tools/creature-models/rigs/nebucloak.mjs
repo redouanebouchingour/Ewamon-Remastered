@@ -1,64 +1,89 @@
-// Nebucloak's rig: a small mint imp in a pointed hood (the tip flops) and a short cone cape (one joint: the shell can't
-// bend), claws raised, two rings of wind wisps circling it on their own joints. Numbers are scad/nebucloak.scad's.
+// Nebucloak's rig: a small mint imp in a big teardrop hood (the tip flops) and a short flared cape (one joint: the shell
+// can't bend), clawed hands raised, two rings of wind crescents circling it on their own joints. Numbers are
+// scad/nebucloak.scad's; the legs are posed apart (the near one straight, the far one bent), so each has its own test.
 import { K, TAU, both, merge, osc, rigDef, win } from './lib/anim.mjs';
-import { any, bipedClips, blob, ell, limb, mx, pair, pick } from './lib/biped.mjs';
+import { any, bipedClips, blob, ell, inFrame, limb, pair, pick, spike } from './lib/biped.mjs';
 import { blinks, eyeKit } from './lib/face.mjs';
-import { chainHit, isAny, near, side, subFrame } from './lib/geo.mjs';
+import { chainHit, ellD, isAny, near, side, subFrame } from './lib/geo.mjs';
 
-const SKIN = [0.5, 0.78, 0.7];
-const SKIN_DK = [0.36, 0.62, 0.58];
-const CREAM = [0.93, 0.92, 0.72];
-const HOOD = [0.36, 0.18, 0.55];
-const CAPE = [[0.55, 0.38, 0.75], [0.72, 0.18, 0.55]];
-const GEM = [0.85, 0.15, 0.6];
-const WIND = [0.62, 0.84, 0.95];
-const CLAW = [0.95, 0.95, 0.88];
-const TIP = [[0, 2.5, 32.5], [0.5, 4.5, 35.5], [2.8, 6, 36.5], [5, 6.5, 35.5]];
+const SKIN = [0.45, 0.69, 0.65];
+const CREAM = [0.9, 0.9, 0.73];
+const PALE = [0.85, 0.9, 0.82];
+const HOOD = [0.25, 0.14, 0.41];
+const CAPE = [[0.46, 0.34, 0.67], [0.6, 0.18, 0.58]];
+const GEM = [0.78, 0.12, 0.66];
+const SHINE = [1, 0.72, 1];
+const INK = [0.14, 0.12, 0.2];
+const WIND = [0.64, 0.84, 0.9];
 
-// the slanted eyes sit in a translate() rotate() block; the lid is cream like the face
+const add3 = (a, b) => a.map((v, i) => v + b[i]);
+const LEG_N = [[2.2, -0.3, 9.2], [5.4, -0.6, 5.6], [6.0, -0.6, 2.2], [5.6, -1.6, 0.4]];
+const LEG_F = [[-2.2, -0.3, 9.2], [-5.8, -0.6, 6.3], [-1.6, -0.9, 2.4], [-1.2, -1.9, 0.4]];
+const LEG_R = [2.3, 1.6, 1.15, 0.45];
+const legTest = (P) => any(...[0, 1, 2].map((i) => limb(P[i], P[i + 1], LEG_R[i] + 0.25, LEG_R[i + 1] + 0.25)), ell([0.55, 0.6, 0.5], add3(P[3], [0, -0.1, 0.25])));
+const BODY = [[[4.2, 3.6, 3.4], [0, 0, 10]], [[3.4, 3, 3], [0, 0, 15.5]]];
+const ARM = [[3.6, -1, 16.8], [7.4, -1, 15.4], [10.2, -1.6, 18]];
+const HAND = [10.9, -1.8, 19.2];
+const FINGERS = [[-0.95, [-0.55, -0.1, 1.9]], [0.05, [0.05, -0.3, 2.1]], [1.0, [0.75, -0.1, 1.8]]];
+const COLLAR = [[5.8, 5.0, 2.4], [0, 0.3, 19.6]];
+
+// the head group is turned 10 degrees towards +X; everything in it is written in that frame
+const HF = subFrame([0, -0.5, 27.8], [0, 0, 10]);
+const HEAD = [7.7, 5.7, 6.8];
+const HEAD_C = [0, -1, 0];
+const TIP = [[2.5, 3, 9.4], [5.4, 4, 9.8], [8.4, 4.6, 9.2], [10.8, 5, 7.6]];
+const TIP_R = [3.2, 2.4, 1.4, 0.35];
+const TIP_W = TIP.map((p) => HF.world(p));
+const EYE = [4.15, -5.4, -1.0];
+
+// the almond eyes fit lib.scad eye()'s envelope; the lids are cream like the face
 const eye = (S) => {
   const k = S === 'L' ? 1 : -1;
-  return { side: S, at: [0, 0, 0], size: 1.35, flat: 0.5, frame: subFrame([2.2 * k, -6.9, 27.4], [0, 25 * k, -20 * k]) };
+  return { side: S, at: [EYE[0] * k, EYE[1], EYE[2]], size: 2.3, flat: 0.42, yaw: 24 * k, frame: HF };
 };
 const face = eyeKit({ eyes: [eye('L'), eye('R')], skin: CREAM });
 
 const joints = [
   { name: 'root', at: [0, 0, 0] },
-  ...pair('leg*', 'root', [2.6, 0, 12]),
-  { name: 'body', parent: 'root', at: [0, 0, 12] },
-  { name: 'cape1', parent: 'body', at: [0, 1, 20] },
-  { name: 'head', parent: 'body', at: [0, -0.5, 21.5] },
-  { name: 'tip', parent: 'head', at: TIP[1] },
-  ...pair('arm*', 'body', [4.2, 0, 19]),
-  ...pair('fore*', 'arm*', [7.5, -1, 18]),
-  ...pair('hand*', 'fore*', [9.5, -2, 21.5]),
-  { name: 'windA', parent: 'root', at: [0, 0, 26] },
-  { name: 'windB', parent: 'root', at: [0, 0, 6] },
+  { name: 'legL', parent: 'root', at: LEG_N[0] },
+  { name: 'legR', parent: 'root', at: LEG_F[0] },
+  { name: 'body', parent: 'root', at: [0, 0, 9.5] },
+  { name: 'cape1', parent: 'body', at: [0, 1, 19.8] },
+  { name: 'head', parent: 'body', at: [0, -0.5, 21] },
+  { name: 'tip', parent: 'head', at: TIP_W[1] },
+  ...pair('arm*', 'body', ARM[0]),
+  ...pair('fore*', 'arm*', ARM[1]),
+  ...pair('hand*', 'fore*', ARM[2]),
+  { name: 'windA', parent: 'root', at: [0, 1, 28] },
+  { name: 'windB', parent: 'root', at: [1, 1, 7] },
   ...face.joints,
 ];
 
 const parts = [
-  ['leg*', any(limb([2.6, 0, 12], [3.2, -0.5, 3], 2.8, 2), ell([2.1, 2.8, 1.4], [3.2, -1.4, 1.4]))],
-  ['body', any(blob([[[4.6, 3.6, 4], [0, 0, 13]], [[3.6, 3, 3.4], [0, 0, 18]]]), blob([[[3, 1.6, 3.4], [0, -2.6, 13]], [[2, 1.2, 2.4], [0, -2.4, 17]]]))],
-  ['arm*', limb([4.2, 0, 19], [7.5, -1, 18], 1.3, 1.1)],
-  ['fore*', limb([7.5, -1, 18], [9.5, -2, 21.5], 1.1, 1)],
-  ['hand*', ell([1.6, 1.4, 1.7], [9.7, -2.2, 22.5])],
-  ['head', any(ell([5.6, 5.2, 5.4], [0, -1.6, 27]), ell([4.6, 3, 3.6], [0, -4.4, 25.9]), mx(ell([1.9, 1.2, 1.4], [2.2, -6.9, 27.4])))],
+  ['legL', legTest(LEG_N)],
+  ['legR', legTest(LEG_F)],
+  ['body', any(blob(BODY), ell(...COLLAR))],
+  ['arm*', limb(ARM[0], ARM[1], 1.55, 1.35)],
+  ['fore*', limb(ARM[1], ARM[2], 1.35, 1.15)],
+  ['hand*', any(ell([1.9, 1.5, 1.75], HAND), ...FINGERS.map((f) => spike(add3(HAND, [f[0], -0.1, 1.0]), f[1], 0.62)))],
+  ['head', inFrame(HF, ell(HEAD, HEAD_C))],
 ];
 
 function assign(c, rgb) {
   const S = side(c);
-  if (near(rgb, WIND)) return c[2] > 16 ? 'windA' : 'windB';
-  if (near(rgb, CLAW)) return `hand${S}`;
+  if (near(rgb, WIND)) return c[2] > 17 ? 'windA' : 'windB';
   if (isAny(rgb, CAPE)) return 'cape1';
   if (near(rgb, GEM)) return 'body';
+  if (near(rgb, SHINE)) return c[2] < 21 ? 'body' : 'head';         // the gem's glint; the eyes' highlights
+  if (near(rgb, PALE)) return `hand${S}`;
+  if (near(rgb, INK)) return Math.abs(c[0]) > 6 && c[2] < 26 ? `hand${S}` : 'head';   // claw tips; the smirk
   if (near(rgb, HOOD)) {
-    if (c[2] < 21.8) return 'body';                                  // the collar
-    const h = chainHit(c, TIP, [4, 2.8, 1.6, 0.6]);
-    return h.d < 1.15 && (h.i > 0 || h.t > 0.5) ? 'tip' : 'head';
+    if (c[2] < 18.8 || ellD(c, ...COLLAR) < 1.08) return 'body';     // the capelet and its points
+    const h = chainHit(c, TIP_W, TIP_R);
+    return h.d < 1.15 && (h.i > 0 || h.t > 0.45) ? 'tip' : 'head';
   }
-  if (near(rgb, SKIN_DK)) return c[2] < 4 ? `leg${S}` : 'head';    // feet; forehead point and smile
-  if (!isAny(rgb, [SKIN, CREAM])) return 'head';                    // eyes
+  if (near(rgb, CREAM)) return c[2] > 20 ? 'head' : pick(c, parts.slice(0, 3));
+  if (!near(rgb, SKIN)) return 'head';                                  // the eyes
   return pick(c, parts);
 }
 
@@ -67,7 +92,7 @@ const wind = (u, a = 0.5, b = 1) => ({ windA: { r: [0, 0, 360 * a * u] }, windB:
 const flop = (u, cycles = 1, amp = 1) => ({ tip: { r: [6 * amp * osc(u, cycles), 0, 8 * amp * osc(u, cycles, 0.25)] } });
 
 const base = bipedClips({
-  face, cape: ['cape1'], hipH: 12, stride: 18, guard: true, hopScale: 0.8,
+  face, cape: ['cape1'], hipH: 9.2, stride: 18, guard: true, hopScale: 0.8,
   punch: { arm: [-50, 0, 20], fore: [50, 0, 0] },
   cheer: { arm: [-20, -100, 0], fore: [-10, 20, 0] },
   add: {
