@@ -1,79 +1,105 @@
-// Resilithorn's rig: a six-legged armoured forest beast. The domed shell and chest are the body, the masked head
-// carries the brow horn and the leaf ears, the two branching antlers are antenna chains (ant1 = the base bough and its
-// low branch, ant2 = the upper boughs), and the thick plated tail lies on the ground behind (tail1..tail3). Numbers
-// are scad/resilithorn.scad's (the head block sits in translate([0, -3, 8]): hd()).
-import { K, TAU, merge, rigDef, win } from './lib/anim.mjs';
-import { any, blob, ell, limb, pick } from './lib/biped.mjs';
+// Resilithorn's rig: a hunched forest beast on four plated legs with two clawed arms, on the insect template with
+// hanging legs (two pairs, `hang`) and the arms as its claws. The carapace, chest, bib, pauldrons, ridge leaves and
+// side twigs are the body; the helmet head (turned 15 degrees in the scad: H) carries the two branching antlers as
+// antenna chains (ant1 = the base of the bough, ant2 = everything above it: branches, leaves, berries); the plated
+// tail is tail1..tail3. Numbers are scad/resilithorn.scad's.
+import { K, TAU, both, merge, rigDef, win } from './lib/anim.mjs';
+import { any, ell, limb, pick } from './lib/biped.mjs';
 import { eyeKit, mirrorEye } from './lib/face.mjs';
-import { capD, chainHit, fold, isAny, near, side } from './lib/geo.mjs';
+import { blobD, chainHit, ellD, isAny, near, side, subFrame } from './lib/geo.mjs';
 import { insectClips } from './lib/insect.mjs';
 
-const hd = ([x, y, z]) => [x, y - 3, z + 8];
-const BARK = [[0.44, 0.3, 0.2], [0.32, 0.21, 0.14]];
-const BERRY = [0.3, 0.45, 0.85];
-const LEAF_HI = [0.7, 0.9, 0.5];
-const RED = [0.82, 0.12, 0.2];
-const B = { b0: [3, -13, 27], b1: [6, -12, 33], b2: [7, -11, 41], b3: [12.5, -11, 38], b4: [3.5, -11.5, 39], b5: [11.5, -11.5, 31] };
-const LEGS = [[[7, -7, 10], -2], [[8, 1, 9.5], 0], [[7, 9, 10], 2]].map(([b, fwd]) => {
-  const k = [b[0] + 4, b[1] + fwd, b[2] - 3];
-  return [b, k, [k[0] + 1.2, k[1] + fwd * 0.4, 1.2]];
-});
-const TAIL = [[0, 14, 11], [2, 19, 7], [5, 21.5, 3.5], [8, 22, 2]];
+const H = subFrame([0, -11, 20.3], [0, 0, 15]);
+const BARK = [0.42, 0.31, 0.22];
+const BERRY = [0.31, 0.47, 0.75];
+const LEAVES = [[0.49, 0.7, 0.45], [0.56, 0.77, 0.48]];
+const RED = [0.72, 0.2, 0.22];
+const LEGS = [
+  [[7.4, -4, 11], [8.3, -4.6, 6], [8.4, -4.8, 2.2]],
+  [[7.8, 9, 10], [9, 9.6, 5.5], [9.2, 10, 2.2]],
+];
+const TAIL = [[0, 15, 12.5], [2.5, 19.5, 11], [4.8, 22, 9.6], [6.5, 23.5, 8.6]];
+const TAIL_R = [5, 3.7, 2.4, 0.8];
 const tail = ['tail1', 'tail2', 'tail3'];
+// antler: base B and the first fork t1 (the scad's antler(sx) for sx = 1)
+const ANT_B = [3.2, -10.2, 22.8];
+const ANT_T1 = [ANT_B[0] + 1.5, ANT_B[1] + 1.5, ANT_B[2] + 4.5];
 
-const eyeL = { side: 'L', at: hd([2.7, -16.4, 15.3]), size: 1.75, yaw: 12, flat: 0.5 };
-const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: [0.27, 0.42, 0.16] });
+const eyeL = { side: 'L', at: [2, -3.05, -0.9], size: 1.3, yaw: 22, flat: 0.6, frame: H };
+const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: [0.6, 0.72, 0.37] });
 
 const sided = (S, p) => [S === 'L' ? p[0] : -p[0], p[1], p[2]];
 const joints = [
   { name: 'root', at: [0, 0, 0] },
-  ...LEGS.flatMap(([b], i) => ['L', 'R'].map((S) => ({ name: `leg${i + 1}${S}`, parent: 'root', at: sided(S, b) }))),
-  { name: 'body', parent: 'root', at: [0, 1, 9] },
-  { name: 'head', parent: 'body', at: hd([0, -10, 12]) },
+  ...LEGS.flatMap(([hip], i) => ['L', 'R'].map((S) => ({ name: `leg${i + 1}${S}`, parent: 'root', at: sided(S, hip) }))),
+  { name: 'body', parent: 'root', at: [0, 2, 10] },
+  { name: 'head', parent: 'body', at: [0, -8.5, 19] },
   ...['L', 'R'].flatMap((S) => [
-    { name: `ant${S}1`, parent: 'head', at: sided(S, B.b0) },
-    { name: `ant${S}2`, parent: `ant${S}1`, at: sided(S, B.b1) },
+    { name: `ant${S}1`, parent: 'head', at: sided(S, ANT_B) },
+    { name: `ant${S}2`, parent: `ant${S}1`, at: sided(S, ANT_T1) },
+    { name: `claw${S}`, parent: 'body', at: sided(S, [9.2, -2.5, 19]) },
   ]),
   ...tail.map((name, i) => ({ name, parent: i === 0 ? 'body' : tail[i - 1], at: TAIL[i] })),
   ...face.joints,
 ];
 
-const legD = (f, [b, k, ft]) => Math.min(capD(f, b, k, 2.4, 2), ell([2.8, 3, 3.8], [k[0] + 0.6, k[1], k[2] - 1.6])(f), capD(f, k, ft, 2, 1.8),
-  ell([2.4, 2.6, 2], [k[0] + 0.2, k[1] - 0.4, k[2] + 1.4])(f));
-const antD = (f) => {
-  const a1 = Math.min(capD(f, B.b0, B.b1, 1.3, 1), capD(f, [B.b0[0] + 1.5, B.b0[1], B.b0[2] + 2.5], B.b5, 0.65, 0.35), Math.hypot(...B.b5.map((v, i) => v - f[i])) / 3.5);
-  const a2 = Math.min(capD(f, B.b1, B.b2, 1, 0.55), capD(f, B.b1, B.b3, 0.75, 0.4), capD(f, B.b1, B.b4, 0.6, 0.35),
-    ...[B.b2, B.b3, B.b4].map((p) => Math.hypot(...p.map((v, i) => v - f[i])) / 3.5));
-  return a1 < a2 ? 1 : 2;
+// the head's primitives, tested in the head's own frame
+const headD = (c) => {
+  const l = H.local(c);
+  return Math.min(
+    blobD(l, [[[3.9, 3.9, 3.4], [0, 0.2, 0.8]], [[2.2, 2.4, 1.6], [0, 0.8, 3.8]]]),
+    ellD(l, [3.1, 3.2, 2.6], [0, -1, -2.2]),
+    ellD(l, [2.2, 1.5, 1.2], [0, -3.7, -2.7]),
+    ...[1, -1].flatMap((k) => [ellD(l, [1.4, 1, 1.4], [2 * k, -3.05, -0.9]), ellD(l, [1.6, 1.1, 0.8], [1.7 * k, -3.8, 0.8])]),
+  );
 };
+const legD = ([hip, knee, ank]) => any(
+  limb(hip, knee, 3.1, 2.4), limb(knee, ank, 2.3, 2.6), ell([2.9, 3.2, 1.6], [ank[0], ank[1] - 0.6, 1.6]),
+  ell([2.7, 0.9, 2.6], [knee[0] - 0.1, knee[1] - 1.9, knee[2] + 2.2]), ell([2.3, 0.9, 1.9], [ank[0], ank[1] - 1.9, 3.6]),
+);
 const parts = [
-  ['body', any(ell([9, 12, 5], [0, 2, 11]), ell([10.5, 13.5, 7.5], [0, 2.5, 15]), blob([[[7.5, 5, 6], [0, -8, 18]], [[6, 4, 4], [0, -9, 12]]]),
-    ell([5, 2.6, 4.5], [0, -12, 15.5]), ell([4, 4.6, 4], [9, 2, 14.5]), ell([4, 4.6, 4], [-9, 2, 14.5]), ell([4, 6, 4], [0, -1, 23]))],
-  ['head', any(blob([[[5.2, 4.6, 4.6], hd([0, -12, 15.5])], [[4.2, 3.4, 3.6], hd([0, -14.6, 13.5])]]), ell([5.6, 3, 2.4], hd([0, -13.5, 19])),
-    ell([2.8, 2.4, 3], hd([3.6, -15, 12.8])), ell([2.8, 2.4, 3], hd([-3.6, -15, 12.8])), ell([2.2, 1.2, 2.4], hd([0, -16.3, 12])),
-    limb(hd([0, -14, 20]), hd([0, -17, 26]), 1.4, 0.3), ell([1.5, 1.5, 3], hd([5.2, -12, 20.5])), ell([1.5, 1.5, 3], hd([-5.2, -12, 20.5])))],
+  ['body', any(ell([9.4, 7, 7.8], [0, 0.5, 16.6]), ell([9.2, 8.8, 6.4], [0, 9.5, 13.5]), ell([8.4, 11.5, 4.6], [0, 3.5, 10.6]),
+    ell([6.6, 5, 5], [0, -5.6, 14.6]), ell([2.4, 1.2, 2.6], [3.4, -9.3, 11.2]),
+    ell([3.5, 3.8, 2.9], [9.2, -2.5, 19.6]), ell([3.5, 3.8, 2.9], [-9.2, -2.5, 19.6]))],
+  ['head', headD],
+  ['leg1*', legD(LEGS[0])],
+  ['leg2*', legD(LEGS[1])],
+  ['claw*', any(limb([9, -2.5, 18.5], [12.4, -3.4, 15], 1.5, 1.4), limb([12.4, -3.4, 15], [13.8, -5, 12.2], 2.2, 2),
+    ell([1.4, 1.8, 2], [13.3, -3.3, 14.6]), ell([2, 2.2, 1.8], [14, -5.5, 11.6]))],
 ];
 
 function assign(c, rgb) {
-  const f = fold(c);
   const S = side(c);
-  if ((isAny(rgb, BARK, 0.03) || near(rgb, BERRY) || near(rgb, LEAF_HI)) && c[2] > 26.5 && c[1] < -7) return `ant${S}${antD(f)}`;
+  const leafy = isAny(rgb, LEAVES, 0.03);
+  // antlers: bark, berries and leaves above the helmet in front of the shell (the side twigs are further back)
+  if ((near(rgb, BARK, 0.03) || near(rgb, BERRY) || (leafy && c[2] > 29)) && c[1] < -2.5 && c[2] > 21.5)
+    return `ant${S}${c[2] < ANT_T1[2] - 0.6 ? 1 : 2}`;
+  if (near(rgb, BARK, 0.03) || near(rgb, BERRY)) return 'body';   // the side twigs
   if (near(rgb, RED)) {
-    let bi = 0; let bd = Infinity;
-    LEGS.forEach(([, , ft], i) => { const d = Math.hypot(f[0] - ft[0], f[1] - ft[1] + 2, f[2] - ft[2]); if (d < bd) { bd = d; bi = i; } });
-    return `leg${bi + 1}${S}`;
+    if (c[2] > 5) return `claw${S}`;
+    return Math.abs(c[1] - LEGS[0][2][1]) < Math.abs(c[1] - LEGS[1][2][1]) ? `leg1${S}` : `leg2${S}`;
   }
-  const t = chainHit(c, TAIL, [4, 3.2, 2.2, 1.2]);
-  const lg = LEGS.map((l) => legD(f, l));
-  const li = lg.indexOf(Math.min(...lg));
-  return pick(c, [...parts, ['tail', () => t.d * 1.05], [`leg${li + 1}${S}`, () => lg[li]]])
-    .replace(/^tail$/, tail[Math.min(2, t.i)]);
+  const t = chainHit(c, TAIL, TAIL_R);
+  if (leafy) return c[1] > 17 ? tail[Math.min(2, t.i)] : 'body';   // ridge and tail crystal leaves
+  return pick(c, [...parts, ['tail', () => t.d * 1.05]]).replace(/^tail$/, tail[Math.min(2, t.i)]);
 }
 
-const base = insectClips({ face, ant: 2, tail, stride: 10, lift: 9 });
+// the arms groom the antlers, so the front legs stay planted (cancels the template's front-leg lift)
+const groomOn = (u) => K(u, [[0, 0], [0.15, 1], [0.78, 1], [0.92, 0]]);
+const base = insectClips({
+  face, ant: 2, tail, legs: 2, hang: true, stride: 10, lift: 9,
+  add: { idle_groom: (t, u) => both('leg1', { r: [30 * groomOn(u), 30 * groomOn(u), 24 * groomOn(u)] }) },
+});
+// antlers are bone, not feelers: they keep a third of the template's antenna sway and droop
+const ANT = ['antL1', 'antL2', 'antR1', 'antR2'];
+const stiff = (pose) => (t, u) => {
+  const q = pose(t, u);
+  for (const n of ANT) if (q[n]?.r) q[n] = { ...q[n], r: q[n].r.map((v) => v * 0.35) };
+  return q;
+};
 
 const clips = {
-  ...base,
+  ...Object.fromEntries(Object.entries(base).map(([k, c]) => [k, { ...c, pose: stiff(c.pose) }])),
   // fidget: shakes its antlers like a stag, berries swinging, then a snort
   idle_rattle: {
     seconds: 2.2,
