@@ -550,7 +550,7 @@
     },
     "mismagmen": {
       "url": "mismagmen.rig.glb",
-      "bytes": 126792,
+      "bytes": 218256,
       "rig": true
     },
     "moblaze": {
@@ -580,12 +580,12 @@
     },
     "murkrat": {
       "url": "murkrat.rig.glb",
-      "bytes": 215808,
+      "bytes": 197052,
       "rig": true
     },
     "murmink": {
       "url": "murmink.rig.glb",
-      "bytes": 146508,
+      "bytes": 186304,
       "rig": true
     },
     "nebucloak": {
