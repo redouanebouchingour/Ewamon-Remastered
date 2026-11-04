@@ -1,8 +1,9 @@
-// Necrogeist's rig: a flame-crowned wraith on a wispy tail. The torso is the body (its painted chest star the pulsing
-// core), the dome with its flame horns the head (glowing eyes and grin decals), the clawed arms arm + hand (forearm
-// and claws), the wispy lower body a hanging chain, the butterfly wings wingL / wingR (they beat through `add`: the
-// floater template has none), the halo its own joint floating over the head, and the burst of light behind it an
-// aura that slowly turns. Floater template. Numbers are scad/necrogeist.scad's; the Majin form reuses necroRig().
+// Necrogeist's rig: a Gengar-like wraith on a ghost tail. The chest is the body (its painted star the pulsing core;
+// the star on the back stays with the body), the dome with its flame horns the head (glowing eye and grin decals),
+// the clawed arms arm + hand (forearm, hand and claws), the waist, bulb and curling tail a hanging chain (the hip
+// hindwings ride its first link), the three-bladed wings wingL / wingR (they beat through `add`: the floater template
+// has none) and the halo its own joint floating over the head. The art's aura burst is not modelled, so no aura joint.
+// Floater template. Numbers are scad/necrogeist.scad's; the Majin form reuses necroRig().
 import { both, merge, osc, rigDef } from './lib/anim.mjs';
 import { floaterClips } from './lib/floater.mjs';
 import { capD, chainHit, closest, ellD, fold, isAny, near, subFrame } from './lib/geo.mjs';
@@ -10,7 +11,8 @@ import { capD, chainHit, closest, ellD, fold, isAny, near, subFrame } from './li
 /**
  * cfg: tail [pts, rs], arm (left chain pts, radius), claws (left claw tips), head / torso tests, the joints' pivots,
  * colours by role, wingFrame (subFrame of the left wing's plane) and wingD (how far a point in that frame is from the
- * wing: 1 = on it), aura (centre of the light burst or null), halo pivot, fidgets.
+ * wing: 1 = on it), aura (centre of the light burst or null), halo pivot, tailTop (the belly above it is the body's,
+ * default 12.5), fidgets.
  */
 export function necroRig(cfg) {
   const { TAIL, TAIL_R, ARM, ARM_R } = cfg;
@@ -51,8 +53,8 @@ export function necroRig(cfg) {
       ['head', cfg.headD(c)],
       ['body', cfg.torsoD(c)],
       [a.joint, a.d],
-      // the belly ends at z 12.5: the chain's wide top link would otherwise take its underside
-      [tail[Math.min(tail.length - 1, t.i)], c[2] > 12.5 ? Infinity : t.d],
+      // the belly ends at tailTop: the chain's wide top link would otherwise take its underside
+      [tail[Math.min(tail.length - 1, t.i)], c[2] > (cfg.tailTop ?? 12.5) ? Infinity : t.d],
       [`wing${S}`, wing],
     ]);
   }
@@ -74,53 +76,50 @@ export function necroRig(cfg) {
 
 // ---- Necrogeist ----
 
-const BODY = [0.22, 0.13, 0.36];
-const BODY_HI = [0.34, 0.2, 0.5];
-const WING = [[0.18, 0.1, 0.3], [0.4, 0.2, 0.55], [0.45, 0.85, 1]];
-const V_PINK = [1, 0.45, 0.85];
-const GLOW = [1, 0.9, 0.45];
-const STAR = [[1, 0.6, 0.95], [1, 0.92, 1]];
-const AURA = [1, 0.7, 0.95];
-const HALO = [1, 0.85, 0.95];
+const BODY_HI = [0.34, 0.17, 0.49];
+const WING = [[0.17, 0.09, 0.28], [0.38, 0.2, 0.54], [0.88, 0.33, 0.76], [0.68, 0.9, 1]];
+const EYE = [1, 0.88, 0.35];
+const GRIN = [0.98, 0.84, 0.42];
+const STAR = [[0.95, 0.42, 0.85], [0.85, 0.25, 0.7], [1, 0.93, 1]];
+const BACK_STAR = [0.96, 0.5, 0.88];
+const HALO = [1, 0.94, 0.76];
 
-const HORNS = [[-5.5, 6, -25], [-2.5, 8.5, -8], [0, 9.5, 0], [2.5, 8.5, 8], [5.5, 6, 25]];
-// a lobe of the wing, in the wing's frame (translate([5, 4, 30]) rotate([0, 0, 12])): an ellipsoid along +X tipped by ang
-const lobeD = (q, len, wid, ang) => {
-  const a = (ang * Math.PI) / 180;
-  const x = q[0] * Math.cos(a) + q[2] * Math.sin(a);
-  const z = -q[0] * Math.sin(a) + q[2] * Math.cos(a);
-  return ellD([x, q[1], z], [len / 2 + 1.2, 0.9, wid + 1.2], [len / 2 + 1.5, 0, 0]);
-};
+const HEAD = [[5.2, 4, 4.1], [0, -0.5, 24.6]];
+const HORN = [[2.4, -0.3, 27.4], [3.9, -0.1, 30.2], [5.3, 0.1, 32.5]];
+const ARM = [[5.5, 0.5, 20], [9.3, 1, 18], [11.2, 0.8, 14.6], [11.5, 0.3, 13.2]];
 
 const cfg = {
-  TAIL: [[0, 0, 15], [0.5, 0.5, 10], [2, 1, 6], [4, 1.5, 3], [6, 1, 1.2], [7.5, 0.5, 1.4], [8, 0, 3]],
-  TAIL_R: [7, 5.4, 3.6, 2.3, 1.4, 0.8, 0.5],
-  ARM: [[6, -1, 26], [10, -2, 22], [12, -3.5, 17], [12.5, -4.5, 13.5]],
-  ARM_R: [2.6, 2.2, 2.2, 2],
-  claws: [-35, -10, 15, 40].map((a) => [12.5 + Math.sin((a * Math.PI) / 180) * 2.6, -6.6, 9.6]),
-  coreAt: [0, -6.8, 22],
-  headAt: [0, 0, 29],
-  eyesAt: [0, -6.6, 36.4],
-  mouthAt: [0, -7, 31.5],
-  haloAt: [0, 1, 50],
-  wingAt: [5, 4, 30],
-  aura: [0, 6.5, 27],
-  auraStep: 40,
-  wingFrame: subFrame([5, 4, 30], [0, 0, 12]),
-  wingD: (q) => Math.min(lobeD(q, 19, 5, 42), lobeD(q, 13, 3.6, -22)),
-  headD: (c) => Math.min(ellD(c, [8, 7, 7.5], [0, 0, 35]), ellD(c, [4, 3, 3], [-2.5, -1, 40.5]),
-    ...HORNS.map((h) => capD(c, [h[0], 0.5, 39], [h[0] + h[2] * 0.15, 0.5, 39 + h[1]], 2.2, 0.2))),
-  torsoD: (c) => ellD(c, [8, 7, 9], [0, 0, 21]),
+  TAIL: [[0, 1.2, 14.5], [0.4, 2.5, 9.6], [2.8, 3.2, 6.9], [5, 3.7, 5.9], [7.6, 4.5, 5.6], [10, 5.4, 6.1], [11.6, 6, 7.3], [12.8, 6.4, 8.9]],
+  TAIL_R: [2.8, 3.6, 2.4, 1.6, 1.25, 0.95, 0.6, 0.15],
+  tailTop: 13.5,
+  ARM,
+  ARM_R: [2, 1.6, 1.25, 1.55],
+  claws: [-1.2, -0.4, 0.4, 1.2].map((dx) => [11.1 + dx * 1.3, -1.2, 9.7]),
+  coreAt: [0, -3.1, 17.3],
+  headAt: [0, 0, 21],
+  eyesAt: [0, -4.2, 24.8],
+  mouthAt: [0, -4.3, 22.2],
+  haloAt: [0, 0, 33.6],
+  wingAt: [2.5, 3, 22],
+  aura: null,
+  // the wings are all wing colours (caught by colour()): the shape test never needs them
+  wingFrame: subFrame([2, 3, 21], [0, 0, -4], 0.94),
+  wingD: () => Infinity,
+  headD: (c) => {
+    const f = fold(c);
+    return Math.min(ellD(c, ...HEAD), chainHit(f, HORN, [1.9, 0.9, 0.1]).d,
+      capD(f, [4.6, -0.5, 26.3], [6.1, -0.3, 26.8], 0.6, 0.06), capD(c, [0, -1.2, 27.6], [0, -1.5, 30], 1.3, 0.1));
+  },
+  torsoD: (c) => Math.min(ellD(c, [4.3, 3.8, 4.1], [0, 0.8, 18]), capD(fold(c), [4.6, 1.5, 21.2], [5.8, 2, 26.2], 0.9, 0.08)),
   colour: (c, rgb) => {
-    if (near(rgb, GLOW, 0.03)) return c[2] > 34 ? 'eyes' : 'mouth';
-    if (isAny(rgb, STAR, 0.03)) return 'core';
-    if (near(rgb, AURA, 0.03)) return 'aura';
-    if (near(rgb, HALO, 0.03)) return 'halo';
-    if (near(rgb, BODY_HI, 0.03)) return 'head';
-    if (near(rgb, V_PINK, 0.03)) return Math.abs(c[0]) < 7 && c[2] < 21 && c[1] < 0 ? 'body' : 'wing';
-    if (isAny(rgb, WING, 0.03)) return 'wing';
-    if (!near(rgb, BODY, 0.03)) return 'body';
-    return null;
+    if (near(rgb, EYE, 0.02)) return 'eyes';
+    if (near(rgb, GRIN, 0.02)) return 'mouth';
+    if (isAny(rgb, STAR, 0.02)) return 'core';
+    if (near(rgb, BACK_STAR, 0.02)) return 'body';
+    if (near(rgb, HALO, 0.02)) return 'halo';
+    if (near(rgb, BODY_HI, 0.02)) return 'head';
+    if (isAny(rgb, WING, 0.02)) return c[2] < 14.5 ? 'tail1' : 'wing';   // the hip hindwings ride the waist
+    return null;   // the body colour: by shape
   },
   fidgets: ({ wings, halo }) => ({
     // fidget: spreads its wings wide and holds them, the chest star flaring, the halo lifting

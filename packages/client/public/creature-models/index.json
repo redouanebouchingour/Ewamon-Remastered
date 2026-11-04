@@ -595,12 +595,12 @@
     },
     "necrogeist": {
       "url": "necrogeist.rig.glb",
-      "bytes": 168768,
+      "bytes": 119820,
       "rig": true
     },
     "necrogeist_majin": {
       "url": "necrogeist_majin.rig.glb",
-      "bytes": 136768,
+      "bytes": 137044,
       "rig": true
     },
     "nerohat": {
@@ -615,7 +615,7 @@
     },
     "noxmyth": {
       "url": "noxmyth.rig.glb",
-      "bytes": 205012,
+      "bytes": 283612,
       "rig": true
     },
     "pebblit": {
@@ -625,7 +625,7 @@
     },
     "pebfist": {
       "url": "pebfist.rig.glb",
-      "bytes": 180780,
+      "bytes": 112900,
       "rig": true
     },
     "petraptor": {
