@@ -680,7 +680,7 @@
     },
     "ravatar": {
       "url": "ravatar.rig.glb",
-      "bytes": 225184,
+      "bytes": 214596,
       "rig": true
     },
     "ravatar_air": {
@@ -690,7 +690,7 @@
     },
     "ravatar_avatar": {
       "url": "ravatar_avatar.rig.glb",
-      "bytes": 314460,
+      "bytes": 293076,
       "rig": true
     },
     "ravatar_earth": {

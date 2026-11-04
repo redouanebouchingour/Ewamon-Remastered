@@ -1,124 +1,260 @@
-// Ravatar: Katamute's final form, a tall tan lion-hound warrior with a wild dark mane, short antlers, a blue-grey
-// arrow marking from brow down the spine, swirl tattoos on shoulders and chest, rocky greaves and a plated
-// loincloth, and a long bushy grey tail with a cream underside.
+// Ravatar: Katamute's final form, a hunched tan werewolf warrior in a wide brawler's stance.
+// Checklist (front sheet, 40 units; the body's axis reads at sheet x -2.25):
+//   - head z 22.5..32.5, low between the shoulders; a short muzzle (nose sheet -5, 25), a smirking mouth (z 23.5),
+//     narrow slanted fierce eyes, grey-blue irises, near eye sheet (-2.2, 27), far eye (-6.1, 27); dark brows
+//   - blue-grey arrow tattoo: point between the eyes (z 27.5), wings at z 29.3, shaft up the forehead into the mane;
+//     on the back it runs as a wavy stripe from the nape down the spine to the belt (back sheet z 14..31)
+//   - wild dark mane: a mass on the crown with locks swept up and out, sheet x -7..+7, top z 40
+//   - short dark antlers beside the mane (sheet -7..-6 and +3..+4, z 30..37), small tan ears
+//   - cream ruff on the upper chest with a ragged V edge (z 19..26), cream cheek fluff
+//   - broad muscled torso: pecs with eye-shaped swirl tattoos (sheet -6.8 / -1.8, z 20.5), abs, swirls on the
+//     shoulders and the shoulder blades, tiger stripes on the arms
+//   - long arms out to the sides: shoulders z 22, elbows z 17, big clawed hands at z 9..15 (sheet -16 / +9.5)
+//   - wide stance: thighs under bark / rock plates pointing up, rock greaves, splayed clawed feet (sheet -12 / +5.5)
+//   - bark skirt: a belt at z 15.6 and pointed plates hanging to z 7 at the front
+//   - big bushy tail: grey over a cream outer edge, from the lower back out along +X, down to z 4 and up to a dark
+//     tip at sheet (15, 23)
+// Forms copy this file: the colours are the constants below, the shared numbers are named, every part is a module.
 include <lib.scad>
 
-fur = [0.9, 0.76, 0.55];
-furHi = [0.98, 0.88, 0.7];
-furDark = [0.7, 0.55, 0.38];
-mane = [0.3, 0.28, 0.26];
-maneHi = [0.42, 0.4, 0.37];
-mark = [0.32, 0.4, 0.48];
-tattoo = [0.42, 0.34, 0.26];
-antler = [0.5, 0.36, 0.22];
-rock = [0.46, 0.36, 0.22];
-rockDark = [0.32, 0.25, 0.16];
-tailGrey = [0.42, 0.4, 0.38];
-tailCream = [0.92, 0.88, 0.78];
-claw = [0.95, 0.92, 0.82];
-nose = [0.18, 0.12, 0.1];
-eyeIris = [0.4, 0.7, 1];
+fur = [0.74, 0.56, 0.37];
+furLight = [0.84, 0.68, 0.48];
+cream = [0.9, 0.79, 0.58, NOGLOW];
+mane = [0.3, 0.27, 0.25];
+maneHi = [0.42, 0.39, 0.35];
+antler = [0.4, 0.33, 0.28];
+mark = [0.3, 0.36, 0.42];
+tat = [0.31, 0.27, 0.25];
+bark = [0.43, 0.36, 0.32];
+barkHi = [0.55, 0.45, 0.37];
+barkDark = [0.29, 0.24, 0.22];
+tailGrey = [0.4, 0.38, 0.35];
+tailCream = [0.8, 0.75, 0.62, NOGLOW];
+claw = [0.3, 0.24, 0.22];
+toeClaw = [0.55, 0.45, 0.36];
+paw = fur;
+limbFn = 18;   // the arm / thigh capsules' facets
+ink = [0.16, 0.13, 0.13];
+iris = [0.42, 0.53, 0.6];
+sclera = [0.95, 0.91, 0.78, NOGLOW];
+pupilC = ink;
 
-module stroke(pts, r, c = mark) { chain(pts, [for (p = pts) r], c); }
-// Swirl tattoo facing direction yaw (0 = -Y), radius R.
-module tswirl(p, R, yaw = 0, c = tattoo) {
-  n = 14;
+// ---- Shapes shared by several parts (the rig file copies these numbers).
+HEAD = [[[4.3, 3.8, 3.8], [0, -0.6, 26.8]], [[3.4, 3.1, 2.8], [0, -0.3, 30]]];
+TORSO = [[[3.8, 3, 2.5], [0, 0.2, 15.5]], [[6.2, 3.9, 3.6], [0, -0.2, 20]], [[5.6, 3.6, 2.6], [0, 0.6, 23]]];
+RUFF = [[[5.8, 3.4, 2.6], [0, -0.6, 24]], [[4.2, 2.6, 2], [0, -2.2, 22.2]]];
+MANE = [[[3.6, 2.4, 2.4], [0, 2.2, 29.4]], [[4.4, 3.6, 2.6], [0, 1.4, 32]], [[4.6, 3.4, 2.6], [1.2, 1.8, 35]],
+        [[3.2, 2.6, 1.8], [2, 2.2, 37.8]]];
+SHOULDER = [8.3, 0, 21.8];
+ELBOW = [11.5, -2.4, 17];
+WRIST = [14.2, -2.3, 14.4];
+HAND = [14.6, -2.4, 12.6];
+HIP = [4.2, 0.3, 13.2];
+KNEE = [7.6, -1.2, 8.2];
+ANKLE = [9.6, -1.4, 3.2];
+FOOT = [9.8, -1.6, 0];
+TAIL = [[1, 3.2, 11.5], [6, 6, 7.4], [11, 6, 7.2], [16, 4.5, 10.2], [17, 3, 15.4], [18, 2, 20], [18.6, 1.6, 23.4]];
+TAIL_R = [2, 3.3, 4.2, 4.6, 4.2, 3, 0.6];
+CREAM = [[6, 5.4, 5.4], [11.6, 5.4, 4.9], [18.3, 3.9, 9.2], [19.8, 2.4, 15.4], [20, 1.6, 19.5]];
+CREAM_R = [2.4, 3.2, 3.5, 3, 1.8];
+EYE = [2.4, -3.45, 27.3];
+// mane locks: [root, d1, d2, d3, root radius, highlight]
+LOCKS = [[[0, 1.4, 38.5], [-0.6, 0.4, 1.4], [-0.6, 0.6, 1], [-0.4, 0.6, 0.6], 1.6, 0],
+         [[1.4, 1.4, 38], [1, 0.6, 1.4], [1.4, 0.8, 0.8], [1.4, 0.8, 0.2], 1.5, 1],
+         [[2.8, 1.4, 36], [1.8, 0.4, 0.9], [2, 0.6, 0.4], [1.6, 0.8, -0.2], 1.6, 0],
+         [[3.2, 1.8, 33.6], [2, 0.4, 0.2], [1.8, 0.8, -0.4], [1.4, 1, -0.8], 1.5, 1],
+         [[-1.6, 1.2, 37.8], [-0.8, 0.4, 1.4], [-1, 0.6, 0.8], [-0.8, 0.8, 0.4], 1.5, 1],
+         [[-3, 1.4, 35.8], [-1.8, 0.4, 0.8], [-1.6, 0.8, 0.4], [-1.2, 0.8, 0], 1.6, 0],
+         [[-3.2, 1.8, 33.4], [-1.8, 0.6, -0.2], [-1.4, 1, -0.6], [-1, 1, -0.8], 1.4, 0],
+         [[0.5, 3.6, 36.4], [0.2, 1.2, 1.6], [0.3, 1, 1.4], [0.2, 0.8, 0.8], 1.6, 0],
+         [[2.2, 3.6, 34.4], [1.2, 1.2, 1], [1.4, 0.8, 0.8], [1, 0.6, 0.4], 1.4, 1],
+         [[-2, 3.6, 34.2], [-1.2, 1.2, 0.8], [-1.2, 0.8, 0.8], [-0.8, 0.6, 0.4], 1.4, 0],
+         [[0, 3.8, 32.4], [0, 1.6, -0.8], [0, 1.2, -1.6], [0, 0.6, -1.4], 1.5, 0]];
+ANTLER = [[3.6, 0, 29.6], [5.4, 0.2, 32.2], [6.6, 0.4, 35], [6.3, 0.6, 37.2]];
+ANTLER_R = [1.1, 0.9, 0.6, 0.15];
+
+// Low-poly ellipsoid / petal for the many small parts (lib's ell and petal are 28 / 24 sided).
+module oval(r, p, c, fn = 12) { color(c) translate(p) scale(r) sphere(1, $fn = fn); }
+module leaf(r, p, rot, c, fn = 10) { color(c) translate(p) rotate(rot) scale(r) sphere(1, $fn = fn); }
+module blobN(parts, c, fn = 14) { color(c) hull() for (e = parts) translate(e[1]) scale(e[0]) sphere(1, $fn = fn); }
+module grownBlob(parts, g) { hull() for (e = parts) translate(e[1]) scale(e[0] + [g, g, g]) sphere(1, $fn = 28); }
+module stroke(pts, r, c) { chain(pts, [for (p = pts) r], c); }
+// Swirl tattoo in the XZ plane facing yaw (0 = -Y), radius R.
+module tswirl(p, R, yaw = 0, c = tat) {
+  n = 12;
   translate(p) rotate([0, 0, yaw])
-    chain([for (i = [0 : n]) let(t = i / n, a = t * 540, rr = R * (0.2 + 0.8 * t)) [rr * cos(a), 0, rr * sin(a)]],
-          [for (i = [0 : n]) 0.3], c, $fn = 6);
+    chain([for (i = [0 : n]) let(t = i / n, a = t * 500, rr = R * (0.2 + 0.8 * t)) [rr * cos(a), 0, rr * sin(a)]],
+          [for (i = [0 : n]) 0.28], c, $fn = 6);
 }
-// Rough rock chunk.
-module chunk(p, r, rot = [0, 0, 0], c = rock) { color(c) translate(p) rotate(rot) scale([1.2, 0.9, 1]) sphere(r, $fn = 7); }
-
-// ---- Legs: thick thighs, rocky greaves, clawed feet.
-mirror_x() {
-  limb([3.6, 0, 16], [5, -0.6, 9], 3, 2.6, fur);
-  limb([5, -0.6, 9], [5.4, 0.4, 3], 2.4, 2, fur);
-  ell([3, 3, 3.6], [5.3, -0.2, 6], rockDark);
-  for (r = [[0, 4, 1.7], [72, 5, 1.6], [144, 4, 1.5], [216, 5.5, 1.6], [288, 4.2, 1.6],
-            [20, 8.2, 1.6], [110, 8.6, 1.4], [200, 8, 1.5], [300, 8.4, 1.4]])
-    chunk([5.3 + 2.8 * sin(r[0]), -0.2 - 2.8 * cos(r[0]), r[1]], r[2], [r[0] / 3, 20, r[0]], (r[0] % 120 == 0) ? rockDark : rock);
-  spike([5.8, -2.6, 9.5], [0.6, -1.2, 2.4], 1, 0.05, rock);
-  blob([[[2.6, 3.4, 1.4], [5.6, -1.6, 1.4]], [[2.2, 2, 1.4], [5.6, 0.8, 1.6]]], furDark);
-  for (a = [-28, 0, 28]) spike([5.6 + sin(a) * 1.5, -4.8, 1], [sin(a) * 0.5, -1.4, -0.4], 0.55, 0.05, claw);
-}
-
-// ---- Hips and the plated rocky loincloth.
-ell([6, 4.2, 3.4], [0, 0, 16.5], furDark);
-for (x = [-4, -1.4, 1.4, 4]) spike([x, -3.6, 17.5], [x * 0.15, -0.6, -5.5], 1.6, 0.1, (abs(x) < 2) ? rockDark : rock);
-for (x = [-3, 0, 3]) spike([x, 3.6, 17.5], [x * 0.15, 0.6, -4.5], 1.5, 0.1, rock);
-color(rockDark) translate([0, 0, 17.6]) scale([6.3, 4.5, 1]) cylinder(h = 1.2, r = 1, $fn = 24);
-
-// ---- Torso: V-shaped, muscled chest.
-blob([[[4.8, 3.6, 3.6], [0, 0, 20]], [[7.4, 4.6, 4.4], [0, 0, 27]]], fur);
-mirror_x() color(furHi) translate([2.4, -3.95, 28.2]) scale([3.2, 0.6, 1.4]) sphere(1, $fn = 14);
-for (z = [20.5, 22.5]) mirror_x() color(furHi) translate([1.3, -3.4, z]) scale([1.3, 0.7, 0.8]) sphere(1, $fn = 10);
-// Swirl tattoos: chest, shoulders, back.
-mirror_x() {
-  tswirl([3, -5.1, 27.2], 1.2);
-  tswirl([6.4, 3.6, 28], 1.2, 180);
-  tswirl([3, 4.6, 25], 1.4, 180);
-}
-// Shaggy ruff on the chest and shoulders.
-for (a = [-70 : 20 : 70]) spike([sin(a) * 5.2, -3 + abs(sin(a)) * 1.2, 30.5], [sin(a) * 1.4, -1.2, -4], 1.3, 0.05, furHi);
-for (a = [0 : 30 : 359]) spike([cos(a) * 5, sin(a) * 3.8, 31], [cos(a) * 2.2, sin(a) * 2.2, -2], 1.6, 0.05, fur);
-// Spine marking.
-stroke([[0, 4.8, 30], [0.8, 4.9, 26.5], [-0.6, 4.5, 23], [0.2, 3.8, 19.5]], 0.75);
-
-// ---- Arms: long, hanging, a little out from the body, clawed hands; stripe tattoos on the forearms.
-mirror_x() {
-  ell([3, 3, 2.8], [7.2, 0, 28.5], fur);
-  limb([7.6, 0, 28], [9.4, -0.6, 21], 2.5, 2.1, fur);
-  limb([9.4, -0.6, 21], [10.4, -1.6, 14.5], 2.1, 1.7, fur);
-  for (z = [16.5, 18.5]) stroke([[11.3, -1.3, z], [10.6, -2.6, z + 0.6]], 0.3, tattoo);
-  ell([1.9, 1.7, 2], [10.6, -1.8, 13], fur);
-  for (a = [-30, 0, 30]) spike([10.6 + sin(a) * 1.2, -3, 11.6], [sin(a) * 0.4, -0.8, -1.4], 0.45, 0.05, claw);
-}
-
-// ---- Bushy tail: sweeps back and out to the viewer's right, then up; grey over a cream underside.
-// A tapering chain of hulled ellipsoids: [radius, point] pairs.
-module tailpath(pts, rs, c) { for (i = [0 : len(pts) - 2]) blob([[rs[i], pts[i]], [rs[i + 1], pts[i + 1]]], c); }
-tailpath([[2, 4, 15], [7, 6, 9], [12.5, 4.5, 7], [16.5, 2, 10], [18, 0.5, 15], [17.6, 0, 20.5]],
-         [[1.8, 1.8, 1.8], [3, 3, 3], [3.6, 3.4, 3.4], [3.4, 3.2, 3.4], [2.6, 2.4, 3], [0.8, 0.8, 1.4]], tailGrey);
-tailpath([[7, 4.4, 7.8], [12.5, 2.4, 5.6], [16, -0.2, 8.6], [17, -1.2, 13.5]],
-         [[2.6, 2.2, 2.2], [3, 2.4, 2.4], [2.8, 2.2, 2.6], [1.6, 1.4, 2]], tailCream);
-for (t = [[10, 7.6, 8.5], [14.5, 5.8, 9], [18.4, 3, 15]]) spike(t, [1.4, 1, 1], 1.2, 0.05, tailGrey);
-for (t = [[10, 3.4, 4.6], [14.5, 0.8, 5.2], [18.5, -1.4, 10]]) spike(t, [1.2, -0.6, -1.4], 1.1, 0.05, tailCream);
-
-// ---- Head: lion-hound with a short muzzle.
-blob([[[4.6, 4.2, 4.2], [0, -0.8, 35]], [[3.6, 3.4, 3], [0, -1.6, 32.6]]], fur);
-ell([2.6, 2, 1.8], [0, -4.6, 32.6], furHi);
-ell([0.9, 0.6, 0.6], [0, -6.4, 33.4], nose);
-color(nose) translate([0, -6, 31.6]) scale([1.2, 0.3, 0.3]) sphere(1, $fn = 10);
-// Cheek ruff.
-mirror_x() for (z = [31, 33]) spike([3.4, -2.6, z], [2, 0.4, -1], 1.2, 0.05, furHi);
-// Eyes: big, narrow and fierce, sunk in dark sockets under a hard brow ridge that slants down to the nose.
-mirror_x() {
-  translate([2.15, -4.15, 34.9]) rotate([0, -12, -20]) scale([1.65, 0.5, 1.35]) color(nose) sphere(1, $fn = 16);
-  eye([2.15, -4.4, 34.9], 1.3, iris = eyeIris, pupil = [0.06, 0.06, 0.1], sclera = [0.98, 0.9, 0.6], yaw = -18,
-      lid = 0.48, lid_tilt = 32, lid_c = furDark, slit = 0.35, squint = 0.16);
-  color(fur) hull() {
-    translate([1.0, -5.25, 35.75]) scale([0.5, 0.5, 0.4]) sphere(1, $fn = 12);
-    translate([2.3, -4.9, 36.5]) scale([0.95, 0.6, 0.45]) sphere(1, $fn = 12);
-    translate([3.7, -3.6, 37]) scale([0.6, 0.6, 0.45]) sphere(1, $fn = 12);
+// A pointed bark / rock plate: a flat oval base w x t with a ridge down its face, its point h along +Z.
+module shard(p, rot, w, t, h, c) {
+  color(c) translate(p) rotate(rot) hull() {
+    scale([w, t, 0.3]) sphere(1, $fn = 10);
+    translate([0, -t * 0.7, h * 0.4]) sphere(t * 0.5, $fn = 6);
+    translate([0, 0, h]) sphere(0.1, $fn = 6);
   }
 }
-// Arrow marking: point on the brow, band over the crown into the mane.
-color(mark) translate([0, -4.95, 36.6]) rotate([-60, 0, 0]) linear_extrude(0.8, center = true)
-  polygon([[0, -1.6], [-1.6, 0.6], [-0.8, 0.6], [-0.8, 1.2], [0.8, 1.2], [0.8, 0.6], [1.6, 0.6]]);
-stroke([[0, -4, 38], [0, -2.2, 39.2]], 0.8);
-// Ears.
-mirror_x() spike([3.6, -0.6, 37.6], [1.8, 0.4, 2.2], 1.2, 0.1, fur);
-// Short antlers.
-mirror_x() {
-  chain([[2, -1.2, 38.6], [3, -1, 41], [4.2, -0.8, 43], [5.4, -0.6, 44]], [0.7, 0.6, 0.45, 0.2], antler);
-  limb([3.1, -1, 41], [1.8, -1.4, 42.6], 0.45, 0.15, antler);
+// A hair lock: a tapering capsule chain from p along d1, d2, d3.
+module lock(p, d1, d2, d3, r, c) { chain([p, p + d1, p + d1 + d2, p + d1 + d2 + d3], [r, r * 0.75, r * 0.45, 0.1], c, $fn = 10); }
+// A soft pointed fur tuft: a flattened ball at p drawn out to a point along d.
+module tuft(p, d, w, c) { color(c) hull() { translate(p) scale([w, w * 0.7, w]) sphere(1, $fn = 10); translate(p + d) sphere(0.15, $fn = 6); } }
+// A painted band across a limb: the limb grown a hair, cut by a thin slab across it at C, on the side facing `out`.
+module band(p1, p2, r1, r2, C, out, c = tat) {
+  d = p2 - p1;
+  color(c) intersection() {
+    hull() { translate(p1) sphere(r1 + 0.12, $fn = 16); translate(p2) sphere(r2 + 0.12, $fn = 16); }
+    translate(C) rotate(_dir_rot(d)) rotate([12, 0, 0]) cube([9, 9, 0.5], center = true);
+    translate(C + out * 2.3) sphere(2.6, $fn = 12);
+  }
 }
-// Wild mane: a big swept mass of spikes behind and above the head, streaming back.
-blob([[[5, 4.6, 4], [0, 2, 37.5]], [[4, 3.6, 3], [0, 4.6, 33]]], mane);
-for (s = [[-4, 0, 41, -2, 1.4, 3], [-1.5, 0.5, 42, -0.6, 1.6, 4], [1.5, 0.6, 42, 1, 2, 3.8], [4, 0.4, 40.5, 2.6, 2, 2.4],
-          [-5, 2, 38, -3.4, 2.4, 1], [5, 2, 38, 3.4, 2.4, 1.2], [0, 3, 40.5, 0, 5, 2.6], [-3, 4, 38, -1.4, 5, 0.6],
-          [3, 4, 38, 1.6, 5, 0.6], [0, 5.5, 35, 0, 4, -2], [-3, 5, 33, -1.4, 3, -3], [3, 5, 33, 1.4, 3, -3]])
-  spike([s[0], s[1], s[2]], [s[3], s[4], s[5]], 2.1, 0.1, ((s[0] + s[2]) % 2 == 0) ? maneHi : mane);
-// Mane-crossing marking down the back of the head.
-stroke([[0, 1.5, 42.2], [0, 5, 39.8], [0, 7.4, 35.5], [0, 6.8, 31.5]], 0.75);
+
+// ---- Legs: thighs under bark plates, rock greaves, splayed clawed feet.
+module legs() mirror_x() {
+  limb(HIP, KNEE, 3, 2.4, barkDark, $fn = limbFn);
+  ell([2.1, 2, 1.8], KNEE + [0, -0.6, 0.6], fur);   // the knee shows between the plates
+  limb(KNEE, ANKLE, 2.3, 1.8, fur, $fn = 16);
+  // thigh plates, pointing up like scales
+  shard([5.9, -2.8, 7.8], [-15, -8, 0], 2.5, 0.9, 7, bark);
+  shard([8.1, -1.2, 8.4], [-10, 22, 0], 2.2, 0.85, 6.2, barkHi);
+  shard([4.4, -2.5, 10.4], [-18, -16, 0], 1.9, 0.8, 5, barkHi);
+  shard([8.4, 0.8, 8.6], [10, 24, 0], 1.8, 0.75, 4.8, bark);
+  shard([6.2, 2.2, 9.6], [18, 8, 0], 1.8, 0.75, 4.6, barkDark);
+  // greave: a rock cuff with plates round it
+  oval([2.6, 2.6, 2.5], [8.8, -1.4, 5], barkDark, 16);
+  for (a = [-50, 10, 70, 140, 210]) translate([8.8, -1.4, 4]) rotate([0, 0, a]) translate([0, -2.2, 0])
+    shard([0, 0, 0], [16, 0, 0], 1.55, 0.7, 4, (a % 120 == 10) ? barkHi : bark);
+  // paw
+  translate(FOOT) rotate([0, 0, 18]) {
+    blobN([[[1.9, 1.7, 1.3], [0, 0.4, 1.4]], [[2, 1.6, 1.1], [0, -1.8, 1.1]]], paw);
+    for (dx = [-1.15, 0, 1.15]) {
+      oval([0.65, 0.9, 0.6], [dx, -3.1, 0.75], paw);
+      spike([dx, -3.8, 0.7], [dx * 0.25, -1.1, -0.55], 0.42, 0.05, toeClaw);
+    }
+  }
+}
+
+// ---- Bark skirt: belt, plates hanging at the front, back and hips.
+module skirt() {
+  oval([4.1, 3.3, 2], [0, 0.3, 13.4], barkDark, 20);
+  oval([4.25, 3.55, 0.9], [0, 0.2, 15.6], barkDark, 24);
+  shard([0, -3.3, 15.4], [180, 0, 0], 2.6, 0.8, 8.6, bark);
+  mirror_x() shard([2.3, -2.9, 15.2], [182, -12, 0], 1.8, 0.7, 6.6, barkHi);
+  shard([0, 3.6, 15.4], [178, 0, 0], 2.2, 0.8, 6.8, bark);
+  mirror_x() {
+    shard([2.6, 3, 15.2], [178, -12, 0], 1.7, 0.7, 5.6, barkDark);
+    shard([3.9, -1.4, 15.4], [178, -28, 0], 1.8, 0.7, 5.2, bark);
+    shard([3.9, 1.4, 15.4], [178, -28, 0], 1.7, 0.7, 4.8, barkHi);
+  }
+}
+
+// ---- Torso: broad and muscled; cream ruff on the upper chest; tattoos.
+module torso() {
+  blob(TORSO, fur);
+  mirror_x() {
+    oval([2.7, 1.3, 1.9], [2.7, -3, 20.6], fur, 18);   // pecs
+    for (z = [16.4, 17.8]) oval([1.05, 0.7, 0.62], [1.05, -2.95 - (z - 16.4) * 0.12, z], furLight, 10);   // abs
+    // eye-shaped swirl tattoo on the pec
+    translate([2.7, -4.05, 20.5]) rotate([0, 0, 18]) {
+      color(tat) scale([1.75, 0.4, 0.92]) sphere(1, $fn = 14);
+      color(cream) translate([0, -0.12, 0]) scale([1.15, 0.36, 0.52]) sphere(1, $fn = 12);
+      color(tat) translate([0, -0.24, 0]) scale([0.42, 0.3, 0.42]) sphere(1, $fn = 8);
+    }
+    tswirl([3.5, 3.45, 20.4], 1.5, 180);   // shoulder blades
+  }
+  // ruff: a cream collar round the neck and over the upper chest, a ragged V edge below
+  blobN(RUFF, cream, 20);
+  for (s = [[0, 19.6, 0, 2], [1.8, 20.2, -18, 1.8], [-1.8, 20.2, 18, 1.8], [3.6, 21, -32, 1.6], [-3.6, 21, 32, 1.6],
+            [5.2, 22, -50, 1.4], [-5.2, 22, 50, 1.4]])
+    leaf([1.2, 0.55, s[3]], [s[0], -4.3 + abs(s[0]) * 0.25, s[1] + s[3] * 0.6], [-8, s[2], 0], cream);
+  // spine stripe: the arrow's tail down the back
+  color(mark) intersection() {
+    grownBlob(TORSO, 0.12);
+    mirror([0, 1, 0]) rotate([90, 0, 0]) linear_extrude(12)
+      polygon([[0.85, 31], [1.4, 27], [1.8, 23], [1.2, 18.5], [0.3, 14.2], [-0.4, 14.2], [-0.4, 18.5], [0.2, 23],
+               [-0.2, 27], [-0.85, 31]]);
+  }
+}
+
+// ---- Arms: long, out to the sides, big clawed hands; a swirl on each shoulder, stripes down the arm.
+// One arm (the creature's left numbers): shoulder S, elbow E, wrist W, hand H.
+module arm(S, E, W, H) {
+  oval([2.8, 2.8, 2.6], S, fur, 20);
+  limb(S, E, 2.5, 2.2, fur, $fn = limbFn);
+  limb(E, W, 2.2, 2.1, fur, $fn = limbFn);
+  tswirl([8.6, -2.5, 22.9], 1.2, 30);
+  tswirl([9.3, 2.3, 22.6], 1.1, 150);
+  band(S, E, 2.5, 2.2, S + (E - S) * 0.62, [0.8, 0, 0.2]);
+  for (t = [0.3, 0.62]) band(E, W, 2.2, 2.1, E + (W - E) * t, [0.6, -0.5, 0.5]);
+  oval([2.4, 2.1, 2.5], H, fur, 20);
+  for (dx = [-1.3, -0.45, 0.45, 1.3]) {
+    limb(H + [dx, -0.7, -1.5], H + [dx * 1.25, -1.5, -2.8], 0.65, 0.55, fur);
+    spike(H + [dx * 1.25, -1.6, -3], [dx * 0.2, -0.5, -1.4], 0.5, 0.05, claw);
+  }
+}
+module arms() mirror_x() arm(SHOULDER, ELBOW, WRIST, HAND);
+
+// ---- Bushy tail: grey over a cream outer edge, ragged lobes on the silhouette, a dark point.
+module tail() {
+  for (i = [0 : len(TAIL) - 2])
+    blobN([[[TAIL_R[i], TAIL_R[i] * 0.8, TAIL_R[i]], TAIL[i]], [[TAIL_R[i + 1], TAIL_R[i + 1] * 0.8, TAIL_R[i + 1]], TAIL[i + 1]]], tailGrey);
+  for (i = [0 : len(CREAM) - 2])
+    blobN([[[CREAM_R[i], CREAM_R[i] * 0.85, CREAM_R[i]], CREAM[i]], [[CREAM_R[i + 1], CREAM_R[i + 1] * 0.85, CREAM_R[i + 1]], CREAM[i + 1]]], tailCream);
+  for (t = [[[9.6, 5, 4], [3.4, -0.4, -1.2], 1.7, tailCream], [[14.8, 3.8, 5], [3.8, -0.4, -0.2], 1.8, tailCream],
+            [[20, 2.6, 9.8], [1.8, -0.4, 3.2], 1.7, tailCream], [[20.6, 1.6, 13.6], [1, -0.2, 3.6], 1.6, tailCream],
+            [[20, 1.2, 18.2], [0.3, 0, 3.4], 1.4, tailCream], [[12.4, 6.6, 11.2], [-1, 0, 3.6], 1.7, tailGrey],
+            [[14.2, 5, 15], [-1.2, 0, 3.6], 1.6, tailGrey], [[11, 8.4, 8.8], [3, 0.8, 0.6], 1.7, tailGrey],
+            [[16.6, 6.8, 12.4], [0.6, 0.6, 3.2], 1.6, tailGrey], [[5.6, 7.6, 9.4], [3, 0.6, -0.6], 1.5, tailGrey]])
+    tuft(t[0], t[1], t[2], t[3]);
+  tuft([18, 1.8, 21.2], [-0.9, 0, 3.6], 1.9, tailGrey);   // the dark point
+}
+
+// ---- Head: a lion-wolf face, short muzzle, fierce slanted eyes, a smirk.
+module head() {
+  blob(HEAD, fur);
+  oval([2.1, 1.9, 1.5], [0, -3.9, 24.4], furLight, 20);   // muzzle
+  oval([1.6, 1.4, 0.9], [0, -3.6, 23.1], fur, 16);   // chin
+  oval([0.9, 0.55, 0.52], [0, -5.65, 25.3], ink, 14);   // nose
+  stroke([[0, -5.75, 24.9], [0, -5.45, 23.7]], 0.15, ink);
+  stroke([[-1.35, -4.85, 23.75], [-0.5, -5.35, 23.45], [0.5, -5.35, 23.5], [1.4, -4.9, 23.95]], 0.18, ink);
+  mirror_x() spike([0.75, -5.25, 23.6], [0.05, -0.1, -0.55], 0.2, 0.03, cream);   // fangs
+  mirror_x() {
+    // cheek fluff
+    leaf([3, 1, 1.7], [4.6, -1.4, 25.2], [0, 28, 25], cream);
+    leaf([2.4, 0.9, 1.3], [4.2, -2.2, 23.4], [0, 42, 20], cream);
+    // ears
+    leaf([0.85, 0.5, 1.7], [3.4, 0.2, 30.6], [0, 25, 0], fur);
+    // eyes under a dark brow slanting down to the nose
+    eye(EYE, 0.9, iris = iris, sclera = sclera, pupil = pupilC, yaw = 22, lid = 0.45, lid_tilt = 28, lid_c = fur,
+        slit = 0.4, squint = 0.2);
+    stroke([[0.9, -4.05, 27.9], [2.4, -3.8, 28.35], [3.6, -2.95, 28.8]], 0.2, ink);
+  }
+  // arrow tattoo on the forehead, its shaft running up under the mane
+  color(mark) intersection() {
+    grownBlob(HEAD, 0.12);
+    rotate([90, 0, 0]) linear_extrude(12)
+      polygon([[0, 27.5], [-2.1, 29.3], [-1, 29.15], [-1.05, 34], [1.05, 34], [1, 29.15], [2.1, 29.3]]);
+  }
+}
+
+// ---- Wild mane: a mass on the crown and locks swept up, out and back; antlers beside it.
+module maneHair() {
+  blobN(MANE, mane, 20);
+  for (l = LOCKS) lock(l[0], l[1], l[2], l[3], l[4], l[5] == 1 ? maneHi : mane);
+}
+module antlers() mirror_x() {
+  chain(ANTLER, ANTLER_R, antler);
+  limb([5.45, 0.2, 32.4], [7.3, -0.1, 33.6], 0.6, 0.15, antler);
+}
+
+module ravatar() {
+  legs();
+  skirt();
+  torso();
+  arms();
+  tail();
+  head();
+  maneHair();
+  antlers();
+}
+
+ravatar();

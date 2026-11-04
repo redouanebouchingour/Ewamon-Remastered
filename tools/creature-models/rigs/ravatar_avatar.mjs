@@ -1,64 +1,85 @@
-// Ravatar (avatar relic)'s rig: all four relics on Ravatar's body (rigs/ravatar.mjs). The water wave arcing round its
-// right side and its curl are one joint (`wave`, off the root) that surges, the fire on its left fist is `flameL` (off
-// the hand) and flickers, the starry cloud over the head drifts (`cloud`, off the head), and the six floating boulders
-// (rock1..6, off the root) bob on their own. Numbers are scad/ravatar_avatar.scad's.
+// Ravatar (avatar relic)'s rig: all four relics on Ravatar's body (rigs/ravatar.mjs). The left arm is raised out
+// to the side (foreL / handL moved to the scad's ELBOW_A / WRIST_A) and its blazing fist is `flameL` (off the hand),
+// which flickers; the water ring with its curl is one joint (`wave`, off the root) that surges; the starry cloud from
+// the crown drifts (`cloud`, off the head); the cloud tail is tail1..tail4 (no fifth link); the seven floating
+// boulders (rock1..7, off the root) bob on their own. Numbers are scad/ravatar_avatar.scad's.
 import { TAU, hash, osc, rigDef, win } from './lib/anim.mjs';
-import { any, ell, limb, pick } from './lib/biped.mjs';
-import { isAny } from './lib/geo.mjs';
-import { baseJoints, baseParts, clipsFor, faceFor } from './ravatar.mjs';
+import { limb, pick } from './lib/biped.mjs';
+import { fold, isAny, rot } from './lib/geo.mjs';
+import { ELBOW, HAND, SHOULDER, TAIL, WRIST, armTests, baseJoints, bodyParts, clipsFor, faceFor } from './ravatar.mjs';
 
-const FUR = [0.96, 0.92, 0.84];
-const WATER = [[0.35, 0.62, 0.86], [0.75, 0.9, 1]];
-const FLAME = [[0.92, 0.22, 0.06], [1, 0.55, 0.1], [1, 0.9, 0.45]];
-const STAR = [1, 0.8, 0.4];
-const ROCKS = [[-15, -2, 30, 1.4], [-11, -3, 5, 1.6], [13, -3, 4, 1.4], [-16, -1, 2, 1.2], [15, 0, 26, 1], [-8, -4, 34, 1]];
+const FUR = [0.9, 0.79, 0.64];
+const ELBOW_A = [13.2, -2.4, 19.8];
+const WRIST_A = [16.8, -4.6, 18.8];
+const HAND_A = [17.8, -5.6, 18.4];
+const WATER = [[0.2, 0.36, 0.55], [0.5, 0.67, 0.8], [0.78, 0.94, 0.98]];
+const FLAME = [[0.72, 0.14, 0.04], [0.95, 0.5, 0.15], [1, 0.88, 0.55]];
+const CLOUD = [[0.42, 0.44, 0.54], [0.66, 0.64, 0.72], [0.82, 0.83, 0.88], [1, 0.85, 0.5]];
+const ROCKC = [[0.4, 0.3, 0.26], [0.28, 0.21, 0.19]];
+const GROUND = 2;
+// pp(d) on the art: art x, depth, art z -> the scad frame
+const art = (x, d, z) => rot([0, 0, 30], [x, d, z - GROUND]);
+const ROCKS = [[-16.5, 33.5, -1, 1.3], [-12, 36.5, 2, 0.9], [-19, 14, 1, 1.1], [-15, 9, -2, 1.6], [17.5, 13, -1, 1.1],
+  [15, 8.5, 2, 1.2], [19, 4.5, -2, 1.4]].map(([x, z, d, r]) => [art(x, d, z), r]);
 const rocks = ROCKS.map((_, i) => `rock${i + 1}`);
-const CLOUD = [[0, 3, 44, 3.6], [4, 4, 44.5, 3], [7.5, 4, 43, 2.6], [-3, 3.5, 43.5, 2.6], [10.5, 3.5, 41, 2]];
+const CLOUD_TAIL = [[[2, 3.6, 10.8], 2.4], [[6, 6, 7.4], 3.4], [[11, 6, 7], 4], [[16, 4.5, 9.6], 4], [[17, 3, 13.4], 2.6]];
+const tails = ['tail1', 'tail2', 'tail3', 'tail4'];
 
 const face = faceFor(FUR);
-const joints = [...baseJoints,
-  { name: 'flameL', parent: 'handL', at: [11, -1.8, 15] },
-  { name: 'cloud', parent: 'head', at: [3, 3.5, 42] },
-  { name: 'wave', parent: 'root', at: [0, 3, 20] },
-  ...ROCKS.map((b, i) => ({ name: rocks[i], parent: 'root', at: [b[0], b[1], b[2]] })),
-  ...face.joints];
-
-const parts = [
-  ...baseParts,
-  ['cloud', any(...CLOUD.map(([x, y, z, r]) => ell([r * 1.2, r, r * 0.8], [x, y, z])))],
-  ...ROCKS.map((b, i) => [rocks[i], ell([1.2 * b[3], 0.9 * b[3], b[3]], [b[0], b[1], b[2]])]),
+const joints = [
+  ...baseJoints.filter((j) => j.name !== 'tail5').map((j) => (j.name === 'foreL' ? { ...j, at: ELBOW_A } : j.name === 'handL' ? { ...j, at: WRIST_A } : j)),
+  { name: 'flameL', parent: 'handL', at: HAND_A },
+  { name: 'cloud', parent: 'head', at: [0, 0.5, 33] },
+  { name: 'wave', parent: 'root', at: art(-1, 2, 21) },
+  ...ROCKS.map(([p], i) => ({ name: rocks[i], parent: 'root', at: p })),
+  ...face.joints,
 ];
 
+// the right arm keeps the base pose (folded numbers, x < 0 only); the left one is raised
+const onR = (t) => (c) => (c[0] < 0 ? t(fold(c)) : Infinity);
+const onL = (t) => (c) => (c[0] >= 0 ? t(c) : Infinity);
+const R = armTests(SHOULDER, ELBOW, WRIST, HAND);
+const L = armTests(SHOULDER, ELBOW_A, WRIST_A, HAND_A);
+const parts = [
+  ...bodyParts.filter(([n]) => !['arm*', 'fore*', 'hand*'].includes(n)),
+  ['armR', onR(R.arm)], ['foreR', onR(R.fore)], ['handR', onR(R.hand)],
+  ['armL', onL(L.arm)], ['foreL', onL(L.fore)], ['handL', onL(L.hand)],
+];
+const tailParts = CLOUD_TAIL.slice(1).map(([p, r], i) => [tails[i], limb(CLOUD_TAIL[i][0], p, CLOUD_TAIL[i][1] + 1.5, r + 1.5)]);
+const near = (c, p) => Math.hypot(c[0] - p[0], c[1] - p[1], c[2] - p[2]);
+
 function assign(c, rgb) {
-  if (isAny(rgb, WATER)) {
-    if (c[0] < -6) return 'wave';
-    if (c[2] < 1) return 'root';   // the splashes under the feet
+  if (isAny(rgb, WATER, 0.03)) return 'wave';
+  if (isAny(rgb, FLAME, 0.03)) return near(c, HAND_A) < 13 ? 'flameL' : 'cloud';
+  if (isAny(rgb, CLOUD, 0.03)) return c[2] > 22 ? 'cloud' : pick(c, tailParts);
+  if (isAny(rgb, ROCKC, 0.02)) {
+    const i = ROCKS.findIndex(([p, r]) => near(c, p) < 2.2 * r);
+    if (i >= 0) return rocks[i];
   }
-  if (isAny(rgb, FLAME) && c[0] > 6) return 'flameL';
-  if (isAny(rgb, [STAR])) return 'cloud';
   return pick(c, parts);
 }
 
 // the rocks bob on their own phases; the wave surges and the flame flickers on beats counted in u
-const float = (u, amp = 0.8, cycles = 1) => Object.fromEntries(rocks.map((n, i) => [n, { p: [0, 0, amp * osc(u, cycles, i / 6)], r: [8 * osc(u, cycles, i / 5), 0, 14 * osc(u, cycles, i / 7)] }]));
+const float = (u, amp = 0.8, cycles = 1) => Object.fromEntries(rocks.map((n, i) => [n, { p: [0, 0, amp * osc(u, cycles, i / 7)], r: [8 * osc(u, cycles, i / 5), 0, 14 * osc(u, cycles, i / 7)] }]));
 const fx = (u, steps, cycles, k = 1, flame = 1) => {
   const i = Math.floor(u * steps) % steps;
   const a = (n) => flame * (1 + k * 0.2 * (hash(i * 5 + n) - 0.5));
   return {
     flameL: { s: [a(1), a(2), a(3)] },
-    wave: { r: [0, 6 * k * osc(u, cycles), 0], s: 1 + 0.03 * k * osc(u, cycles, 0.25) },
-    cloud: { p: [0.4 * osc(u, cycles), 0, 0.3 * osc(u, cycles, 0.25)], r: [0, 0, 6 * osc(u, cycles)] },
+    wave: { r: [0, 4 * k * osc(u, cycles), 0], s: 1 + 0.03 * k * osc(u, cycles, 0.25) },
+    cloud: { p: [0.4 * osc(u, cycles), 0, 0.3 * osc(u, cycles, 0.25)], r: [0, 0, 5 * osc(u, cycles)] },
     ...float(u, 0.8 * k, cycles),
   };
 };
 const clips = clipsFor({
   face,
+  opts: { tail: tails },
   extra: {
     idle: (t, u) => fx(u, 40, 1),
     walk: (t, u) => fx(u, 8, 1, 0.6),
     idle_look: (t, u) => fx(u, 24, 1),
     windup: (t, u) => fx(u, 4, 0, 1, 1 + 0.3 * u),
-    lunge: (t, u) => ({ ...fx(u, 6, 1, 1.5, 1 + 0.4 * win(u, 0.25, 0.8, 0.1)), wave: { r: [0, -15 * win(u, 0.2, 0.8, 0.15), 0] } }),
+    lunge: (t, u) => ({ ...fx(u, 6, 1, 1.5, 1 + 0.4 * win(u, 0.25, 0.8, 0.1)), wave: { r: [0, -12 * win(u, 0.2, 0.8, 0.15), 0] } }),
     hurt: (t, u) => fx(u, 5, 2, 1.6, 0.85),
     recoil: (t, u) => fx(u, 5, 1, 1, 0.9),
     faint: (t, u) => ({ ...fx(u, 18, 1, 1, 1 - 0.7 * win(u, 0.3, 1.5, 0.5)), wave: { s: 1 - 0.5 * win(u, 0.3, 1.5, 0.5) } }),
@@ -81,11 +102,11 @@ clips.idle_harmony = {
       body: { r: [-3 * on, 0, 0] },
       head: { r: [-10 * on, 0, 0] },
       ...face.pose(on > 0.4 ? 'shut' : 'open', on * 2.5),
-      armL: { r: [-20 * on, -45 * on, 0] }, armR: { r: [-20 * on, 45 * on, 0] },
-      foreL: { r: [-20 * on, 0, 0] }, foreR: { r: [-20 * on, 0, 0] },
-      wave: { r: [0, -10 * on, 0], s: 1 + 0.06 * on },
-      cloud: { s: 1 + 0.15 * on },
-      ...Object.fromEntries(rocks.map((n, i) => [n, { p: [-0.25 * ROCKS[i][0] * on, 0, (1.5 + 0.8 * osc(u, 2, i / 6)) * on], r: [0, 0, 120 * on * (i % 2 ? 1 : -1) * Math.sin(TAU * u / 2)] }])),
+      armL: { r: [-10 * on, -15 * on, 0] }, armR: { r: [-20 * on, 45 * on, 0] },
+      foreL: { r: [-10 * on, 0, 0] }, foreR: { r: [-20 * on, 0, 0] },
+      wave: { r: [0, -8 * on, 0], s: 1 + 0.05 * on },
+      cloud: { s: 1 + 0.12 * on },
+      ...Object.fromEntries(rocks.map((n, i) => [n, { p: [-0.2 * ROCKS[i][0][0] * on, 0, (1.5 + 0.8 * osc(u, 2, i / 7)) * on], r: [0, 0, 120 * on * (i % 2 ? 1 : -1) * Math.sin(TAU * u / 2)] }])),
     };
   },
 };
