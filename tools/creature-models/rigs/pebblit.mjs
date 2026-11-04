@@ -1,47 +1,99 @@
-// Pebblit's rig: a round boulder with a face, stubby arms with cobble fists, short legs on crystal feet and two quartz
-// clusters on top (they twitch like ears). The boulder is the body and carries the face. Numbers are scad/pebblit.scad's.
+// Pebblit's rig: a round pebble-studded boulder with a face painted on its front, a pebble fist reaching out on its
+// right (-X), a pebbled arm with a crystal hand hanging on its left (+X), two crystal-clump feet and two quartz
+// clusters on top (they twitch like ears). The boulder is the body and carries the face. Numbers are
+// scad/pebblit.scad's.
 import { K, TAU, both, merge, osc, rigDef, win } from './lib/anim.mjs';
-import { any, bipedClips, ell, limb, pair, pick } from './lib/biped.mjs';
-import { blinks, eyeKit, mirrorEye } from './lib/face.mjs';
+import { any, bipedClips, ell, limb, pick } from './lib/biped.mjs';
+import { blinks, eyeKit } from './lib/face.mjs';
+import { blobD, isAny, near, rot, subFrame } from './lib/geo.mjs';
 
-const ROCK = [0.36, 0.24, 0.37];
+// a crystal(p, d, r): a hexagonal prism with a blunt point, tested as a tapering capsule
+const cry = (p, d, r) => limb(p, [p[0] + d[0], p[1] + d[1], p[2] + d[2]], r * 1.05, r * 0.6);
+const add = (a, b) => a.map((v, i) => v + b[i]);
 
-// a crystal(p, d, r): a hexagonal prism with a point, tested as a tapering capsule
-const cry = (p, d, r) => limb(p, [p[0] + d[0], p[1] + d[1], p[2] + d[2]], r * 1.05, r * 0.4);
+// the boulder (scad C, R) and the face frame: translate(C) rotate([0, 0, FA])
+const C = [0, 0, 21.1];
+const R = [13.3, 13, 12.6];
+const FA = 17;
+// eyes: faceFrame() mirror_x() translate(E) scale(ESQ) translate(-E) eye(E, ES = 1.8, yaw = EYAW, flat = 0.38)
+const E = [5.1, -12.2, 1.1];
+const ESQ = [1.2, 1, 0.8];
+const eyeAt = (k) => {
+  const at = [k * E[0], E[1], E[2]];
+  return { side: k > 0 ? 'L' : 'R', at, size: 1.8, yaw: k * 22, flat: 0.38,
+    frame: subFrame(add(C, rot([0, 0, FA], at.map((v, i) => v * (1 - ESQ[i])))), [0, 0, FA], ESQ) };
+};
+// the lid flattened to the almond and its dark rim (the frame scales its size by 1.2 all round)
+const face = eyeKit({ eyes: [eyeAt(1), eyeAt(-1)], parent: 'body', skin: [0.88, 0.83, 0.88], lid: [1.14, 0.85, 0.8] });
 
-const eyeL = { side: 'L', at: [2.9, -13.3, 20.6], size: 1.8 };
-const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], parent: 'body', skin: [1, 0.98, 1] });
+// arms (scad FARM / FIST on -X, NARM / HAND on +X)
+const FARM = [[3.2, 3.2, 3.2], [-13.6, -5.6, 19.4]];
+const FIST = [[4.2, 4, 4.1], [-17.6, -8.6, 18.6]];
+const NARM = [[3.4, 3.3, 3.4], [16.4, -2, 15]];
+const HAND = [[2.5, 2.4, 2.3], [18.2, -3.4, 10.6]];
+const handCry = [[[0.4, -2.4, -4.6], 1.15], [[2.8, -0.8, -4.3], 1.1], [[-1.8, -1.6, -4.3], 1.05], [[1.4, 1.6, -4.4], 1], [[2.8, -1.8, 1.4], 0.9]];
+
+// foot(at, out): a base ellipsoid, a heap of pebble lumps and three short crystal toes
+const LUMPS = [[3, -1.8, 2.6, 2.4], [-2.8, -1.6, 2.8, 2.3], [0.2, -3.2, 2.4, 2.1], [2.6, 2.2, 2.8, 2.2], [-2.4, 2.4, 3, 2.1],
+  [1, -1, 5.2, 2.8], [-1, 0.8, 5.8, 2.8], [0, 0.2, 8, 3.4]];
+const foot = (at, o) => any(
+  (c) => blobD(c, [[[4.8, 4.4, 2.4], add(at, [0, 0, 2.4])], ...LUMPS.map(([x, y, z, r]) => [[r, r * 0.95, r * 0.85], add(at, [x * o, y, z])])]),
+  cry(add(at, [1.8 * o, -3.6, 1.6]), [0.6 * o, -1.8, -0.6], 1.1), cry(add(at, [-1.6 * o, -3.4, 1.6]), [-0.6 * o, -1.8, -0.6], 1),
+  cry(add(at, [3.8 * o, -1.4, 1.6]), [1.8 * o, -0.6, -0.6], 1),
+);
+const FOOT_L = [7, -2.8, 0];
+const FOOT_R = [-8.8, 2.8, 0];
 
 const joints = [
   { name: 'root', at: [0, 0, 0] },
-  ...pair('leg*', 'root', [5.5, -1, 7]),
-  { name: 'body', parent: 'root', at: [0, 0, 6] },
-  ...pair('ear*', 'body', [5.5, -0.5, 27]),
-  ...pair('arm*', 'body', [11, -1, 16]),
-  ...pair('hand*', 'arm*', [15.5, -3, 14]),
+  { name: 'legL', parent: 'root', at: [7, -2.6, 7] },
+  { name: 'legR', parent: 'root', at: [-8.8, 2.8, 7] },
+  { name: 'body', parent: 'root', at: [0, 0, 9] },
+  { name: 'earL', parent: 'body', at: [6.6, 0.4, 30.2] },
+  { name: 'earR', parent: 'body', at: [-6.6, 0.4, 30.2] },
+  { name: 'armL', parent: 'body', at: [13, -1.6, 16.4] },
+  { name: 'handL', parent: 'armL', at: [18, -3, 12.4] },
+  { name: 'armR', parent: 'body', at: [-11.4, -3.8, 19.6] },
+  { name: 'handR', parent: 'armR', at: [-15.4, -6.9, 19] },
+  { name: 'eyeL', parent: 'body', at: add(C, rot([0, 0, FA], E)) },
+  { name: 'eyeR', parent: 'body', at: add(C, rot([0, 0, FA], [-E[0], E[1], E[2]])) },
   ...face.joints,
 ];
 
+const ear = (k) => any(cry([6.2 * k, 0.8, 30.2], [1.8 * k, 0, 7], 2.1), cry([8.8 * k, 0.2, 28.8], [2.8 * k, -0.4, 4.2], 1.6),
+  cry([5 * k, -1.6, 30.2], [0.3 * k, -1.2, 4.6], 1.4));
+
 const parts = [
-  ['body', any(ell([13.6, 12.6, 13.1], [0, 0, 17]), ell([8, 2.6, 7.4], [0, -10.2, 18.6]), cry([0, -11.6, 24.4], [0, -0.6, 1.4], 0.6),
-    ell([3, 3, 1.4], [0, 0, 29.2]))],
-  ['ear*', any(cry([5.5, -1, 27.5], [0.5, -0.3, 6.5], 1.4), cry([7.5, 0, 26.5], [2, 0.2, 4.6], 1.1), cry([4.2, 1, 28], [-0.8, 1, 4.4], 1))],
-  ['arm*', limb([11, -1, 16], [15.5, -3, 14], 2.6, 2.4)],
-  ['hand*', any(ell([3.4, 3.2, 3.2], [16.5, -3.5, 13.5]), ell([1.8, 1.6, 1.8], [17.5, -5.5, 14.5]))],
-  ['leg*', any(limb([5.5, -1, 7], [6.5, -2, 3], 3, 2.6), cry([6.5, -2, 0], [0, 0, 3.6], 2.4), cry([5.2, -4.4, 0], [-0.6, -1, 2.6], 1.2),
-    cry([7.6, -4.6, 0], [0.6, -1, 2.4], 1.1), cry([8.6, -1, 0], [1, 0, 2.6], 1.1))],
+  // the boulder with its pebbles and the painted face
+  ['body', ell(R.map((v) => v + 0.6), C)],
+  ['earL', ear(1)],
+  ['earR', ear(-1)],
+  ['armL', ell(NARM[0].map((v) => v + 0.5), NARM[1])],
+  ['handL', any(ell(HAND[0], HAND[1]), ...handCry.map(([d, r]) => cry(HAND[1], d, r)))],
+  ['armR', ell(FARM[0].map((v) => v + 0.5), FARM[1])],
+  ['handR', ell(FIST[0].map((v) => v + 0.5), FIST[1])],
+  ['legL', foot(FOOT_L, 1)],
+  ['legR', foot(FOOT_R, -1)],
 ];
 
-const assign = (c) => pick(c, parts);
+// the eyes (sclera, iris, pupil, shine and the dark rim round each) are their own joints
+const EYE_COLS = [[0.99, 0.97, 0.99], [0.5, 0.44, 0.52], [0.16, 0.07, 0.24], [0.27, 0.14, 0.33]];
+const faceLocal = (c) => rot([0, 0, -FA], [c[0] - C[0], c[1] - C[1], c[2] - C[2]]);
+const assign = (c, rgb) => {
+  const f = faceLocal(c);
+  const nearEye = Math.hypot((Math.abs(f[0]) - E[0]) / ESQ[0], f[1] - E[1], (f[2] - E[2]) / ESQ[2]) < 1.8 * 1.5;
+  if (nearEye && (isAny(rgb, EYE_COLS, 0.03) || near(rgb, [1, 1, 1], 0.015))) return f[0] >= 0 ? 'eyeL' : 'eyeR';
+  return pick(c, parts);
+};
 
 // the boulder carries the face, so the head's looks go to the body (a whole-rock tilt)
 const look = (u) => ({ body: { r: [0, 3 * K(u, [[0, 0], [0.14, 0], [0.24, 1], [0.46, 1], [0.56, -1], [0.82, -1], [0.92, 0]]), 8 * K(u, [[0, 0], [0.14, 0], [0.24, 1], [0.46, 1], [0.56, -1], [0.82, -1], [0.92, 0]])] } });
 
 const clipsFor = () => {
   const base = bipedClips({
-    face, hipH: 7, stride: 20, armSwing: 18, hopH: 3, droop: 0.5,
-    // the arms stick out sideways: a punch swings the right fist round to the front, the cheer lifts them up
-    punch: { arm: [0, 0, 75] },
+    face, hipH: 9, stride: 18, armSwing: 16, hopH: 3, droop: 0.5,
+    // the right fist already reaches forward-left: a punch swings it round to the front, the cheer lifts the arms up
+    punch: { arm: [-10, 0, 45] },
     cheer: { arm: [0, -50, 0] },
     add: {
       idle: (t, u) => look(u),
@@ -87,4 +139,5 @@ const clipsFor = () => {
   };
 };
 
-export default rigDef({ joints, assign, extras: face.extras, clips: clipsFor() });
+// the painted eyes keep a hard edge on the boulder (a blend would smear the sclera into the face)
+export default rigDef({ joints, assign, rigid: ['eyeL', 'eyeR'], extras: face.extras, clips: clipsFor() });
