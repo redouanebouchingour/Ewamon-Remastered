@@ -660,12 +660,12 @@
     },
     "raidori": {
       "url": "raidori.rig.glb",
-      "bytes": 159840,
+      "bytes": 182104,
       "rig": true
     },
     "raidori_tenjin": {
       "url": "raidori_tenjin.rig.glb",
-      "bytes": 201664,
+      "bytes": 214192,
       "rig": true
     },
     "raikitsune": {
