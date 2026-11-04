@@ -485,12 +485,12 @@
     },
     "lawlander": {
       "url": "lawlander.rig.glb",
-      "bytes": 192928,
+      "bytes": 209000,
       "rig": true
     },
     "lawlander_tenjin": {
       "url": "lawlander_tenjin.rig.glb",
-      "bytes": 211140,
+      "bytes": 225792,
       "rig": true
     },
     "leafcoon": {
@@ -515,7 +515,7 @@
     },
     "luxtrik": {
       "url": "luxtrik.rig.glb",
-      "bytes": 161840,
+      "bytes": 213144,
       "rig": true
     },
     "magmolith": {
