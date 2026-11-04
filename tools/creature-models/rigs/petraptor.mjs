@@ -1,57 +1,100 @@
-// Petraptor's rig: a standing pterosaur. Thick legs off the root, a pear-shaped torso, a short thick neck into the
-// wedge skull with its swept crest (the darker lower bill is the jaw), feathered wings hanging from raised arms, and a
-// short tail sweeping back to the ground (three links). The head sits inside the scad's
-// `translate([0, -3, 29]) rotate([-4, 0, 0]) scale(1.3)` (headF). Numbers are scad/petraptor.scad's.
+// Petraptor's rig: a standing pterosaur. Thick legs off the root (the far one stepped out), a pear-shaped torso, a
+// thick neck into the skull, which is turned 45 deg towards the creature's right (the scad's headFrame, rotate
+// [0, 0, -45], authored with S()) and carries the crest, the beak and the darker lower bill (the jaw). Feathered wings
+// hang from arms held out sideways, and a short tail sweeps back to the ground (three links). Numbers are
+// scad/petraptor.scad's.
 import { K, TAU, merge, osc, rigDef, win } from './lib/anim.mjs';
 import { birdClips } from './lib/bird.mjs';
 import { eyeKit, mirrorEye } from './lib/face.mjs';
 import { capD, chainHit, closest, ellD, fold, near, side, subFrame } from './lib/geo.mjs';
 
-const SLATE = [0.38, 0.4, 0.48];
-const TAN_DK = [0.62, 0.48, 0.32];
+const SLATE = [0.4, 0.4, 0.47];
+const JAW = [0.68, 0.53, 0.35];
 
-const headF = subFrame([0, -3, 29], [-4, 0, 0], 1.3);
-const eyeL = { side: 'L', at: [1.9, -2.8, 0.85], size: 1.55, yaw: 40, flat: 0.5, frame: headF };
+const HEAD_YAW = -45;
+const headF = subFrame([0, 0, 0], [0, 0, HEAD_YAW], 1);
+const S = (sx, z, x = 0) => [x, sx * 1.035 - 0.268 * x, z];
+const eyeL = { side: 'L', at: [1.4, -1.9, 26.4], size: 1.5, yaw: 62, flat: 0.5, frame: headF };
 const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: SLATE });
+// the eye kit places its joints in world terms; the head joint carries the head's yaw, so take it out again
+const faceJoints = face.joints.map((j) => ({ ...j, rot: [j.rot[0], j.rot[1], j.rot[2] - HEAD_YAW] }));
 
-const TAIL = [[0, 4, 10], [0, 8, 6], [0, 12.4, 3.2], [0.6, 17, 1.4]];
-const ROOTS = [[6.6, 1, 19], [9, 1.6, 19.2], [11.4, 1.4, 21.4], [13.6, 1, 23.6], [15.6, 1.2, 24], [17.4, 1, 23.8]];
-const TIPS = [[6.6, 2.6, 8.4], [9.6, 3.2, 6.4], [12.4, 3.4, 5.4], [15.6, 3.2, 5.6], [18.6, 2.6, 7.4], [21, 2, 10.6]];
-const SH = [4.4, 0, 22];
+const TAIL = [[0, 3.5, 10], [1.2, 7.5, 7.4], [2.6, 11.2, 5.2], [3.6, 14.2, 4]];
+const TAIL_R = [3.2, 2.2, 1.3, 0.35];
+const NECK = [[0, 0, 18.5], [0.1, 0.3, 22.5], [0.3, 0.6, 25.6]];
+const NECK_R = [3.3, 2.9, 2.5];
+const LEGS = {
+  L: { hip: [3.9, 0.2, 9.2], ankle: [4.9, -0.4, 2.8], foot: [5.2, -1.4, 1.1], s: 1 },
+  R: { hip: [-3.9, -0.4, 9], ankle: [-4.8, -3.8, 3], foot: [-5.4, -4.6, 1.15], s: -1 },
+};
+// the near wing (x > 0), as in the scad; W() reads a sheet point at depth y
+const W = (sx, z, y) => [(sx - 0.5 * y) / 0.866, y, z];
+const SH = [4, 0.5, 17.5];
+const HAND = W(9, 16.2, -0.8);
+const KNOB = W(10.2, 22.4, 1);
+const ROOTS = [W(7.6, 17, 1), W(9.8, 18.6, 1.2), W(11.8, 19.6, 1.2), W(13.8, 18.4, 1.2), W(16, 15.2, 1.2)];
+const TIPS = [W(7.6, 10, 1.8), W(10.9, 7.2, 2.2), W(14.2, 3.4, 2.4), W(17.4, 4, 2.4), W(18.3, 9, 2)];
+const FW = [1.8, 2.15, 2.25, 2.15, 1.5];
+const add = (a, b) => a.map((v, i) => v + b[i]);
+const lerp = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
 
 const joints = [
   { name: 'root', at: [0, 0, 0] },
-  { name: 'legL', parent: 'root', at: [3.8, 0, 9] },
-  { name: 'legR', parent: 'root', at: [-3.8, 0, 9] },
-  { name: 'body', parent: 'root', at: [0, 1, 8] },
-  { name: 'head', parent: 'body', at: [0, -1.2, 25.5] },
-  { name: 'jaw', parent: 'head', at: headF.world([0, -3, -1.4]) },
+  { name: 'legL', parent: 'root', at: LEGS.L.hip },
+  { name: 'legR', parent: 'root', at: LEGS.R.hip },
+  { name: 'body', parent: 'root', at: [0, 0.6, 8] },
+  { name: 'head', parent: 'body', at: [0.2, 0.5, 24.6], rot: [0, 0, HEAD_YAW] },
+  { name: 'jaw', parent: 'head', at: headF.world(S(-0.6, 23.6)) },
   { name: 'wingL', parent: 'body', at: SH },
   { name: 'wingR', parent: 'body', at: [-SH[0], SH[1], SH[2]] },
   { name: 'tail1', parent: 'body', at: TAIL[0] },
   { name: 'tail2', parent: 'tail1', at: TAIL[1] },
   { name: 'tail3', parent: 'tail2', at: TAIL[2] },
-  ...face.joints,
+  ...faceJoints,
 ];
 
-const legD = (f) => Math.min(ellD(f, [3, 3.6, 4.2], [3.8, 0, 9]), capD(f, [4, 0, 7], [4.4, -0.4, 2], 2, 1.6), ellD(f, [2.6, 4.6, 1.6], [4.4, -2.4, 1.1]));
+// a hull of ellipsoids [r, p], approximated by ellipsoids interpolated along each pair
+const hullD = (c, parts) => {
+  let d = Infinity;
+  for (let i = 0; i < parts.length - 1; i++) for (let t = 0; t <= 1; t += 0.25) {
+    d = Math.min(d, ellD(c, lerp(parts[i][0], parts[i + 1][0], t), lerp(parts[i][1], parts[i + 1][1], t)));
+  }
+  return d;
+};
+const headD = (h) => Math.min(
+  hullD(h, [[[2.5, 3.6, 3], S(0.6, 27.6)], [[1.7, 1.6, 1.6], S(-4.2, 26.4)]]),
+  hullD(h, [[[1.9, 1.8, 1.2], S(-2.8, 24.2)], [[2.15, 1.5, 1], S(1.4, 25.1)]]),
+  hullD(h, [[[1.7, 1.6, 1.4], S(-1.6, 24.6)], [[1.2, 1.3, 1.4], S(-6.2, 25.3)], [[0.9, 0.9, 1], S(-7.6, 22.4)], [[0.3, 0.3, 0.3], S(-8.4, 20)]]),
+  hullD(h, [[[1.5, 1.6, 1], S(-1.6, 23.2)], [[0.55, 0.5, 0.45], S(-6.4, 20.6)]]));
+const legD = (c, L) => Math.min(
+  ellD(c, [2.9, 3.4, 3.8], L.hip),
+  capD(c, add(L.hip, [0.3 * L.s, -0.2, -2.2]), L.ankle, 1.8, 1.3),
+  hullD(c, [[[1.3, 1.3, 1.3], L.ankle], [[1.8, 2.4, 1.05], L.foot]]),
+  ...[-1, 0, 1].map((k) => capD(c, add(L.foot, [k * 1.2, -1.7, 0.2]), add(L.foot, [k * 1.7, -3.4, -0.85]), 0.78, 0.2)),
+  capD(c, add(L.foot, [0, 1.8, 0.2]), add(L.foot, [0, 3, -0.5]), 0.5, 0.2));
 const wingD = (f) => Math.min(
-  capD(f, SH, [9, 1, 19.6], 2.4, 1.9), capD(f, [9, 1, 19.6], [13.6, -0.6, 25], 1.9, 1.5), capD(f, [13.6, -0.6, 25], [17.6, 0.6, 24.6], 1.4, 0.8),
-  ...ROOTS.map((r, i) => capD(f, r, TIPS[i], 2.1, 0.6)));
+  capD(f, SH, W(6.6, 17.6, 0), 2, 1.6), capD(f, W(6.6, 17.6, 0), HAND, 1.6, 1.2),
+  ...[-1, 0, 1].map((k) => capD(f, add(HAND, [k * 1.05, -0.4, -0.2]), add(HAND, [k * 1.1, -1.1, -2.6]), 0.6, 0.3)),
+  capD(f, add(HAND, [0.4, 1, 0.4]), W(9.3, 19.2, 0.8), 0.9, 0.85), capD(f, W(9.3, 19.2, 0.8), KNOB, 0.85, 1.2),
+  capD(f, KNOB, W(12.8, 20.4, 1.1), 1.2, 0.95), capD(f, W(12.8, 20.4, 1.1), W(16.2, 14.6, 1.2), 0.95, 0.65),
+  ...ROOTS.map((r, i) => capD(f, r, TIPS[i], FW[i], 0.6)));
+const bodyD = (c) => Math.min(
+  hullD(c, [[[5, 4.6, 5.4], [0, 0.8, 11.8]], [[4.2, 3.8, 4], [0, 0, 17.2]]]),
+  chainHit(c, NECK, NECK_R).d,
+  ...[17.6, 19.7, 21.8, 23.8].map((z) => capD(fold(c), [1.3, 2.2, z], [3.2, 5.6, z + 0.5], 1.05, 0.3)));
 
 function assign(c, rgb) {
-  const f = fold(c);
-  const S = side(c);
-  if (near(rgb, TAN_DK) && c[2] > 24) return 'jaw';
-  if (c[2] > 25.8 && f[0] < 5.2 && !(f[0] > 4 && c[2] < 27 && wingD(f) < 1)) return 'head';
-  const t = chainHit(c, TAIL, [3.4, 2.4, 1.4, 0.3]);
-  if (c[1] > 7.4 && c[2] < 10 && f[0] < 4) return `tail${Math.min(3, t.i + 1)}`;
-  if (c[1] > 4.5 && c[2] < 10.5 && f[0] < 3 && t.d < 1.25) return `tail${Math.min(3, t.i + 1)}`;
+  const S2 = side(c);
+  if (near(rgb, JAW) && c[2] > 19) return 'jaw';
+  if (c[2] > 26.8) return 'head';
+  const t = chainHit(c, TAIL, TAIL_R);
+  if (c[1] > 5.6 && c[2] < 10.5 && t.d < 1.4) return `tail${Math.min(3, t.i + 1)}`;
   return closest([
-    ['body', Math.min(ellD(c, [6, 5.2, 6], [0, 1, 12.5]), ellD(c, [4.6, 4.2, 4.6], [0, -0.4, 19.5]),
-      capD(c, [0, 0, 21], [0, -1, 25], 3.6, 3.2), ellD(c, [3.6, 1.6, 4.2], [0, -3.4, 18]))],
-    [`leg${S}`, legD(f)],
-    [`wing${S}`, wingD(f)],
+    ['head', c[2] > 19 ? headD(headF.local(c)) : Infinity],
+    ['body', bodyD(c)],
+    ['legL', legD(c, LEGS.L)],
+    ['legR', legD(c, LEGS.R)],
+    [`wing${S2}`, wingD(fold(c))],
   ]);
 }
 
