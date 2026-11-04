@@ -405,12 +405,12 @@
     },
     "hollowmane": {
       "url": "hollowmane.rig.glb",
-      "bytes": 183556,
+      "bytes": 232736,
       "rig": true
     },
     "hollowmane_rage": {
       "url": "hollowmane_rage.rig.glb",
-      "bytes": 217660,
+      "bytes": 252408,
       "rig": true
     },
     "hollowolf": {
@@ -455,7 +455,7 @@
     },
     "katamute": {
       "url": "katamute.rig.glb",
-      "bytes": 200776,
+      "bytes": 218136,
       "rig": true
     },
     "kelvyre": {
