@@ -75,7 +75,8 @@ Pool (from 2026-11-03, the user's go): six Opus agents at a time, one creature o
 port 5192); eight at once overloaded the machine. Shared JSONs are staged per id by content at each commit.
 Committed: abysspark, abysspark_tenjin, acier, acier_majin (modelled from the 2026-11-03 four-armed redraw), alloylark,
 aonred, archonosis, astaroth; ampmite, auroracle, bankaiser, berkest, blighthex, blizzraak, bloomsprite; bloomdrake, blossomsail, bogmaw, briarvaunt, chrysotox, clementar_majin; budwing, caldermole, cirrileap, coalette,
-darkyon, dunescale, embrock, fedoraith, fibrostis.
+darkyon, dunescale, embrock, fedoraith, fibrostis; flampling, florasage, frofloe, geoboxer, glaciarm.
 Polish later: auroracle (tails smooth, sausage-like), ampmite (legs a bit stilt-like), chrysotox (strands read as flakes),
 briarvaunt (solid where the art is speckled and see-through), cirrileap (cloud reads as a pile of spheres),
-coalette (face a bit cute), darkyon (flame hem an even crown band), fibrostis (strands faceted, crystal-like).
+coalette (face a bit cute), darkyon (flame hem an even crown band), fibrostis (strands faceted, crystal-like), frofloe (tail a bit tube-like),
+geoboxer (plates read as pebbles, not flat slabs).

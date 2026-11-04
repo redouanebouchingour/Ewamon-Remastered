@@ -285,12 +285,12 @@
     },
     "flampling": {
       "url": "flampling.rig.glb",
-      "bytes": 78988,
+      "bytes": 117224,
       "rig": true
     },
     "florasage": {
       "url": "florasage.rig.glb",
-      "bytes": 243152,
+      "bytes": 224136,
       "rig": true
     },
     "flowbot": {
@@ -300,7 +300,7 @@
     },
     "frofloe": {
       "url": "frofloe.rig.glb",
-      "bytes": 224708,
+      "bytes": 224208,
       "rig": true
     },
     "galaxion": {
@@ -325,12 +325,12 @@
     },
     "geoboxer": {
       "url": "geoboxer.rig.glb",
-      "bytes": 150652,
+      "bytes": 182168,
       "rig": true
     },
     "glaciarm": {
       "url": "glaciarm.rig.glb",
-      "bytes": 152588,
+      "bytes": 193624,
       "rig": true
     },
     "glacifang": {

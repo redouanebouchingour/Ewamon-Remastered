@@ -3,32 +3,52 @@
 import { K, TAU, hash, merge, osc, rigDef, win } from './lib/anim.mjs';
 import { birdClips } from './lib/bird.mjs';
 import { eyeKit, mirrorEye } from './lib/face.mjs';
-import { fold, isAny, near, side } from './lib/geo.mjs';
+import { blobD, closest, fold, isAny, near, petalD, side } from './lib/geo.mjs';
 
-const BODY = [0.85, 0.42, 0.18];
-const LEG = [0.18, 0.15, 0.15];
-const WING = [[0.7, 0.3, 0.12], [0.95, 0.55, 0.28]];
+const BODY = [0.9, 0.43, 0.17];
+const LEG = [0.2, 0.16, 0.17];
+// crest and wing fire: red, orange, amber, yellow, cream
+const FIRE = [[0.86, 0.2, 0.05], [0.98, 0.42, 0.06], [0.97, 0.62, 0.06], [1, 0.8, 0.2], [1, 0.9, 0.6]];
 
-const eyeL = { side: 'L', at: [3.8, -7.7, 24.8], size: 2.1, yaw: 6, flat: 0.45 };
+// scad: body hull of two ellipsoids, its round of fluff lobes, the wing paddles and their feather fingers
+const LO = [11.2, 10.2, 8.6]; const LOC = [0, 0, 19.4];
+const UP = [9.6, 9.2, 8.6]; const UPC = [0, 0, 23.1];
+const BODYB = [[LO, LOC], [UP, UPC]];
+const er = (a, z, r, c) => { const q = 1 - ((z - c[2]) / r[2]) ** 2; return q > 0 ? Math.sqrt(q) / Math.hypot(Math.cos(a) / r[0], Math.sin(a) / r[1]) : 0; };
+const lobes = Array.from({ length: 13 }, (_, i) => {
+  const a = 9 + (i * 360) / 13; const k = 0.85 + (0.3 * ((i * 7) % 5)) / 4; const zz = 14.4 + ((i * 3) % 4) * 0.5 - 0.7;
+  const A = (a * Math.PI) / 180; const rr = Math.max(er(A, zz, LO, LOC), er(A, zz, UP, UPC)) - 0.8;
+  return { r: [1.2, 3.4 * k, 2.6 * k], p: [rr * Math.cos(A), rr * Math.sin(A), zz], rot: [0, 30, a] };
+});
+const PADDLE = [[[3.0, 1.9, 2.8], [8.4, 0.6, 19.6]], [[2.2, 1.4, 1.8], [12.0, -0.6, 20.4]], [[1.4, 1.1, 1.2], [14.2, -1.6, 21.0]]];
+const fingers = [0, 1, 2].map((k) => ({ r: [2.1, 1.05, 0.95], p: [10.6 + k * 1.5, 0.5 - k * 0.5, 18.4 + k * 0.45], rot: [0, 28 - k * 8, -12] }));
+
+const eyeL = { side: 'L', at: [4.4, -7.4, 25.4], size: 2.0, yaw: 15, flat: 0.5 };
 const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], parent: 'body', skin: BODY });
 
 const joints = [
   { name: 'root', at: [0, 0, 0] },
-  { name: 'legL', parent: 'root', at: [3, -1, 11.6] },
-  { name: 'legR', parent: 'root', at: [-3, -1, 11.6] },
+  { name: 'legL', parent: 'root', at: [3.1, -0.6, 12.0] },
+  { name: 'legR', parent: 'root', at: [-3.1, -0.6, 12.0] },
   { name: 'body', parent: 'root', at: [0, 0, 12] },
-  { name: 'wingL', parent: 'body', at: [8.5, 0, 20] },
-  { name: 'wingR', parent: 'body', at: [-8.5, 0, 20] },
-  { name: 'crest1', parent: 'body', at: [0, 0, 29] },
+  { name: 'wingL', parent: 'body', at: [8.5, 0.4, 19.8] },
+  { name: 'wingR', parent: 'body', at: [-8.5, 0.4, 19.8] },
+  { name: 'crest1', parent: 'body', at: [-2.4, 0.6, 30.6] },
   ...face.joints,
 ];
 
 function assign(c, rgb) {
   const f = fold(c);
-  if (near(rgb, LEG) && c[2] < 12) return `leg${side(c)}`;
-  if ((f[0] > 9.6 && c[2] > 15) || (isAny(rgb, WING, 0.03) && f[0] > 6.5 && c[2] > 14)) return `wing${side(c)}`;
-  if (c[2] > 29.6 && Math.abs(c[0]) < 6) return 'crest1';
-  return 'body';
+  if (near(rgb, LEG) && c[2] < 12.5) return `leg${side(c)}`;
+  if (isAny(rgb, FIRE, 0.03)) {
+    if (c[2] > 29.5 && Math.abs(c[0]) < 9) return 'crest1';
+    if (f[0] > 10.5) return `wing${side(c)}`;
+    return 'body';   // the back flame mark, the eye highlights
+  }
+  if (Math.hypot(f[0], c[1] + 7, c[2] - 24) < 7) return 'body';   // the face
+  const wing = Math.min(blobD(f, PADDLE), ...fingers.map((q) => petalD(f, q.r, q.p, q.rot)));
+  const body = Math.min(blobD(c, BODYB) * 0.98, ...lobes.map((q) => petalD(c, q.r, q.p, q.rot)));
+  return closest([[`wing${side(c)}`, wing], ['body', body]]);
 }
 
 // the flames flicker: the crest and the wingtips pulse on a wrapped beat so loops close

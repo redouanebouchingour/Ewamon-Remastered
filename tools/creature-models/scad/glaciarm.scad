@@ -1,134 +1,228 @@
-// Glaciarm: a steel-blue armoured knight with bronze trim, a tall crested helm with glowing cyan eyes behind a dark
-// T visor, ice-crystal clusters bursting from its pauldrons and knees, and two huge faceted fists of solid ice held
-// forward in a mist of frost.
+// Glaciarm: a steel-blue armoured ice knight standing square, a tall egg helm with a gold crest and a dark T visor
+// with two angry cyan eyes, heavy layered plate with gold trim, big ice-crystal clusters bursting from the
+// pauldrons and the knees, and two huge closed fists of solid ice: the far one raised beside the helm, the near one
+// held forward across the waist. Pale ice shards float round it.
 //
-// Checklist (front sheet, x = sheet x, z = sheet z; the feet stand on z ~0.6; the grey ground spray is not modelled):
-//   - helm: x -3.7..2.8, z 27.4..39.2, a tall pointed dome with a bronze crest ridge front to back, flared cheeks,
-//     a bronze brim at z 29.5..30.3, a dark T visor (bar z 33.4..34.9) with two slanted cyan eyes at (-2.1, 34.2)
-//     and (1.1, 34.2)
-//   - pauldrons: steel domes with bronze rims, x -12.2..-4.2 and 3.8..13.8, z 22..32; ice crystal clusters on top
-//     of each reaching z 39.2 (x -12.7..-7.2 and 5.3..11.8), a few more crystals out to x 13.8
-//   - torso: steel chest plate x -5.7..3.8, z 22..31 with bronze collar, seam and edges; banded abdomen z 15..22;
-//     bronze belt at z 15; steel fauld plates z 10.6..15.7 over the thighs
-//   - fists: huge faceted ice boulders held forward: x -19.7..-8.2, z 16.4..28.4 and x 3.8..17.8, z 15.4..26.4,
-//     vertical knuckle facets on top, grey frost wisps curling round their outer sides
-//   - legs: steel thighs, knee cops with ice crystal clusters at (-8.5, 10) / (7.5, 10), greaves with bronze bands,
-//     sabatons z 0.5..3.9 (x -11.2..-4.2 and 3.8..11.8)
-//   - shards: long pale ice shards floating beside the clusters (x -18.5, z 31..36 / x 16.5, z 28..34) and beside
-//     the knees (x -15, z 9..14 / x 13.5, z 9..14)
-//   - back: the bronze crest and spine strap down the back, the pauldrons' domes, the fists' outer facets
-// Colours: steel M0 mid [0.33, 0.45, 0.56] (light #7395ad), ice M1 [0.71, 0.90, 0.97] (light #e1fbfd, dark #98d1eb),
-// bronze M2 [0.49, 0.34, 0.27] / trim #b58b65, mist M3 [0.79, 0.79, 0.77], dark M4 [0.13, 0.17, 0.22]. The sheet
-// lists nothing as GLOWS: the cyan eyes get NOGLOW.
+// Checklist (front sheet, x = sheet x, z = sheet z; the art is drawn square-on, the grey ground spray is not modelled):
+//   - helm: x -3.8..3, z 29.3..40, a tall egg, widest at z 35, narrowing to a chin; a gold crest strip from the top
+//     down to the brow and down the back; a gold V brow over a dark eye band (z 33.3..35.3) holding two slanted cyan
+//     eyes with white cores (inner ends low); a dark slot under it down to the chin framed by two gold bars; a gold
+//     rim round the lower edge and a gold gorget under the chin (z 27..30). The head is turned a little to the viewer.
+//   - pauldrons: x -12.2..-4.2 and 3.8..13.8, z 24..32, a dome over a wider lamé, gold rims and a stud; big chunky
+//     hex ice crystals fanning up and out of each to z 39.5 (x -12.7..-6 / 5.3..12)
+//   - chest: x -6..6, z 22..30: two pectoral plates, gold V collar, gold centre seam, gold ^ lower edge (apex z 24);
+//     abdomen lamés z 18..22 (darker), belt z 17..18.4 with studs
+//   - tassets: a gold-edged shield plate in the middle (x -2.2..1.6, z 11.6..18) and gold-edged plates over each thigh
+//   - far fist (creature's right, -X): raised beside the body, x -19.7..-8.2, z 16.4..29: the closed fist on top with
+//     its knuckles up and out, the faceted ice gauntlet below down to the elbow
+//   - near fist (+X): held forward across the waist, x 4..18, z 15.4..26.4: curled fingers towards the viewer, the
+//     flared ice gauntlet out to the right; a pale frost swirl round each gauntlet
+//   - legs: steel thighs, knee cops with ice clusters (x -11.3..-6.4 / 5.3..10, z 8.2..14.5), greaves with gold bands
+//     under the knee and at the ankle, sabatons z 0..3.6 (x -11.6..-4.5 / 5.5..11.8) with a gold line
+//   - shards: long ones at (-18, 31..36) and (16.8, 28..34), small ones at (-19.8, 30), (18.3, 26.5), knee ones at
+//     (-15.5, 9.5..13.5), (-11.3, 13.5), (13.8, 9..13.5), (16.3, 13.3)
+//   - back: a gold T, a yoke across the shoulders and a strap down the spine to the belt; a broad back plate; the
+//     crest down the back of the helm; the crystal clusters seen from behind
+// Colours: steel M0 [0.33, 0.45, 0.56] with darker under-layers [0.25, 0.35, 0.46] / [0.16, 0.28, 0.41] and lighter
+// front plates [0.45, 0.58, 0.68]; ice M1 [0.71, 0.90, 0.97] (light [0.88, 0.99, 0.99], dark [0.59, 0.82, 0.92],
+// shadow blue [0.45, 0.73, 0.89]); gold trim M2 light [0.71, 0.55, 0.40]; dark visor M4 [0.13, 0.17, 0.22]. The
+// sheet lists nothing as GLOWS: the cyan eyes and the ice get NOGLOW.
 include <lib.scad>
 
 steel = [0.33, 0.45, 0.56];
 steelLight = [0.45, 0.58, 0.68];
+steelMid = [0.25, 0.35, 0.46];
 steelDark = [0.16, 0.28, 0.41];
 ice = [0.71, 0.90, 0.97, NOGLOW];
 iceLight = [0.88, 0.99, 0.99, NOGLOW];
 iceDark = [0.59, 0.82, 0.92, NOGLOW];
-bronze = [0.49, 0.34, 0.27];
+iceBlue = [0.45, 0.73, 0.89, NOGLOW];
+frost = [0.73, 0.88, 0.92, NOGLOW];
 trim = [0.71, 0.55, 0.40];
-mist = [0.79, 0.79, 0.77];
 dark = [0.13, 0.17, 0.22];
-cyan = [0.88, 0.99, 0.99, NOGLOW];
+cyan = [0.45, 0.80, 0.95, NOGLOW];
+white = [0.88, 0.99, 0.99, NOGLOW];
 
-// Hexagonal ice crystal from p along d, radius r, pointed tip.
+// Raw ellipsoid (no colour) for intersections.
+module E(r, p = [0, 0, 0]) translate(p) scale(r) sphere(1, $fn = 28);
+// A band of the ellipsoid (r, p) grown by g between heights z0 and z1: a trim ring flush on that plate.
+module rim(r, p, z0, z1, g = 0.2, c = trim) color(c) intersection() { E(r + [g, g, g], p); translate([-60, -60, z0]) cube([120, 120, z1 - z0]); }
+
+// Hexagonal ice crystal from p along d, radius r, a pyramid tip a third of its length.
 module crystal(p, d, r, c = ice) {
   l = norm(d);
   color(c) translate(p) rotate(_dir_rot(d)) {
-    translate([0, 0, -r * 0.6]) cylinder(h = l * 0.68 + r * 0.6, r = r, $fn = 6);
-    translate([0, 0, l * 0.68]) cylinder(h = l * 0.32, r1 = r, r2 = 0.08, $fn = 6);
+    translate([0, 0, -r * 0.8]) cylinder(h = l * 0.66 + r * 0.8, r = r, $fn = 6);
+    translate([0, 0, l * 0.66]) cylinder(h = l * 0.34, r1 = r, r2 = 0.1, $fn = 6);
   }
 }
-// A burst of crystals at p, scaled s, leaning outwards along ox (+1 / -1).
-module cluster(p, s, ox) {
-  crystal(p, [ox * 0.6, 0, 8.4] * s, 1.35 * s, iceLight);
-  crystal(p + [ox * 1.4, 0.6, 0] * s, [ox * 3.2, 0.6, 6.4] * s, 1.15 * s, ice);
-  crystal(p + [ox * -1.2, -0.4, 0] * s, [ox * -2.4, -1.2, 6.0] * s, 1.0 * s, ice);
-  crystal(p + [ox * 0.4, -1.4, 0] * s, [ox * 1.2, -3.0, 4.6] * s, 0.95 * s, iceDark);
-  crystal(p + [ox * -0.2, 1.4, 0] * s, [ox * -0.8, 2.8, 5.0] * s, 0.9 * s, ice);
-  crystal(p + [ox * 2.6, -0.4, -0.4] * s, [ox * 4.4, -0.6, 3.4] * s, 0.85 * s, iceDark);
-}
-// Thin bronze band round an ellipsoid limb section.
-module band(p, r, c = trim) { ell([r[0] + 0.25, r[1] + 0.25, r[2]], p, c); }
-// Grey frost wisp through points.
-module wisp(pts) chain(pts, [for (q = pts) 0.3], mist);
-
-// ---- Torso: steel chest and waist, lighter breastplate, bronze collar, seam, edges, belt; banded abdomen.
-blob([[[7.6, 5.8, 5.0], [0, -0.5, 26.6]], [[6.0, 5.0, 3.8], [0, -0.5, 19.5]]], steel);
-ell([5.8, 2.2, 4.2], [0, -5.2, 26.8], steelLight);
-color(trim) translate([0, -6.3, 26.4]) scale([0.55, 0.9, 4.6]) sphere(1, $fn = 10);       // centre seam
-color(trim) translate([0, -3.4, 30.4]) scale([5.6, 2.6, 0.6]) sphere(1, $fn = 20);          // collar
-color(trim) translate([0, -4.6, 22.2]) scale([5.6, 2.4, 0.5]) sphere(1, $fn = 20);          // breastplate edge
-for (z = [20.6, 18.2]) ell([6.0, 5.0, 1.0], [0, -0.6, z], steelDark);                        // abdomen bands
-for (z = [19.4, 17.0]) color(trim) translate([0, -4.6, z]) scale([4.6, 1.6, 0.3]) sphere(1, $fn = 16);
-ell([6.6, 5.6, 1.1], [0, -0.5, 15.2], bronze);                                                // belt
-// Fauld: steel skirt plates over the thighs, bronze lower edge.
-blob([[[7.0, 5.2, 1.6], [0, -0.8, 14.4]], [[6.2, 4.8, 1.4], [0, -1.0, 11.4]]], steel);
-color(trim) translate([0, -1.0, 10.8]) scale([6.3, 4.9, 0.4]) sphere(1, $fn = 24);
-mirror_x() color(trim) translate([4.4, -5.0, 12.8]) scale([0.4, 1.2, 1.8]) sphere(1, $fn = 8);
-// Back: a bronze strap down the spine.
-color(trim) translate([0, 5.4, 24]) scale([0.9, 0.9, 6.4]) sphere(1, $fn = 10);
-
-// ---- Helm: a tall pointed dome, flared cheeks, bronze brim and crest ridge, dark T visor with cyan eyes.
-H = [0, -1.2, 33.4];
-blob([[[4.0, 4.3, 4.8], H], [[4.5, 4.6, 2.0], [0, -1.2, 29.8]]], steel);
-color(steel) translate(H + [0, 0.4, 3.0]) cylinder(h = 2.8, r1 = 2.4, r2 = 0.3, $fn = 16);        // point
-color(trim) translate(H + [0, 0.4, 0.6]) scale([0.6, 4.6, 5.2]) sphere(1, $fn = 20);             // crest ridge
-color(trim) translate([0, -1.2, 29.9]) scale([4.9, 5.0, 0.55]) sphere(1, $fn = 28);              // brim
-// Visor: a dark bar with the stem down to the brim, on the dome's front.
-color(dark) intersection() {
-  translate(H) scale([4.25, 4.55, 5.05]) sphere(1, $fn = 28);
-  union() { translate([-3.4, -8, 33.3]) cube([6.8, 6, 1.7]); translate([-0.7, -8, 30.2]) cube([1.4, 6, 3.4]); }
-}
-// Eyes: slanted cyan slits in the bar, the inner ends low.
-mirror_x() color(cyan) translate([1.5, -5.25, 34.15]) rotate([0, 0, 8]) rotate([0, -22, 0]) scale([1.05, 0.45, 0.42]) sphere(1, $fn = 12);
-
-// ---- Pauldrons: steel domes with bronze rims, a burst of ice crystals on top; short steel upper arms to the fists.
-mirror_x() {
-  P = [10.4, -0.4, 27.8];
-  ell([5.0, 4.8, 4.5], P, steel);
-  ell([5.2, 5.0, 1.0], P + [0, 0, -3.4], trim);
-  ell([2.8, 2.4, 1.4], P + [-0.4, -3.4, 1.8], steelLight);
-  cluster(P + [0.8, 0.4, 2.6], 1.15, 1);
-  limb([10.4, -1.6, 25.4], [12.2, -5.0, 22.4], 2.9, 2.8, steelDark);
-  band([12.2, -5.0, 22.4], [2.9, 2.9, 0.9]);
+// A floating shard: a hex bipyramid centred at p, long axis d.
+module shard(p, d, r, c = iceLight) {
+  l = norm(d);
+  color(c) translate(p) rotate(_dir_rot(d)) {
+    cylinder(h = l * 0.3, r1 = r, r2 = 0.08, $fn = 6);
+    rotate([180, 0, 0]) cylinder(h = l * 0.7, r1 = r, r2 = 0.08, $fn = 6);
+  }
 }
 
-// ---- Fists: huge faceted ice boulders held forward, knuckle ridges along the top, a thumb inboard, frost wisps.
-mirror_x() {
-  F = [14.6, -5.2, 21.8];
+// ---- Fist: a frame at F whose +Z is the punch direction a (knuckles), -Y the side the curled fingers face (f).
+function nrm(v) = v / norm(v);
+module orient(F, a, f) {
+  z = nrm(a);
+  y = nrm(-(f - (f * z) * z));
+  x = cross(y, z);
+  multmatrix([[x[0], y[0], z[0], F[0]], [x[1], y[1], z[1], F[1]], [x[2], y[2], z[2], F[2]], [0, 0, 0, 1]]) children();
+}
+// The closed ice fist in its own frame (centre at the origin), its gauntlet back to the elbow at z = -L.
+module fist(L = 8.5, ts = 1, k = 1.25) scale(k) fist0(L / k, ts);
+module fist0(L, ts) {
+  // the hand: a chunky faceted block
   color(ice) hull() {
-    translate(F + [0, 0, 1.4]) rotate([0, 0, 15]) scale([5.9, 5.5, 4.8]) sphere(1, $fn = 8);
-    translate(F + [0.2, -0.6, -2.4]) rotate([0, 0, 15]) scale([5.5, 5.2, 3.4]) sphere(1, $fn = 8);
+    translate([0, 0.6, 0.8]) scale([3.9, 3.3, 3.0]) sphere(1, $fn = 10);
+    translate([0, 0.7, -1.8]) scale([3.6, 3.1, 2.4]) sphere(1, $fn = 10);
   }
-  for (k = [-3.6, -1.2, 1.2, 3.6]) color(iceLight) translate(F + [k, -3.4, 4.6]) scale([1.05, 2.4, 1.6]) sphere(1, $fn = 8);
-  for (k = [-2.4, 0, 2.4]) color(iceDark) translate(F + [k, -5.2, 3.0]) scale([0.3, 1.2, 2.2]) sphere(1, $fn = 6);
-  color(iceLight) translate(F + [-5.2, -2.4, 0.6]) rotate([0, 25, 0]) scale([1.6, 2.6, 1.8]) sphere(1, $fn = 8);
-  color(iceDark) translate(F + [5.2, 0.6, -0.4]) scale([1.0, 3.8, 4.0]) sphere(1, $fn = 7);
-  color(iceDark) translate(F + [1.0, -1.4, -5.3]) scale([4.2, 3.4, 0.9]) sphere(1, $fn = 8);
-  wisp([F + [3.6, -5.8, 6.4], F + [6.0, -4.6, 5.6], F + [7.8, -2.6, 3.6], F + [8.4, -0.2, 1.0], F + [8.2, 1.8, -1.8], F + [7.0, 2.8, -4.4], F + [5.0, 2.6, -6.4], F + [2.6, 1.6, -7.2]]);
-  wisp([F + [-3.0, -6.2, -4.6], F + [-0.4, -7.2, -5.8], F + [2.6, -7.4, -6.4], F + [5.4, -6.6, -6.2]]);
+  // four curled fingers on the front, knuckles over the top
+  for (i = [0 : 3]) let(x = -2.85 + 1.9 * i) {
+    color(i % 2 == 0 ? iceLight : ice) hull() { translate([x, -2.4, -1.9]) sphere(1.08, $fn = 8); translate([x, -2.4, 2.0]) sphere(1.08, $fn = 8); }
+    color(iceLight) translate([x, -1.0, 3.25]) scale([1.0, 1.45, 1.05]) sphere(1, $fn = 8);
+  }
+  // thumb across the bottom of the fingers
+  color(iceDark) hull() { translate([-3.9 * ts, -0.6, -2.6]) sphere(1.25, $fn = 8); translate([0.6 * ts, -3.4, -1.3]) sphere(1.1, $fn = 8); }
+  // the gauntlet: a faceted flared cuff, a ridge at the wrist and one at the elbow, blue facets on its sides
+  color(ice) translate([0, 0.6, -2.6]) rotate([180, 0, 0]) cylinder(h = L - 2.6, r1 = 4.5, r2 = 3.2, $fn = 8);
+  color(iceLight) translate([0, 0.6, -3.0]) scale([4.85, 4.85, 0.75]) sphere(1, $fn = 8);
+  color(iceDark) translate([0, 0.6, -L + 0.6]) scale([3.55, 3.55, 0.7]) sphere(1, $fn = 8);
+  for (k = [0 : 2]) color(iceBlue) rotate([0, 0, 60 + k * 105]) translate([0, 0.6 + 3.9, -5.4]) scale([0.9, 0.5, 2.0]) sphere(1, $fn = 6);
+  // jagged ice flaring off the cuff's outer side
+  crystal([3.6, 1.6, -4.2], [2.2, 0.8, 2.2], 0.8, iceLight);
+  crystal([3.2, 3.2, -6.4], [2.4, 1.6, 0.6], 0.7, ice);
+  // the frost swirl round the gauntlet
+  color(frost) for (i = [0 : 6]) let(a0 = -40 + i * 34, a1 = a0 + 34, r = 6.4)
+    hull() { translate([r * cos(a0), 0.6 + r * sin(a0), -5.6 + i * 0.5]) sphere(0.38, $fn = 6); translate([r * cos(a1), 0.6 + r * sin(a1), -5.1 + i * 0.5]) sphere(0.38, $fn = 6); }
 }
 
-// ---- Legs: steel thighs under the fauld, knee cops with ice clusters, banded greaves, sabatons.
+// ---- Torso: chest and waist, a broad back plate, darker abdomen lamés, belt, hips.
+blob([[[7.0, 5.0, 5.0], [0, 0.2, 25.6]], [[5.4, 4.4, 3.4], [0, 0.2, 19.8]]], steel);
+ell([6.6, 2.6, 5.0], [0, 3.0, 25.0], steel);                                                     // back plate
+ell([6.2, 2.6, 4.4], [0, -3.2, 25.8], steel);                                                    // breastplate
+mirror_x() ell([3.0, 1.5, 2.7], [2.9, -4.7, 26.6], steelLight);                                  // pectoral plates
+// gold trim on the chest: the V collar, the centre seam, the ^ lower edge
+color(trim) intersection() {
+  union() { E([6.4, 2.8, 4.6], [0, -3.2, 25.8]); mirror_x() E([3.25, 1.75, 2.95], [2.9, -4.7, 26.6]); }
+  union() {
+    mirror_x() translate([0, -10, 27.4]) rotate([0, -28, 0]) translate([0, 0, -0.35]) cube([7, 8, 0.7]);
+    translate([-0.38, -10, 22.6]) cube([0.76, 8, 5.2]);
+    mirror_x() translate([0, -10, 24.0]) rotate([0, 17, 0]) translate([0, 0, -0.6]) cube([7.5, 8, 0.6]);
+  }
+}
+// abdomen lamés and the belt
+ell([5.9, 4.8, 1.25], [0, 0.0, 21.0], steelMid);
+ell([5.6, 4.6, 1.2], [0, 0.0, 19.3], steel);
+rim([5.6, 4.6, 1.2], [0, 0.0, 19.3], 18.15, 18.55, 0.15);
+ell([6.5, 5.3, 1.0], [0, 0.1, 17.6], steelDark);
+for (a = [-50, -25, 0, 25, 50]) color(trim) translate([6.5 * sin(a), 0.1 - 5.3 * cos(a), 17.6]) sphere(0.45, $fn = 8);
+ell([6.0, 4.6, 2.8], [0, 0.3, 15.4], steelMid);                                                  // hips
+// gorget under the chin and the gold yoke + spine strap of the back's T
+rim([4.6, 4.4, 1.6], [0, -0.4, 29.2], 28.6, 30.2, 0.0);
+color(trim) intersection() {
+  union() { E([6.9, 2.9, 5.3], [0, 3.0, 25.0]); E([7.2, 5.2, 5.2], [0, 0.2, 25.6]); }
+  union() { translate([-0.75, 2.5, 17.0]) cube([1.5, 10, 13]); translate([-6, 2.5, 28.6]) cube([12, 10, 0.9]); }
+}
+for (z = [19.5, 22.5, 25.5]) color(trim) translate([0, 5.35, z]) sphere(0.4, $fn = 8);
+
+// ---- Tassets: a gold-edged shield plate in the middle, gold-edged plates over the thighs.
+tasset = [[-2.3, 18.0], [2.3, 18.0], [2.2, 13.8], [0, 11.9], [-2.2, 13.8]];
+color(trim) translate([0, -4.7, 0]) rotate([90, 0, 0]) linear_extrude(height = 0.8, center = true) offset(r = 0.6) polygon(tasset);
+translate([0, -5.2, 0]) plate(tasset, 0.7, 0.3, steel, grow = 0);
+side = [[-2.7, 2.2], [2.7, 2.2], [3.0, -1.4], [2.0, -3.0], [-2.0, -3.0], [-3.0, -1.4]];
+mirror_x() translate([5.2, -3.3, 13.6]) rotate([0, -10, 30]) {
+  color(trim) rotate([90, 0, 0]) linear_extrude(height = 0.7, center = true) offset(r = 0.55) polygon(side);
+  translate([0, -0.45, 0]) plate(side, 0.6, 0.3, steel, grow = 0);
+  color(trim) translate([-2.6, -0.85, -0.6]) cube([5.2, 0.3, 0.4]);
+}
+
+// ---- Helm: a tall egg turned a little to the viewer; gold crest, brow, slot bars and lower rim; dark T visor.
+HC = [0, -1.0, 35.0];
+module helm(g = 0) hull() {
+  scale([3.4 + g, 3.7 + g, 4.6 + g]) sphere(1, $fn = 32);
+  translate([0, 0.1, -3.4]) scale([2.7 + g, 3.0 + g, 2.2 + g]) sphere(1, $fn = 24);
+}
+// the eye band surface (the helm grown 0.12) at local (x, z): its y, for the floating eyes
+function helmY(x, z) = -(3.7 + 0.12) * sqrt(1 - pow(x / 3.52, 2) - pow(z / 4.72, 2));
+visor = [[-3.0, 0.35], [0, -0.25], [3.0, 0.35], [2.7, -1.5], [1.05, -2.1], [1.0, -5.3], [-1.0, -5.3], [-1.05, -2.1], [-2.7, -1.5]];
+brow = [[-3.3, 0.35], [0, -0.25], [3.3, 0.35], [3.3, 1.1], [0, 0.45], [-3.3, 1.1]];
+bars = [[1.05, -2.1], [1.75, -2.0], [1.65, -5.2], [1.0, -5.3], [-1.0, -5.3], [-1.65, -5.2], [-1.75, -2.0], [-1.05, -2.1], [-0.6, -1.9], [0.6, -1.9]];
+module frontY(pts) translate([0, -2, 0]) rotate([90, 0, 0]) linear_extrude(height = 10) polygon(pts);
+translate(HC) rotate([0, 0, 20]) {
+  color(steel) helm();
+  color(steel) translate([0, 0.3, 3.6]) cylinder(h = 1.5, r1 = 1.5, r2 = 0.35, $fn = 12);           // peak
+  color(dark) intersection() { helm(0.12); frontY(visor); }
+  color(trim) intersection() { helm(0.22); union() { frontY(brow); frontY(bars); } }
+  // crest: front from the brow up, over the top and down the back
+  color(trim) intersection() { helm(0.22); union() { translate([-0.62, -10, 0.3]) cube([1.24, 20, 6]); translate([-0.62, 0.5, -6]) cube([1.24, 10, 7]); } }
+  color(trim) translate([0, 0.3, 5.0]) sphere(0.45, $fn = 8);
+  color(trim) intersection() { helm(0.2); translate([-6, -6, -5.65]) cube([12, 12, 0.7]); }          // lower rim
+  // eyes: slanted cyan slits with white cores floating just proud of the band (inner ends low)
+  for (s = [-1, 1]) let(x = 1.3 * s, z = -0.75, y = helmY(x, z), a = atan2(x / 12.4, -y / 14.6))
+    translate([x + 0.38 * sin(a), y - 0.38 * cos(a), z]) rotate([0, 0, a]) rotate([0, -s * 27, 0]) {
+      color(cyan) scale([1.1, 0.24, 0.4]) sphere(1, $fn = 14);
+      color(white) translate([-0.1 * s, -0.12, 0.03]) scale([0.5, 0.16, 0.16]) sphere(1, $fn = 10);
+    }
+}
+
+// ---- Pauldrons: a steel dome over a wider lamé, both sloping down and out, gold rims and a stud, a burst of big ice
+// crystals on top.
+module rimP(r, p, rot, z0, z1, g = 0.22) color(trim) translate(p) rotate(rot) intersection() { scale(r + [g, g, g]) sphere(1, $fn = 28); translate([-60, -60, z0]) cube([120, 120, z1 - z0]); }
 mirror_x() {
-  limb([6.0, -1.0, 13.0], [8.4, -1.4, 9.8], 3.4, 3.2, steel);
-  ell([2.9, 2.6, 2.6], [8.8, -3.6, 10.0], steelLight);
-  band([8.6, -1.4, 9.6], [3.3, 3.3, 0.7]);
-  cluster([9.4, -3.8, 10.6], 0.62, 1);
-  limb([8.4, -1.4, 9.6], [8.8, -1.4, 3.4], 3.2, 3.0, steel);
-  band([8.6, -1.4, 6.4], [3.2, 3.2, 0.5]);
-  band([8.8, -1.4, 3.6], [3.1, 3.1, 0.6]);
-  blob([[[3.9, 3.4, 1.9], [8.9, -1.6, 2.0]], [[3.5, 3.0, 1.5], [9.1, -5.4, 1.6]]], steel);
-  color(trim) translate([9.1, -5.8, 2.0]) scale([3.3, 1.4, 0.5]) sphere(1, $fn = 12);
+  P = [10.4, 0.4, 28.4];
+  petal([4.7, 4.6, 3.3], P, [0, 14, 0], steel);
+  petal([5.4, 5.1, 2.2], P + [1.0, 0, -1.9], [0, 18, 0], steel);
+  rimP([4.7, 4.6, 3.3], P, [0, 14, 0], -1.7, -1.1);
+  rimP([5.4, 5.1, 2.2], P + [1.0, 0, -1.9], [0, 18, 0], -1.6, -1.0);
+  color(trim) translate(P + [-1.6, -4.5, -1.3]) sphere(0.75, $fn = 10);
+  C = P + [0.3, 0.4, 2.0];
+  crystal(C, [0.3, 0.2, 9.2], 1.85, iceLight);
+  crystal(C + [1.4, 0.2, 0], [2.8, 0.3, 7.0], 1.6, ice);
+  crystal(C + [-1.2, -0.6, 0], [-1.7, -0.8, 7.4], 1.5, iceDark);
+  crystal(C + [2.4, -0.6, -0.8], [4.4, -0.6, 4.2], 1.4, iceBlue);
+  crystal(C + [0.6, -1.6, 0], [1.0, -3.0, 5.8], 1.4, iceLight);
+  crystal(C + [-0.4, 1.8, 0], [-0.8, 3.2, 6.6], 1.4, ice);
+  crystal(C + [1.8, 1.8, -0.2], [2.4, 2.6, 5.0], 1.3, iceDark);
 }
 
-// ---- Floating shards beside the shoulder clusters and the knees.
-for (s = [[-19.2, 1, 33.6, 6.0, 1.0, [0, -18, 0]], [-16.0, 2, 29.2, 2.6, 0.6, [0, 20, 0]], [-21.5, 0, 30.4, 2.2, 0.5, [0, 10, 0]],
-          [18.2, 1, 31.4, 6.0, 1.0, [0, 18, 0]], [20.6, 0, 27.2, 2.4, 0.6, [0, -15, 0]],
-          [-15.8, -2, 11.6, 4.2, 0.9, [0, -15, 0]], [-13.2, -4, 14.2, 2.2, 0.55, [0, 20, 0]],
-          [15.2, -2, 11.4, 4.4, 0.9, [0, 15, 0]], [17.6, -3, 14.2, 2.4, 0.55, [0, -20, 0]]])
-  crystal([s[0], s[1], s[2] - s[3] / 2], [sin(s[5][1]) * s[3], 0, cos(s[5][1]) * s[3]], s[4], iceLight);
+// ---- Arms: steel upper arms with elbow balls; the far fist raised, the near one held forward across the waist.
+SR = [-10.6, 0.5, 26.0]; ER = [-12.6, -1.0, 17.5]; FR = [-15.8, -5.5, 24.6];
+SL = [10.6, 0.5, 26.0]; EL = [18.7, -0.6, 20.7]; FL = [13.9, -7.0, 21.5];
+limb(SR, ER, 2.8, 2.6, steelMid);
+ell([2.9, 2.9, 2.9], ER, steel);
+limb(SL, EL, 2.8, 2.6, steelMid);
+ell([2.9, 2.9, 2.9], EL, steel);
+orient(FR, FR - ER, [0.5, -0.87, 0]) fist(norm(FR - ER), 1);
+orient(FL, FL - EL, [0.5, -0.87, 0]) fist(norm(FL - EL), -1);
+
+// ---- Legs: thighs, knee cops with ice clusters and a gold rim, greaves with gold bands, layered sabatons.
+mirror_x() {
+  K = [8.2, -0.6, 9.6]; A = [8.9, -0.4, 3.4];
+  ell([3.0, 3.0, 3.0], [4.8, 0.3, 14.0], steelMid);
+  limb([4.8, 0.3, 14.0], K, 3.3, 3.0, steel);
+  limb(K, A, 3.0, 2.7, steel);
+  ell([2.5, 1.4, 3.0], [8.7, -2.4, 6.0], steelLight);                                            // greave front plate
+  ell([3.0, 2.3, 2.8], K + [0.3, -2.3, 0.4], steelLight);                                        // knee cop
+  rim([3.0, 2.3, 2.8], K + [0.3, -2.3, 0.4], K[2] - 2.0, K[2] - 1.4, 0.2);
+  rim([2.85, 2.85, 3.4], [8.6, -0.5, 6.6], 7.1, 7.7, 0.2);
+  rim([2.75, 2.75, 3.0], [8.9, -0.4, 3.6], 3.3, 3.9, 0.2);
+  blob([[[3.4, 3.6, 1.8], [9.0, -0.4, 1.8]], [[2.8, 3.0, 1.4], [9.2, -3.9, 1.4]]], steel);
+  ell([2.6, 1.7, 1.2], [9.2, -5.2, 1.6], steelLight);                                            // toe plate
+  rim([2.95, 3.15, 1.6], [9.2, -3.9, 1.4], 1.8, 2.3, 0.15);
+  // ice cluster on the outer front of the knee
+  KC = K + [1.4, -2.0, 1.4];
+  crystal(KC, [1.4, -0.6, 4.6], 1.15, iceLight);
+  crystal(KC + [0.8, 0.4, -0.4], [3.2, -0.2, 2.8], 1.0, ice);
+  crystal(KC + [-0.6, -0.6, 0], [-0.6, -1.4, 4.0], 0.95, iceDark);
+  crystal(KC + [0.4, 1.0, 0], [1.4, 1.6, 3.8], 0.95, ice);
+}
+
+// ---- Floating shards beside the shoulder clusters and the knees (sheet x / z, at depth 0).
+for (s = [[-18.0, 33.8, 5.0, 0.95, -15], [-19.8, 30.0, 1.6, 0.55, 20], [16.8, 31.0, 6.0, 1.0, 18], [18.3, 26.5, 2.2, 0.6, -10],
+          [-15.5, 11.5, 4.2, 0.85, -18], [-11.6, 13.5, 2.0, 0.55, 15], [13.8, 11.2, 4.6, 0.9, 16], [16.3, 13.3, 2.0, 0.55, -18]])
+  shard(fromSheet(s[0], s[1], 0), [sin(s[4]), 0, cos(s[4])] * s[2], s[3], iceLight);

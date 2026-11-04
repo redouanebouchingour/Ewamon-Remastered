@@ -1,52 +1,69 @@
-// Geoboxer's rig: a hulking clay brawler in a wide crouch, boulder fists raised in guard beside its head. The kicked-up
-// dust round the feet stays on the root. Numbers are scad/geoboxer.scad's.
-import { K, TAU, both, merge, osc, rigDef, smooth, win } from './lib/anim.mjs';
-import { any, bipedClips, blob, chain, ell, limb, mx, pair, pick } from './lib/biped.mjs';
+// Geoboxer's rig: a hulking rock-plated brawler in a wide crouch, boulder fists raised in guard beside its head. The
+// near (+X, L) arm is held higher than the far one, as drawn. Numbers are scad/geoboxer.scad's (sheet z: the soles
+// stand on z 3.8).
+import { K, TAU, both, rigDef, win } from './lib/anim.mjs';
+import { any, bipedClips, blob, ell, inFrame, limb, mx, pick } from './lib/biped.mjs';
 import { blinks, eyeKit, mirrorEye } from './lib/face.mjs';
-import { near } from './lib/geo.mjs';
+import { subFrame } from './lib/geo.mjs';
 
-const SKIN_DK = [0.47, 0.34, 0.22];
-const DIRT = [0.45, 0.36, 0.25];
-const DUST = [[-16, -2, 3.2], [16, -1, 3.2], [-15, 5, 2.6], [15, 5, 2.6], [-8, -8, 2.2], [8, -7, 2.2], [0, 6, 2.6]];
-const SH = [10, 0.5, 23.5];
-const EL = [14, 0, 17];
-const FIST = [13, -4.5, 31];
-const MID = EL.map((v, i) => (v + FIST[i]) / 2);
+const SKIN_DK = [0.42, 0.31, 0.22];
+const SOLE = 3.8;
 
-const eyeL = { side: 'L', at: [2.5, -7, 30.8], size: 1.45, yaw: 8, flat: 0.5 };
+// the arms, per side: shoulder, elbow, forearm boulder (centre, radii), fist boulder (centre, radii)
+const ARM = {
+  L: { SH: [9.0, -0.5, 28.2], EL: [15.4, -2.4, 21.4], FA: [17.6, -3.6, 25.0], RA: [5.8, 4.6, 5.4], FI: [18.0, -5.2, 34.4], RI: [5.6, 4.8, 4.8] },
+  R: { SH: [-9.0, -0.5, 27.2], EL: [-14.8, -2.4, 19.6], FA: [-16.0, -3.4, 22.6], RA: [5.4, 4.4, 5.0], FI: [-16.6, -5.4, 30.4], RI: [5.2, 4.6, 4.5] },
+};
+const wrist = (a) => [(a.FA[0] + a.FI[0]) / 2, (a.FA[1] + a.FI[1]) / 2, a.FA[2] + a.RA[2] * 0.95];
+
+const headF = subFrame([-1.2, -5.0, 34.6], [0, 0, 30]);
+const eyeL = { side: 'L', at: [1.8, -3.6, -1.95], size: 0.78, yaw: 12, flat: 0.5, frame: headF };
 const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: SKIN_DK });
 
 const joints = [
-  { name: 'root', at: [0, 0, 0] },
-  ...pair('leg*', 'root', [4, 0.5, 10]),
-  { name: 'body', parent: 'root', at: [0, 0.5, 10.5] },
-  { name: 'head', parent: 'body', at: [0, -1, 25.5] },
-  ...pair('arm*', 'body', SH),
-  ...pair('fore*', 'arm*', EL),
-  ...pair('hand*', 'fore*', [13, -3, 28.5]),
+  { name: 'root', at: [0, -1, SOLE] },
+  { name: 'legL', parent: 'root', at: [4.8, 0.2, 15.6] },
+  { name: 'legR', parent: 'root', at: [-4.8, 0.2, 15.6] },
+  { name: 'body', parent: 'root', at: [0, 0.2, 15.6] },
+  { name: 'head', parent: 'body', at: [-0.9, -3.6, 32.4] },
+  ...['L', 'R'].flatMap((S) => [
+    { name: `arm${S}`, parent: 'body', at: ARM[S].SH },
+    { name: `fore${S}`, parent: `arm${S}`, at: ARM[S].EL },
+    { name: `hand${S}`, parent: `fore${S}`, at: wrist(ARM[S]) },
+  ]),
   ...face.joints,
 ];
 
+const C1 = [0, -0.5, 24.8]; const R1 = [7.8, 5.2, 5.0];
+const C2 = [0, 0, 18.8]; const R2 = [5.4, 4.2, 3.6];
+
 const parts = [
-  ['leg*', any(...chain(['x'], [[4, 0.5, 10], [9.5, -1.5, 6], [10.5, 0, 1.6]], [4, 3.2, 2.5]).map(([, t]) => t), ell([3, 2.8, 2.6], [9.4, -3, 7]),
-    ell([2.8, 2.6, 2.6], [7.5, -1.5, 8.8]), blob([[[2.8, 4.2, 1.3], [11, -2, 1.3]], [[2.4, 2.2, 1.3], [10.5, 1, 1.5]]]))],
-  ['body', any(blob([[[10.5, 6.5, 5.5], [0, 0.5, 21]], [[6.5, 5, 4], [0, 0, 13.5]]]), mx(ell([4.4, 2.2, 3.2], [3.4, -4.8, 21.5])),
-    mx(ell([4.8, 2.6, 5], [3.8, 4.8, 21])), mx(ell([3, 2, 3], [2.8, 5, 13.5])), ell([6.8, 5, 3.2], [0, 0.5, 11]), mx(ell([3.1, 2.3, 2.6], [2.6, 4.4, 10.5])))],
-  ['head', any(ell([6.2, 6, 6.6], [0, -2, 30.5]), mx(ell([1.1, 1.4, 1.7], [6.1, -1.2, 30])), ell([2.4, 1, 1], [0, -7.4, 26.6]))],
-  ['arm*', any(ell([5, 5, 4.4], [SH[0] + 0.5, SH[1], SH[2] + 1]), ell([3.2, 3.2, 2.6], [SH[0] + 1.4, SH[1] - 2, SH[2] + 3.2]), limb(SH, EL, 3.6, 3.2))],
-  ['fore*', any(ell([3, 3, 3], [EL[0] - 0.8, EL[1] - 1, EL[2] + 2]), limb(EL, [FIST[0], FIST[1] + 1.5, FIST[2] - 2.5], 3.4, 3.6),
-    ell([4.8, 4.4, 5.6], [MID[0] + 1, MID[1] - 0.4, MID[2] - 0.5]))],
-  ['hand*', any(ell([6.6, 6, 6.4], FIST), ell([4.5, 2, 1.8], [FIST[0], FIST[1] - 5.4, FIST[2] + 2.5]))],
+  ['body', any(blob([[R1, C1], [R2, C2]]), ell([5.5, 4.4, 3.6], [0, 0.6, 18.2]), ell([5.4, 4.3, 2.8], [0, 0.3, 16.2]),
+    mx(ell([2.9, 2.6, 2.8], [2.6, 2.4, 15.8])), mx(ell([3.4, 3.6, 2.4], [4.2, 0.4, 29.4])))],
+  ['head', any(limb([0, -0.6, 28.0], [-0.9, -3.6, 32.4], 3.6, 3.0), inFrame(headF, any(ell([4.7, 4.5, 4.8], [0, 0.4, 0.5]),
+    blob([[[4.0, 3.4, 2.4], [0, -0.4, -3.6]], [[3.2, 2.6, 2.0], [0, -1.0, -4.4]]]), ell([2.8, 1.6, 2.4], [0, -2.5, -2.6]))))],
+  ...['L', 'R'].flatMap((S) => {
+    const a = ARM[S];
+    const k = S === 'L' ? 1 : -1;
+    return [
+      [`arm${S}`, any(ell([3.4, 3.3, 3.3], [a.SH[0] + k * 0.4, a.SH[1], a.SH[2] + 0.6]), limb(a.SH, a.EL, 3.0, 2.8))],
+      [`fore${S}`, ell(a.RA, a.FA)],
+      [`hand${S}`, any(ell(a.RI, a.FI), ell([a.RI[0] * 1.05, a.RI[1] * 1.15, a.RI[2]], [a.FI[0], a.FI[1] - 0.5, a.FI[2]]))],
+    ];
+  }),
+  ...['L', 'R'].map((S) => {
+    const k = S === 'L' ? 1 : -1;
+    const m = (p) => [p[0] * k, p[1], p[2]];
+    return [`leg${S}`, any(limb(m([4.8, 0.2, 15.6]), m([10.4, -2.0, 12.6]), 4.4, 3.5), ell([3.8, 3.2, 2.9], m([7.8, -2.2, 14.4])),
+      ell([3.0, 3.0, 3.0], m([10.4, -2.0, 12.6])), limb(m([10.4, -2.0, 12.6]), m([12.4, -2.6, 6.2]), 3.2, 2.5), ell([2.8, 2.7, 3.2], m([11.6, -0.8, 9.8])),
+      blob([[[2.6, 2.8, 1.3], m([12.7, -2.0, 5.0])], [[2.7, 1.9, 1.0], m([14.0, -5.6, 4.85])]]), ell([3.6, 1.6, 1.2], m([14.5, -7.3, 4.6])))];
+  }),
 ];
 
-function assign(c, rgb) {
-  if (near(rgb, DIRT, 0.015) && DUST.some(([x, y, r]) => Math.hypot((c[0] - x) / r, (c[1] - y) / r, (c[2] - r * 0.25) / (r * 0.3)) < 1.3)) return 'root';
-  if (near(rgb, DIRT, 0.015) && c[2] > 2) return 'root';               // the flying pebbles of dust
-  return pick(c, parts);
-}
+const assign = (c) => pick(c, parts);
 
 const base = bipedClips({
-  face, hipH: 9, stride: 16, guard: true, hopScale: 0, hopH: 2,
+  face, hipH: 15.6 - SOLE, stride: 16, guard: true, hopScale: 0, hopH: 2,
   punch: { arm: [-40, 0, 0], fore: [60, 0, 0] },
   cheer: { arm: [0, -55, 0], fore: [0, 35, 0] },
   add: {
