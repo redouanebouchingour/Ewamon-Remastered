@@ -340,7 +340,7 @@
     },
     "glacinid": {
       "url": "glacinid.rig.glb",
-      "bytes": 336876,
+      "bytes": 255808,
       "rig": true
     },
     "glimfin": {
@@ -415,22 +415,22 @@
     },
     "hollowolf": {
       "url": "hollowolf.rig.glb",
-      "bytes": 229932,
+      "bytes": 215020,
       "rig": true
     },
     "hyoryu": {
       "url": "hyoryu.rig.glb",
-      "bytes": 162212,
+      "bytes": 189940,
       "rig": true
     },
     "hyoryu_majin": {
       "url": "hyoryu_majin.rig.glb",
-      "bytes": 174208,
+      "bytes": 214892,
       "rig": true
     },
     "ignispectre": {
       "url": "ignispectre.rig.glb",
-      "bytes": 169792,
+      "bytes": 202024,
       "rig": true
     },
     "infernomorel": {
@@ -445,7 +445,7 @@
     },
     "ironcarab": {
       "url": "ironcarab.rig.glb",
-      "bytes": 104368,
+      "bytes": 158432,
       "rig": true
     },
     "joeyjab": {
