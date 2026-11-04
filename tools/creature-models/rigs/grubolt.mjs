@@ -1,64 +1,81 @@
-// Grubolt's rig: an armoured grub reared up on its rear segments, so it uses the serpent template: the low rear
-// segments and the stubby walking legs are the root, the plated body rises in a spine chain to the hooded head, the
-// two pairs of little chest legs are the arms (arm = the upper pair, fore = the lower pair), the mandibles the jaw and
-// the drill bit the tail. Numbers are scad/grubolt.scad's.
+// Grubolt's rig: an armoured pill-bug grub standing upright, so it uses the serpent template: the low rear (the bottom
+// plates, the tail roll and the stubby legs) is the root, the plated column rises in a spine chain to the hooded top,
+// the side-on head sits under the hood off the last link, the two pairs of little chest arms are the arms (arm = the
+// upper pair, fore = the lower pair), the mandibles the jaw and the drill bit the tail. Numbers are
+// scad/grubolt.scad's: the shell plates and the head live in its `rotate([0, 0, CURL])` frame.
 import { K, TAU, merge, rigDef, win } from './lib/anim.mjs';
-import { any, ell, limb, pick } from './lib/biped.mjs';
+import { pick } from './lib/biped.mjs';
 import { eyeKit, mirrorEye } from './lib/face.mjs';
-import { capD, chainHit, fold, near, side, unrot } from './lib/geo.mjs';
+import { blobD, capD, chainHit, ellD, near, subFrame, unrot } from './lib/geo.mjs';
 import { serpentClips } from './lib/serpent.mjs';
 
-const SEGS = [[-1, 22, 9.4, 8.2, 5.4, -30], [0.5, 17, 10, 8.8, 5.6, -15], [1.5, 11.5, 10, 9, 5.6, 0],
-  [3.5, 6.5, 9, 8.4, 5, 25], [7.5, 4, 7.4, 7, 4.4, 55], [11.5, 3.5, 5.8, 5.6, 3.6, 75]];
-const SEG_OWNER = ['spine3', 'spine2', 'spine1', 'spine1', 'root', 'root'];
+const CURL = -30;
+const C = [-7, 21];
+const SEAMS = [-100, -44, -28, -6, 17, 40, 66, 94, 190];
+const BAND_J = ['root', 'root', 'spine1', 'spine2', 'spine2', 'spine3', 'spine3', 'spine3'];
 const spine = ['spine1', 'spine2', 'spine3'];
 const tail = ['tail1', 'tail2'];
-const HEAD = [0.55, 0.6, 0.66];
-const DRILL = [[0.5, 0.55, 0.62], [0.3, 0.33, 0.38]];
-const ARM = [[4.6, -5, 16], [6.4, -8, 14.5], [5.4, -10, 15.5]];
-const FORE = [[4.8, -5, 12], [6.6, -8, 10.8], [5.6, -9.8, 11.6]];
-const MAND = [[1.6, -12.5, 19.6], [2.2, -13.6, 18.2], [1.2, -14, 17]];
+const HEAD = [0.62, 0.64, 0.68];
+const DRILL = [[0.6, 0.62, 0.66], [0.27, 0.29, 0.34]];
+const BELLY = [[[7.8, 6, 5.5], [0, -3.8, 7]], [[8.2, 6.3, 6], [0, -4.2, 13.5]], [[7.2, 5.8, 5], [0, -4, 20]]];
+const TAIL = [[[6.5, 5.5, 6], [5, 8, 8.5]], [[5.5, 5, 5.5], [9, 7.5, 10.5]], [[4.5, 4.2, 4.6], [12, 5, 12.5]]];
+const ARM = [[6, -5.5, 21.5], [7.4, -9, 19.6], [6.2, -11.2, 17.8]];
+const FORE = [[6, -6, 15.5], [7.4, -9.4, 13.8], [6.2, -11.6, 12]];
+const LIMB_R = [1.5, 1.25, 1];
+const MAND = [[1.4, -17.4, 24.6], [1.9, -18.3, 23], [1.2, -18.2, 21.4]];
+// the drill: rotate(_dir_rot(DT - DB)) from DB, a banded cone 3 at the base
+const DB = [13, 5, 15.5];
+const DT = [16.5, 6.5, 24];
+const D = DT.map((v, i) => v - DB[i]);
+const DL = Math.hypot(...D);
+const DROT = [0, (Math.acos(D[2] / DL) * 180) / Math.PI, (Math.atan2(D[1], D[0]) * 180) / Math.PI];
 
-const eyeL = { side: 'L', at: [3.2, -9.6, 23], size: 1.3, yaw: -30 };
+const curl = subFrame([0, 0, 0], [0, 0, CURL]);
+const eyeL = { side: 'L', at: [3.9, -14.5, 28.3], size: 1.4, yaw: 70, frame: curl };
 const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: HEAD });
 
 const joints = [
-  { name: 'root', at: [0, 4, 0] },
-  { name: 'spine1', parent: 'root', at: [0, 3, 8] },
-  { name: 'spine2', parent: 'spine1', at: [0, 1, 14.5] },
-  { name: 'spine3', parent: 'spine2', at: [0, 0, 19.5] },
-  { name: 'head', parent: 'spine3', at: [0, -5, 21.5] },
-  { name: 'jaw', parent: 'head', at: [0, -12, 20] },
+  { name: 'root', at: [0, 3, 0] },
+  { name: 'spine1', parent: 'root', at: [0, 0, 9] },
+  { name: 'spine2', parent: 'spine1', at: [0, 0, 16.5] },
+  { name: 'spine3', parent: 'spine2', at: [0, -1, 26] },
+  { name: 'head', parent: 'spine3', at: curl.world([0, -7.5, 27.5]) },
+  { name: 'jaw', parent: 'head', at: curl.world(MAND[0]) },
   { name: 'armL', parent: 'spine2', at: ARM[0] },
   { name: 'armR', parent: 'spine2', at: [-ARM[0][0], ARM[0][1], ARM[0][2]] },
   { name: 'foreL', parent: 'spine1', at: FORE[0] },
   { name: 'foreR', parent: 'spine1', at: [-FORE[0][0], FORE[0][1], FORE[0][2]] },
-  { name: 'tail1', parent: 'root', at: [0, 14, 4.6] },
-  { name: 'tail2', parent: 'tail1', at: [0, 14 + 7 * Math.sin(38 * Math.PI / 180), 4.6 + 7 * Math.cos(38 * Math.PI / 180)], rot: [-38, 0, 0] },
+  { name: 'tail1', parent: 'root', at: DB },
+  { name: 'tail2', parent: 'tail1', at: DB.map((v, i) => v + D[i] * 0.5), rot: DROT },
   ...face.joints,
 ];
 
-const segD = (c, [y, z, rx, ry, rz, tilt]) => ell([rx, ry, rz], [0, 0, 0])(unrot([tilt, 0, 0], [c[0], c[1] - y - 0.3, c[2] - z - 0.2]));
-// the drill: a cone along the tail's axis (rotate([-38, 0, 0]) from (0, 14, 4.6)), 14.4 long
-const drillAt = (c) => { const q = unrot([-38, 0, 0], [c[0], c[1] - 14, c[2] - 4.6]); return { h: q[2], d: Math.hypot(q[0], q[1]) / Math.max(0.6, 3.6 - q[2] * 0.24) }; };
+const drillAt = (c) => {
+  const q = unrot(DROT, [c[0] - DB[0], c[1] - DB[1], c[2] - DB[2]]);
+  return { h: q[2], d: Math.hypot(q[0], q[1]) / Math.max(0.4, 3 * (1 - q[2] / DL) + 0.15) };
+};
+const shellD = (L) => Math.min(ellD(L, [10, 9.5, 19.5], [0, 1.5, 19.5]), ellD(L, [7.2, 11, 7], [0, -8, 32.5]));
+const headD = (L) => Math.min(ellD(L, [6.2, 7, 5.6], [0, -6.5, 27.3]), ellD(L, [4.4, 5.6, 4.6], [0, -13.8, 28]),
+  ellD(L, [3.4, 2.8, 2.9], [0, -17.2, 26.4]), ellD([Math.abs(L[0]), L[1], L[2]], [1.6, 1.4, 1.7], [3.9, -14.5, 28.3]));
 
 function assign(c, rgb) {
-  const f = fold(c);
-  const S = side(c);
+  const L = curl.local(c);
   const dr = drillAt(c);
-  if (DRILL.some((d) => near(rgb, d, 0.03)) && dr.d < 1.4 && dr.h > -0.5) return dr.h < 7 ? 'tail1' : 'tail2';
-  const segs = SEGS.map((s) => segD(c, s));
-  const si = segs.indexOf(Math.min(...segs));
+  if (DRILL.some((d) => near(rgb, d, 0.03)) && dr.h > -0.8 && dr.h < DL + 0.5 && dr.d < 1.3) return dr.h < DL * 0.5 ? 'tail1' : 'tail2';
+  const ang = (Math.atan2(L[2] - C[1], L[1] - C[0]) * 180) / Math.PI;
+  const a = ang < SEAMS[0] ? ang + 360 : ang;
+  const band = Math.max(0, SEAMS.findIndex((s, i) => i > 0 && a < s) - 1);
+  const bellyJ = c[2] < 9 ? 'root' : c[2] < 16.5 ? 'spine1' : 'spine2';
+  const Lf = [Math.abs(L[0]), L[1], L[2]];
   return pick(c, [
-    [SEG_OWNER[si], () => segs[si]],
-    ['spine3', () => ell([8.6, 7.4, 4.6], [0, 0, 0])(unrot([-40, 0, 0], [c[0], c[1] + 2, c[2] - 26]))],
-    ['spine1', () => (c[2] > 5 && c[2] < 19.5 ? ell([5.6, 3, 2])([c[0], c[1] + 5.6, (c[2] - 12) * 0.2]) : 9)],
-    ['head', any(ell([5.6, 4.6, 4.4], [0, -6.5, 22]), ell([3.4, 3, 2.8], [0, -10.5, 20.5]), ell([1.6, 1.4, 1.4], [3.2, -10, 23]), ell([1.6, 1.4, 1.4], [-3.2, -10, 23]))],
-    ['jaw', () => Math.min(chainHit(f, MAND, [0.7, 0.55, 0.25]).d, ell([1.5, 0.5, 0.4], [0, -13.2, 20.2])(c))],
-    [`arm${S}`, () => chainHit(f, ARM, [1.1, 0.9, 0.6]).d],
-    [`fore${S}`, () => chainHit(f, FORE, [1.1, 0.9, 0.6]).d],
-    ['root', () => Math.min(capD(f, [5, -3.5, 5], [5.6, -4.2, 1.2], 2, 1.6), ell([2, 2.4, 1.1], [5.6, -4.8, 1.1])(f), capD(f, [5.6, 3, 4], [6.2, 2.8, 1.2], 1.8, 1.4))],
-    ['tail1', () => (dr.h > -0.5 ? dr.d : 9)],
+    [BAND_J[band], () => shellD(L)],
+    [bellyJ, () => blobD(c, BELLY)],
+    ['root', () => blobD(c, TAIL)],
+    ['root', (f) => Math.min(capD(f, [5.2, -2.5, 5.5], [5.6, -3.2, 1.4], 2, 1.5), ellD(f, [1.7, 2.3, 1.1], [5.6, -4, 1.1]))],
+    ['head', () => headD(L)],
+    ['jaw', () => chainHit(Lf, MAND, [0.65, 0.5, 0.25]).d],
+    ['arm*', (f) => chainHit(f, ARM, LIMB_R).d],
+    ['fore*', (f) => chainHit(f, FORE, LIMB_R).d],
   ]);
 }
 
@@ -85,4 +102,7 @@ const clips = {
   },
 };
 
-export default rigDef({ joints, assign, extras: face.extras, clips });
+// the head's neck and the arms' shoulders sit in the belly and the tail roll meets the low plates: blend those too
+const seams = { allow: [['head', 'spine2'], ['armL', 'spine1'], ['armR', 'spine1'], ['foreL', 'root'], ['foreR', 'root'], ['root', 'spine2']] };
+
+export default rigDef({ joints, assign, extras: face.extras, clips, seams });

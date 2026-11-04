@@ -1,5 +1,5 @@
-// Glacifang's rig: a frost drake prowling on all fours, a snarling wedge head (its jaw a joint), bat wings raised off
-// the shoulders and a spiked tail curling up behind. The quadruped template has no wings: wingL / wingR are moved by
+// Glacifang's rig: a crystalline ice drake prowling on all fours, a big horned head held low and forward (its jaw a
+// joint), big bat wings raised off the shoulders and a thick tail swinging out to its left and curling to the ground. The quadruped template has no wings: wingL / wingR are moved by
 // `add` layers. Numbers are scad/glacifang.scad's. `drakeRig()` builds the rig from a drake's numbers; Blizzraak
 // (scad/blizzraak.scad, the same body plan grown up) uses it too.
 import { K, TAU, both, merge, osc, rigDef, shake, smooth, win } from './lib/anim.mjs';
@@ -107,42 +107,78 @@ export function drakeRig(o) {
   return rigDef({ joints, assign, extras: face.extras, clips });
 }
 
-const H = subFrame([0, -13.6, 16], [-6, 0, 0], 1.38);
-const leg = (sh, el, mid, foot) => (f) => Math.min(
-  ellD(f, ...sh), capD(f, ...el), capD(f, ...mid),
-  ellD(f, [2, 2.4, 1.1], foot), ellD(f, [1.6, 1.3, 1], [foot[0], foot[1] + 1.4, foot[2] + 0.4]), ellD(f, [2.2, 1.6, 1.2], [foot[0], foot[1] - 2.6, foot[2] - 0.4]),
-);
+const H = subFrame([-3.7, -17, 12.6], [0, 0, 0], 1.18);
+const leg = (parts) => (f) => Math.min(...parts.map((t) => t(f)));
+
+// the wing plane: through the shoulder, swept 25 deg back; points are [u, z], traced as u = (sheet x - WX) / cos(-5) * 1.1
+const G = 5.6;
+const WS = [4, -3, 16];
+const WA = (25 * Math.PI) / 180;
+const WX = 0.866 * WS[0] + 0.5 * WS[1];
+const WL = 4;   // the wing raised: 0 at the root (sheet z 22), WL at the top
+const wu = ([sx, z]) => [((sx - WX) / Math.cos((-5 * Math.PI) / 180)) * 1.1, z + (WL * Math.max(0, z - 22)) / 17.6 - G];
+const wp = ([u, z]) => [WS[0] + u * Math.cos(WA), WS[1] + u * Math.sin(WA), z];
+const TP = [[2, 9, 13], [7, 12, 14], [11.6, 11.2, 10.8], [15, 7.8, 6.6], [17, 4.2, 2.6], [17.8, 0.8, 1.1], [16.8, -2.2, 0.7]];
+const TR = [3.9, 3.6, 3.3, 2.8, 2.2, 1.5, 0.5];
 
 export default drakeRig({
-  skin: [0.87, 0.93, 0.99],
-  lidSkin: [0.36, 0.48, 0.7],
+  skin: [0.76, 0.87, 0.95],
+  lidSkin: [0.88, 0.95, 0.98],
   head: H,
-  eye: { at: [2.25, -3.35, 1.0], size: 1.5, yaw: 38, flat: 0.5 },
-  jawAt: [0, 0.5, -1.6],
-  jawCols: [[0.76, 0.86, 0.92], [0.32, 0.12, 0.2]],
-  hipH: 11,
-  legF: [[4.8, -6, 12.5], leg([[3.4, 4, 4.6], [4.8, -6, 13]], [[4.8, -6, 11], [6.4, -5.6, 8.4], 2.8, 2.8], [[6.4, -5.6, 8.4], [6.8, -9.4, 1.8], 2.6, 2], [6.8, -10.2, 1.2])],
-  legB: [[5, 5, 11.4], leg([[4.2, 5.2, 5.8], [5, 5, 11.4]], [[5.8, 6.6, 8], [6.4, 7.8, 4], 3.2, 2.2], [[6.4, 7.8, 4], [6.4, 5.4, 1.5], 2.2, 1.9], [6.4, 4.6, 1.2])],
-  bodyAt: [0, 0, 12],
+  eye: { at: [2.95, -1.8, 0.7], size: 1.3, yaw: 28, flat: 0.5 },
+  jawAt: [0, 1.6, -3.2],
+  jawCols: [[0.7, 0.36, 0.38]],
+  hipH: 10,
+  stride: 11,
+  legF: [[5.4, -8, 10], leg([
+    (f) => ellD(f, [4.0, 4.4, 5.0], [5.4, -8, 10]),
+    (f) => capD(f, [5.8, -8, 8], [6.4, -8.6, 4.8], 3.5, 2.9),
+    (f) => capD(f, [6.4, -8.6, 4.8], [6, -12, 1.8], 2.9, 2.3),
+    (f) => ellD(f, [1.9, 2.1, 1.0], [6, -12.8, 1.1]),
+    (f) => ellD(f, [1.5, 1.4, 1.0], [6, -11.4, 1.6]),
+    (f) => ellD(f, [2.4, 1.9, 1.0], [6, -14.8, 0.9]),
+  ])],
+  legB: [[6, 5.5, 10], leg([
+    (f) => ellD(f, [4.0, 5.2, 6.0], [6, 5.5, 10]),
+    (f) => capD(f, [6.6, 6.4, 6.4], [7.2, 8.8, 3.4], 3.6, 2.8),
+    (f) => capD(f, [7.2, 8.8, 3.4], [7, 6.4, 1.8], 2.8, 2.2),
+    (f) => ellD(f, [1.9, 2.1, 1.0], [7, 5.4, 1.0]),
+    (f) => ellD(f, [1.5, 1.4, 1.0], [7, 6.8, 1.5]),
+    (f) => ellD(f, [2.4, 1.9, 1.0], [7, 3.4, 0.8]),
+  ])],
+  bodyAt: [0, -1, 11],
   body: (c) => Math.min(
-    blobD(c, [[[6.4, 6, 6.6], [0, -4, 13.5]], [[5.2, 5, 5.2], [0, 2.5, 13]], [[5.8, 4, 5.6], [0, 5.5, 12.5]]]),
-    blobD(c, [[[4.4, 3.6, 4], [0, -7.6, 11.4]], [[3.8, 5, 2.4], [0, 0, 8.8]]]),
-    ellD(c, [4.4, 4.4, 4.6], [0, -7.5, 16]),
-    capD(c, [0, -11, 22], [0, 7, 19], 2.5, 2.5) * 0.9,    // the spine crystals
+    blobD(c, [[[6.4, 6.6, 7], [0, -7, 12.2]], [[6, 6, 6.4], [0, 5, 11.2]]]),
+    blobD(c, [[[4.2, 3.8, 3.4], [0, -10.5, 8.6]], [[4.2, 6, 2.4], [0, -1, 6.2]]]),
+    capD(c, [0, -6.5, 15.4], [-2.0, -10.2, 15.4], 4.8, 4.3),
+    // the crystals: the three big shards over the shoulders, the smaller ones down the spine
+    capD(c, [0, -7.5, 16.5], [0, -2.5, 28], 2.6, 0.6) * 0.95,
+    capD(fold(c), [2.6, -7.4, 16], [3.2, -5, 24], 1.9, 0.5) * 0.95,
+    capD(fold(c), [2.8, -4, 16.4], [4, -2, 21.6], 1.5, 0.5) * 0.95,
+    capD(c, [0, -10.6, 16.6], [-0.6, -10, 21.8], 1.2, 0.4) * 0.95,
+    capD(c, [0, -2.6, 15.6], [0, 10.6, 13.6], 1.3, 0.9) * 0.95,
+    capD(c, [0, -1.2, 18], [0, 9.6, 15.2], 1.0, 0.4) * 0.95,
   ),
-  headAt: [0, -10.5, 15.6],
-  neckHead: (c) => Math.min(ellD(c, [3.2, 3.4, 3.2], [0, -13, 15.4]), ellD(c, [2.2, 1.8, 1.8], [0, -14, 13]),
-    ...[[-3, -26.6, 13], [-4.2, -27.6, 15], [-2, -28.4, 15.4]].map((p) => ellD(c, [1.2, 1.2, 1.2], p))),
+  headAt: [-2.0, -10.2, 15.4],
+  neckHead: (c) => Math.min(capD(c, [-2.0, -10.2, 15.4], [-3.6, -12.8, 14.4], 4.3, 3.8),
+    ellD(c, [2.8, 2.4, 2], [-1.4, -11, 11.2]), ellD(c, [3, 2.4, 2], [-0.4, -11.4, 9]),
+    ...[[-11.4, -21.4, 9.4], [-12.4, -22.6, 11.6], [-11.6, -23.2, 13.8], [-13.2, -21.6, 13.0], [-12.2, -20.6, 15.8]].map((p) => ellD(c, [1.3, 1.3, 1.3], p))),
   skull: (h) => Math.min(
-    blobD(h, [[[3.5, 3.3, 3], [0, 0, 0.4]], [[2.6, 2.1, 1.9], [0, -5.2, -0.1]], [[2, 1.1, 1.3], [0, -8.2, -0.6]]]),
-    capD(fold(h), [1.8, -0.8, 2.6], [3.2, 5.6, 7.4], 1.2, 0.4), capD(fold(h), [3, -1, -0.8], [5.8, 2, -1.2], 0.9, 0.3),
-    capD(fold(h), [3.2, 0.6, 0.6], [6, 3.6, 1.6], 0.8, 0.3), capD(h, [0, -1.6, 2.4], [0, 0.6, 6.8], 1, 0.3),
+    blobD(h, [[[4.4, 4.0, 3.6], [0, 2.6, 1.0]], [[3.9, 2.6, 2.8], [0, -1.4, -0.9]], [[2.7, 1.4, 2.4], [0, -4.2, -1.4]]]),
+    capD(fold(h), [2.3, 2.0, 3.4], [3.0, 5.8, 10.6], 1.7, 0.3),
+    capD(fold(h), [1.0, 0.8, 3.8], [1.3, 2.4, 7.0], 0.8, 0.3),
+    capD(fold(h), [3.7, 3.2, -2.2], [5.3, 6.6, -2.8], 0.9, 0.3),
+    capD(fold(h), [4.0, 3.6, 0.2], [5.6, 6.8, 1.0], 0.9, 0.3),
+    capD(fold(h), [3.4, 5.0, 2.2], [4.6, 7.6, 3.8], 0.8, 0.3),
+    capD(h, [0, 3.6, 4.0], [0, 5.6, 7.0], 0.9, 0.3),
+    capD(fold(h), [0.9, -4.5, -3.0], [2.7, -0.6, -2.3], 0.5, 0.45),
   ),
-  jaw: (h) => Math.min(blobD(h, [[[2.9, 2.4, 1.4], [0, -0.6, -2.7]], [[1.5, 1.1, 0.7], [0, -7, -4]]]), capD(h, [0, -1.4, -1.6], [0, -7, -2.5], 2, 1)),
-  tailPts: [[0, 9, 12.5], [2, 15, 10], [7, 18, 8], [12, 16, 9], [14, 11, 13], [13, 8, 18], [11, 9, 21]],
-  tailRs: [3.6, 3, 2.5, 2, 1.6, 1.2, 0.6].map((r) => r + 0.8),
+  jaw: (h) => Math.min(blobD(h, [[[3.3, 2.6, 1.4], [0, 0.8, -4.3]], [[2.1, 1.1, 0.95], [0, -3.9, -5.2]]]),
+    capD(fold(h), [1.2, -3.7, -4.7], [2.4, -0.7, -4.2], 0.45, 0.4)),
+  tailPts: TP,
+  tailRs: TR.map((r) => r + 0.8),
   tailJoints: [0, 2, 4],
-  wing: [[4.4, -3, 18.6], [10, -1, 25.6], [12, 3, 35.5], [[21, 6, 33], [22, 9.6, 24], [18, 10.6, 17], [12, 10, 15]]],
-  wingCols: [[0.92, 0.95, 1.0], [0.84, 0.8, 0.97], [0.62, 0.75, 0.92], [0.74, 0.72, 0.93]],
-  rimCols: [[0.68, 0.86, 1.0], [0.97, 0.98, 1.0]],
+  wing: [WS, wp(wu([3.7, 28.5])), wp(wu([4.4, 34.4])), [[21.6, 39.2], [17.4, 34.4], [16.6, 28.6], [12.4, 28.6], [10.8, 26.4]].map((q) => wp(wu(q)))],
+  wingCols: [[0.84, 0.93, 0.97], [0.72, 0.86, 0.95], [0.66, 0.66, 0.88], [0.8, 0.9, 0.98], [0.42, 0.58, 0.78]],
+  rimCols: [[0.92, 0.97, 1.0]],
 });

@@ -1,48 +1,35 @@
-// Glimmereen Tenjin's rig: Glimmereen's (glimmereen.mjs) with its eyes closed in a serene smile (no lids), gold
-// ribbon streamers riding with the bow, a sun-bead on the antenna and a halo floating over its head that bobs and
-// spins on its own. Numbers are scad/glimmereen_tenjin.scad's.
+// Glimmereen Tenjin's rig: Glimmereen's (glimmereen.mjs) with its eyes closed in a serene smile (painted, no lids),
+// two ribbon streamers riding with the bow, a sun-bead on the antenna and a big tilted halo round its head that bobs
+// and turns on its own (the small ring on its back edge goes round with it). Numbers are
+// scad/glimmereen_tenjin.scad's (remodelled on the sprite 2026-11-04).
 import { TAU, merge, osc, rigDef } from './lib/anim.mjs';
-import { ANT, antennaPart, baseJoints, glimClips, parts } from './glimmereen.mjs';
+import { antennaPart, baseJoints, glimClips, parts } from './glimmereen.mjs';
 import { pick } from './lib/biped.mjs';
-import { capD, ellD, isAny, near } from './lib/geo.mjs';
+import { isAny, near } from './lib/geo.mjs';
 
-const BEAD = [-4, -0.4, 34.4];
-const HALO = [0.6, 1, 29.2];
-const WING = [[0.86, 1, 0.88], [1, 0.95, 0.72], [0.84, 0.94, 1], [0.95, 0.78, 0.35]];
-const BOW = [[0.88, 0.75, 0.98], [0.74, 0.6, 0.9]];
-const ANTENNA = [0.95, 0.82, 0.4];
-const GOLD = [0.98, 0.8, 0.2];
-const RAYS = [1, 0.95, 0.4];
-const MOTES = [1, 0.95, 0.55];
-const ANT2 = [ANT[0], ANT[1], [-3.6, -0.4, 33]];
+const ANT = [[-0.3, -1.4, 29.2], [-0.82, -1, 30.05], [-1.43, -1, 32.47], [-2.52, -1, 34.57], [-3.98, -1, 36.37]];
+const SUN = [-6.41, -1, 37.87];
+const HALO = [3.35, 1, 29.3];
+
+const WING = [[0.92, 0.8, 0.52], [0.96, 0.9, 0.74], [0.86, 0.95, 0.84], [0.84, 0.92, 0.98]];
+const BOW = [[0.94, 0.84, 0.95], [0.82, 0.75, 0.92], [0.96, 0.9, 0.7]];   // the loops, the knot, the ribbons
+const ANTENNA = [0.93, 0.8, 0.45];
+const SUNC = [[0.96, 0.8, 0.36], [0.97, 0.92, 0.5], [1, 0.97, 0.8]];
+const HALOC = [0.88, 0.72, 0.36];
 
 const joints = [
-  ...baseJoints(),
-  { name: 'halo', parent: 'body', at: HALO },
+  ...baseJoints().map((j) => (j.name === 'crest2' ? { ...j, at: ANT[2] } : j)),
+  // the ring's own frame (the scad's rotate([0, 0, 30]) rotate([30, 0, 0])), so a spin turns it in its plane
+  { name: 'halo', parent: 'body', at: HALO, rot: [30, 0, 30] },
 ];
-
-/** How far c is from the tilted halo ring (a torus of radius 6.4 about HALO, rotate([-14, 8, 0])). */
-const haloD = (c) => {
-  const d = [c[0] - HALO[0], c[1] - HALO[1], c[2] - HALO[2]];
-  const n = [Math.sin((8 * Math.PI) / 180), Math.sin((14 * Math.PI) / 180), 1];
-  const nl = Math.hypot(...n);
-  const h = (d[0] * n[0] + d[1] * n[1] + d[2] * n[2]) / nl;
-  const r = Math.sqrt(Math.max(0, d[0] ** 2 + d[1] ** 2 + d[2] ** 2 - h * h));
-  return Math.hypot(r - 6.4, h);
-};
 
 function assign(c, rgb) {
   const S = c[0] >= 0 ? 'L' : 'R';
-  if (isAny(rgb, WING, 0.03) || (near(rgb, [1, 1, 1], 0.02) && c[1] > 3)) return `wing${S}`;
-  if (isAny(rgb, BOW, 0.03)) return 'crest1';
-  if (near(rgb, MOTES, 0.02)) return 'body';
-  if (near(rgb, RAYS, 0.03) || (near(rgb, GOLD, 0.03) && ellD(c, [2.8, 2.8, 2.8], BEAD) < 1)) return 'crest2';
-  if (near(rgb, GOLD, 0.03)) return haloD(c) < 1.2 || c[1] > 2.5 ? 'halo' : 'crest2';
-  if (near(rgb, ANTENNA, 0.03)) {
-    // the antenna (x <= 0, y < 0.2) or one of the two streamers (y > 0.5)
-    const onAnt = Math.min(capD(c, ANT2[0], ANT2[1], 0.6), capD(c, ANT2[1], ANT2[2], 0.6));
-    return onAnt < 1.4 && c[1] < 0.3 ? antennaPart(c, BEAD) : 'crest1';
-  }
+  if (isAny(rgb, WING, 0.02) || (near(rgb, [1, 1, 1], 0.02) && c[1] > 5)) return `wing${S}`;
+  if (isAny(rgb, BOW, 0.02)) return 'crest1';
+  if (isAny(rgb, SUNC, 0.02)) return 'crest2';
+  if (near(rgb, HALOC, 0.02)) return 'halo';
+  if (near(rgb, ANTENNA, 0.02)) return antennaPart(c, SUN, ANT);
   return pick(c, parts);
 }
 
