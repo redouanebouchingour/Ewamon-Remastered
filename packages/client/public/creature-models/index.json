@@ -520,7 +520,7 @@
     },
     "magmolith": {
       "url": "magmolith.rig.glb",
-      "bytes": 238744,
+      "bytes": 225872,
       "rig": true
     },
     "malice": {
@@ -530,7 +530,7 @@
     },
     "mantleaf": {
       "url": "mantleaf.rig.glb",
-      "bytes": 134692,
+      "bytes": 157088,
       "rig": true
     },
     "mesadrake": {
@@ -545,7 +545,7 @@
     },
     "miscarmen": {
       "url": "miscarmen.rig.glb",
-      "bytes": 92472,
+      "bytes": 172684,
       "rig": true
     },
     "mismagmen": {

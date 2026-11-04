@@ -77,12 +77,13 @@ Committed: abysspark, abysspark_tenjin, acier, acier_majin (modelled from the 20
 aonred, archonosis, astaroth; ampmite, auroracle, bankaiser, berkest, blighthex, blizzraak, bloomsprite; bloomdrake, blossomsail, bogmaw, briarvaunt, chrysotox, clementar_majin; budwing, caldermole, cirrileap, coalette,
 darkyon, dunescale, embrock, fedoraith, fibrostis; flampling, florasage, frofloe, geoboxer, glaciarm;
 galeforth, glacifang, glimmereen, glimmereen_tenjin, grubolt, gustuff, hexroach; glacinid, hollowolf, hyoryu,
-hyoryu_majin, ignispectre, ironcarab; hollowmane, hollowmane_rage, katamute; lawlander, lawlander_tenjin, luxtrik; lumyth, mesadrake.
+hyoryu_majin, ignispectre, ironcarab; hollowmane, hollowmane_rage, katamute; lawlander, lawlander_tenjin, luxtrik; lumyth, mesadrake; magmolith, mantleaf, miscarmen.
 Polish later: auroracle (tails smooth, sausage-like), ampmite (legs a bit stilt-like), chrysotox (strands read as flakes),
 briarvaunt (solid where the art is speckled and see-through), cirrileap (cloud reads as a pile of spheres),
 coalette (face a bit cute), darkyon (flame hem an even crown band), fibrostis (strands faceted, crystal-like), frofloe (tail a bit tube-like),
 geoboxer (plates read as pebbles, not flat slabs), galeforth (wing shoulders a bit square),
 glacifang (body a bit lumpy), gustuff (legs thin vs the fluffy stubs), hollowolf (tail tip chunky), hyoryu + majin (head small),
-ignispectre (robe tatters stiff), katamute (head still a touch small), lawlander + tenjin (heads a bit small), lumyth (side locks stiff tubes), mesadrake (mesas clean cylinders).
+ignispectre (robe tatters stiff), katamute (head still a touch small), lawlander + tenjin (heads a bit small), lumyth (side locks stiff tubes), mesadrake (mesas clean cylinders),
+magmolith (tail curl small), miscarmen (head blockier than the soft blob).
 Note (lawlander agent): lib.scad ppBack() seems to turn 150 deg where the back render needs 210 deg; back-sheet
 outlines land wrong with it. Use prism() with the mirrored back outline until it is checked.
