@@ -1,60 +1,76 @@
-// Cirrileap's rig: a long-legged cloud ram, golden curled horns (part of the head), a cloud ruff, a billowing cloud
-// tail and two great feathered wings off the shoulders. The quadruped template has no wings: wingL / wingR are moved
-// by `add` layers. Numbers are scad/cirrileap.scad's.
+// Cirrileap's rig: a leaping cloud ram, one big billowy cloud body, a slim ram face looking at the viewer with
+// golden coiled horns (part of the head), a curling cloud tail and two big feathered wings off the shoulders, the near
+// one raised. Mid-leap: the near front hoof on the ground, the far front reaching forward, the hind legs tucked. The
+// quadruped template has no wings: wingL / wingR are moved by `add` layers. Numbers are scad/cirrileap.scad's.
 import { K, TAU, both, merge, osc, rigDef, shake, smooth, win } from './lib/anim.mjs';
-import { any, blob, ell, limb, pick } from './lib/biped.mjs';
+import { any, blob, ell, inFrame, limb, pick } from './lib/biped.mjs';
 import { eyeKit, mirrorEye } from './lib/face.mjs';
-import { isAny, near, side } from './lib/geo.mjs';
+import { isAny, near, side, subFrame } from './lib/geo.mjs';
 import { quadrupedClips } from './lib/quadruped.mjs';
 
-const FACE = [0.72, 0.82, 1];
-const WINGS = [[0.45, 0.6, 0.95], [0.72, 0.84, 1], [0.28, 0.42, 0.82]];
-const HORNS = [[0.72, 0.55, 0.3], [0.5, 0.36, 0.18]];
-const HOOF = [0.25, 0.3, 0.6];
-const TAIL = [[0, 13, 21, 4], [0, 16, 24, 3.6], [0, 18.5, 27.5, 3.2], [0, 18.5, 31, 2.6], [0, 16.5, 33, 2]];
-const tail = ['tail1', 'tail2'];
-// the body's cloud puffs and the ruff's
-const PUFFS = [[-5.5, -5, 19, 4.5], [5.5, -5, 19, 4.5], [0, -8, 17, 4.6], [-6, 2, 20, 4.2], [6, 2, 20, 4.2], [-5, 8, 19, 4], [5, 8, 19, 4],
-  [0, 4, 23.5, 4.5], [-6, -2, 14.5, 3.8], [6, -2, 14.5, 3.8], [-5.5, 7, 14.5, 3.6], [5.5, 7, 14.5, 3.6], [0, 1, 13, 4.2],
-  [0, -11, 21, 4.6], [-4.5, -9.5, 23, 4], [4.5, -9.5, 23, 4], [0, -10, 26, 4], [-3.5, -8, 26.5, 3.4], [3.5, -8, 26.5, 3.4], [0, -12.5, 17, 3.6]];
+const CLOUD = [[0.55, 0.70, 0.95], [0.66, 0.78, 0.97], [0.47, 0.64, 0.93]];
+const FACE = [0.80, 0.88, 0.99];
+const LEGS = [[0.41, 0.58, 0.85], [0.27, 0.43, 0.77], [0.15, 0.28, 0.63]];
+const WINGS = [[0.62, 0.75, 0.97], [0.51, 0.66, 0.94], [0.38, 0.54, 0.88], [0.25, 0.41, 0.78]];
 
-const eyeL = { side: 'L', at: [2.8, -16.2, 31.6], size: 1.4, yaw: -22 };
+// the body's billows [x, y, z, r] (flattened to 0.88 in z) and the rump's curls
+const PUFFS = [
+  [-4.5, -14.5, 13.5, 5.2], [3, -15.5, 12.5, 4.6], [-5, -12.5, 19.5, 5.2], [1.5, -15, 19, 5],
+  [-1, -10, 24, 4.8], [4, -9, 23.5, 4.2], [1.5, -5, 28, 3.2], [3.5, -2.5, 27, 3.8], [2.5, -4.5, 31, 1.7],
+  [-6, -15, 10.5, 3.6], [0, -17, 10.5, 3.2],
+  [7, -3, 16, 5.2], [-7, -3, 16, 5.2], [5, 1, 22, 5.2], [-5, 1, 22, 5], [0, -4, 11.5, 4.6],
+  [7, 8, 15, 5.4], [-7, 8, 15, 5.2], [4, 10, 21.5, 5.2], [-4, 10, 21.5, 5], [1, 15.5, 16, 5.6], [6, 14, 18, 4.5],
+  [3, 13, 11.5, 4], [-3, 13, 11.5, 4], [7, 16, 11, 3.2], [8.5, 18.5, 9.5, 1.8]];
+const TAIL = [[3, 18.5, 19, 4.4], [5, 21, 22.8, 2.8], [4.5, 20.5, 25.6, 1.6]];
+const puff = ([x, y, z, r]) => ell([r, r, r * 0.88], [x, y, z]);
+const tail = ['tail1', 'tail2'];
+
+// the head block: translate(HP) rotate([0, 0, HY])
+const HP = [-1.8, -19, 25];
+const hf = subFrame(HP, [0, 0, 15]);
+const eyeL = { side: 'L', at: [1.4, -2.45, 0.2], size: 0.6, yaw: 20, frame: hf };
 const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: FACE });
 
+// the legs: [cuff, shin top, hoof], cuff radii
+const LEG_FL = [[2.2, -17.5, 7], [2, -18, 5], [1.6, -19.8, 1.9]];
+const LEG_FR = [[-3.8, -18.7, 9], [-3.9, -19.6, 7], [-4.7, -23.2, 4.3]];
+const LEG_B = [[4.5, 10, 10.5], [4.5, 10.5, 9.5], [4.5, 11.8, 5.6]];
+const add3 = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const fore = (L) => any(ell([2.8, 2.8, 3.4], L[0]), limb(L[1], L[2], 1.35, 1.05), ell([1.45, 1.8, 1], add3(L[2], [-0.2, -0.6, -0.9])));
+const hind = any(ell([2.6, 2.8, 2.8], LEG_B[0]), limb(LEG_B[1], LEG_B[2], 1.45, 1.1), ell([1.45, 1.8, 1], add3(LEG_B[2], [0, -0.5, -0.9])));
+
 const joints = [
-  { name: 'root', at: [0, 1, 0] },
-  { name: 'legFL', parent: 'root', at: [4.4, -6, 12] },
-  { name: 'legFR', parent: 'root', at: [-4.4, -6, 12] },
-  { name: 'legBL', parent: 'root', at: [4.4, 8, 12] },
-  { name: 'legBR', parent: 'root', at: [-4.4, 8, 12] },
-  { name: 'body', parent: 'root', at: [0, 1, 13] },
-  { name: 'head', parent: 'body', at: [0, -10, 27] },
-  { name: 'earL', parent: 'head', at: [4.4, -10.5, 32] },
-  { name: 'earR', parent: 'head', at: [-4.4, -10.5, 32] },
-  { name: 'wingL', parent: 'body', at: [5, -2, 25] },
-  { name: 'wingR', parent: 'body', at: [-5, -2, 25] },
-  { name: 'tail1', parent: 'body', at: [0, 12, 20] },
-  { name: 'tail2', parent: 'tail1', at: [0, 18, 27.5] },
+  { name: 'root', at: [0, 0, 0] },
+  { name: 'legFL', parent: 'root', at: [2.3, -16.5, 10.5] },
+  { name: 'legFR', parent: 'root', at: [-3.6, -17.5, 11.5] },
+  { name: 'legBL', parent: 'root', at: [4.5, 9.5, 12.5] },
+  { name: 'legBR', parent: 'root', at: [-4.5, 9.5, 12.5] },
+  { name: 'body', parent: 'root', at: [0, 0, 13] },
+  { name: 'head', parent: 'body', at: [-1.2, -16.5, 22.5] },
+  { name: 'wingL', parent: 'body', at: [6.5, -8, 22] },
+  { name: 'wingR', parent: 'body', at: [-6.5, -8, 22] },
+  { name: 'tail1', parent: 'body', at: [2.5, 16.5, 18] },
+  { name: 'tail2', parent: 'tail1', at: [4.6, 20.4, 21.6] },
   ...face.joints,
 ];
 
-const leg = (y) => any(ell([3, 3.2, 3.4], [4.4, y, 12]), limb([4.4, y, 11], [4.4, y - 0.5, 1.6], 2, 1.5), ell([2.6, 2.6, 2.4], [4.4, y - 0.2, 8]),
-  ell([1.9, 2.3, 1.2], [4.4, y - 0.9, 1.1]));
 const parts = [
-  ['legF*', leg(-6)],
-  ['legB*', leg(8)],
-  ['body', any(blob([[[7, 10, 6.5], [0, 2, 17]], [[7, 6, 7], [0, -5, 18]]]), ...PUFFS.map(([x, y, z, r]) => ell([r, r, r], [x, y, z])))],
-  ['head', any(blob([[[5.6, 5.4, 5.2], [0, -12, 31]], [[3.2, 3, 2.8], [0, -18, 29]]]), ell([4.8, 4.4, 3.4], [0, -11, 35]))],
-  ['ear*', ell([1.6, 1.6, 2.4], [5.2, -10.5, 31.6])],
-  ['tail1', any(ell([4, 4, 4], TAIL[0].slice(0, 3)), ell([3.6, 3.6, 3.6], TAIL[1].slice(0, 3)))],
-  ['tail2', any(...TAIL.slice(2).map((p) => ell([p[3], p[3], p[3]], p.slice(0, 3))))],
+  ['legFL', fore(LEG_FL)],
+  ['legFR', fore(LEG_FR)],
+  ['legB*', hind],
+  ['body', any(blob([[[7.5, 7.5, 7], [0, -10, 15.5]], [[7.5, 8.5, 6.5], [0, 9, 16]]]), ...PUFFS.map(puff))],
+  ['head', inFrame(hf, blob([[[2.9, 3, 2.8], [0, 0.6, 1.6]], [[1.6, 1.9, 1.6], [0, -2.3, -2.3]]]))],
+  ['tail1', puff(TAIL[0])],
+  ['tail2', any(puff(TAIL[1]), puff(TAIL[2]))],
 ];
+const legParts = parts.slice(0, 3);
 
 function assign(c, rgb) {
   if (isAny(rgb, WINGS, 0.012)) return `wing${side(c)}`;
-  if (isAny(rgb, HORNS, 0.03)) return 'head';
-  if (near(rgb, HOOF, 0.03)) return pick(c, parts.slice(0, 2));
-  return pick(c, parts);
+  if (isAny(rgb, LEGS, 0.012)) return pick(c, legParts);
+  if (isAny(rgb, CLOUD, 0.012)) return pick(c, parts);
+  if (near(rgb, FACE, 0.012)) return 'head';
+  return 'head';   // horns, eyes, nostrils, mouth
 }
 
 // the wings: `lift` raises both (ry), `sweep` swings them forward or back (rx)

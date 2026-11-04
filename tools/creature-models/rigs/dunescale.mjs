@@ -1,61 +1,97 @@
-// Dunescale's rig: a sandy four-legged lizard with a shell of boulder plates on its back, a big horned head (scaled up
-// round its neck in the scad: hd()), violet crystal cheek frills and a crystal-tipped tail. Numbers are
-// scad/dunescale.scad's.
+// Dunescale's rig: a chunky orange ankylosaur on four short legs, a domed shell of rust plates on its back, a big
+// horned head turned 20 deg to its right (scaled 1.12 in the scad: HF), two purple fin frills behind the cheeks and a
+// short tail with a purple spike tip. Numbers are scad/dunescale.scad's.
 import { K, TAU, merge, osc, rigDef, win } from './lib/anim.mjs';
-import { any, blob, chain, ell, limb, pick, spike } from './lib/biped.mjs';
-import { eyeKit, mirrorEye } from './lib/face.mjs';
+import { any, blob, chain, ell, limb } from './lib/biped.mjs';
+import { eyeKit } from './lib/face.mjs';
+import { blobD, capD, closest, ellD, fold, isAny, near, plateD, rot, subFrame } from './lib/geo.mjs';
 import { quadrupedClips } from './lib/quadruped.mjs';
 
-// the head block: translate([0, -9, 17.5]) scale(1.25) translate([0, 9, -15])
-const hd = ([x, y, z]) => [x * 1.25, -9 + (y + 9) * 1.25, 17.5 + (z - 15) * 1.25];
-const hb = (r, p) => [r.map((v) => v * 1.25), hd(p)];
-const TAIL = [[0, 10, 11], [2, 16, 9], [6, 21, 8], [10, 24, 9], [13, 26.4, 12.2]];
-const tail = ['tail1', 'tail2'];
+const FACE = [0.95, 0.72, 0.33];
+const VIOLET = [0.5, 0.26, 0.72];
+const EYE_COLS = [[0.97, 0.96, 0.97], [0.17, 0.12, 0.14], [0.24, 0.12, 0.32], [1, 1, 1]];
 
-const eyeL = { side: 'L', at: hd([3.6, -14.1, 17.3]), size: 2.1 * 1.25, yaw: 22 };
-const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: [0.5, 0.25, 0.72] });
+// the head block: translate(HP) rotate([0, 0, HR]) scale(HS)
+const HP = [-1.5, -16.4, 26.5];
+const HR = -20;
+const HS = 1.12;
+const HF = subFrame(HP, [0, 0, HR], HS);
+const HEAD = [[[6.2, 6.5, 7], [0, 1, 1]], [[4.6, 5, 4.8], [0, -5, -2.5]], [[3.6, 3.5, 3.8], [0, -11, -4.6]]];
+const EYE = [5, -3, 0.6];
+const EYE_S = 3;
+const add = (a, b) => a.map((v, i) => v + b[i]);
+const inHead = (p) => add(HP, rot([0, 0, HR], p.map((v) => v * HS)));
+
+// eye frames: translate(EYE) rotate([0, 35, 50]) inside the head, mirrored for the far (right) eye
+const eyeL = { side: 'L', at: [0, 0, 0], size: EYE_S, frame: subFrame(inHead(EYE), [0, 35, HR + 50], HS) };
+const eyeR = { side: 'R', at: [0, 0, 0], size: EYE_S, frame: subFrame(inHead([-EYE[0], EYE[1], EYE[2]]), [0, -35, HR - 50], HS) };
+const face = eyeKit({ eyes: [eyeL, eyeR], skin: FACE });
+
+// frill fans: translate([4.6, 3, 0.5]) rotate([0, 0, 12]) plate(FAN) inside the head, mirrored
+const FAN = [[-0.3, -4.5], [-0.6, 4.5], [5.6, 10.5], [7.5, 8.2], [10.2, 6.5], [9.2, 4.6], [10, 2.2], [9.5, 0.2], [7.8, -2.2], [3.8, -5]];
+const RIM = [[-1, 3.8], [-0.5, 5.2], [5.4, 10.8], [6.9, 12.6], [6.3, 10], [0.4, 4.2]];
+const FRILL = subFrame([4.6, 3, 0.5], [0, 0, 12], 1);
+
+const TAIL = [[0, 13, 12.5], [2.5, 19, 10.8], [5.5, 24.5, 10], [8, 28.5, 10.4]];
+const tail = ['tail1', 'tail2'];
+const SC = [0, 3.5, 18];
+const SR = [10, 15.5, 15];
+const BODY = [[[6.5, 5.5, 6], [0, -15, 14.5]], [[8, 9, 6], [0, -3, 14]], [[7.5, 8, 5.8], [0, 8, 13.5]], [[6, 5, 5], [0, 14, 13]]];
 
 const joints = [
-  { name: 'root', at: [0, 1, 0] },
-  { name: 'legFL', parent: 'root', at: [5.8, -5, 9] },
-  { name: 'legFR', parent: 'root', at: [-5.8, -5, 9] },
-  { name: 'legBL', parent: 'root', at: [6, 7, 9] },
-  { name: 'legBR', parent: 'root', at: [-6, 7, 9] },
-  { name: 'body', parent: 'root', at: [0, 1, 10] },
-  { name: 'head', parent: 'body', at: [0, -9, 15.5] },
-  { name: 'earL', parent: 'head', at: hd([5.6, -9.4, 16.6]) },
-  { name: 'earR', parent: 'head', at: hd([-5.6, -9.4, 16.6]) },
+  { name: 'root', at: [0, -2, 0] },
+  { name: 'legFL', parent: 'root', at: [7, -15, 11.5] },
+  { name: 'legFR', parent: 'root', at: [-7, -15, 11.5] },
+  { name: 'legBL', parent: 'root', at: [7, 11, 11.5] },
+  { name: 'legBR', parent: 'root', at: [-7, 11, 11.5] },
+  { name: 'body', parent: 'root', at: [0, -2, 13] },
+  { name: 'head', parent: 'body', at: [-0.8, -13, 20] },
+  { name: 'eyeL', parent: 'head', at: inHead(EYE) },
+  { name: 'eyeR', parent: 'head', at: inHead([-EYE[0], EYE[1], EYE[2]]) },
+  { name: 'earL', parent: 'head', at: inHead([4.6, 3, 0.5]) },
+  { name: 'earR', parent: 'head', at: inHead([-4.6, 3, 0.5]) },
   { name: 'tail1', parent: 'body', at: TAIL[0] },
   { name: 'tail2', parent: 'tail1', at: TAIL[2] },
   ...face.joints,
 ];
 
-const leg = (x, y) => any(limb([x, y, 9], [x * 1.05, y, 2], 2.8, 2.6), ell([3, 3, 1.2], [x * 1.05, y, 4.6]), ell([2.8, 3.4, 1.6], [x * 1.05, y - 0.6, 1.6]),
-  ell([2.4, 1.4, 1], [x * 1.05, y - 4, 0.8]));
-// the frill fan in its own frame: translate(hd([5.6, -9.4, 16.6])) rotate([0, -12, 25]), scaled with the head
-const frill = (c) => {
-  const p = hd([5.6, -9.4, 16.6]);
-  return ell([5.5, 3, 6.5], [p[0] + 3, p[1] + 1.2, p[2]])(c);
-};
-const parts = [
-  ['legF*', leg(5.8, -5)],
-  ['legB*', leg(6, 7)],
-  ['body', any(blob([[[8.4, 8, 7], [0, 0, 12]], [[7, 7, 6.4], [0, 7, 12]], [[6.4, 6, 6], [0, -6, 13]]]), ell([6.2, 9, 3.4], [0, 0, 6.8]),
-    ell([9, 13, 7], [0, 3, 18]), ell([4.8, 1.2, 2.6], [0, -8.6, 11]))],
-  ['head', any(blob([hb([6, 5.4, 5.2], [0, -11, 16]), hb([4, 4, 3.4], [0, -16, 13.8]), hb([2.6, 2.6, 2.4], [0, -19, 13])]),
-  spike(hd([0, -19, 14.6]), [0, -2.5, 4.8], 2), limb(hd([3.6, -9, 20]), hd([4.8, -7.4, 23]), 1.4, 0.4), limb(hd([-3.6, -9, 20]), hd([-4.8, -7.4, 23]), 1.4, 0.4))],
-  ['ear*', frill],
-  ...chain(['tail1', 'tail1', 'tail2', 'tail2'], TAIL, [5, 3.8, 2.6, 1.8, 0.6]),
-  ['tail2', ell([3, 3, 3], [5, 20.5, 11])],
+const leg = (y, t) => any(ell([4.2 * t, 4.6 * t, 4.8 * t], [7, y, 11.5]), limb([7, y, 10], [7, y - 0.4, 3], 3.6, 3.3), ell([3.9, 3.9, 1.6], [7, y - 0.3, 6.2]),
+  ell([3.8, 4.3, 2], [7, y - 1, 2]), limb([7, y - 4.3, 1.2], [7, y - 6, 0.6], 2.6, 0.6));
+
+// the head's own parts, tested in the head frame
+const headD = (l) => Math.min(blobD(l, HEAD), ellD(l, [4.8, 4.6, 2.4], [0, -3.6, 5.6]), ellD(l, [5, 4.4, 2.8], [0, 2.6, 6.6]),
+  capD(l, [0, 3.6, 9], [0, 6, 12], 2, 0.6), capD(l, [0, -10.6, -2.4], [0, -15.2, 1], 3.1, 0.5));
+const frillD = (l) => { const f = FRILL.local(fold(l)); return Math.min(plateD(f, FAN, 1.6), plateD(f, RIM, 1.8)); };
+
+const bodyD = (c) => Math.min(blobD(c, BODY), ellD(c, SR, SC), capD(c, [0, -11, 17], [-1.2, -15, 22], 5, 4.5));
+const tailParts = [
+  ...chain(['tail1', 'tail1', 'tail2'], TAIL, [4.4, 3.5, 2.6, 1.8]),
+  ['tail2', limb(TAIL[3], [9.6, 31.1, 12], 1.9, 0.4)],
 ];
 
-const assign = (c) => pick(c, parts);
+function assign(c, rgb) {
+  const l = HF.local(c);
+  const S = l[0] >= 0 ? 'L' : 'R';
+  const dEye = Math.hypot(Math.abs(l[0]) - EYE[0], l[1] - EYE[1], l[2] - EYE[2]);
+  if (dEye < 3.7 && isAny(rgb, EYE_COLS, 0.03)) return `eye${S}`;
+  if (dEye < 2.4 && near(rgb, VIOLET, 0.03)) return `eye${S}`;
+  const f = fold(c);
+  const side = c[0] >= 0 ? 'L' : 'R';
+  return closest([
+    ['head', headD(l)],
+    [`ear${S}`, frillD(l)],
+    ['body', bodyD(c)],
+    [`legF${side}`, leg(-15, 1)(f)],
+    [`legB${side}`, leg(11, 1.1)(f)],
+    ...tailParts.map(([n, t]) => [n, t(c)]),
+  ]);
+}
 
-const base = quadrupedClips({ face, tail, hipH: 9, stride: 14 });
+const base = quadrupedClips({ face, tail, hipH: 11.5, stride: 14 });
 
 const clips = {
   ...base,
-  // fidget: flares the cheek frills wide and rattles the tail tip, a lizard's threat display
+  // fidget: flares the frills up and wide and rattles the tail spike, a lizard's threat display
   idle_frill: {
     seconds: 2.2,
     pose: (t, u) => {
@@ -64,8 +100,8 @@ const clips = {
       return merge({
         body: { r: [-3 * on, 0, 0] },
         head: { r: [-8 * on, 0, 0] },
-        earL: { r: [0, 0, 22 * on], s: 1 + 0.12 * on },
-        earR: { r: [0, 0, -22 * on], s: 1 + 0.12 * on },
+        earL: { r: [0, -16 * on, 0], s: 1 + 0.12 * on },
+        earR: { r: [0, 16 * on, 0], s: 1 + 0.12 * on },
         tail1: { r: [6 * on, 0, 0] },
         tail2: { r: [10 * on, 0, 6 * rat] },
         ...face.pose('open', 0.4 * on),

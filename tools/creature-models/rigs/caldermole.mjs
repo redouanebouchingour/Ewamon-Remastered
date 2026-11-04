@@ -1,108 +1,111 @@
-// Caldermole's rig: an upright magma kaiju. The upper body (torso, neck, head, arms, the dorsal mane) is built in the
-// scad pitched forward 14Â° over the hips; its numbers are written in that block's own frame and mapped out with U().
-// A long plated tail lies along the ground and rises into a tall flame. Numbers are scad/caldermole.scad's.
+// Caldermole's rig: an upright magma kaiju (sprite-match model, 2026-11-03). The head is built in the scad facing -Y
+// and turned 35° to its right (HEAD_AT, HEAD_YAW); its numbers are tested in that frame. Flames are plates: the crest
+// and the tail's flame are traced outlines in the picture plane, the dorsal mane is a row of three-lick flames.
+// A long plated tail runs back along the ground and rises into the tip flame. Numbers are scad/caldermole.scad's.
 import { K, TAU, both, hash, merge, osc, rigDef, smooth, win } from './lib/anim.mjs';
-import { any, bipedClips, blob, chain, ell, limb, pair } from './lib/biped.mjs';
+import { any, bipedClips, blob, chain, ell, inFrame, limb, mx, pair, pick } from './lib/biped.mjs';
 import { eyeKit, mirrorEye, blinks } from './lib/face.mjs';
-import { isAny, near, subFrame } from './lib/geo.mjs';
+import { isAny, near, plateD, rot, subFrame } from './lib/geo.mjs';
 
-const COAL = [0.22, 0.19, 0.23];
-const COAL_HI = [0.33, 0.29, 0.34];
-const FLAME = [[0.9, 0.22, 0.05], [1, 0.55, 0.08], [1, 0.88, 0.35]];
+const COAL = [0.30, 0.22, 0.26];
+const COAL_HI = [0.36, 0.26, 0.33];
+const FLAME = [[0.84, 0.21, 0.02], [0.96, 0.53, 0.04], [0.98, 0.79, 0.20]];
 
-// upper(): translate([0, 2, 9]) rotate([14, 0, 0]) translate([0, -2, -9]); head(): translate([0, -10.5, 32]) rotate([-14, 0, 0]) scale(1.25)
-const UP = subFrame([0, 2, 9], [14, 0, 0], 1);
-const U = (p) => UP.world([p[0], p[1] - 2, p[2] - 9]);
-const uLocal = (c) => { const q = UP.local(c); return [q[0], q[1] + 2, q[2] + 9]; };
-const HD = subFrame([0, -10.5, 32], [-14, 0, 0], 1.25);
-const Hw = (p) => U(HD.world(p));
-const hLocal = (c) => HD.local(uLocal(c));
-const headFrame = { world: Hw, local: hLocal, scale: [1.25, 1.25, 1.25], rot: [0, 0, 0] };
+const HF = subFrame([-2.7, -6, 28.3], [0, 0, -35], 1);
+const Hw = HF.world;
 
-const TAIL = [[0, 7, 10], [2.5, 14, 5.5], [8, 19, 4.5], [14, 19, 6], [18.5, 15.5, 10], [20, 11.5, 16], [20, 9.5, 21.5], [19.5, 9, 25]];
-const TAIL_R = [6.2, 5.4, 4.6, 3.9, 3.3, 2.7, 2.2, 1.8];
+const TAIL = [[0, 5, 10.5], [4.2, 8.5, 9.2], [8.7, 10.5, 8.6], [12.1, 12.5, 9], [13.9, 14, 11.6], [13.9, 14, 15.6],
+  [12.9, 13, 19.7], [11.7, 12, 23.4], [11.1, 11, 26.8]];
+const TAIL_R = [6.4, 5.5, 4.8, 4.2, 3.7, 3.2, 2.7, 2.0, 1.2];
 const tails = ['tail1', 'tail2', 'tail3', 'tail4'];
 
-const eyeL = { side: 'L', at: [3.1, -5.9, 2], size: 1.75, yaw: 6, flat: 0.55, frame: headFrame };
+const eyeL = { side: 'L', at: [2.95, -3.1, 1.1], size: 1.0, yaw: 50, flat: 0.5, frame: HF };
 const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: COAL });
 
 const joints = [
   { name: 'root', at: [0, 0, 0] },
-  ...pair('leg*', 'root', [7.4, 1, 10]),
-  { name: 'body', parent: 'root', at: [0, 2, 9] },
-  { name: 'head', parent: 'body', at: U([0, -6, 29.5]) },
-  { name: 'jaw', parent: 'head', at: Hw([0, 1.5, -1]) },
-  { name: 'crest', parent: 'head', at: U([0, -10.5, 33.6]) },
-  { name: 'mane', parent: 'body', at: U([0, 4, 26]) },
-  ...pair('arm*', 'body', U([8.8, -2, 23.5])),
-  ...pair('fore*', 'arm*', U([11.4, -4, 18])),
-  ...pair('hand*', 'fore*', U([11, -8, 14.8])),
+  ...pair('leg*', 'root', [7.5, 2, 10]),
+  { name: 'body', parent: 'root', at: [0, 2, 10] },
+  { name: 'head', parent: 'body', at: [-1, -3.5, 27.8] },
+  { name: 'jaw', parent: 'head', at: Hw([0, 1, -1.6]) },
+  { name: 'crest', parent: 'head', at: [-2, -5.6, 31.5] },
+  { name: 'mane', parent: 'body', at: [0, 9, 22] },
+  ...pair('arm*', 'body', [7, -3, 23]),
+  ...pair('fore*', 'arm*', [10.3, -2.5, 17.5]),
+  ...pair('hand*', 'fore*', [9.5, -7, 13.8]),
   { name: 'tail1', parent: 'body', at: TAIL[0] },
   { name: 'tail2', parent: 'tail1', at: TAIL[2] },
   { name: 'tail3', parent: 'tail2', at: TAIL[4] },
   { name: 'tail4', parent: 'tail3', at: TAIL[6] },
-  { name: 'flame', parent: 'tail4', at: [19.5, 9, 25] },
+  { name: 'flame', parent: 'tail4', at: TAIL[8] },
   ...face.joints,
 ];
 
-// parts written in the upper block's frame (tested on uLocal(c)) and the head's (on hLocal(c))
-const upperParts = [
-  ['body', any(ell([7.8, 6.6, 7.4], [0, -3.5, 21]), ell([8.6, 7.6, 7], [0, 0, 14.5]), ell([8.6, 7.4, 5], [0, 3, 10]), ell([5.4, 5.4, 5], [0, 1.5, 25.5]),
-    ell([6.4, 6, 6], [0, -2, 26]))],
-  ['head', ell([5.4, 4.6, 4.6], [0, -8, 31])],
-  ['arm*', any(ell([3.8, 4, 4], [8.4, -2, 24]), limb([8.8, -2, 23.5], [11.4, -4, 18], 3.4, 2.9))],
-  ['fore*', limb([11.4, -4, 18], [11, -8, 14.8], 2.9, 2.6)],
-  ['hand*', any(ell([2.8, 2.6, 2.2], [11, -9.4, 13.6]), limb([11, -11, 13.6], [11, -12.4, 11], 1.8, 1))],
+const TORSO = [
+  [[0, 3, 10.5], [8.8, 8.5, 6]], [[0, 1.5, 15], [9, 9, 7]], [[0, 0, 21], [8.3, 8, 6.5]], [[0, 4.5, 20], [7, 8, 8.5]],
+  [[0, 3, 26.5], [6.5, 7, 5]],
 ];
-const headParts = [
-  ['head', blob([[[4.8, 4.2, 3.2], [0, 1.5, 1]], [[4.2, 3.4, 2.5], [0, -4, 0.8]], [[3.2, 1.8, 1.9], [0, -9, 0]]])],
-  ['jaw', blob([[[4.6, 3.8, 2.2], [0, 0, -2]], [[3, 2, 1.3], [0, -7.8, -1.3]]])],
-];
-const worldParts = [
-  ['leg*', any(ell([5.8, 6.6, 7], [7.4, 1, 10]), limb([7.8, -0.5, 6], [8, -1.2, 2.6], 4.2, 4),
-    blob([[[4.2, 5.2, 2], [8, -3, 2]], [[3.6, 3, 1.8], [8, 0.8, 1.9]]]))],
-  ...chain(['tail1', 'tail1', 'tail2', 'tail2', 'tail3', 'tail3', 'tail4'], TAIL, TAIL_R),
+const parts = [
+  ['body', any(...TORSO.map(([p, r]) => ell(r, p)), ell([5.5, 5.5, 4], [0, 1.5, 27.5]), ell([3.6, 3.4, 3], [-1.5, -4, 24.5]))],
+  ['head', any(ell([3.6, 3.6, 3.2], [-1, -3.5, 27.8]), inFrame(HF, any(
+    blob([[[3.6, 3.8, 3], [0, 1.5, 1.2]], [[3.3, 3, 2.3], [0, -2.5, 1]], [[2.3, 2.6, 1.4], [0, -5.8, -0.8]], [[1.9, 1.2, 1.3], [0, -7.4, -0.6]]]),
+    mx(ell([1.4, 1.4, 1.5], [2.95, -3.1, 1.1])))))],
+  ['jaw', inFrame(HF, blob([[[3.2, 3, 1.4], [0, -0.5, -2.2]], [[1.6, 1.4, 0.8], [0, -6.2, -2.6]]]))],
+  ['arm*', any(ell([4, 4, 4.2], [7, -3, 23]), limb([7.5, -3, 22], [10.3, -2.5, 17.5], 3, 2.6))],
+  ['fore*', limb([10.3, -2.5, 17.5], [9.5, -7, 13.8], 2.6, 2.2)],
+  ['hand*', any(ell([2.2, 2.4, 1.8], [9.5, -8, 12.8]), ell([2.6, 1.6, 1.9], [9.5, -10.1, 11.2]))],
+  ['leg*', any(ell([5.5, 6.5, 6.2], [7.5, 2, 10]), limb([8.2, 1.5, 6], [8.4, 1.2, 3.6], 3.8, 3.3),
+    blob([[[3.8, 4.6, 1.6], [8.4, -0.5, 1.6]], [[3.2, 2.6, 1.4], [8.4, 2.5, 1.5]]]), ell([4.8, 1.8, 1.2], [8.4, -5.4, 0.8]))],
+  ...chain(['tail1', 'tail1', 'tail2', 'tail2', 'tail3', 'tail3', 'tail4', 'tail4'], TAIL, TAIL_R),
 ];
 
-// every flame of the scad: [joint, frame ('u' = the upper block, 'w' = world), base, direction, radius]; a flame
-// triangle goes to the flame whose axis it lies nearest (its licks fan out about 2.5 radii)
-const FLAMES = [
-  ...[0, 1, 2, 3].map((i) => ['mane', 'u', [0, 1 + i * 3, 30.5 - i * 5.2], [0, 3.5, 11 - Math.abs(i - 1) * 1.6], 3 - i * 0.2]),
-  ...[1, 2].flatMap((i) => [1, -1].map((s) => ['mane', 'u', [s * 3.4, 0.4 + i * 3, 29.1 - i * 5.2], [s * 2, 2.6, (11 - Math.abs(i - 1) * 1.6) * 0.7], 2.2])),
-  ['crest', 'u', [0, -10.5, 33.6], [0, 4.5, 7], 2.4],
-  ['crest', 'u', [2.6, -8.5, 33.2], [1.6, 3.6, 5.5], 1.7], ['crest', 'u', [-2.6, -8.5, 33.2], [-1.6, 3.6, 5.5], 1.7],
-  ['tail1', 'w', [5, 17, 9.6], [0, 1.5, 5.5], 1.9], ['tail2', 'w', [13, 20, 9], [0.8, 0.8, 4.6], 1.6],
-  ['flame', 'w', [19.5, 9, 25], [-0.5, -0.5, 15], 4.8], ['flame', 'w', [21.8, 9.6, 25], [3, 0.5, 8], 2.8],
+// flames: [joint, frame, outlines, thickness] for plateD (the plate's own frame)
+const sheetPlane = (d) => subFrame(rot([0, 0, 30], [0, d, 0]).map((v, i) => v + (i === 1 ? 7 : 0)), [0, 0, 30]);
+const CREST = [[-3.8, 39.5], [-2.9, 39.3], [-3.9, 38.4], [-3.6, 36.2], [-5.3, 34.3], [-3.6, 34.6], [-3.6, 33.8], [-4.6, 31.8],
+  [-6.5, 31], [-9.6, 31.2], [-12.3, 29.9], [-13.3, 32.4], [-13.0, 34.7], [-12.6, 35.1], [-12.3, 34.5], [-12.2, 35.2],
+  [-10.4, 37.3], [-10.2, 35.5], [-9.0, 36.8], [-7.0, 37.1], [-6.4, 38.4], [-5.7, 37.1], [-5.1, 38.4]];
+const TAILFLAME = [[14.7, 40.0], [15.9, 40.0], [15.1, 38.9], [15.1, 37.7], [17.2, 35.2], [17.2, 32.7], [15.9, 30.9], [17.3, 31.6],
+  [17.8, 33.4], [18.5, 33.7], [18.3, 31.9], [18.8, 29.3], [17.2, 27.6], [17.7, 27.3], [17.2, 26.6], [14.1, 25.2],
+  [11, 24.6], [7.8, 25.3], [7.8, 26.0], [8.6, 26.3], [7.0, 28.0], [7.0, 30.8], [7.8, 32.3], [10.1, 34.5], [9.9, 36.1],
+  [11.1, 35.2], [11.5, 33.7], [12.5, 34.5], [12.0, 37.3], [13.0, 38.9]];
+const tongue = (h, w, lean, n = 6) => [
+  ...Array.from({ length: n + 1 }, (_, i) => { const t = i / n; return [lean * h * t * t - (w / 2) * (1 - t) ** 0.8, h * t]; }),
+  ...Array.from({ length: n - 1 }, (_, k) => { const t = (n - 1 - k) / n; return [lean * h * t * t + (w / 2) * (1 - t) ** 0.6, h * t * 0.97]; }),
 ];
-const flameOf = (c, l) => {
+const shift = (pts, dx) => pts.map(([x, z]) => [x + dx, z]);
+const SPINE = [
+  [[0, 2, 30.4], 40, 5.5, 5.5, 0.9, 'mane'],
+  [[0, 6, 28.8], 38, 6.5, 6.5, 1.0, 'mane'],
+  [[0, 9.5, 25.8], 36, 7, 7, 1.05, 'mane'],
+  [[0, 11.8, 21.6], 36, 7, 7, 1.1, 'mane'],
+  [[0, 12.4, 17], 36, 6.5, 6.5, 1.1, 'mane'],
+  [[3.6, 9, 14], 33, 6, 5.5, 0.9, 'tail1'],
+  [[8.2, 10.6, 12.8], 30, 5.5, 5, 0.8, 'tail2'],
+  [[12, 12.6, 12.4], 34, 4.5, 4, 0.7, 'tail2'],
+];
+const FLAMES = [
+  ['crest', sheetPlane(-9.9), [CREST], 3.6],
+  ['flame', sheetPlane(-2.1), [TAILFLAME], 3.9],
+  ...SPINE.map(([p, ang, h, w, lean, j]) => {
+    const H = h + 1.5;
+    return [j, subFrame([p[0], p[1], p[2] - 1.5], [0, 0, ang]),
+      [tongue(H, w * 0.6, lean), shift(tongue(H * 0.7, w * 0.45, lean * 1.5), w * 0.28), shift(tongue(H * 0.55, w * 0.4, lean * 0.9), -w * 0.3)], 2.8];
+  }),
+];
+const flameOf = (c) => {
   let best = 'mane'; let bd = Infinity;
-  for (const [j, f, a, d, r] of FLAMES) {
-    const q = f === 'u' ? l : c;
-    const dd = limb(a, [a[0] + d[0], a[1] + d[1], a[2] + d[2]], r * 2.5, r * 1.5)(q);
-    if (dd < bd) { bd = dd; best = j; }
+  for (const [j, f, outlines, t] of FLAMES) {
+    const q = f.local(c);
+    for (const o of outlines) { const d = plateD(q, o, t); if (d < bd) { bd = d; best = j; } }
   }
   return best;
 };
 
 const assign = (c, rgb) => {
-  const l = uLocal(c);
-  const h = hLocal(c);
-  if (isAny(rgb, FLAME)) return flameOf(c, l);
-  const inHead = Math.abs(h[0]) < 6.5 && h[1] > -11.5 && h[1] < 6 && h[2] > -4.5 && h[2] < 6;
-  if (inHead && near(rgb, COAL_HI) && h[2] < -0.6) return 'jaw';
-  if (inHead && Math.min(...headParts.map(([, t]) => t(h))) < 1.2) return 'head';     // skull, brows, eyes, fangs
-  return pickAll(c, l);
+  if (isAny(rgb, FLAME)) return flameOf(c);
+  if (near(rgb, COAL_HI)) return 'jaw';
+  return pick(c, parts);
 };
-// the nearest primitive over both frames (upper parts see the point in the upper frame; mirrored ones fold there)
-function pickAll(c, l) {
-  const S = l[0] >= 0 ? 'L' : 'R';
-  const lf = [Math.abs(l[0]), l[1], l[2]];
-  const cf = [Math.abs(c[0]), c[1], c[2]];
-  let best = null; let bd = Infinity;
-  for (const [n, t] of upperParts) { const d = n.endsWith('*') ? t(lf) : t(l); if (d < bd) { bd = d; best = n.endsWith('*') ? n.slice(0, -1) + S : n; } }
-  for (const [n, t] of worldParts) { const d = n.endsWith('*') ? t(cf) : t(c); if (d < bd) { bd = d; best = n.endsWith('*') ? n.slice(0, -1) + (c[0] >= 0 ? 'L' : 'R') : n; } }
-  return best;
-}
 
 // flames flicker on 12 beats a second (whole beats per clip so loops close)
 const flick = (u, secs, k = 1) => {
@@ -116,7 +119,7 @@ const flick = (u, secs, k = 1) => {
   };
 };
 
-const base = bipedClips({
+const base0 = bipedClips({
   face, tail: tails, hipH: 10, stride: 14, armSwing: 12, hopScale: 0,
   punch: { arm: [-55, 0, -10], fore: [-25, 0, 0] },
   cheer: { arm: [-20, -80, 0], fore: [-30, 0, 0] },
@@ -128,12 +131,22 @@ const base = bipedClips({
     lunge: (t, u) => merge(flick(u, 0.3, 2), { jaw: { r: [14 * K(u, [[0.1, 0], [0.4, 1], [1, 0]]), 0, 0] } }),
     hurt: (t, u) => flick(u, 0.26, 2),
     recoil: (t, u) => flick(u, 0.25),
-    faint: (t, u) => ({ flame: { s: Math.max(0.25, 1 - 0.75 * smooth((u - 0.3) / 0.6)) }, crest: { s: Math.max(0.3, 1 - 0.7 * smooth((u - 0.3) / 0.6)) } }),
+    // the flames die down as it falls; only to 0.8, since the crest and the tail flame are sunk into the head and the
+    // tail tip and shrinking them further would open those holes
+    faint: (t, u) => ({ flame: { s: [1, 1, 1 - 0.2 * smooth((u - 0.3) / 0.6)] }, crest: { s: [1, 1, 1 - 0.2 * smooth((u - 0.3) / 0.6)] } }),
     celebrate: (t, u) => flick(u, 0.6, 2),
     enter: (t, u) => flick(u, 0.45, 1.5),
     exit: (t, u) => flick(u, 0.35),
   },
 });
+
+// The template's tail pitch builds up link by link for a tail lying back along the ground; this one stands up behind
+// in its second half, so the same pitch would throw the tip flame flat over the back. Damp it to a third.
+const damp = (pose, k = 0.35) => {
+  for (const n of tails) if (pose[n]?.r) pose[n] = { ...pose[n], r: pose[n].r.map((v) => v * k) };
+  return pose;
+};
+const base = Object.fromEntries(Object.entries(base0).map(([name, c]) => [name, { ...c, pose: (t, u) => damp(c.pose(t, u)) }]));
 
 const clips = {
   ...base,
