@@ -1,52 +1,71 @@
-// Ripshell's rig: a hulking turtle brawler, huge armoured fists up in guard, a broad gold shell on the body and a
-// leather backpack (`pack`, off the body) that bounces on top. Numbers are scad/ripshell.scad's.
+// Ripshell's rig: a turtle brawler in a wide lunge, its right (-X) fist raised beside the head and the left (+X) one
+// low in front of the belly, a big gold shell dish on the body and a leather backpack (`pack`, off the body) that
+// bounces on top. Numbers are scad/ripshell.scad's (the head's parts are its translate(H) block moved to world).
 import { K, TAU, both, osc, rigDef, win } from './lib/anim.mjs';
-import { any, bipedClips, blob, ell, limb, mx, pair, pick, spike } from './lib/biped.mjs';
-import { blinks, eyeKit, mirrorEye } from './lib/face.mjs';
-import { isAny, near } from './lib/geo.mjs';
+import { any, bipedClips, blob, ell, limb, pick, spike } from './lib/biped.mjs';
+import { blinks, eyeKit } from './lib/face.mjs';
+import { isAny } from './lib/geo.mjs';
 
-const TEAL = [0.18, 0.55, 0.5];
-const SHELL = [[0.85, 0.65, 0.18], [0.62, 0.43, 0.1]];
-const LEATHER = [[0.45, 0.28, 0.14], [0.3, 0.18, 0.09]];
-const PLASTRON = [0.72, 0.62, 0.22];
+const SKIN = [0.32, 0.58, 0.49];
+const SHELL = [[0.84, 0.62, 0.22], [0.52, 0.33, 0.12], [0.36, 0.22, 0.09]];
+const PACK = [[0.47, 0.31, 0.18], [0.30, 0.19, 0.10], [0.58, 0.40, 0.22], [0.92, 0.74, 0.32], [0.55, 0.66, 0.64]];
 
-const eye = { side: 'L', at: [2.3, -8.7, 29.3], size: 1.9, yaw: 30, squash: 0.6 };
-const face = eyeKit({ eyes: [eye, mirrorEye(eye)], skin: TEAL });
+// H = [-1.2, -6, 30.5]; socket_eye([±2.15, -3.3, -0.4], 1.0, ±28) inside it
+const H = [-1.2, -6, 30.5];
+const at = (p) => [H[0] + p[0], H[1] + p[1], H[2] + p[2]];
+const eyeL = { side: 'L', at: at([2.15, -3.3, -0.4]), size: 1.0, yaw: 28, squash: 0.6 };
+const eyeR = { side: 'R', at: at([-2.15, -3.3, -0.4]), size: 1.0, yaw: -28, squash: 0.6 };
+const face = eyeKit({ eyes: [eyeL, eyeR], skin: SKIN });
 
 const joints = [
   { name: 'root', at: [0, 0, 0] },
-  ...pair('leg*', 'root', [5.5, 0, 11]),
-  { name: 'body', parent: 'root', at: [0, 0, 12] },
-  { name: 'head', parent: 'body', at: [0, -3, 26] },
-  { name: 'pack', parent: 'body', at: [0, 9, 26] },
-  ...pair('arm*', 'body', [9, -1, 24]),
-  ...pair('fore*', 'arm*', [11.5, -4.5, 16.5]),
-  ...pair('hand*', 'fore*', [11, -7, 22]),
+  { name: 'legL', parent: 'root', at: [4.5, 1, 12.5] },
+  { name: 'legR', parent: 'root', at: [-4.5, 1, 12.5] },
+  { name: 'body', parent: 'root', at: [0, 0, 12.5] },
+  { name: 'head', parent: 'body', at: [-0.6, -2.5, 25.5] },
+  { name: 'pack', parent: 'body', at: [0, 9.6, 30] },
+  { name: 'armL', parent: 'body', at: [7.8, 0.5, 24] },
+  { name: 'armR', parent: 'body', at: [-7.8, 0.5, 24.8] },
+  { name: 'foreL', parent: 'armL', at: [11.2, 1.5, 17.5] },
+  { name: 'foreR', parent: 'armR', at: [-11.2, -0.5, 20.8] },
+  { name: 'handL', parent: 'foreL', at: [10.4, -5.4, 15.6] },
+  { name: 'handR', parent: 'foreR', at: [-14.0, -3.2, 23.6] },
   ...face.joints,
 ];
 
 const parts = [
-  ['body', blob([[[7.5, 6, 6], [0, 0, 16]], [[8.5, 6.5, 6], [0, 0, 22]]])],
-  ['head', any(blob([[[4.5, 4.5, 4], [0, -3, 29]], [[3.5, 3.5, 3], [0, -6.5, 28]]]), mx(spike([2.8, -2, 32], [1.8, 0.5, 5], 1.2)),
-    spike([0, -7.5, 30], [0, -1.5, 2.5], 0.8), mx(ell([2.4, 1.6, 2.2], [2.3, -8.4, 29.5])))],
-  ['arm*', any(ell([3.4, 3.4, 3.4], [9, -1, 24]), limb([9.5, -1, 23], [11.5, -4, 17], 2.6, 2.4))],
-  ['fore*', any(ell([3, 3.2, 3], [11.5, -4.5, 16.5]), limb([11.5, -4.5, 16.5], [11, -7, 22], 2.4, 2.4))],
-  ['hand*', any(blob([[[3.4, 3.2, 3.6], [11, -8, 24]], [[2.6, 2.6, 2.8], [11, -9, 26]]]), ell([2.6, 0.5, 0.5], [11, -11.1, 25.6]))],
-  ['leg*', any(ell([3.6, 3.8, 4], [5.5, 0, 11]), limb([5.5, 0, 11], [8, -1, 5], 3.2, 2.6), ell([3, 3, 2.4], [8, -1, 5]),
-    blob([[[3, 4.2, 1.6], [8.5, -2.5, 1.6]], [[2.6, 2.4, 1.6], [8.5, 0.5, 1.6]]]), spike([8.5, -6.2, 1], [0, -1.3, -0.4], 0.5), spike([10.5, 0, 8], [1.6, 0, 0.8], 0.6))],
+  ['body', blob([[[6.2, 5.0, 4.2], [0, 0.8, 14.5]], [[7.0, 5.6, 5.0], [0, 0.2, 20.5]], [[7.6, 5.0, 3.4], [0, 0.6, 24.2]]])],
+  ['head', any(
+    blob([[[3.3, 3.3, 2.7], at([0, 0.4, 0.7])], [[2.2, 2.9, 1.9], at([0, -3.6, -1.2])]]),
+    ell([2.3, 3.0, 1.2], at([0, -2.0, -2.9])),
+    ell([1.6, 1.4, 1.5], eyeL.at), ell([1.6, 1.4, 1.5], eyeR.at),
+    spike(at([2.4, -0.2, 2.2]), [0.8, -1.0, 4.3], 0.95), spike(at([-2.4, -0.2, 2.2]), [-0.8, -1.0, 4.3], 0.95),
+    limb(at([0, -5.0, 0.2]), at([-0.2, -7.2, 1.6]), 1.0, 0.7), limb(at([-0.2, -7.2, 1.6]), at([-0.5, -9.5, 3.1]), 0.7, 0.15),
+    limb([-0.5, -1.5, 24.5], [-1.2, -5.2, 28.8], 3.0, 2.8))],
+  ['armR', any(ell([3.3, 3.4, 3.2], [-7.8, 0.5, 24.8]), limb([-8, 0.5, 24.5], [-11.2, -0.5, 20.8], 2.4, 2.2))],
+  ['foreR', any(ell([2.4, 2.4, 2.4], [-11.2, -0.5, 20.8]), limb([-11.2, -0.5, 20.8], [-14.0, -3.2, 23.6], 2.5, 2.8))],
+  ['handR', ell([3.1, 3.0, 4.2], [-14.8, -4.4, 24.6])],
+  ['armL', any(ell([3.3, 3.4, 3.2], [7.8, 0.5, 24]), limb([8, 0.5, 23.5], [11.2, 1.5, 17.5], 2.4, 2.3))],
+  ['foreL', any(ell([2.4, 2.4, 2.4], [11.2, 1.5, 17.5]), limb([11.2, 1.5, 17.5], [10.4, -5.4, 15.6], 2.5, 2.7))],
+  ['handL', ell([2.9, 3.0, 3.4], [10, -7.4, 15.3])],
+  ['legL', any(ell([3.4, 3.4, 3.4], [4.5, 1, 12.5]), limb([4.5, 1, 12.5], [8.4, -2.5, 7.5], 4.0, 3.3), ell([2.8, 2.6, 2.8], [8.4, -2.8, 7.5]),
+    limb([8.4, -2.5, 7.5], [10.0, -1.0, 2.6], 3.1, 2.5), limb([9.6, -0.6, 1.6], [14.3, -5.3, 1.2], 2.6, 1.6),
+    spike([11.4, -0.6, 8.0], [1.4, 1.3, 0.5], 0.8))],
+  ['legR', any(ell([3.4, 3.4, 3.4], [-4.5, 1, 12.5]), limb([-4.5, 1, 12.5], [-11.5, 0.5, 10.5], 4.0, 3.3), ell([2.8, 2.6, 2.8], [-11.5, 0.2, 10.5]),
+    limb([-11.5, 0.5, 10.5], [-13.5, 0.5, 2.6], 3.1, 2.5), limb([-13.4, 1.05, 1.6], [-15.8, -5.5, 1.2], 2.6, 1.6),
+    spike([-15.7, 2.4, 7.2], [-1.2, 1.6, 0.5], 0.8))],
 ];
 
 function assign(c, rgb) {
-  if (isAny(rgb, LEATHER)) return 'pack';
+  if (isAny(rgb, PACK)) return 'pack';
   if (isAny(rgb, SHELL)) return 'body';
-  if (near(rgb, PLASTRON)) return c[2] > 25.5 && c[1] < -6 ? 'head' : 'body';
   return pick(c, parts);
 }
 
 // the pack lags behind the body: a bounce in z and a little tip
 const pack = (u, cycles, amp = 1, phase = 0.15) => ({ pack: { p: [0, 0, 0.25 * amp * (1 + osc(u, cycles, phase))], r: [3 * amp * osc(u, cycles, phase + 0.1), 0, 0] } });
 const base = bipedClips({
-  face, hipH: 11, stride: 14, guard: true, hopScale: 0.3, hopH: 2.5, droop: 0.6,
+  face, hipH: 12.5, stride: 14, guard: true, hopScale: 0.3, hopH: 2.5, droop: 0.6,
   punch: { arm: [-70, 0, 0], fore: [100, 0, 0] },
   add: {
     idle: (t, u) => pack(u, 2, 0.4),
@@ -61,7 +80,7 @@ const base = bipedClips({
 const clips = {
   ...base,
 
-  // fidget: it pulls its head back into the shell, eyes shut, then peeks out and looks about
+  // fidget: it pulls its head back under the shell, eyes shut, then peeks out and looks about
   idle_tuck: {
     seconds: 2.8,
     pose: (t, u) => {
