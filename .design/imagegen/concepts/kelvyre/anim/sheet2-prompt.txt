@@ -1,0 +1,20 @@
+Image 1 is an animation sheet for a pixel art battle sprite from an indie creature-collecting RPG called Ewamon. It
+holds 8 copies of the same creature, Kelvyre, in a 4 by 2 grid on a flat magenta background. Turn it into 8 frames of
+a looping fire animation, read left to right, top row then bottom row; frame 8 must flow back into frame 1.
+
+Keep the creature's body EXACTLY as it is in image 1 in every frame: the same design, the same pose, the same pixel
+grid (every art pixel is a crisp 3 by 3 block), the same colours, the same outline, the same size and the same
+position in its cell. Do not move or redraw the head, horns, face, neck ring, arms, legs, ice spikes, lava cracks or
+tail. Only the fire changes.
+
+The fire: the flame floating over the raised hand, the flame on the elbow, the flame crest on the head and the flame
+at the tail tip burn strongly and lively. In every frame each flame has a clearly different shape: tongues split,
+curl and rise, a small ember (one or two pixels) sometimes breaks off the top and floats up. Frames 1 to 4 the flames
+lean and lick to the left and grow up to about one third taller than in image 1; frames 5 to 8 they lean to the right
+and sink back to their normal size. The flame over the hand is the biggest and most active.
+
+In frames 3 and 7 a tiny white frost sparkle (a 1 or 2 pixel plus sign) appears just outside one of the ice spikes.
+
+Pixel art rules: hard pixel edges, no anti-aliasing, no blur, no gradients, no motion blur, flames only in the orange,
+yellow and pale yellow already in the sprite, with the same dark outline. Background stays perfectly flat magenta
+#ff00ff in every cell, no shadow, no grid lines, no text, no numbers, no border.

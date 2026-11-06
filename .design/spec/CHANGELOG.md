@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-11-06 kelvyre animated. One entry. -->
+
+## 2026-11-06 · `40-pipelines.md` §40.1 `multiframe`, §40.1.8 sources and ladder, §40.6 `creatures/anim/` · kelvyre animates on both sides; the anim ceiling goes from 25 to 29 MiB
+Why: the user's own ChatGPT GIF of Kelvyre looked poor next to the legendaries' loops (measured: 79 % of the body pixels redrawn every frame, the feet drifting 5 px, 12 frames at 180 ms, the neck ring and elbow flame lost), so they asked for a better one with the OpenAI key, then for more frames and more movement, then for a body that moves like the legendaries' (a first displacement-field puppet changed 17 % of the silhouette between extreme poses, the legendaries 24 to 38 %). Kelvyre now ships 48-page idle loops (100 ms) on both sides: the body is its own still on a 2D bone rig (knees bending over planted feet by IK, torso sway, a lagging head, the fire arm pumping, the ice arm swinging, a wave down a four-bone tail; 43 %), and only the flames and frost sparkles come from four gpt-image-2 sheet edits. Its 96 pages cost 3.84 MB at the shared q80 / q80 rung, 3.45 MB more than the line had left; the user chose a 29 MiB ceiling over shorter loops or dropping every flipbook a rung. Flames are capped 8 rows above the head so every page fits the static frame's 1024² cell (§40.1.8 placement rule unchanged).
+Evidence: sprite pipeline build: 24 anim atlases, 661 frames, 29.66 MB (29 656 496 B) at q80 / q80, every other flipbook byte-identical; static 105 atlases, 54.86 MB, only `a-104` (kelvyre's still is now page 0 of its loop) and its thumb re-encoded; `dex-anim/kelvyre.webp` and `dexAnim.test.tsx`; `anim-output.test.ts`, `budget.test.ts`, asset-audit `rules.test.ts` (the 29 MiB line), client `spriteCatalog.test.ts`.
+Affects: `assets-src/creatures/{front,back}/kelvyre(*).webp` (the stills moved to `assets-src/imagegen/kelvyre-anim/stills/`); `tools/sprite-pipeline/{frame-select.json,src/types.ts,test/*}`; `tools/asset-audit/{src/bytes.ts,test/rules.test.ts}`; `packages/client/public/creatures/{anim,atlases/a-104*,thumbs/kelvyre_front.webp,creatures.manifest.json}`, `public/dex-anim/kelvyre.webp`, client `test/dexAnim.test.tsx`; `.design/imagegen/{PIXEL-STYLE.md,pixel-tools/anim/,concepts/kelvyre/anim/}`.
+
 <!-- 2026-10-30 kelvyre. One entry. -->
 
 ## 2026-10-30 · `00-spine.md` §2.3 dexNumber, §3.4 QUESTS / ACHIEVEMENTS, §3.10 counts; `20-client.md` §20.9.5; `40-pipelines.md` §40.1 accounting, §40.6 species set; `50-verification-budget.md` rule 11, §50.4.2, §50.5 · kelvyre (#181), a Fire/Ice mythical from quest q15

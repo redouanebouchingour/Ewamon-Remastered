@@ -19,7 +19,7 @@ import { REAL_OUT_DIR, REAL_QA_DIR, REPO_ROOT } from './helpers.js';
 
 const MANIFEST_PATH = path.join(REAL_OUT_DIR, MANIFEST_FILE);
 const manifest: SpriteManifestV2 | null = existsSync(MANIFEST_PATH) ? (JSON.parse(readFileSync(MANIFEST_PATH, 'utf8')) as SpriteManifestV2) : null;
-const ANIMATED = ['astaroth', 'bankaiser', 'galaxion', 'glacinid', 'lumyth', 'noxmyth', 'raikitsune', 'sunjaw', 'voidraxis', 'voltaura', 'zenryu'];
+const ANIMATED = ['astaroth', 'bankaiser', 'galaxion', 'glacinid', 'kelvyre', 'lumyth', 'noxmyth', 'raikitsune', 'sunjaw', 'voidraxis', 'voltaura', 'zenryu'];
 const ASSETS = path.join(REPO_ROOT, 'assets-src', 'creatures');
 const REPORT = path.join(REAL_QA_DIR, 'anim-report.json');
 
@@ -69,7 +69,7 @@ describe.skipIf(!manifest?.animAtlases)('anim/ flipbooks (real output)', () => {
 
   it('the 11 animated species (astaroth since 2026-10-26), both sides, one atlas each, 512² cells, every map with 3 pipeline mips', () => {
     expect(Object.keys(m.sprites).filter((id) => m.sprites[id]!.anim).sort()).toEqual(ANIMATED);
-    expect(m.animAtlases!.length).toBe(22);
+    expect(m.animAtlases!.length).toBe(24);
     for (const a of m.animAtlases!) {
       expect(a.cell).toBe(512);
       expect(Math.max(a.width, a.height)).toBeLessThanOrEqual(8192);
@@ -156,7 +156,7 @@ describe.skipIf(!manifest?.animAtlases)('anim/ flipbooks (real output)', () => {
         expect(Math.abs(sb.y1 - (st.y1 + 1) / 2 + 1), `${id}/${side} y1`).toBeLessThanOrEqual(1);
       }
     }
-    expect(worst.length).toBe(22);
+    expect(worst.length).toBe(24);
   }, 600_000);
 
   it('the anim files live under anim/ only', () => {

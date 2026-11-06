@@ -1,0 +1,23 @@
+Image 1 is an animation sheet for a pixel art battle sprite from an indie creature-collecting RPG called Ewamon. It
+holds 8 copies of the same creature, Kelvyre, in a 4 by 2 grid on a flat magenta background. Turn it into the 8
+frames of one smooth, looping idle animation, read left to right, top row then bottom row; frame 8 must flow back
+into frame 1.
+
+Keep everything that is not listed below EXACTLY as it is in image 1: the same design, the same pixel grid (every
+art pixel is a crisp 3 by 3 block), the same colours, the same outline, the same size and the same position of the
+creature in its cell. The feet never move. This is an edit of the existing sprite, not a redraw: do not change the
+head shape, the horns, the face, the broken metal ring around the neck, the ice spikes, the lava cracks or the
+proportions.
+
+What moves, and only this:
+- Every flame (the flame floating over the raised hand, the flame on the elbow, the flame crest on the head and the
+  flame at the tail tip) flickers: its tongues change shape a little in every frame, rising and curling upward,
+  growing slightly taller in frames 2 to 4 and smaller in frames 6 to 8, like a real fire loop.
+- A gentle breath: in frames 3 to 5 the head, shoulders, arms and chest sit 1 art pixel (3 screen pixels) higher;
+  the legs and feet stay still.
+- The tail sways slowly: its tip moves up by 1 to 2 art pixels in frames 3 to 5 and back down.
+- In two or three frames a tiny white frost sparkle (a 1 or 2 pixel plus sign) appears next to an ice spike.
+
+Pixel art rules: hard pixel edges, no anti-aliasing, no blur, no gradients, no motion blur, only the colours already
+in the sprite (flame tongues use its orange, yellow and pale yellow). Background stays perfectly flat magenta
+#ff00ff in every cell, no shadow, no grid lines, no text, no numbers, no border.

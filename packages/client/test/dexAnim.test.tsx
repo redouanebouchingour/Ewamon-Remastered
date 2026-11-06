@@ -33,7 +33,7 @@ function webpPages(bytes: Buffer): number {
 describe('animated dex thumbnails', () => {
   it('every animated front has its dex thumb, one page per flipbook page, and no still species has one', () => {
     const ids = [...animatedFronts(manifest.sprites)].sort();
-    expect(ids).toEqual(['astaroth', 'bankaiser', 'galaxion', 'glacinid', 'lumyth', 'noxmyth', 'raikitsune', 'sunjaw', 'voidraxis', 'voltaura', 'zenryu']);
+    expect(ids).toEqual(['astaroth', 'bankaiser', 'galaxion', 'glacinid', 'kelvyre', 'lumyth', 'noxmyth', 'raikitsune', 'sunjaw', 'voidraxis', 'voltaura', 'zenryu']);
     for (const id of ids) {
       const file = path.join(PUBLIC, 'dex-anim', `${id}.webp`);
       expect(existsSync(file), file).toBe(true);

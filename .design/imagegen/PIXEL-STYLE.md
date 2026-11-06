@@ -141,3 +141,51 @@ about $0.06; both sheets drew every icon in its cell on the first try.
 
 The client maps an id to its file in `itemSpriteUrl` (`packages/client/src/data/content.ts`); `item-sprites.test.ts`
 fails when an item content knows has no file. A new item needs a cell on a new sheet; a new TM or HM needs nothing.
+
+## Animated sprites (legendaries and mythicals)
+
+Kelvyre (2026-11-06) is the first pixel sprite animated this way; scripts in `pixel-tools/anim/`, prompts in
+`concepts/kelvyre/anim/`, raw sheets and GIF previews in `assets-src/imagegen/kelvyre-anim/` (gitignored).
+
+**Why a GIF straight from ChatGPT looks bad.** It redraws the whole creature every frame: on Kelvyre 79 % of the body
+pixels changed between frames (our legendaries: 23 to 48 %, on the moving parts), the feet drifted 5 px, the design
+drifted (neck ring and elbow flame gone) and it ran 12 frames at 180 ms. The body "boils" instead of moving. Even
+gpt-image-2 edits of our own sprite recolour almost every body pixel, so raw AI frames are never used as they are.
+
+**The hybrid.** The body is always the original 128 sprite's pixels; the AI only supplies what is hard to animate by
+hand (fire, sparkles).
+
+1. `base_sheet.py`: the sprite 8 times on a 1536x1024 magenta sheet (4 by 2, 3x nearest).
+2. gpt-image-2 edits that sheet (`gen.py --size=1536x1024 --quality=medium <prompt> <out> <base-sheet>`), twice per
+   side: a calm flicker loop and a flare loop (bigger flames). The prompt says the body must not change; only the
+   flames, plus a frost sparkle in a few frames.
+3. `slice_frames.py`: each cell pre-aligned by its lower-body box, registered (scale and offset) on the legs, and
+   sampled back onto the sprite's own art grid on a canvas with 32 rows of headroom.
+4. `compose_idle.py ... --rest`: rest-pose frames. In fixed flame zones the AI frame's flame pixels replace the
+   sprite's, palette-locked to the sprite's own flame colours; body pixels always come from the sprite. 48 frames at
+   100 ms: calm, flare, calm, calm, flare, calm, 8 frames each, the flares peaking on the two breaths, ordered small to
+   peak to small by flame area.
+5. `rig_idle.py`: the body motion, on a 2D bone rig (bones as segments in the sprite's coordinates, each limited to a
+   box; per side in `RIGS`). Weights diffuse only through the sprite's own pixels and only between a bone and its
+   parent or children, so parts that merely touch slide past each other (`DEPTH` decides which is in front). Legs are
+   two-bone IK chains over planted feet; the tail is a four-bone chain carrying a travelling wave. The frame is
+   upscaled 8x with EPX and splatted forward; each pixel takes the majority colour of the front-most part landing on
+   it, and one- or two-pixel cracks at stretched joints are filled. The motion lives in `pose()`.
+6. `write_webp.py`: lossless animated WebP sources into `assets-src/creatures/{front,back}/` (the stills move to
+   `assets-src/imagegen/kelvyre-anim/stills/`), plus the page closest to the still for `frame-select.json`; then
+   `pnpm --filter @ewa/sprite-pipeline run build` and `dex-anim <id>`.
+
+**How much motion.** The user rejected a version where only the flames and a 2 px breath moved ("the body is very
+stiff"). Measure it: the share of the silhouette that differs between the two most different frames was 17 % for that
+version and 24 to 38 % for the legendaries (Voltaura 38, Noxmyth 32, Raikitsune 29, Zenryu 24). The rig version is
+43 %: knees bend 2 px, the torso sways about 3 degrees, the head lags behind it, the fire arm pumps (shoulder 7 and
+elbow 11 degrees), the ice arm swings, and the tail tip travels about 10 px.
+
+Limits from the sprite pipeline: every page must fit the 1024² cell under the static frame's transform, which leaves
+Kelvyre 8 sprite rows above its head; `compose_idle.py` squashes taller flames down to that (`TOP_LIMIT`). Pixel art
+upscaled into 512² anim cells costs about 40 KB a page at q80 / q80: Kelvyre's 96 pages are 3.84 MB, which needed the
+anim ceiling raised from 25 to 29 MiB (the user's call).
+
+Cost: four medium 1536x1024 edits with one reference (about 2,000 input and 1,372 output image tokens each), about
+$0.30 for both sides at gpt-image-1's published rates; everything after the four calls runs locally. Per-call usage and
+the exact commands: `concepts/kelvyre/anim/README.md`.

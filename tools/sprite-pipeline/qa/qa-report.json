@@ -1,7 +1,7 @@
 {
   "total": 408,
   "actionable": 0,
-  "informational": 170,
+  "informational": 172,
   "excluded": [
     {
       "file": "back/yaschamp(back)(fighterstyle).png",
@@ -27,8 +27,8 @@
   "counts": {
     "clipped": 78,
     "coverage": 1,
-    "multiframe": 22,
-    "nonsquare": 51,
+    "multiframe": 24,
+    "nonsquare": 53,
     "sidemismatch": 70
   },
   "flagged": [
@@ -602,6 +602,26 @@
         "sidemismatch"
       ],
       "source": "front/ironcarab(front).png",
+      "actionable": []
+    },
+    {
+      "species": "kelvyre",
+      "side": "back",
+      "flags": [
+        "multiframe",
+        "nonsquare"
+      ],
+      "source": "back/kelvyre(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "kelvyre",
+      "side": "front",
+      "flags": [
+        "multiframe",
+        "nonsquare"
+      ],
+      "source": "front/kelvyre(front).webp",
       "actionable": []
     },
     {
@@ -1745,12 +1765,12 @@
       {
         "albedo": 88,
         "normal": 92,
-        "totalBytes": 54891304
+        "totalBytes": 54883927
       }
     ],
     "thumbs": {
       "count": 204,
-      "bytes": 1106752,
+      "bytes": 1106470,
       "rungs": {
         "q32/aq100/a8": 2,
         "q40/aq100/a8": 3,
@@ -1764,5 +1784,5 @@
       }
     }
   },
-  "totalBytes": 54891304
+  "totalBytes": 54883927
 }
