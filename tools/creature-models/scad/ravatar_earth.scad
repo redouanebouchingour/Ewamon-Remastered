@@ -1,158 +1,301 @@
-// Ravatar (earth relic): Ravatar in mossy stone armour, huge rock pauldrons and a back shell studded with green
-// gems, massive stone gauntlets, a glowing green arrow and eyes, an earthy tail, boulders and green energy at its feet.
+// Ravatar (earth relic): Ravatar's body (copied from scad/ravatar.scad) in mossy stone armour studded with glowing
+// green gems, massive stone gauntlets, a glowing green arrow, eyes and veins, its tail splintering into wood and rock,
+// boulders and green energy at its feet.
+// Checklist (front sheet, 40 units; the art stands in the base's frame, its feet on sheet z 1.5 over the rubble):
+//   - body, mane, antlers, muzzle, smirk, bark skirt, plated thighs and rock greaves as the base; fur a paler tan
+//   - arrow: a wide glowing green arrow, point between the eyes (z 28), wings at z 29.5, shaft into the mane and down
+//     the nape (back sheet); eyes glowing green in dark green sockets
+//   - stone armour (grey-olive with moss): a gorget, plates over the pecs with green swirl inlays, a big green gem on
+//     the sternum (sheet -4.3, 21.3); huge pauldrons with a peak and gems (front and back); a domed shell over the
+//     upper back with five gems; green veins on the abs and the lower back
+//   - upper arms bare tan; forearms and fists inside massive stone gauntlets (near one sheet x 5..12.5, z 10..21)
+//   - tail: the base's grey-over-cream brush, its upper half splintering into brown wood / rock shards (sheet x 13..19,
+//     z 17..27) with pebbles flying off
+//   - two boulders hovering beside the feet (sheet -17..-14 and 14..18, z 5..9), small stones on the ground, green
+//     energy arcs round the feet
 include <lib.scad>
 
-fur = [0.9, 0.76, 0.55];
-furHi = [0.98, 0.88, 0.7];
-furDark = [0.7, 0.55, 0.38];
-mane = [0.3, 0.28, 0.26];
-maneHi = [0.42, 0.4, 0.37];
-mark = [0.45, 0.95, 0.3];
-tattoo = [0.42, 0.34, 0.26];
-antler = [0.5, 0.36, 0.22];
-rock = [0.42, 0.42, 0.3];
-rockDark = [0.3, 0.3, 0.22];
-tailGrey = [0.4, 0.36, 0.3];
-tailCream = [0.88, 0.82, 0.68];
-claw = [0.95, 0.92, 0.82];
-nose = [0.18, 0.12, 0.1];
-eyeIris = [0.45, 0.95, 0.3, GLOW];
-moss = [0.36, 0.42, 0.26];
-gem = [0.3, 0.85, 0.25];
-gemHi = [0.7, 1, 0.55];
-glowGreen = [0.5, 0.9, 0.3];
+fur = [0.74, 0.6, 0.42];
+furLight = [0.9, 0.82, 0.62];
+cream = [0.92, 0.86, 0.68, NOGLOW];
+mane = [0.28, 0.26, 0.25];
+maneHi = [0.4, 0.37, 0.34];
+antler = [0.4, 0.33, 0.28];
+mark = [0.5, 0.92, 0.34, GLOW];
+bark = [0.47, 0.41, 0.33];
+barkHi = [0.58, 0.51, 0.4];
+barkDark = [0.3, 0.27, 0.23];
+stone = [0.4, 0.39, 0.31];
+stoneDark = [0.27, 0.26, 0.22];
+moss = [0.42, 0.48, 0.26];
+gem = [0.28, 0.74, 0.2, GLOW];
+gemHi = [0.78, 1, 0.62, GLOW];
+vein = [0.48, 0.88, 0.32, NOGLOW];
+tailGrey = [0.36, 0.33, 0.3];
+tailCream = [0.86, 0.79, 0.6, NOGLOW];
+splinter = [0.5, 0.42, 0.33];
+splinterDark = [0.34, 0.28, 0.23];
+toeClaw = [0.55, 0.45, 0.36];
+paw = fur;
+limbFn = 14;   // the arm / thigh capsules' facets
+ink = [0.16, 0.13, 0.13];
+eyeGlow = [0.52, 0.94, 0.34, GLOW];
+socket = [0.16, 0.3, 0.13];
 
-module stroke(pts, r, c = mark) { chain(pts, [for (p = pts) r], c); }
-// Swirl tattoo facing direction yaw (0 = -Y), radius R.
-module tswirl(p, R, yaw = 0, c = tattoo) {
-  n = 14;
+// ---- Shapes shared by several parts (the rig file copies these numbers).
+HEAD = [[[4.3, 3.8, 3.8], [0, -0.6, 26.8]], [[3.4, 3.1, 2.8], [0, -0.3, 30]]];
+TORSO = [[[3.8, 3, 2.5], [0, 0.2, 15.5]], [[6.2, 3.9, 3.6], [0, -0.2, 20]], [[5.6, 3.6, 2.6], [0, 0.6, 23]]];
+GORGET = [[5.6, 3.3, 2.4], [0, -0.4, 23.8]];
+MANE = [[[3.6, 2.4, 2.4], [0, 2.2, 29.4]], [[4.4, 3.6, 2.6], [0, 1.4, 32]], [[4.6, 3.4, 2.6], [1.2, 1.8, 35]],
+        [[3.2, 2.6, 1.8], [2, 2.2, 37.8]]];
+SHOULDER = [8.3, 0, 21.8];
+ELBOW = [11.5, -2.4, 17];
+WRIST = [14.2, -2.3, 14.4];
+HAND = [14.6, -2.4, 12.6];
+HIP = [4.2, 0.3, 13.2];
+KNEE = [7.6, -1.2, 8.2];
+ANKLE = [9.6, -1.4, 3.2];
+FOOT = [9.8, -1.6, 0];
+TAIL = [[1, 3.2, 11.5], [6, 6, 7.4], [11, 6, 7.2], [16, 4.5, 10.2], [17, 3, 15.4], [18, 2, 20], [18.6, 1.6, 23.4]];
+TAIL_R = [2, 3.3, 4.2, 4.6, 4.2, 3, 0.6];
+CREAM = [[6, 5.4, 5.4], [11.6, 5.4, 4.9], [18.3, 3.9, 9.2], [19.8, 2.4, 15.4], [20, 1.6, 19.5]];
+CREAM_R = [2.4, 3.2, 3.5, 3, 1.8];
+// the splinters off the tail's upper half: [base, direction, base radius, colour 0/1]
+SPLINTERS = [[[17.4, 2.6, 18], [-1.6, 0.4, 7.4], 1.3, 0], [[18.6, 1.8, 20.6], [0.6, 0, 6.4], 1.2, 1],
+             [[16.4, 3.4, 15.6], [-3, 1.2, 5.6], 1.1, 0], [[19.6, 1.6, 17], [3, -0.2, 4.8], 1, 1],
+             [[18, 4, 18.6], [1.2, 2.4, 5.4], 1, 0], [[19.2, 2.2, 13.4], [3.4, 0, 2.4], 0.9, 0],
+             [[16.6, 4.6, 13], [-2.6, 2, 4], 0.9, 1]];
+PEBBLES = [[[21.6, 2, 27.2], 0.55], [[23.2, 1.2, 20.6], 0.5], [[14.6, 4.6, 27.6], 0.45], [[23.8, 2, 13.2], 0.5],
+           [[20, 3.6, 30], 0.4]];
+EYE = [2.4, -3.45, 27.3];
+// boulders and stones round the feet: [centre, size]
+STONES = [[[-16.5, 2, 5], 2.1], [[19.6, 3, 4.8], 2.1], [[11.2, -6, 1], 1.1], [[21, -3, 1.2], 1.2],
+          [[-7.9, -6, 0.8], 0.8], [[-15.9, -2, 1.1], 1.1]];
+ANTLER = [[3.6, 0, 29.6], [5.4, 0.2, 32.2], [6.6, 0.4, 35], [6.3, 0.6, 37.2]];
+ANTLER_R = [1.1, 0.9, 0.6, 0.15];
+// mane locks: [root, d1, d2, d3, root radius, highlight]
+LOCKS = [[[0, 1.4, 38.5], [-0.6, 0.4, 1.4], [-0.6, 0.6, 1], [-0.4, 0.6, 0.6], 1.6, 0],
+         [[1.4, 1.4, 38], [1, 0.6, 1.4], [1.4, 0.8, 0.8], [1.4, 0.8, 0.2], 1.5, 1],
+         [[2.8, 1.4, 36], [1.8, 0.4, 0.9], [2, 0.6, 0.4], [1.6, 0.8, -0.2], 1.6, 0],
+         [[3.2, 1.8, 33.6], [2, 0.4, 0.2], [1.8, 0.8, -0.4], [1.4, 1, -0.8], 1.5, 1],
+         [[-1.6, 1.2, 37.8], [-0.8, 0.4, 1.4], [-1, 0.6, 0.8], [-0.8, 0.8, 0.4], 1.5, 1],
+         [[-3, 1.4, 35.8], [-1.8, 0.4, 0.8], [-1.6, 0.8, 0.4], [-1.2, 0.8, 0], 1.6, 0],
+         [[-3.2, 1.8, 33.4], [-1.8, 0.6, -0.2], [-1.4, 1, -0.6], [-1, 1, -0.8], 1.4, 0],
+         [[0.5, 3.6, 36.4], [0.2, 1.2, 1.6], [0.3, 1, 1.4], [0.2, 0.8, 0.8], 1.6, 0],
+         [[2.2, 3.6, 34.4], [1.2, 1.2, 1], [1.4, 0.8, 0.8], [1, 0.6, 0.4], 1.4, 1],
+         [[-2, 3.6, 34.2], [-1.2, 1.2, 0.8], [-1.2, 0.8, 0.8], [-0.8, 0.6, 0.4], 1.4, 0],
+         [[0, 3.8, 32.4], [0, 1.6, -0.8], [0, 1.2, -1.6], [0, 0.6, -1.4], 1.5, 0]];
+
+module oval(r, p, c, fn = 12) { color(c) translate(p) scale(r) sphere(1, $fn = fn); }
+module leaf(r, p, rot, c, fn = 10) { color(c) translate(p) rotate(rot) scale(r) sphere(1, $fn = fn); }
+module blobN(parts, c, fn = 14) { color(c) hull() for (e = parts) translate(e[1]) scale(e[0]) sphere(1, $fn = fn); }
+module grownBlob(parts, g, fn = 22) { hull() for (e = parts) translate(e[1]) scale(e[0] + [g, g, g]) sphere(1, $fn = fn); }
+module stroke(pts, r, c) { chain(pts, [for (p = pts) r], c); }
+// Swirl in the XZ plane facing yaw (0 = -Y), radius R.
+module tswirl(p, R, yaw = 0, c = vein, w = 0.28) {
+  n = 8;
   translate(p) rotate([0, 0, yaw])
-    chain([for (i = [0 : n]) let(t = i / n, a = t * 540, rr = R * (0.2 + 0.8 * t)) [rr * cos(a), 0, rr * sin(a)]],
-          [for (i = [0 : n]) 0.3], c, $fn = 6);
+    chain([for (i = [0 : n]) let(t = i / n, a = t * 500, rr = R * (0.2 + 0.8 * t)) [rr * cos(a), 0, rr * sin(a)]],
+          [for (i = [0 : n]) w], c, $fn = 4);
 }
-// Rough rock chunk.
-module chunk(p, r, rot = [0, 0, 0], c = rock) { color(c) translate(p) rotate(rot) scale([1.2, 0.9, 1]) sphere(r, $fn = 7); }
-
-// ---- Legs: thick thighs, rocky greaves, clawed feet.
-mirror_x() {
-  limb([3.6, 0, 16], [5, -0.6, 9], 3, 2.6, fur);
-  limb([5, -0.6, 9], [5.4, 0.4, 3], 2.4, 2, fur);
-  ell([3, 3, 3.6], [5.3, -0.2, 6], rockDark);
-  for (r = [[0, 4, 1.7], [72, 5, 1.6], [144, 4, 1.5], [216, 5.5, 1.6], [288, 4.2, 1.6],
-            [20, 8.2, 1.6], [110, 8.6, 1.4], [200, 8, 1.5], [300, 8.4, 1.4]])
-    chunk([5.3 + 2.8 * sin(r[0]), -0.2 - 2.8 * cos(r[0]), r[1]], r[2], [r[0] / 3, 20, r[0]], (r[0] % 120 == 0) ? rockDark : rock);
-  spike([5.8, -2.6, 9.5], [0.6, -1.2, 2.4], 1, 0.05, rock);
-  blob([[[2.6, 3.4, 1.4], [5.6, -1.6, 1.4]], [[2.2, 2, 1.4], [5.6, 0.8, 1.6]]], furDark);
-  for (a = [-28, 0, 28]) spike([5.6 + sin(a) * 1.5, -4.8, 1], [sin(a) * 0.5, -1.4, -0.4], 0.55, 0.05, claw);
+// A pointed bark / rock plate: a flat oval base w x t with a ridge down its face, its point h along +Z.
+module shard(p, rot, w, t, h, c) {
+  color(c) translate(p) rotate(rot) hull() {
+    scale([w, t, 0.3]) sphere(1, $fn = 10);
+    translate([0, -t * 0.7, h * 0.4]) sphere(t * 0.5, $fn = 6);
+    translate([0, 0, h]) sphere(0.1, $fn = 6);
+  }
 }
-
-// ---- Hips and the plated rocky loincloth.
-ell([6, 4.2, 3.4], [0, 0, 16.5], furDark);
-for (x = [-4, -1.4, 1.4, 4]) spike([x, -3.6, 17.5], [x * 0.15, -0.6, -5.5], 1.6, 0.1, (abs(x) < 2) ? rockDark : rock);
-for (x = [-3, 0, 3]) spike([x, 3.6, 17.5], [x * 0.15, 0.6, -4.5], 1.5, 0.1, rock);
-color(rockDark) translate([0, 0, 17.6]) scale([6.3, 4.5, 1]) cylinder(h = 1.2, r = 1, $fn = 24);
-
-// ---- Torso: V-shaped, muscled chest.
-blob([[[4.8, 3.6, 3.6], [0, 0, 20]], [[7.4, 4.6, 4.4], [0, 0, 27]]], fur);
-mirror_x() color(furHi) translate([2.4, -3.95, 28.2]) scale([3.2, 0.6, 1.4]) sphere(1, $fn = 14);
-for (z = [20.5, 22.5]) mirror_x() color(furHi) translate([1.3, -3.4, z]) scale([1.3, 0.7, 0.8]) sphere(1, $fn = 10);
-// Swirl tattoos: chest, shoulders, back.
-mirror_x() {
-  tswirl([3, -5.1, 27.2], 1.2);
-  tswirl([6.4, 3.6, 28], 1.2, 180);
-  tswirl([3, 4.6, 25], 1.4, 180);
-}
-// Shaggy ruff on the chest and shoulders.
-for (a = [-70 : 20 : 70]) spike([sin(a) * 5.2, -3 + abs(sin(a)) * 1.2, 30.5], [sin(a) * 1.4, -1.2, -4], 1.3, 0.05, furHi);
-for (a = [0 : 30 : 359]) spike([cos(a) * 5, sin(a) * 3.8, 31], [cos(a) * 2.2, sin(a) * 2.2, -2], 1.6, 0.05, fur);
-// Spine marking.
-stroke([[0, 4.8, 30], [0.8, 4.9, 26.5], [-0.6, 4.5, 23], [0.2, 3.8, 19.5]], 0.75);
-
-// ---- Arms: long, hanging, a little out from the body, clawed hands; stripe tattoos on the forearms.
-mirror_x() {
-  ell([3, 3, 2.8], [7.2, 0, 28.5], fur);
-  limb([7.6, 0, 28], [9.4, -0.6, 21], 2.5, 2.1, fur);
-  limb([9.4, -0.6, 21], [10.4, -1.6, 14.5], 2.1, 1.7, fur);
-  for (z = [16.5, 18.5]) stroke([[11.3, -1.3, z], [10.6, -2.6, z + 0.6]], 0.3, tattoo);
-  ell([1.9, 1.7, 2], [10.6, -1.8, 13], fur);
-  for (a = [-30, 0, 30]) spike([10.6 + sin(a) * 1.2, -3, 11.6], [sin(a) * 0.4, -0.8, -1.4], 0.45, 0.05, claw);
-}
-
-// ---- Bushy tail: sweeps back and out to the viewer's right, then up; grey over a cream underside.
-// A tapering chain of hulled ellipsoids: [radius, point] pairs.
-module tailpath(pts, rs, c) { for (i = [0 : len(pts) - 2]) blob([[rs[i], pts[i]], [rs[i + 1], pts[i + 1]]], c); }
-tailpath([[2, 4, 15], [7, 6, 9], [12.5, 4.5, 7], [16.5, 2, 10], [18, 0.5, 15], [17.6, 0, 20.5]],
-         [[1.8, 1.8, 1.8], [3, 3, 3], [3.6, 3.4, 3.4], [3.4, 3.2, 3.4], [2.6, 2.4, 3], [0.8, 0.8, 1.4]], tailGrey);
-tailpath([[7, 4.4, 7.8], [12.5, 2.4, 5.6], [16, -0.2, 8.6], [17, -1.2, 13.5]],
-         [[2.6, 2.2, 2.2], [3, 2.4, 2.4], [2.8, 2.2, 2.6], [1.6, 1.4, 2]], tailCream);
-for (t = [[10, 7.6, 8.5], [14.5, 5.8, 9], [18.4, 3, 15]]) spike(t, [1.4, 1, 1], 1.2, 0.05, tailGrey);
-for (t = [[10, 3.4, 4.6], [14.5, 0.8, 5.2], [18.5, -1.4, 10]]) spike(t, [1.2, -0.6, -1.4], 1.1, 0.05, tailCream);
-
-// ---- Stone armour.
+module lock(p, d1, d2, d3, r, c) { chain([p, p + d1, p + d1 + d2, p + d1 + d2 + d3], [r, r * 0.75, r * 0.45, 0.1], c, $fn = 10); }
+module tuft(p, d, w, c) { color(c) hull() { translate(p) scale([w, w * 0.7, w]) sphere(1, $fn = 10); translate(p + d) sphere(0.15, $fn = 6); } }
+// A rough stone: a low-poly ellipsoid turned by rot.
+module chunk(p, r, rot = [0, 0, 0], c = stone, fn = 7) { color(c) translate(p) rotate(rot) scale(r) sphere(1, $fn = fn); }
+// A cut green gem with a highlight, facing yaw (0 = -Y).
 module gemstone(p, r, yaw = 0) {
   translate(p) rotate([0, 0, yaw]) {
-    color(gem) scale([1, 0.6, 1.3]) sphere(r, $fn = 6);
-    color(gemHi) translate([0, -r * 0.45, r * 0.3]) sphere(r * 0.35, $fn = 6);
+    color(stoneDark) scale([1.35, 0.5, 1.6]) sphere(r, $fn = 8);
+    color(gem) translate([0, -r * 0.3, 0]) scale([1, 0.55, 1.35]) sphere(r, $fn = 6);
+    color(gemHi) translate([-r * 0.3, -r * 0.75, r * 0.35]) sphere(r * 0.28, $fn = 5);
   }
 }
-mirror_x() {
-  // Huge rock pauldrons with a spike and a gem.
-  color(moss) translate([7.8, 0, 29.8]) scale([4.6, 4.6, 3.4]) sphere(1, $fn = 9);
-  chunk([9.6, -1, 28], 2.4, [20, 10, 30], rock);
-  spike([8.4, 0.5, 32], [0.8, 0.4, 3.2], 1.6, 0.1, moss);
-  gemstone([7.6, -4.4, 30.2], 1);
-  gemstone([7.6, 4.4, 30.2], 1, 180);
-  // Stone gauntlets: big blocky fists.
-  color(rock) hull() { translate([9.6, -0.8, 19.5]) sphere(2.6, $fn = 8); translate([10.6, -1.8, 13]) sphere(3.2, $fn = 8); }
-  chunk([11.4, -1.6, 17], 1.8, [30, 0, 10], moss);
-}
-// Chest plate with a big gem, and a domed back shell with gems.
-color(moss) translate([0, 0.4, 27]) scale([7.6, 5.8, 4.4]) difference() { sphere(1, $fn = 18); translate([0, 1.25, 0]) cube(2, center = true); }
-gemstone([0, -5.4, 27], 1.5);
-mirror_x() gemstone([3.2, -5.2, 26.5], 0.9);
-color(moss) translate([0, -0.4, 26.5]) scale([7.8, 6.2, 5.6]) difference() { sphere(1, $fn = 18); translate([0, -1.25, 0]) cube(2, center = true); }
-for (g = [[0, 5.8, 28, 1.3], [-3.6, 5.2, 29.5, 0.9], [3.6, 5.2, 29.5, 0.9], [-2.6, 5.4, 24, 0.8], [2.6, 5.4, 24, 0.8]])
-  gemstone([g[0], g[1], g[2]], g[3], 180);
-// Boulders and green energy at the feet.
-for (b = [[-12, -3, 1.6, 1.8], [12, -2, 1.2, 1.4], [-14, 3, 1.4, 1.5], [15, 4, 1.6, 1.7], [-9, -6, 0.9, 1], [8, -6, 0.9, 1]])
-  chunk([b[0], b[1], b[2]], b[3], [b[0] * 10, b[1] * 20, 0], rockDark);
-for (x = [-1, 1]) color(glowGreen) translate([x * 6, -2, 0.3]) rotate([0, 0, x > 0 ? -60 : 120])
-  rotate_extrude(angle = 160, $fn = 20) translate([5, 0]) scale([1, 0.4]) circle(0.4, $fn = 6);
 
-// ---- Head: lion-hound with a short muzzle.
-blob([[[4.6, 4.2, 4.2], [0, -0.8, 35]], [[3.6, 3.4, 3], [0, -1.6, 32.6]]], fur);
-ell([2.6, 2, 1.8], [0, -4.6, 32.6], furHi);
-ell([0.9, 0.6, 0.6], [0, -6.4, 33.4], nose);
-color(nose) translate([0, -6, 31.6]) scale([1.2, 0.3, 0.3]) sphere(1, $fn = 10);
-// Cheek ruff.
-mirror_x() for (z = [31, 33]) spike([3.4, -2.6, z], [2, 0.4, -1], 1.2, 0.05, furHi);
-// Eyes: big, narrow and fierce, sunk in dark sockets under a hard brow ridge that slants down to the nose.
-mirror_x() {
-  translate([2.15, -4.15, 34.9]) rotate([0, -12, -20]) scale([1.65, 0.5, 1.35]) color(nose) sphere(1, $fn = 16);
-  eye([2.15, -4.4, 34.9], 1.3, iris = eyeIris, pupil = [0.06, 0.06, 0.1], sclera = [0.98, 0.9, 0.6], yaw = -18,
-      lid = 0.48, lid_tilt = 32, lid_c = furDark, slit = 0.35, squint = 0.16);
-  color(fur) hull() {
-    translate([1.0, -5.25, 35.75]) scale([0.5, 0.5, 0.4]) sphere(1, $fn = 12);
-    translate([2.3, -4.9, 36.5]) scale([0.95, 0.6, 0.45]) sphere(1, $fn = 12);
-    translate([3.7, -3.6, 37]) scale([0.6, 0.6, 0.45]) sphere(1, $fn = 12);
+// ---- Legs: thighs under bark plates, rock greaves, splayed clawed feet (the base's).
+module legs() mirror_x() {
+  limb(HIP, KNEE, 3, 2.4, barkDark, $fn = limbFn);
+  oval([2.1, 2, 1.8], KNEE + [0, -0.6, 0.6], fur, 14);
+  limb(KNEE, ANKLE, 2.3, 1.8, fur, $fn = 12);
+  shard([5.9, -2.8, 7.8], [-15, -8, 0], 2.5, 0.9, 7, bark);
+  shard([8.1, -1.2, 8.4], [-10, 22, 0], 2.2, 0.85, 6.2, barkHi);
+  shard([4.4, -2.5, 10.4], [-18, -16, 0], 1.9, 0.8, 5, barkHi);
+  shard([8.4, 0.8, 8.6], [10, 24, 0], 1.8, 0.75, 4.8, bark);
+  shard([6.2, 2.2, 9.6], [18, 8, 0], 1.8, 0.75, 4.6, barkDark);
+  oval([2.6, 2.6, 2.5], [8.8, -1.4, 5], barkDark, 14);
+  for (a = [-50, 10, 70, 140, 210]) translate([8.8, -1.4, 4]) rotate([0, 0, a]) translate([0, -2.2, 0])
+    shard([0, 0, 0], [16, 0, 0], 1.55, 0.7, 4, (a % 120 == 10) ? barkHi : bark);
+  translate(FOOT) rotate([0, 0, 18]) {
+    blobN([[[1.9, 1.7, 1.3], [0, 0.4, 1.4]], [[2, 1.6, 1.1], [0, -1.8, 1.1]]], paw, 11);
+    for (dx = [-1.15, 0, 1.15]) {
+      oval([0.65, 0.9, 0.6], [dx, -3.1, 0.75], paw, 8);
+      spike([dx, -3.8, 0.7], [dx * 0.25, -1.1, -0.55], 0.42, 0.05, toeClaw);
+    }
   }
 }
-// Arrow marking: point on the brow, band over the crown into the mane.
-color(mark) translate([0, -4.95, 36.6]) rotate([-60, 0, 0]) linear_extrude(0.8, center = true)
-  polygon([[0, -1.6], [-1.6, 0.6], [-0.8, 0.6], [-0.8, 1.2], [0.8, 1.2], [0.8, 0.6], [1.6, 0.6]]);
-stroke([[0, -4, 38], [0, -2.2, 39.2]], 0.8);
-// Ears.
-mirror_x() spike([3.6, -0.6, 37.6], [1.8, 0.4, 2.2], 1.2, 0.1, fur);
-// Short antlers.
-mirror_x() {
-  chain([[2, -1.2, 38.6], [3, -1, 41], [4.2, -0.8, 43], [5.4, -0.6, 44]], [0.7, 0.6, 0.45, 0.2], antler);
-  limb([3.1, -1, 41], [1.8, -1.4, 42.6], 0.45, 0.15, antler);
+
+// ---- Bark skirt: belt, plates hanging at the front, back and hips (the base's).
+module skirt() {
+  oval([4.1, 3.3, 2], [0, 0.3, 13.4], barkDark, 16);
+  oval([4.25, 3.55, 0.9], [0, 0.2, 15.6], stoneDark, 18);
+  shard([0, -3.3, 15.4], [180, 0, 0], 2.6, 0.8, 8.6, bark);
+  mirror_x() shard([2.3, -2.9, 15.2], [182, -12, 0], 1.8, 0.7, 6.6, barkHi);
+  shard([0, 3.6, 15.4], [178, 0, 0], 2.2, 0.8, 6.8, bark);
+  mirror_x() {
+    shard([2.6, 3, 15.2], [178, -12, 0], 1.7, 0.7, 5.6, barkDark);
+    shard([3.9, -1.4, 15.4], [178, -28, 0], 1.8, 0.7, 5.2, bark);
+    shard([3.9, 1.4, 15.4], [178, -28, 0], 1.7, 0.7, 4.8, barkHi);
+  }
 }
-// Wild mane: a big swept mass of spikes behind and above the head, streaming back.
-blob([[[5, 4.6, 4], [0, 2, 37.5]], [[4, 3.6, 3], [0, 4.6, 33]]], mane);
-for (s = [[-4, 0, 41, -2, 1.4, 3], [-1.5, 0.5, 42, -0.6, 1.6, 4], [1.5, 0.6, 42, 1, 2, 3.8], [4, 0.4, 40.5, 2.6, 2, 2.4],
-          [-5, 2, 38, -3.4, 2.4, 1], [5, 2, 38, 3.4, 2.4, 1.2], [0, 3, 40.5, 0, 5, 2.6], [-3, 4, 38, -1.4, 5, 0.6],
-          [3, 4, 38, 1.6, 5, 0.6], [0, 5.5, 35, 0, 4, -2], [-3, 5, 33, -1.4, 3, -3], [3, 5, 33, 1.4, 3, -3]])
-  spike([s[0], s[1], s[2]], [s[3], s[4], s[5]], 2.1, 0.1, ((s[0] + s[2]) % 2 == 0) ? maneHi : mane);
-// Mane-crossing marking down the back of the head.
-stroke([[0, 1.5, 42.2], [0, 5, 39.8], [0, 7.4, 35.5], [0, 6.8, 31.5]], 0.75);
+
+// ---- Torso: tan, abs with green veins; a stone gorget and pec plates with green inlays, a big sternum gem; a domed
+// stone shell over the upper back with gems; green veins on the lower back.
+module torso() {
+  blobN(TORSO, fur, 22);
+  mirror_x() {
+    oval([2.7, 1.3, 1.9], [2.7, -3, 20.6], fur, 14);   // pecs
+    for (z = [16.4, 17.8]) oval([1.05, 0.7, 0.62], [1.05, -2.95 - (z - 16.4) * 0.12, z], furLight, 8);   // abs
+    // the stone pec plate and its green swirl inlay
+    translate([2.85, -3.4, 21.2]) rotate([0, 0, 16]) {
+      oval([2.9, 1.15, 2.1], [0, 0, 0], stone, 9);
+      tswirl([0, -1.15, -0.1], 1.1, 0, vein, 0.3);
+    }
+    stroke([[1.1, -3.85, 17.2], [2.2, -3.6, 18.2], [3.2, -3.3, 17.8]], 0.2, vein);   // veins on the abs
+  }
+  stroke([[-0.6, -4.05, 18.6], [0.4, -4.1, 19.6], [-0.2, -4.2, 20.2]], 0.2, vein);
+  blobN([GORGET], stone, 12);
+  for (p = [[-3.6, -2.4, 25.4], [3.4, -2.8, 24.6], [0, 2.8, 25.6]]) oval([1.4, 0.8, 0.6], p, moss, 7);
+  gemstone([0, -4.6, 21.3], 0.95);
+  // the back shell, mossy, with gems
+  color(stone) intersection() {
+    grownBlob(TORSO, 0.9, 14);
+    translate([-8, 0.6, 18.4]) cube([16, 7, 8.4]);
+  }
+  for (p = [[-2.8, 4.4, 24.4], [3, 4.4, 22.2], [0, 4.6, 20.6]]) oval([1.6, 0.6, 1], p, moss, 7);
+  for (g = [[-2.8, 4.75, 22.8, 0.85, 168], [2.8, 4.75, 22.8, 0.85, 192], [0, 4.6, 19.4, 0.7, 180]])
+    gemstone([g[0], g[1], g[2]], g[3], g[4]);
+  // green veins on the lower back
+  stroke([[-2.4, 3.4, 15.2], [-1.2, 3.6, 16.6], [-1.8, 3.8, 17.8]], 0.2, vein);
+  stroke([[0.6, 3.4, 15.4], [1.8, 3.6, 16.4], [1.4, 3.8, 17.8]], 0.2, vein);
+}
+
+// ---- Arms: tan upper arms; the forearm and fist inside a massive stone gauntlet (the creature's left numbers:
+// shoulder S, elbow E, wrist W, hand H).
+module arm(S, E, W, H) {
+  oval([2.8, 2.8, 2.6], S, fur, 13);
+  limb(S, E, 2.5, 2.2, fur, $fn = limbFn);
+  // gauntlet: stone blocks round the forearm, a blocky fist with knuckle stones
+  d = W - E;
+  color(stone) hull() {
+    translate(E + d * 0.12) scale([2.9, 2.9, 2.7]) sphere(1, $fn = 7);
+    translate(W) scale([3, 2.9, 2.6]) sphere(1, $fn = 7);
+  }
+  color(stoneDark) hull() {
+    translate(H + [0, 0, 0.2]) scale([2.9, 2.8, 2.4]) sphere(1, $fn = 7);
+    translate(H + [0, -0.9, -1.2]) scale([2.6, 2.4, 2]) sphere(1, $fn = 7);
+  }
+  for (dx = [-1.5, -0.5, 0.5, 1.5]) chunk(H + [dx, -2.9, -1.3], [0.62, 0.55, 0.8], [10, 0, dx * 8], stone, 6);
+  chunk(E + d * 0.5 + [0.4, -0.6, 2.2], [1.8, 1.4, 0.7], [20, 0, 10], moss, 7);
+  chunk(E + d * 0.1 + [1.8, 0.4, 1.2], [1.3, 1.8, 0.9], [0, 30, 0], stoneDark, 7);
+}
+// Pauldron: a huge mossy stone block with a peak and gems front, side and back.
+module pauldron(S) {
+  chunk(S + [0.7, 0, 1.3], [4.3, 4.2, 3.3], [0, 18, 0], stone, 9);
+  chunk(S + [0.5, 0, 3.4], [3.2, 3.2, 1.5], [0, 14, 20], moss, 8);
+  color(stone) hull() {
+    translate(S + [0.2, 0.2, 4.2]) scale([1.8, 1.8, 0.6]) sphere(1, $fn = 6);
+    translate(S + [-0.6, 0.4, 8]) sphere(0.15, $fn = 5);
+  }
+  chunk(S + [2.6, -0.8, -0.6], [2.4, 3, 1.8], [0, 46, 0], stoneDark, 7);
+  gemstone(S + [1, -4.25, 1.6], 0.75, 10);
+  gemstone(S + [4.4, -1.2, 1.4], 0.65, 70);
+  gemstone(S + [1, 4.25, 1.6], 0.7, 170);
+}
+module arms() mirror_x() { arm(SHOULDER, ELBOW, WRIST, HAND); pauldron(SHOULDER); }
+
+// ---- Tail: the base's brush, grey over a cream edge, its upper half splintering into wood and rock.
+module tail() {
+  for (i = [0 : len(TAIL) - 3])
+    blobN([[[TAIL_R[i], TAIL_R[i] * 0.8, TAIL_R[i]], TAIL[i]], [[TAIL_R[i + 1], TAIL_R[i + 1] * 0.8, TAIL_R[i + 1]], TAIL[i + 1]]], tailGrey);
+  for (i = [0 : len(CREAM) - 3])
+    blobN([[[CREAM_R[i], CREAM_R[i] * 0.85, CREAM_R[i]], CREAM[i]], [[CREAM_R[i + 1], CREAM_R[i + 1] * 0.85, CREAM_R[i + 1]], CREAM[i + 1]]], tailCream);
+  for (t = [[[9.6, 5, 4], [3.4, -0.4, -1.2], 1.7, tailCream], [[14.8, 3.8, 5], [3.8, -0.4, -0.2], 1.8, tailCream],
+            [[20, 2.6, 9.8], [1.8, -0.4, 3.2], 1.7, tailCream], [[12.4, 6.6, 11.2], [-1, 0, 3.6], 1.7, tailGrey],
+            [[11, 8.4, 8.8], [3, 0.8, 0.6], 1.7, tailGrey], [[5.6, 7.6, 9.4], [3, 0.6, -0.6], 1.5, tailGrey]])
+    tuft(t[0], t[1], t[2], t[3]);
+  for (s = SPLINTERS) {
+    color(s[3] == 1 ? splinterDark : splinter) hull() {
+      translate(s[0]) scale([s[2], s[2] * 0.7, s[2] * 0.6]) sphere(1, $fn = 6);
+      translate(s[0] + s[1]) sphere(0.12, $fn = 4);
+    }
+  }
+  // twigs off the splinters
+  for (t = [[[16.6, 2.9, 22], [-2.4, 0.2, 1.6]], [[19, 1.8, 24.2], [2, 0, 1.2]], [[18.4, 4.6, 21.4], [1.6, 1, 1.6]]])
+    limb(t[0], t[0] + t[1], 0.35, 0.1, splinterDark, $fn = 5);
+  for (p = PEBBLES) chunk(p[0], [p[1], p[1], p[1]], [p[0][0] * 9, p[0][2] * 7, 0], stoneDark, 6);
+}
+
+// ---- Boulders and stones round the feet, green energy arcs on the ground.
+module stones() {
+  for (b = STONES) chunk(b[0], b[1] * [1.2, 0.95, 1], [b[0][0] * 9, b[0][1] * 13, b[0][0] * 5], b[1] > 1.5 ? stoneDark : stone, 8);
+  mirror_x() for (k = [[[9.8, -1.6, 0], 4.2, 150, 170], [[9.8, -1.6, 0], 5.6, 300, 120]])
+    color(vein) translate(k[0]) rotate([0, 0, k[2]]) rotate_extrude(angle = k[3], $fn = 16) translate([k[1], 0.25]) scale([1, 0.45]) circle(0.38, $fn = 4);
+}
+
+// ---- Head: the base face with glowing green eyes in dark sockets and the wide green arrow.
+module head() {
+  blobN(HEAD, fur, 24);
+  oval([2.1, 1.9, 1.5], [0, -3.9, 24.4], furLight, 16);   // muzzle
+  oval([1.6, 1.4, 0.9], [0, -3.6, 23.1], fur, 12);   // chin
+  oval([0.9, 0.55, 0.52], [0, -5.65, 25.3], ink, 12);   // nose
+  stroke([[0, -5.75, 24.9], [0, -5.45, 23.7]], 0.15, ink);
+  stroke([[-1.35, -4.85, 23.75], [-0.5, -5.35, 23.45], [0.5, -5.35, 23.5], [1.4, -4.9, 23.95]], 0.18, ink);
+  mirror_x() spike([0.75, -5.25, 23.6], [0.05, -0.1, -0.55], 0.2, 0.03, cream);   // fangs
+  mirror_x() {
+    leaf([3, 1, 1.7], [4.6, -1.4, 25.2], [0, 28, 25], cream);
+    leaf([2.4, 0.9, 1.3], [4.2, -2.2, 23.4], [0, 42, 20], cream);
+    leaf([0.85, 0.5, 1.7], [3.4, 0.2, 30.6], [0, 25, 0], fur);
+    eye(EYE, 0.9, iris = eyeGlow, sclera = socket, pupil = eyeGlow, yaw = 22, lid = 0.45, lid_tilt = 28, lid_c = fur,
+        slit = 0.4, squint = 0.2);
+    stroke([[0.9, -4.05, 27.9], [2.4, -3.8, 28.35], [3.6, -2.95, 28.8]], 0.2, ink);
+  }
+  color(mark) intersection() {
+    grownBlob(HEAD, 0.12);
+    rotate([90, 0, 0]) linear_extrude(12)
+      polygon([[0, 27.6], [-2.8, 29.5], [-1.3, 29.6], [-1.35, 34], [1.35, 34], [1.3, 29.6], [2.8, 29.5]]);
+  }
+  color(mark) intersection() {
+    grownBlob(HEAD, 0.12);
+    mirror([0, 1, 0]) rotate([90, 0, 0]) linear_extrude(12) polygon([[-1.1, 26.6], [1.1, 26.6], [1.3, 33], [-1.3, 33]]);
+  }
+}
+
+module maneHair() {
+  blobN(MANE, mane, 16);
+  for (l = LOCKS) lock(l[0], l[1], l[2], l[3], l[4], l[5] == 1 ? maneHi : mane);
+}
+module antlers() mirror_x() {
+  chain(ANTLER, ANTLER_R, antler);
+  limb([5.45, 0.2, 32.4], [7.3, -0.1, 33.6], 0.6, 0.15, antler);
+}
+
+module ravatar_earth() {
+  legs();
+  skirt();
+  torso();
+  arms();
+  tail();
+  stones();
+  head();
+  maneHair();
+  antlers();
+}
+
+ravatar_earth();
