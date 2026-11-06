@@ -1,86 +1,179 @@
-// Scraphog: a stocky boar armoured in cracked brown stone plates with dark grey grout between them, a ridge of stone
-// spikes and a cluster of violet crystals along its back, red eyes over a big pig snout and curved cream tusks.
+// Scraphog: a low, wide-stanced boar armoured in layered brown stone plates (a shell of rounded slabs with dark grout
+// between them), grey rubble under the shell's rim, tan stone spikes from the crown down the spine and a cluster of
+// violet crystals over the middle of the back, a big low head with a wide pig snout, small angry red eyes, pointed
+// ears, a big curved tusk and a small upper tusk on each side, and four splayed armoured legs on clawed hooves.
+//
+// Checklist (front sheet, 46 x 40):
+//   head   x -17..-1, z 12..30: plated crown and brow, eyes red almonds at (-6.1, 21) and the far one at (-14.3, 21),
+//          snout disc x -16..-9.5 z 13.8..18.4 with two slanted nostrils, mouth line z 13.5
+//   tusks  far big crescent x -23..-15.5 z 10..18.5 (tip up), far small x -18..-15.5 z 15..20.5; the near big one
+//          foreshortened to a U at x -8..-3 z 9.5..18.5
+//   ears   near x -3..0 z 25..30 (dark inside), far x -14.7..-11 z 26..30
+//   body   x -2..20, z 9..33: plates over the top and shoulder, grey rubble on the rear flank x 13..20 z 12..28
+//   spine  tan spikes at x -8 (z 35), -4 (38), 1..3 (40); crystals x 4..10 z 28..37; a dark spike at x 13 z 30
+//   legs   near front x -4..8 down to a 3-toed hoof at x 0 z 0; far front reaching out to x -18; near hind x 13..23
+//   back   a domed shell of big plates, rubble at the sides, the crystal cluster tall over the middle of the back
 include <lib.scad>
 
-grout = [0.3, 0.28, 0.28];
-rock = [0.6, 0.4, 0.25];
-rockHi = [0.74, 0.52, 0.34];
-rockDk = [0.46, 0.3, 0.2];
-crystal = [0.62, 0.42, 0.78];
-crystalHi = [0.82, 0.68, 0.95];
-tusk = [0.92, 0.84, 0.66];
-snout = [0.7, 0.48, 0.38];
-eyeC = [0.85, 0.12, 0.08];
+grout = [0.21, 0.17, 0.17];
+stoneD = [0.30, 0.22, 0.22];
+stoneG = [0.44, 0.37, 0.36];
+rockA = [0.60, 0.41, 0.33];
+rockB = [0.72, 0.45, 0.32];
+rockC = [0.49, 0.34, 0.28];
+rockT = [0.73, 0.54, 0.42];
+spikeC = [0.82, 0.65, 0.50];
+skin = [0.55, 0.37, 0.29];
+snoutC = [0.72, 0.45, 0.32];
+nostril = [0.15, 0.10, 0.09];
+tuskC = [0.88, 0.75, 0.60];
+crystalC = [0.60, 0.38, 0.60, NOGLOW];
+crystalDk = [0.40, 0.23, 0.42, NOGLOW];
+crystalHi = [0.85, 0.65, 0.88, NOGLOW];
+eyeRed = [0.82, 0.12, 0.08, NOGLOW];
+socket = [0.27, 0.17, 0.16];
 
-// Stone plates on an ellipsoid surface: centre c, radii r, list of [azimuth, elevation, size].
-module plates(c, r, list, th = 0.9) {
-  for (i = [0 : len(list) - 1]) {
-    t = list[i];
-    az = t[0]; el = t[1]; sz = t[2];
-    p = [c[0] + r[0] * cos(el) * cos(az), c[1] + r[1] * cos(el) * sin(az), c[2] + r[2] * sin(el)];
-    color(i % 3 == 0 ? rockHi : (i % 3 == 1 ? rock : rockDk))
-      translate(p) rotate([0, 0, az]) rotate([0, 90 - el, 0]) scale([sz, sz * 1.1, th]) sphere(1, $fn = 10);
+PLATES = [rockA, rockB, rockC, rockA, rockT];
+HEADPLATES = [rockA, rockB, rockT, rockA, rockC];
+function rnd(s) = rands(0, 1, 1, s)[0];
+function sdir(a, e) = [cos(e) * cos(a), cos(e) * sin(a), sin(e)];
+
+// A pyramid from the origin through the cell az a0..a1, elevation e0..e1 (unit-sphere space, out to radius 3).
+module cellWedge(a0, a1, e0, e1) {
+  polyhedron([[0, 0, 0], 3 * sdir(a0, e0), 3 * sdir(a1, e0), 3 * sdir(a1, e1), 3 * sdir(a0, e1)],
+    [[0, 1, 2], [0, 2, 3], [0, 3, 4], [0, 4, 1], [1, 4, 3, 2]]);
+}
+// Shingled stone plates on the ellipsoid (c, r): rows = [[e0, e1, columns, az offset, grow]]. Each plate is the cell
+// of a slightly bigger ellipsoid whose centre is pushed up the slope, so its lower edge stands proud of the row below
+// (layered like shingles); `skip(az, e)` leaves a cell out. Grout shows in the gaps.
+module shell(c, r, rows, seed = 1, gap = 3.2, tilt = 0.08, fn = 30, pal = PLATES) {
+  for (k = [0 : len(rows) - 1]) {
+    row = rows[k];
+    n = row[2];
+    span = 360 / n;
+    for (j = [0 : n - 1]) {
+      a0 = row[3] + j * span + (j == 0 ? 0 : 0.22 * span * (rnd(seed * 31 + k * 7 + j) - 0.5));
+      a1 = row[3] + (j + 1) * span + (j == n - 1 ? 0 : 0.22 * span * (rnd(seed * 31 + k * 7 + j + 1) - 0.5));
+      em = (row[0] + row[1]) / 2;
+      am = (a0 + a1) / 2;
+      s = seed * 101 + k * 17 + j;
+      if (!_skip(c, r, am, em)) {
+        g = row[4] + 0.05 * rnd(s);
+        up = [-sin(em) * cos(am), -sin(em) * sin(am), cos(em)];
+        side = [-sin(am), cos(am), 0];
+        off = -tilt * (0.5 + rnd(s + 5)) * up + 0.08 * (rnd(s + 7) - 0.5) * side;
+        color(pal[floor(rnd(s + 3) * (len(pal) - 0.01))]) translate(c) scale(r) intersection() {
+          translate(off) sphere(1 + g, $fn = fn);
+          cellWedge(a0 + gap / 2, a1 - gap / 2, row[0] + gap / 2, row[1] - gap / 2);
+        }
+      }
+    }
   }
 }
-// A hexagonal crystal shard from p along d.
+// Cells to leave out, per surface (the body's underside between the legs, the head's face).
+function _skip(c, r, a, e) = c == HC ? (e < 14 && (a > 228 && a < 312)) || e < -12 : e < -20 && !((a > 50 && a < 130) || (a > 222 && a < 318));
+
+// A hexagonal crystal shard from p along d, radius r: violet with a pale tip.
 module crystal(p, d, r) {
   l = norm(d);
   translate(p) rotate(_dir_rot(d)) {
-    color(crystal) cylinder(h = l * 0.75, r = r, $fn = 6);
-    color(crystalHi) translate([0, 0, l * 0.75]) cylinder(h = l * 0.25, r1 = r, r2 = 0.05, $fn = 6);
+    color(crystalC) cylinder(h = l * 0.72, r = r, $fn = 6);
+    color(crystalHi) translate([0, 0, l * 0.72]) cylinder(h = l * 0.28, r1 = r, r2 = 0.08, $fn = 6);
   }
 }
+// An armour sleeve along a leg segment: a faceted stone cylinder over the part t0..t1 (0..1) of p1 -> p2, radius r,
+// narrowing to r * k at its lower end.
+module band(p1, p2, t0, t1, r, k, c) {
+  d = p2 - p1;
+  color(c) translate(p1 + d * t0) rotate(_dir_rot(d)) cylinder(h = norm(d) * (t1 - t0), r1 = r, r2 = r * k, $fn = 9);
+}
 
-// Body: a barrel on short legs, grey grout under the stone plates.
-bc = [0, 1, 13];
-br = [8.5, 11.5, 8];
-ell(br, bc, grout);
-plates(bc, br, [for (el = [-30, -5, 20, 45, 70], k = [0 : 11]) [k * 30 + (el % 30) + 8, el, el > 60 ? 2.6 : 2.9]], 1.3);
+// A faceted rubble stone (low-poly so it reads as broken rock, not a ball).
+module rubble(r, p, c, a = 0) { color(c) translate(p) rotate([0, 0, p[1] > 20 ? 30 : 0]) scale(r) rotate([a * 0.6, a, a * 1.7]) sphere(1, $fn = 7); }
 
-// Back: stone spikes down the spine, violet crystals clustered over the shoulders and middle.
-for (i = [0 : 5]) spike([0, -6 + i * 3.4, 20], [0, 1, 4.5 - abs(i - 2) * 0.5], 1.8, 0.1, i % 2 == 0 ? rockDk : rock);
-mirror_x() for (i = [0 : 3]) spike([3.6, -4 + i * 4, 19.4], [1.2, 0.8, 3.2], 1.4, 0.1, rockDk);
-crystal([0, -1, 19], [0.5, 0.5, 9], 1.2);
-crystal([1.6, 0.5, 19], [2.2, 0.8, 7], 1.0);
-crystal([-1.5, 1.5, 19], [-2, 1, 7.5], 1.0);
-crystal([0.8, 3.5, 19], [1, 1.5, 6], 0.9);
-crystal([-0.8, -3.5, 19], [-1.2, -0.5, 6], 0.9);
-crystal([2.5, -2.5, 18.5], [2.5, -0.5, 4.5], 0.8);
-crystal([-2.6, 4.5, 18.5], [-2.2, 1, 5], 0.8);
+// ---- Body: a long, low domed barrel of grout under a shell of shingled plates.
+BC = [0, 8.5, 18.8];
+BR = [12, 14.6, 11];
+ell(BR, BC, grout);
+shell(BC, BR, [[-40, -14, 9, 0, 0.05], [-14, 12, 9, 15, 0.07], [12, 38, 8, 5, 0.09], [38, 64, 6, 25, 0.1], [64, 86, 4, 0, 0.11]], 1);
+// Grey rubble under the shell's rim: the rear flanks and the shoulders' undersides.
+mirror_x() for (s = [[[2, 3.6, 3.2], [10.6, 15.5, 15.4], stoneD, 20], [[1.8, 3.2, 3], [10.2, 19.8, 18], stoneG, 50],
+                     [[1.8, 3, 2.8], [8.6, 23, 20.5], stoneD, 80], [[1.8, 3.2, 2.8], [11.6, 10.5, 16.2], stoneG, 35],
+                     [[1.8, 3, 2.6], [11, 3, 13.4], stoneD, 65], [[1.6, 2.6, 2.4], [11.8, 6.8, 13.6], stoneG, 10]])
+  rubble(s[0], s[1], s[2], s[3]);
 
-// Head: a broad plated boar head with a big snout, red eyes under heavy brows, pointed ears.
-hc = [0, -11, 13.5];
-ell([6.4, 5.6, 5.6], hc, grout);
-plates(hc, [6.4, 5.6, 5.6], [for (el = [10, 40, 70], k = [0 : 9]) let(az = k * 36 + el)
-  if (el > 30 || abs(((az - 270 + 720) % 360) - 180) < 120) [az, el, 2.5]], 1.2);
-color(rock) translate([0, -14, 13]) scale([5, 3, 4.2]) sphere(1, $fn = 22);
-// Snout disc with nostrils.
-color(snout) translate([0, -17.2, 11.6]) rotate([90, 0, 0]) scale([3.2, 2.6, 1]) cylinder(h = 2.6, r = 1, center = true, $fn = 20);
-mirror_x() color([0.25, 0.14, 0.1]) translate([1.2, -18.6, 11.6]) scale([0.6, 0.3, 0.8]) sphere(1, $fn = 10);
+// ---- Neck: the head hangs low in front of the shoulders.
+ell([7.5, 7, 6.5], [0, -6, 20.5], grout);
+shell([0, -6, 20.5], [7.5, 7, 6.5], [[10, 40, 7, 10, 0.1], [40, 75, 5, 0, 0.12]], 3);
+
+// ---- Head: big, broad and low, plated over the crown and brow.
+HC = [0, -15.5, 22];
+HR = [9, 8.6, 7.6];
+ell(HR, HC, skin);
+shell(HC, HR, [[-12, 14, 9, 0, 0.06], [14, 40, 8, 4, 0.08], [40, 64, 6, 20, 0.1], [64, 86, 4, 45, 0.11]], 2, gap = 4, pal = HEADPLATES);
+// The face below the brow: a broad muzzle sloping to the snout.
+blob([[[6.6, 3, 5], [0, -20.6, 19]], [[5.2, 2.6, 3.8], [0, -23.6, 17.6]]], skin);
+// Snout: a wide disc facing forward with two slanted nostrils.
+color(snoutC) translate([0, -25.4, 17.4]) rotate([94, 0, 0]) scale([4.4, 3.2, 1]) cylinder(h = 2.4, r = 1, center = true, $fn = 28);
+mirror_x() color(nostril) translate([1.65, -26.6, 17.5]) rotate([0, 18, 0]) scale([0.6, 0.3, 1.35]) sphere(1, $fn = 12);
+// Lower jaw and mouth line.
+color(rockC) translate([0, -21.5, 14]) scale([5.2, 4.4, 2]) sphere(1, $fn = 18);
+color(nostril) translate([0, -22.3, 15.2]) scale([4.8, 3.4, 0.35]) sphere(1, $fn = 18);
+
 mirror_x() {
-  // Glowing red eyes on a dark socket, sunk under a heavy stone brow that slants down to the snout.
-  eye([3.1, -15.2, 15.2], 1.75, iris = [1, 0.18, 0.08, GLOW], pupil = [0.15, 0.02, 0.02], sclera = [0.2, 0.1, 0.08], yaw = 10,
-      flat = 0.55, shine = false, lid = 0.48, lid_tilt = 32, lid_c = rockDk, slit = 0.35);
-  color(rockDk) hull() {
-    translate([4.6, -14.4, 17.4]) scale([1.5, 1.4, 0.85]) sphere(1, $fn = 10);
-    translate([1.2, -16.4, 16.4]) scale([0.9, 1, 0.6]) sphere(1, $fn = 10);
+  // Eyes: small red almonds in a dark socket, hooded by an angry lid sloping down to the snout.
+  eye([5.4, -21.4, 22.8], 1.6, iris = eyeRed, pupil = [0.2, 0.03, 0.02], sclera = socket, yaw = 38, flat = 0.42,
+      shine = true, lid = 0.38, lid_tilt = 30, lid_c = stoneD, slit = 0.5);
+  // Heavy brow plate over each eye, slanting down towards the snout.
+  color(rockT) hull() {
+    translate([6.8, -19.4, 26]) scale([1.9, 1.5, 1]) sphere(1, $fn = 12);
+    translate([2.4, -22.4, 25]) scale([1.3, 1.2, 0.8]) sphere(1, $fn = 12);
   }
-  // Ears: pointed stone wedges.
-  color(rockHi) translate([5, -9.5, 18.6]) rotate([15, 30, 10]) scale([1.6, 1, 3]) sphere(1, $fn = 12);
-  // Tusks: from the jaw, curving out and up.
-  chain([[2.4, -16.6, 9.8], [4.6, -18.6, 8.6], [6.8, -19.4, 10.4], [7.4, -18.6, 13.4], [6.8, -17.2, 15.4]], [1.4, 1.3, 1, 0.6, 0.1], tusk);
-  // Lower jaw tusk stubs.
-  spike([1.6, -16.8, 9.4], [0.3, -0.4, 1.8], 0.4, 0.05, tusk);
-}
-color(rockDk) translate([0, -15.6, 9.6]) scale([3.6, 2.4, 1.4]) sphere(1, $fn = 16);
-
-// Legs: four stout plated legs with hooves.
-mirror_x() for (y = [-6, 8]) {
-  limb([5.5, y, 11], [6, y - 0.5, 2.5], 3, 2.6, grout);
-  plates([5.8, y, 7], [2.8, 2.8, 4.5], [for (el = [-40, -5, 30], k = [0 : 5]) [k * 60 + el, el, 2]], 0.7);
-  color(rockDk) translate([6, y - 1, 1.4]) scale([2.8, 3, 1.4]) sphere(1, $fn = 16);
-  for (a = [-20, 20]) color(grout) translate([6 + sin(a) * 1.5, y - 3.6, 1]) scale([0.9, 0.7, 1]) sphere(1, $fn = 8);
+  // Ears: pointed stone wedges with a dark inside, pricked up and out.
+  color(rockA) hull() {
+    translate([5.6, -12.5, 28.4]) scale([2.5, 1.6, 1.1]) sphere(1, $fn = 12);
+    translate([8.6, -13, 33]) sphere(0.25, $fn = 8);
+  }
+  color(stoneD) hull() {
+    translate([5.9, -14, 28.7]) scale([1.5, 0.5, 0.7]) sphere(1, $fn = 10);
+    translate([8.3, -13.3, 32.2]) sphere(0.15, $fn = 6);
+  }
+  // Big tusk: out of the jaw beside the snout, sweeping out and forward and curling up to a point.
+  chain([[3.8, -22, 16.4], [6.4, -23, 13.2], [9.8, -24, 12.8], [12.6, -25, 15], [13.6, -25.6, 18.6], [13, -25.4, 22.4]], [1.9, 1.85, 1.7, 1.4, 0.9, 0.2], tuskC);
+  // Small upper tusk: from the upper lip, up and out beside the snout.
+  chain([[3.8, -23.4, 17.4], [5.8, -24.8, 19.8], [7, -25.4, 22.8]], [0.95, 0.65, 0.1], tuskC);
 }
 
-// Short tail stub.
-chain([[0, 12, 15], [0, 14, 15.5], [0.8, 15, 14]], [1, 0.7, 0.3], rockDk);
+// ---- Spine: tan stone spikes from the crown to the shoulders, violet crystals over the middle of the back.
+for (s = [[[0, -16, 28.5], [0, 1, 8], 2.4], [[0, -9.5, 27.5], [0, 1, 10], 2.8], [[0, -3, 29], [0, 0.8, 11], 3],
+          [[0, 3, 29.6], [0, 0.8, 7], 2.1], [[0, 24, 24], [0, 1.6, 4], 1.5]])
+  spike(s[0], s[1], s[2], 0.1, spikeC);
+mirror_x() for (s = [[[2.6, -6, 27.5], [1, 0.3, 4.6], 1.5], [[3.2, 1, 29], [1.5, 0.4, 4.2], 1.3], [[8.6, 17, 25], [1.6, 1.2, 3.6], 1.3]])
+  spike(s[0], s[1], s[2], 0.1, s[0][1] > 10 ? stoneD : rockT);
+crystal([0, 8, 29.5], [0, 0.4, 9.5], 1.35);
+crystal([1.8, 6, 29.4], [1.6, -0.8, 7.5], 1.1);
+crystal([-1.6, 10.5, 29.4], [-1.8, 0.8, 8.6], 1.2);
+crystal([1.4, 12.5, 29], [1.6, 1.4, 7.2], 1.05);
+crystal([-1.2, 14.8, 28.4], [-0.8, 2.2, 6.4], 1.0);
+crystal([2.6, 9.5, 29.2], [3, 0, 5.4], 0.85);
+crystal([-2.8, 6.5, 29.2], [-3, -0.6, 5.2], 0.85);
+crystal([0.4, 17.5, 27.6], [0.4, 2.2, 5], 0.9);
+crystal([-3.4, 13.5, 28], [-2.6, 1, 4.2], 0.75);
+crystal([3.8, 14.5, 27.6], [2.6, 1.4, 4.2], 0.75);
+
+// ---- Legs: short, splayed wide, armoured in stone bands over dark stone, on three-toed grey hooves.
+LEGS = [[[8.5, -3, 12], [11.4, -9, 6.6], [12, -14, 2.6]], [[8.5, 18, 12], [12, 22, 6.8], [12.8, 23.8, 2.6]]];
+mirror_x() for (L = LEGS) {
+  hip = L[0]; knee = L[1]; ank = L[2];
+  chain([hip, knee, ank], [4.4, 3.6, 3], stoneD);
+  band(hip, knee, 0.08, 0.8, 5, 0.86, rockA);
+  band(knee, ank, 0.2, 0.86, 4, 0.86, rockB);
+  color(rockT) translate(knee + [0.5, -0.6, 0.2]) scale([4.4, 4.2, 3.4]) sphere(1, $fn = 9);
+  // Hoof and toes.
+  color(stoneG) translate(ank + [0, -0.6, -1.1]) scale([3.2, 3.4, 1.6]) sphere(1, $fn = 16);
+  for (a = [-28, 0, 28]) color(stoneD)
+    translate(ank + [sin(a) * 2.3, -3, -1.6]) rotate([0, 0, a]) scale([1, 1.8, 1]) sphere(1, $fn = 10);
+}
+
+// ---- Tail: a short stone stub at the rump.
+chain([[0, 24.5, 20], [0, 27, 20.6], [0.6, 28, 19.2]], [1.1, 0.8, 0.3], rockC);

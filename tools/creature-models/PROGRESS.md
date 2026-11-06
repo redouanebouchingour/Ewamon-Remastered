@@ -77,7 +77,7 @@ Committed: abysspark, abysspark_tenjin, acier, acier_majin (modelled from the 20
 aonred, archonosis, astaroth; ampmite, auroracle, bankaiser, berkest, blighthex, blizzraak, bloomsprite; bloomdrake, blossomsail, bogmaw, briarvaunt, chrysotox, clementar_majin; budwing, caldermole, cirrileap, coalette,
 darkyon, dunescale, embrock, fedoraith, fibrostis; flampling, florasage, frofloe, geoboxer, glaciarm;
 galeforth, glacifang, glimmereen, glimmereen_tenjin, grubolt, gustuff, hexroach; glacinid, hollowolf, hyoryu,
-hyoryu_majin, ignispectre, ironcarab; hollowmane, hollowmane_rage, katamute; lawlander, lawlander_tenjin, luxtrik; lumyth, mesadrake; magmolith, mantleaf, miscarmen; mismagmen, murkrat, murmink; moblaze, nebucloak; necrogeist, necrogeist_majin, noxmyth, pebfist; nettlewisp, pebblit; petraptor, raikitsune; pyrecap; raidori, raidori_tenjin; rambull, resilian, resilith, resilithorn; ravatar, ravatar_avatar; ripshell; rivetalon, shagtusk, rimetusk; rimeidol, roobrawler; ravatar_air, ravatar_earth.
+hyoryu_majin, ignispectre, ironcarab; hollowmane, hollowmane_rage, katamute; lawlander, lawlander_tenjin, luxtrik; lumyth, mesadrake; magmolith, mantleaf, miscarmen; mismagmen, murkrat, murmink; moblaze, nebucloak; necrogeist, necrogeist_majin, noxmyth, pebfist; nettlewisp, pebblit; petraptor, raikitsune; pyrecap; raidori, raidori_tenjin; rambull, resilian, resilith, resilithorn; ravatar, ravatar_avatar; ripshell; rivetalon, shagtusk, rimetusk; rimeidol, roobrawler; ravatar_air, ravatar_earth; scraphog, shalewing.
 Polish later: auroracle (tails smooth, sausage-like), ampmite (legs a bit stilt-like), chrysotox (strands read as flakes),
 briarvaunt (solid where the art is speckled and see-through), cirrileap (cloud reads as a pile of spheres),
 coalette (face a bit cute), darkyon (flame hem an even crown band), fibrostis (strands faceted, crystal-like), frofloe (tail a bit tube-like),
@@ -89,7 +89,7 @@ mismagmen (brim droops less), murkrat (smoke a smooth mass, not wisps), murmink 
 moblaze (flame tongues part into strokes, not one blaze), noxmyth (shadow strands thin), nettlewisp (tail tuft like a pinecone),
 pebblit (far fist reads as two balls), raikitsune (tails smooth vs ragged fur), pyrecap (smoke smooth vs ragged), raidori_tenjin (mane locks chunky), rambull (back wool locks like pebbles),
 resilithorn (legs tube-like, body turtle-round), ravatar (tail a slab vs bushy), shagtusk + rimetusk (backs snowier than the art), rimeidol (strands like stacked feathers),
-roobrawler (legs a bit tube-like), ravatar_air (cloud tail a flat slab).
+roobrawler (legs a bit tube-like), ravatar_air (cloud tail a flat slab), scraphog (shell a bit turtle-round).
 Note: the four ravatar relic forms import rigs/ravatar.mjs, whose API changed with this remodel; their committed
 rig GLBs are still the old ones and must be redone before any re-rig of them (in progress).
 Note (lawlander agent): lib.scad ppBack() seems to turn 150 deg where the back render needs 210 deg; back-sheet
