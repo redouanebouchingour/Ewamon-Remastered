@@ -1,21 +1,29 @@
-// Solpyre Tenjin's rig: Solpyre's (rigs/solpyre.mjs) in the ascended amber colours. The halo behind the crest rides
-// on the head; the floating sparks of light stay on the body. Numbers are scad/solpyre_tenjin.scad's.
+// Solpyre Tenjin's rig: Solpyre's (rigs/solpyre.mjs) in the ascended colours. The halo behind the crown rides on the
+// head; the floating sparks of light and the light veins stay on the body. Numbers are scad/solpyre_tenjin.scad's.
 import { solpyreRig } from './solpyre.mjs';
 import { near } from './lib/geo.mjs';
 
-const GOLD_HI = [1, 0.84, 0.35];
+const HALO = [0.98, 0.88, 0.62];
+const BEAD = [0.94, 0.58, 0.52];
+const SPARK = [0.99, 0.94, 0.81];
+const VEIN = [0.99, 0.84, 0.45];
+const HC = [-1.73, 3.6, 27.6];   // the halo's centre, F(0.3, 32.6, 3.6): a ring of radius 9.4 (x stretched to 10.2) in XZ
 
-// the halo (a gold ring of radius 6 to 6.8 round [0, 1.5, 31] in the XZ plane behind the head) rides the head; the
-// sparks of light floating out at the sides stay with the body (the veins are on the body anyway)
-const halo = (c, rgb) => {
-  if (!near(rgb, GOLD_HI, 0.03)) return null;
-  const r = Math.hypot(c[0], c[2] - 31);
-  if (Math.abs(c[1] - 1.5) < 0.6 && r > 5.6 && r < 7.2) return 'head';
-  return Math.abs(c[0]) > 5.5 ? 'body' : null;
+const tenjin = (c, rgb) => {
+  if (near(rgb, HALO, 0.02) || near(rgb, BEAD, 0.02)) {
+    const r = Math.hypot((c[0] - HC[0]) * (9.4 / 10.2), c[2] - HC[2]);
+    if (Math.abs(c[1] - HC[1]) < 0.6 && r > 8.7 && r < 10.1) return 'head';
+  }
+  if (near(rgb, SPARK, 0.015) || near(rgb, VEIN, 0.015)) return 'body';
+  return null;
 };
 
 export default solpyreRig({
-  body: [0.72, 0.32, 0.12],
-  talon: [0.42, 0.28, 0.18],
-  flames: [[1, 0.5, 0.12], [1, 0.72, 0.3], [1, 0.95, 0.75]],
-}, { extra: halo });
+  head: [0.84, 0.38, 0.14],
+  bodyRed: [0.75, 0.29, 0.16],
+  orange: [0.85, 0.42, 0.15],
+  tan: [0.8, 0.51, 0.3],
+  claw: [0.53, 0.3, 0.18],
+  flames: [[0.96, 0.71, 0.33], [0.97, 0.72, 0.34], [0.98, 0.9, 0.72], [0.9, 0.5, 0.16]],
+  scales: [[0.82, 0.36, 0.18], [0.55, 0.19, 0.15], [0.9, 0.52, 0.2]],
+}, { extra: tenjin });

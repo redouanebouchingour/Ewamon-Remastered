@@ -825,12 +825,12 @@
     },
     "solpyre": {
       "url": "solpyre.rig.glb",
-      "bytes": 232956,
+      "bytes": 219160,
       "rig": true
     },
     "solpyre_tenjin": {
       "url": "solpyre_tenjin.rig.glb",
-      "bytes": 264992,
+      "bytes": 229364,
       "rig": true
     },
     "sproutgrub": {
@@ -855,7 +855,7 @@
     },
     "sunjaw": {
       "url": "sunjaw.rig.glb",
-      "bytes": 259024,
+      "bytes": 227388,
       "rig": true
     },
     "thornback": {
