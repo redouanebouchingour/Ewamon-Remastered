@@ -1,76 +1,100 @@
 // Snapling's rig: a lizard on four legs (the quadruped template) whose head is a gaping flytrap: the upper jaw (trap)
-// and the lower jaw (jaw) hinge at the back of the head and snap shut on the bite. No eyes. The tail curls up over the
-// back into a star bud that turns. Numbers are scad/snapling.scad's.
+// and the lower jaw (jaw) hinge at the back of the head and snap shut on the bite. No eyes. The tail curls up the
+// creature's left side into a purple star bud that turns. Numbers are scad/snapling.scad's (remodelled 2026-11-06).
 import { K, TAU, merge, osc, rigDef, smooth, win } from './lib/anim.mjs';
-import { any, blob, chain, ell, limb, petal, pick } from './lib/biped.mjs';
-import { ellD, near, subFrame } from './lib/geo.mjs';
+import { any, blob, ell, limb, pick } from './lib/biped.mjs';
+import { ellD, fold, near, subFrame } from './lib/geo.mjs';
 import { legs, quadrupedClips } from './lib/quadruped.mjs';
 
-const HEAD = [0, -9, 15];
-const JR = [7, 8.5, 4.8];
-const UP = subFrame(HEAD, [-38, 0, 0]);
-const LO = subFrame(HEAD, [14, 0, 0]);
-const TAIL = [[0, 11, 11], [2, 16, 11], [4, 20, 15], [4.5, 20.5, 21], [3.5, 17, 25], [3, 13, 26.5], [3.5, 10.5, 29]];
-const TAIL_R = [3.2, 2.7, 2.3, 1.9, 1.6, 1.3, 1];
+// the head: two bowl jaws hinged at H, the head turned YAW towards the creature's right
+const H = [0, -7.5, 15.6];
+const YAW = 18;
+const UA = 50;
+const LA = 26;
+const RU = [8, 10, 8.8];
+const RL = [7.6, 9.2, 7.8];
+const F = 0.85;
+const UP = subFrame(H, [-UA, 0, -YAW]);
+const LO = subFrame(H, [LA, 0, -YAW]);
+const HEADF = subFrame(H, [0, 0, -YAW]);
+
+const TAIL = [[0, 12, 11], [4.2, 15, 10.9], [7.6, 17, 11.8], [10, 17.8, 13.4], [11, 18, 15.6], [11.3, 17.6, 17.8], [11, 17, 19.8],
+  [10.2, 16, 21.8], [8.8, 15, 23.4], [7.4, 14, 24.6], [6, 13, 25.5], [5, 12.4, 26.6], [4.6, 12, 28]];
+const TAIL_R = [4, 3.7, 3.4, 3.25, 3.1, 2.9, 2.7, 2.45, 2.2, 1.95, 1.7, 1.5, 1.3];
 const tail = ['tail1', 'tail2', 'tail3', 'tail4', 'tail5'];
-const BUD = [3.5, 10, 30.4];
-const BUDS = [[0.35, 0.18, 0.45], [0.55, 0.35, 0.68]];
-const SKIN_HI = [0.66, 0.9, 0.3];
-const SPORES = [[8, 7, 34], [1, 9, 34.5], [9, 11, 28]];
-const sin = (a) => Math.sin((a * Math.PI) / 180);
+// which tail joint each capsule segment (TAIL[i] -> TAIL[i + 1]) belongs to, and where each joint pivots
+const SEG = [0, 0, 1, 1, 2, 2, 3, 3, 3, 4, 4, 4];
+const PIV = [0, 2, 4, 6, 9];
+// the bud: the art's star outline as a plate in the picture plane 8 units back, centred on sheet (11.8, 29.9)
+const BUD = [6.2, 12.8, 29.9];
+const BUDS = [[0.38, 0.24, 0.46], [0.6, 0.45, 0.7]];
 
 const joints = [
   { name: 'root', at: [0, 1, 0] },
-  { name: 'legFL', parent: 'root', at: [4.2, -3, 11] },
-  { name: 'legFR', parent: 'root', at: [-4.2, -3, 11] },
-  { name: 'legBL', parent: 'root', at: [4.6, 7.5, 10] },
-  { name: 'legBR', parent: 'root', at: [-4.6, 7.5, 10] },
-  { name: 'body', parent: 'root', at: [0, 2, 10] },
-  { name: 'head', parent: 'body', at: [0, -4.5, 13.5] },
-  { name: 'trap', parent: 'head', at: HEAD },
-  { name: 'jaw', parent: 'head', at: HEAD },
-  ...tail.map((name, i) => ({ name, parent: i ? tail[i - 1] : 'body', at: TAIL[i] })),
-  { name: 'bud', parent: 'tail5', at: BUD, rot: [-25, 0, 20] },
+  { name: 'legFL', parent: 'root', at: [4.8, -0.5, 9] },
+  { name: 'legFR', parent: 'root', at: [-4.8, -0.5, 9] },
+  { name: 'legBL', parent: 'root', at: [5, 12.2, 8.6] },
+  { name: 'legBR', parent: 'root', at: [-5, 12.2, 8.6] },
+  { name: 'body', parent: 'root', at: [0, 4, 11] },
+  { name: 'head', parent: 'body', at: [0, 0, 14] },
+  { name: 'trap', parent: 'head', at: H, rot: [0, 0, -YAW] },
+  { name: 'jaw', parent: 'head', at: H, rot: [0, 0, -YAW] },
+  ...tail.map((name, i) => ({ name, parent: i ? tail[i - 1] : 'body', at: TAIL[PIV[i]] })),
+  { name: 'bud', parent: 'tail5', at: BUD, rot: [90, 0, 30] },
 ];
 
-// a jaw shell: the centroid in the jaw's frame, the bowl's centre [0, -0.75 JR.y, 0]; only the jaw's own half counts
+// a jaw shell (bowl centre [0, -F ry, 0] in the jaw's frame, the rim on z = 0, the bowl up): only its own half counts,
+// with room for the fangs (2.6 long) that hang off the rim into the mouth
 const jawD = (frame, r, upper) => (c) => {
   const l = frame.local(c);
-  const p = [l[0], l[1] + JR[1] * 0.75, l[2]];
-  if (upper ? p[2] < -2.8 : p[2] > 2.6) return 9;
-  return ellD(p, r);
+  const z = upper ? l[2] : -l[2];
+  if (z < -3.2) return 9;
+  return ellD([l[0], l[1] + F * r[1], Math.max(0, z)], r);
+};
+// a leaf: hull of a stem ball, a flat ellipsoid at 0.42 of its length and the tip, at p turned by r
+const leafD = (p, r, len, w, t) => (c) => {
+  const q = subFrame(p, r).local(c);
+  return Math.min(ellD(q, [w / 2, t / 2 + 0.3, len * 0.3], [0, 0, len * 0.42]), ellD(q, [w / 4, t / 2 + 0.3, len * 0.45], [0, 0, len * 0.55]));
+};
+const footD = (p, yaw) => {
+  const f = subFrame(p, [0, 0, yaw]);
+  return (c) => {
+    const l = f.local(c);
+    return Math.min(ellD(l, [2.6, 2.6, 1.2]), ellD(l, [4, 2.6, 1.3], [0, -3, -0.2]));
+  };
 };
 
-const legF = any(limb([4.2, -3, 11], [7, -4.5, 6], 2.4, 1.8), limb([7, -4.5, 6], [7.4, -5.5, 1.2], 1.8, 1.5),
-  blob([[[1.8, 2.2, 1], [7.4, -6, 1]], [[1.4, 1.2, 1], [7.4, -4.8, 1.3]]]), ell([2.8, 1.4, 0.8], [7.4, -7.6, 0.8]));
-const legB = any(ell([3, 4, 4.4], [4.6, 7.5, 10]), limb([5.2, 8.5, 8], [6.4, 7, 1.2], 2, 1.5),
-  blob([[[1.8, 2.2, 1], [6.4, 6, 1]], [[1.4, 1.2, 1], [6.4, 7.2, 1.3]]]), ell([2.8, 1.4, 0.8], [6.4, 4.4, 0.8]));
+const legF = any(ell([3.4, 3.8, 3.8], [4.8, -0.5, 9]), limb([5, -0.5, 8.5], [8.6, -2.2, 6.2], 2.9, 2.5),
+  limb([8.6, -2.2, 6.2], [8.8, -3.6, 1.8], 2.5, 2.0), footD([9, -4.6, 1.2], -25));
+const legB = any(ell([3.8, 5, 4.6], [5, 12.2, 8.6]), limb([5.6, 11.6, 7.8], [8.2, 10.8, 6.4], 2.9, 2.6),
+  limb([8.2, 10.8, 6.4], [8.4, 12.8, 1.8], 2.6, 2.0), footD([8.4, 13.4, 1.2], -10));
+// the big leaves ride on the neck (head), the small ones lie along the shoulders (body)
+const leaves = leafD([4, -1.2, 17], [-24, 26, 35], 12, 8.4, 1.4);
+const smallLeaves = leafD([5.4, 1.4, 12.6], [-50, 115, 30], 6.5, 4.4, 1.1);
+// the body: the two hull ellipsoids and the middle stand-in the scale patches sit on
+const BODY = [[[6.2, 5.6, 6.4], [0, 1, 12.2]], [[5.9, 6, 5.9], [0, 5.25, 11.8]], [[5.6, 6.6, 5.4], [0, 9.5, 11.4]]];
 const parts = [
-  ['body', any(blob([[[5.4, 6, 5], [0, -2, 12]], [[5.2, 6, 4.6], [0, 6, 11.4]]]), ell([3.6, 7.5, 2.4], [0, 2, 8]),
-    ...[[2.6, -1, 16.2], [-2.6, -1, 16.2], [0, 3, 16.7], [2.6, 7, 15.4], [-2.6, 7, 15.4]].map((p) => ell([1.6, 2, 0.6], p)))],
-  ['head', any(limb([0, -8, 15], [0, -4, 13], 4.2, 4.6), ell([3, 1.4, 3], [0, -11.4, 15.4]),
-    ...[[1, 25], [-1, 25], [1, -10], [-1, -10]].map(([s, a]) => petal([4.2, 1, 2.2], [s * 5, -5.5, 14 + a * 0.05], [0, s * -a, s * 50])),
-    ...[1, -1].map((s) => petal([3.4, 0.9, 1.8], [s * 3.8, -4.4, 18.2], [0, s * -40, s * 30])))],
-  ['trap', jawD(UP, JR, true)],
-  ['jaw', jawD(LO, JR.map((v) => v * 0.95), false)],
+  ['body', any(blob(BODY), (c) => smallLeaves(fold(c)))],
+  ['head', any(limb([0, -2.6, 15.2], [0, 1, 12.8], 5.4, 6), (c) => leaves(fold(c)),
+    (c) => ellD(HEADF.local(c), [5.6, 2.6, 5.4], [0, 1.2, 0.2]), (c) => ellD(HEADF.local(c), [3.4, 1.4, 3], [0, -0.9, 0.4]))],
+  ['trap', jawD(UP, RU, true)],
+  ['jaw', jawD(LO, RL, false)],
   ['legFL', (c) => (c[0] > 0 ? legF(c) : 9)], ['legFR', (c) => (c[0] < 0 ? legF([-c[0], c[1], c[2]]) : 9)],
   ['legBL', (c) => (c[0] > 0 ? legB(c) : 9)], ['legBR', (c) => (c[0] < 0 ? legB([-c[0], c[1], c[2]]) : 9)],
-  ...chain(tail, TAIL, TAIL_R),
+  ...SEG.map((j, i) => [tail[j], limb(TAIL[i], TAIL[i + 1], TAIL_R[i], TAIL_R[i + 1])]),
 ];
 
 function assign(c, rgb) {
   if (near(rgb, BUDS[0]) || near(rgb, BUDS[1])) return 'bud';
-  if (near(rgb, SKIN_HI) && SPORES.some((p) => Math.hypot(c[0] - p[0], c[1] - p[1], c[2] - p[2]) < 0.6)) return 'bud';
-  if (near(rgb, SKIN_HI) && Math.hypot(c[0] - BUD[0], c[1] - BUD[1], c[2] - BUD[2]) < 4) return 'bud';
   return pick(c, parts);
 }
 
-// the trap's own motion: open wider (< 0 on both jaws widens), shut (trap 38, jaw -14 closes the lips)
-const trap = (open, shut = 0) => ({ trap: { r: [-8 * open + 38 * shut, 0, 0] }, jaw: { r: [8 * open - 14 * shut, 0, 0] } });
+// the trap's own motion: open wider (< 0 on both jaws widens), shut (trap 48, jaw -24 brings the lips together)
+const trap = (open, shut = 0) => ({ trap: { r: [-8 * open + 48 * shut, 0, 0] }, jaw: { r: [8 * open - 24 * shut, 0, 0] } });
 const bud = (u, turns = 1) => ({ bud: { r: [0, 0, 72 * turns * u], s: 1 + 0.05 * osc(u, 2) } });
 
 const base = quadrupedClips({
-  tail, hipH: 10.5, stride: 18,
+  tail, hipH: 8.6, stride: 18,
   add: {
     idle: (t, u) => ({ ...trap(0.5 + 0.5 * osc(u, 2)), ...bud(u, 5) }),
     walk: (t, u) => ({ ...trap(0.3 * osc(u, 2)), ...bud(u, 0) }),
