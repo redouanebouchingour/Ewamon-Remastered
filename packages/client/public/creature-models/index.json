@@ -700,12 +700,12 @@
     },
     "ravatar_fire": {
       "url": "ravatar_fire.rig.glb",
-      "bytes": 249812,
+      "bytes": 258772,
       "rig": true
     },
     "ravatar_water": {
       "url": "ravatar_water.rig.glb",
-      "bytes": 265536,
+      "bytes": 257044,
       "rig": true
     },
     "ravenmourne": {
