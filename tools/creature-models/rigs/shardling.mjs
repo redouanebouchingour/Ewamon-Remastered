@@ -1,99 +1,86 @@
-// Shardling's rig: a stocky crystal golem with a big round head, the right fist gripping a prism dagger (raised) and
-// the left one hanging. Its glowing eyes are joints (eyeL / eyeR) that squash to blink; the rainbow aura behind it
-// (`aura`, off the body) breathes and the floating chips (`chips`, off the root) orbit. Numbers are
-// scad/shardling.scad's; no lib.scad eye(), so no eyeKit.
-import { K, TAU, both, merge, osc, rigDef, win } from './lib/anim.mjs';
+// Shardling's rig: a stocky crystal golem with a big round paneled head, the far (-X, R) fist raised in front gripping
+// a prism sword, the near (+X, L) arm hanging with a heavy gauntlet fist. The eyes are painted flush on the face; they
+// are their own joints (eyeL / eyeR, with the brows) and blink with eyeKit lids set just under the face surface
+// (`squash`). No aura (the art's aura is not modelled). Numbers are scad/shardling.scad's.
+import { K, TAU, both, merge, rigDef, win } from './lib/anim.mjs';
 import { any, bipedClips, ell, limb, mx, pair, pick } from './lib/biped.mjs';
-import { ellD, isAny, near } from './lib/geo.mjs';
+import { blinks, eyeKit, mirrorEye } from './lib/face.mjs';
+import { isAny, near } from './lib/geo.mjs';
 
-const RAINBOW = [[1, 0.45, 0.45], [1, 0.7, 0.35], [1, 0.92, 0.4], [0.5, 0.9, 0.5], [0.45, 0.75, 1], [0.7, 0.55, 1]];
-const GLOW = [0.7, 0.95, 1];
-const H = [0, -1.5, 28];
-const at = (d) => [H[0] + d[0], H[1] + d[1], H[2] + d[2]];
-// the dagger: rotate([0, -12, 0]) of a 13.4 long prism from [-13.6, -6, 15], pommel 1.6 below
-const SHARD = limb([-13.6 + 0.33, -6, 15 - 1.56], [-13.6 - 0.208 * 13.4, -6, 15 + 0.978 * 13.4], 1.8, 1.2);
+const SKIN = [0.84, 0.91, 0.97];
+const EYE_COLS = [[0.18, 0.42, 0.72], [0.5, 0.9, 1], [0.74, 0.97, 1], [0.1, 0.13, 0.2], [1, 1, 1]];
+const H = [0, 0.3, 23.6];
+// the near eye's painted centre on the head, and the lid's centre a little inside along the head's normal there
+const E = [3.7, -6.04, 22.6];
+const EL = [3.5, -5.59, 22.68];
+const SW0 = [-11.2, -4.4, 8.4];
+const SW1 = [-18, -6, 23.8];
+
+const eyeL = { side: 'L', at: EL, size: 1.6, yaw: 24, squash: 0.8 };
+const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: SKIN });
 
 const joints = [
   { name: 'root', at: [0, 0, 0] },
-  ...pair('leg*', 'root', [5, 0, 6]),
-  { name: 'body', parent: 'root', at: [0, 0, 8] },
-  { name: 'head', parent: 'body', at: [0, -1.5, 23] },
-  ...pair('eye*', 'head', at([2.6, -7.5, 0.8])),
-  { name: 'aura', parent: 'body', at: [0, 5.5, 23] },
-  { name: 'chips', parent: 'root', at: [0, 0, 20] },
-  ...pair('arm*', 'body', [10, 0, 20]),
-  { name: 'foreL', parent: 'armL', at: [11.6, -0.3, 18.5] },
-  { name: 'handL', parent: 'foreL', at: [12.3, -1, 12.2] },
-  { name: 'foreR', parent: 'armR', at: [-11.8, -0.6, 19.4] },
-  { name: 'handR', parent: 'foreR', at: [-13, -2.6, 15] },
+  ...pair('leg*', 'root', [5.6, 0.4, 7.2]),
+  { name: 'body', parent: 'root', at: [0, 0, 6] },
+  { name: 'head', parent: 'body', at: [0, 0.3, 18.5] },
+  ...pair('eye*', 'head', E),
+  ...pair('arm*', 'body', [11, 0.3, 18.6]),
+  { name: 'foreL', parent: 'armL', at: [12.4, 0.5, 14.2] },
+  { name: 'foreR', parent: 'armR', at: [-12.4, 0.3, 14.6] },
+  { name: 'handR', parent: 'foreR', at: [-11.9, -4.2, 12.4] },
+  ...face.joints,
 ];
 
+const knuckles = [0, 1, 2].map((k) => ell([1.05, 1.1, 1], [12.6 + k * 1.3, -2.7 + k * 0.3, 7.6]));
+const fingers = [0, 1, 2].map((k) => ell([1.15, 0.9, 0.7], [-11.2 + k * 0.15, -6.5, 10.9 + k * 1.3]));
 const parts = [
-  ['body', any(ell([10.4, 8.6, 8.6], [0, 0, 14.5]), ell([8, 3, 6], [0, -6.2, 14.5]))],
-  ['head', any(ell([8, 7.6, 7.2], H), ell([6.4, 3, 4.6], at([0, -5.4, 0.6])), mx(ell([2.2, 0.8, 0.6], at([2.6, -7.6, 2.6]))))],
-  ['arm*', ell([4.4, 4.4, 4], [10, 0, 20])],
-  ['foreL', ell([3.4, 3.4, 4], [12, -0.5, 15])],
-  ['handL', ell([3.8, 3.8, 3.6], [12.6, -1.5, 9.5])],
-  ['foreR', ell([3.4, 3.4, 3.8], [-12.4, -1, 16])],
-  ['handR', any(ell([3.4, 3.4, 3.2], [-13.4, -4, 13.5]), SHARD)],
-  ['leg*', any(ell([3.6, 3.6, 3.4], [5, 0, 6]), ell([3.8, 4.8, 2.2], [5.4, -1, 2.2]))],
+  ['body', ell([10, 8.2, 7.6], [0, 0.6, 13.6])],
+  ['head', ell([8.2, 7.2, 6.7], H)],
+  ['arm*', mx(ell([3.9, 4.1, 3.6], [11, 0.3, 18.6]))],
+  ['armL', ell([2.8, 3, 3.2], [11.8, 0.6, 14.6])],
+  ['armR', ell([2.8, 3, 3.1], [-12.4, 0.4, 15])],
+  ['foreL', any(ell([3.5, 3.7, 4.8], [14.2, 0, 11.6]), ...knuckles)],
+  ['foreR', ell([2.8, 3.1, 2.8], [-12.6, -2, 13.2])],
+  ['handR', any(ell([3.3, 3, 3.4], [-11.9, -4.2, 12.4]), ...fingers, limb(SW0, SW1, 2.4, 1.4))],
+  ['leg*', mx(any(ell([3.4, 3.4, 2.8], [5.6, 0.4, 7.2]), ell([3.2, 3.3, 2.7], [7.6, -0.1, 4.4]), limb([8.4, -2, 1.3], [8.4, 0.8, 1.3], 2.6, 2.6)))],
 ];
 
 function assign(c, rgb) {
-  if (near(rgb, GLOW) || (near(rgb, [1, 1, 1]) && c[2] > 26)) return c[0] >= 0 ? 'eyeL' : 'eyeR';
-  if (isAny(rgb, RAINBOW)) {
-    if (SHARD(c) < 1.4) return 'handR';
-    if (Math.hypot(c[0], c[2] - 20) > 13.2) return 'chips';
-    if (ellD(c, [8, 7.6, 7.2], H) < 1.06) return 'head';
-    if (ellD(c, [10.4, 8.6, 8.6], [0, 0, 14.5]) < 1.12) return 'body';
-    return 'aura';
-  }
+  const de = Math.hypot(Math.abs(c[0]) - E[0], c[1] - E[1], c[2] - E[2]);
+  // the brow shares the mouth's ink: only above z 21.6 is it a brow
+  const eyeCol = isAny(rgb, EYE_COLS.slice(0, 3)) || near(rgb, [1, 1, 1], 0.02);
+  if (de < 2.9 && ((eyeCol && c[2] > 20.4) || (near(rgb, EYE_COLS[3]) && c[2] > 21.6))) return c[0] >= 0 ? 'eyeL' : 'eyeR';
   return pick(c, parts);
 }
 
-// the eyes blink by squashing; the aura breathes and the chips orbit a whole number of turns per loop
-const eyes = (k) => both('eye', { s: [1, 1, Math.max(0.12, k)] });
-const fx = (u, turns, k = 1) => ({ aura: { s: 1 + 0.06 * k * osc(u, Math.max(1, Math.round(turns * 2))), r: [0, 4 * k * osc(u, 1), 0] }, chips: { r: [0, 360 * turns * u, 0] } });
-const blinkAt = (u, a) => 1 - Math.max(0, 1 - Math.abs(u - a) / 0.03);
 const base = bipedClips({
-  hipH: 6, stride: 16, armSwing: 14, hopScale: 0.8, hopH: 2.5, droop: 0.5,
-  // a stab with the prism dagger
+  face, hipH: 6, stride: 16, armSwing: 14, hopScale: 0.8, hopH: 2.5, droop: 0.5,
+  // a thrust with the prism sword
   punch: { arm: [-75, 0, 0], fore: [-10, 0, 0] },
   cheer: { arm: [-6, -110, 0], fore: [0, 0, 0] },
-  add: {
-    idle: (t, u) => merge(fx(u, 1), eyes(blinkAt(u, 0.36) * blinkAt(u, 0.88))),
-    walk: (t, u) => fx(u, 0),
-    idle_look: (t, u) => merge(fx(u, 0), eyes(blinkAt(u, 0.32))),
-    windup: (t, u) => merge(fx(u, 0, 1.5), eyes(1 - 0.4 * u)),
-    lunge: (t, u) => merge(fx(u, 0, 2), eyes(0.6)),
-    hurt: (t, u) => merge(fx(u, 0, 2), eyes(u > 0.06 ? 0.15 : 1)),
-    recoil: (t, u) => eyes(1 - 0.85 * K(u, [[0, 0], [0.4, 1], [1, 0]])),
-    faint: (t, u) => merge({ aura: { s: 1 - 0.6 * win(u, 0.3, 1.5, 0.4) } }, eyes(1 - 0.88 * Math.min(1, u * 3))),
-    celebrate: (t, u) => merge(fx(u, 1, 2), eyes(1.15)),
-    enter: (t, u) => merge({ aura: { s: 0.3 + 0.7 * Math.min(1, u * 1.5) }, chips: { r: [0, 360 * u, 0] } }, eyes(u < 0.4 ? 0.12 : 1)),
-    exit: (t, u) => merge(fx(u, 0), eyes(u < 0.85 ? 0.5 : 0.12)),
-  },
 });
 
 const clips = {
   ...base,
 
-  // fidget: it flips the prism dagger round in its fist, catches it, and grins
+  // fidget: it flips the prism sword forward over its fist, catches it, and grins with its eyes shut happy
   idle_twirl: {
     seconds: 2.2,
     pose: (t, u) => {
       const up = win(u, 0.08, 0.85, 0.1);
+      const flip = K(u, [[0.2, 0], [0.6, 1]]);
       return merge({
         body: { r: [0, 0, -6 * up] },
         head: { r: [-4 * up, 6 * up, -12 * up] },
-        armR: { r: [-25 * up, 10 * up, 0] },
-        foreR: { r: [-20 * up, 0, 0] },
-        handR: { r: [0, 360 * K(u, [[0.18, 0], [0.62, 1]]), 0] },
-      }, fx(u, 0), eyes(blinkAt(u, 0.75)));
+        armR: { r: [-30 * up, 8 * up, 0] },
+        foreR: { r: [-25 * up, 0, 0] },
+        handR: { r: [-360 * flip, 0, 0] },
+      }, u > 0.66 && u < 0.84 ? face.pose('happy') : face.pose('open', blinks(u, [[0.9, 0.95]])));
     },
   },
 
-  // fidget: it puffs up and the aura flares wide, the chips race round, it gleams with its chin up
+  // fidget: it puffs up its chest, chin up, and lifts the sword to catch the light, a slow proud blink
   idle_gleam: {
     seconds: 2.4,
     pose: (t, u) => {
@@ -102,12 +89,13 @@ const clips = {
         body: { p: [0, 0, 0.3 * on], r: [-5 * on, 0, 0], s: [1 + 0.04 * on, 1 + 0.04 * on, 1] },
         head: { r: [-12 * on, 0, 8 * Math.sin(TAU * u) * on] },
         ...both('arm', { r: [0, -14 * on, 0] }),
-        aura: { s: 1 + 0.3 * on, r: [0, 10 * Math.sin(TAU * 2 * u) * on, 0] },
-        chips: { r: [0, 720 * u, 0] },
-        ...eyes(1 + 0.25 * on),
+        armR: { r: [-20 * on, 20 * on, 0] },
+        handR: { r: [0, 0, 25 * Math.sin(TAU * 2 * u) * on] },
+        ...face.pose('open', blinks(u, [[0.42, 0.56]])),
       };
     },
   },
 };
 
-export default rigDef({ joints, assign, clips });
+// the painted eyes are thin decals: keep their seams rigid, or the 3.5 cm blend smears them into the head
+export default rigDef({ joints, assign, clips, extras: face.extras, rigid: ['eyeL', 'eyeR'] });
