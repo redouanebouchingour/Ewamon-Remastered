@@ -1,60 +1,66 @@
-// Rimetusk's rig: a woolly mammoth on four pillar legs, a heap of glacier ice on the crown, a long trunk hanging to the
-// ground (a three-link chain passed as the template's mane) and huge curled tusks on the head. Numbers are
-// scad/rimetusk.scad's (the pre-sprite-pass model: re-rig when its new model lands).
+// Rimetusk's rig: a woolly mammoth on four pillar legs under a glacier of ice blocks (on the body), a long trunk
+// hanging between huge spiral tusks (a three-link chain passed as the template's mane), big ears. Numbers are
+// scad/rimetusk.scad's (the 2026-11-04 sprite-match model, Shagtusk's fur technique).
 // The template's sniff dips the head 24 deg, which would drive the trunk into the ground, so it is left out.
 import { K, TAU, merge, osc, rigDef, smooth, win } from './lib/anim.mjs';
-import { any, ell, limb, pick, spike } from './lib/biped.mjs';
+import { any, ell, limb, pick } from './lib/biped.mjs';
 import { blinks, eyeKit, mirrorEye } from './lib/face.mjs';
-import { chainHit, isAny, near } from './lib/geo.mjs';
+import { chainHit, ellD, fold, isAny, near } from './lib/geo.mjs';
 import { quadrupedClips } from './lib/quadruped.mjs';
 
-const FUR_DK = [0.35, 0.2, 0.1];
-const SNOW = [[0.76, 0.88, 0.96], [0.6, 0.82, 0.97], [0.4, 0.62, 0.88]];
-const NAIL = [0.8, 0.9, 0.96];
-const IVORY = [0.95, 0.9, 0.76];
+const FACE = [0.5, 0.34, 0.24];
+const ICE = [[0.82, 0.92, 0.92], [0.5, 0.7, 0.82], [0.62, 0.8, 0.88], [0.33, 0.5, 0.64]];
+const ICE_DK = [0.33, 0.5, 0.64];
+const IVORY = [0.93, 0.91, 0.81];
 
-const TRUNK = [[0, -16.6, 14], [0, -18.6, 9.5], [0, -19.4, 5.5], [0, -19.6, 2.6], [0, -21.4, 1.6], [0, -22.6, 2.8]];
-const TRUNK_R = [3.2, 2.7, 2.2, 1.8, 1.5, 1.2];
+const B = [[[0, -1, 20], [12.5, 10, 12.5]], [[0, 6, 18.5], [12.5, 9, 11.5]], [[0, 13, 15.5], [12, 10, 10.5]]];
+const H = [[0, -9.5, 22], [9.5, 8, 9]];
+const M = [[0, -13.5, 16.5], [5.6, 4.5, 5]];
+const TRUNK = [[0, -16.8, 19.5], [0, -17.9, 15.5], [0, -18.4, 12], [0, -18.6, 9], [0, -19, 6.6], [0, -20.4, 5.8]];
+const TRUNK_R = [3, 2.7, 2.4, 2.1, 1.8, 1.4];
 const trunk = ['trunk1', 'trunk2', 'trunk3'];
-const LEGS = [['F', -2.5], ['B', 11]];
+const LEGS = [['F', 7.6, -9.5], ['B', 7.6, 12.5]];
+const EAR = [9, -9.6, 25.6];
 
-const eyeL = { side: 'L', at: [3.8, -15.5, 19.6], size: 2.1, yaw: 8 };
-const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: FUR_DK });
+const eyeL = { side: 'L', at: [5, -15.9, 23], size: 2.4, yaw: 26, flat: 0.5 };
+const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: FACE });
 
 const joints = [
-  { name: 'root', at: [0, 4, 0] },
-  ...LEGS.flatMap(([k, y]) => [{ name: `leg${k}L`, parent: 'root', at: [6.4, y, 10] }, { name: `leg${k}R`, parent: 'root', at: [-6.4, y, 10] }]),
-  { name: 'body', parent: 'root', at: [0, 4, 11] },
-  { name: 'head', parent: 'body', at: [0, -7, 19] },
-  { name: 'earL', parent: 'head', at: [7.2, -9, 19] },
-  { name: 'earR', parent: 'head', at: [-7.2, -9, 19] },
-  ...trunk.map((name, i) => ({ name, parent: i === 0 ? 'head' : trunk[i - 1], at: TRUNK[[0, 1, 2][i]] })),
-  { name: 'tail1', parent: 'body', at: [0, 17, 15] },
+  { name: 'root', at: [0, 2, 0] },
+  ...LEGS.flatMap(([k, x, y]) => [{ name: `leg${k}L`, parent: 'root', at: [x, y, 10.5] }, { name: `leg${k}R`, parent: 'root', at: [-x, y, 10.5] }]),
+  { name: 'body', parent: 'root', at: [0, 3, 12] },
+  { name: 'head', parent: 'body', at: [0, -7, 20] },
+  { name: 'earL', parent: 'head', at: [7.8, -9.6, 25.6] },
+  { name: 'earR', parent: 'head', at: [-7.8, -9.6, 25.6] },
+  ...trunk.map((name, i) => ({ name, parent: i === 0 ? 'head' : trunk[i - 1], at: TRUNK[i] })),
+  { name: 'tail1', parent: 'body', at: [0, 20, 18.5] },
   ...face.joints,
 ];
 
-const legT = (y) => any(limb([6.4, y, 10], [6.4, y, 2.4], 3.7, 3.5), ell([4.3, 4.3, 1.9], [6.4, y, 2.6]), ell([3, 1.2, 1], [6.4, y - 3.6, 0.9]));
+const grow = ([c, r], g) => ell(r.map((v) => v + g), c);
+const legT = (x, y) => any(limb([x, y, 10.5], [x, y, 4.6], 4.2, 4.4), ell([5.2, 5.2, 3], [x, y, 3]), ell([5.9, 5.9, 3.4], [x, y, 9.6]));
+const tuskT = ell([6.5, 5, 7.5], [12.2, -13.4, 15.4]);
 const parts = [
-  ...LEGS.map(([k, y]) => [`leg${k}*`, legT(y)]),
-  ['body', any(ell([10.5, 8.5, 10], [0, -1, 18.5]), ell([9.5, 7.5, 8], [0, 10, 14]), ell([10.4, 11, 5.5], [0, 4, 11]),
-    ell([12.2, 12.6, 7], [0, 4, 8]))],
-  ['head', any(ell([7.2, 6.5, 7.5], [0, -8.5, 24]), ell([6.2, 4.6, 6], [0, -13.5, 17.5]), ell([3.6, 2.8, 3.2], [0, -16.8, 13]))],
-  ['ear*', any(ell([1.8, 4.2, 5.8], [8, -7, 19]), limb([9, -7.2, 19.5], [9.6, -6.8, 13.4], 1.1))],
-  ['tail1', any(limb([0, 17, 15], [0, 19, 10.5], 1.1, 0.8), spike([0, 19, 10.5], [0, 1.4, -3], 1.2))],
+  ...LEGS.map(([k, x, y]) => [`leg${k}*`, legT(x, y)]),
+  ['body', any(...B.map((e) => grow(e, 1.4)), ell([9, 9, 7], [0, 3, 31]))],
+  ['head', any(grow(H, 1.3), grow(M, 0.5), tuskT)],
+  ['ear*', ell([2.6, 4.6, 5.2], EAR)],
+  ['tail1', any(limb([0, 20, 18.5], [0, 24, 13.5], 1.7, 1.2), limb([0, 24, 13.5], [0, 26.6, 9.6], 1.4, 0.3))],
 ];
-const legOf = (c) => `leg${c[1] < 4 ? 'F' : 'B'}${c[0] >= 0 ? 'L' : 'R'}`;
+const legOf = (c) => `leg${c[1] < 1.5 ? 'F' : 'B'}${c[0] >= 0 ? 'L' : 'R'}`;
 
 function assign(c, rgb) {
-  if (near(rgb, NAIL, 0.03) && c[2] < 2.5) return legOf(c);
-  if (near(rgb, IVORY, 0.03)) return 'head';
-  if (isAny(rgb, [...SNOW, NAIL], 0.03)) {
-    if (c[2] < 5.5 && c[1] > -15) return legOf(c);
-    if (c[1] > 18 && c[2] < 12) return 'tail1';
-    if (Math.abs(c[0]) > 8.5 && c[1] < -16) return 'head';                  // the tusks' frost
-    if (c[2] > 25) return c[1] < -3.5 ? 'head' : 'body';                     // the ice heap and the snow cap
+  if (near(rgb, IVORY, 0.03)) return 'head';                                 // the tusks
+  if (isAny(rgb, ICE, 0.03)) {
+    if (near(rgb, ICE_DK, 0.03) && c[2] < 2.2) return legOf(c);               // the toenails
+    if (c[2] < 7 && Math.abs(c[0]) > 2.5 && c[1] > -14) return legOf(c);       // the snow cuffs
+    if (tuskT(fold(c)) < 1.25) return 'head';                                // the tusks' crust and ice chunks
+    if (c[1] > 23 && c[2] < 16) return 'tail1';
+    if (ellD(c, H[1].map((v) => v + 1.2), H[0]) < 1.06 && c[2] < 30.5 && c[1] < -8) return 'head';   // the forehead ice
+    return 'body';                                                           // the glacier, the mantle, the droplets
   }
   const t = chainHit(c, TRUNK, TRUNK_R);
-  if (t.d < 1.25 && c[2] < 13.5 && Math.abs(c[0]) < 4) return trunk[Math.min(2, t.i)];
+  if (t.d < 1.25 && c[2] < 19 && Math.abs(c[0]) < 4) return trunk[Math.min(2, t.i)];
   return pick(c, parts);
 }
 

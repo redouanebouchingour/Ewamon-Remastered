@@ -1,62 +1,67 @@
-// Shagtusk's rig: a heavy woolly mammoth bean on four pillar legs, the big low head merged into the front, a short
-// thick trunk (a three-link chain passed as the template's mane), ice tusks, ice spikes down the spine. Numbers are
-// scad/shagtusk.scad's (the pre-sprite-pass model: re-rig when its new model lands); the face block sits 1.5 back (fy).
+// Shagtusk's rig: a heavy woolly mammoth on four short pillar legs, the big low head with its snow cap at the front, a
+// short thick trunk (a three-link chain passed as the template's mane) between two ice-crystal tusks, ice spikes down
+// the snowy spine and a stub tail with an ice tip. Numbers are scad/shagtusk.scad's (the 2026-11-04 sprite-match model).
 // The template's sniff dips the head 24 deg, which would drive the trunk into the ground, so it is left out.
 import { K, TAU, merge, osc, rigDef, smooth, win } from './lib/anim.mjs';
-import { any, ell, limb, pick, spike } from './lib/biped.mjs';
+import { any, ell, limb, pick } from './lib/biped.mjs';
 import { blinks, eyeKit, mirrorEye } from './lib/face.mjs';
 import { chainHit, isAny, near } from './lib/geo.mjs';
 import { quadrupedClips } from './lib/quadruped.mjs';
 
-const FUR_DEEP = [0.3, 0.17, 0.08];
-const ICE = [[0.6, 0.82, 0.97], [0.4, 0.62, 0.88]];
-const SNOW = [0.78, 0.9, 0.97];
-const NAIL = [0.8, 0.9, 0.96];
-const fy = ([x, y, z]) => [x, y - 1.5, z];
+const FACE = [0.56, 0.39, 0.21];
+const ICE = [[0.5, 0.82, 0.93], [0.3, 0.62, 0.84]];
+const ROOT = [0.86, 0.94, 0.94];
+const NAIL = [0.66, 0.82, 0.85];
+const SNOW = [0.75, 0.91, 0.92];
 
-const TRUNK = [[0, -16.6, 11.5], [0, -18.6, 7.6], [0, -19.4, 4.6], [0, -20.4, 2.6], [0, -21.8, 3]].map(fy);
-const TRUNK_R = [3.5, 3.1, 2.6, 2.1, 1.6];
+const B = [[[0, -3, 20.5], [12, 10, 12]], [[0, 5, 19], [12, 9, 11]], [[0, 12, 15.5], [12, 11, 10]]];
+const H = [[0, -12, 21.3], [11, 8, 10]];
+const M = [[0, -16, 15], [6, 4.5, 5]];
+const TRUNK = [[0, -18.8, 15.8], [0, -19.9, 12.6], [0, -20.3, 9.8], [0, -20.6, 7.6], [0, -21.4, 6.5]];
+const TRUNK_R = [2.9, 2.7, 2.4, 2.1, 1.7];
 const trunk = ['trunk1', 'trunk2', 'trunk3'];
-const LEGS = [['F', 6.6, -4], ['B', 6.4, 10.5]];
+const LEGS = [['F', 7.5, -7.5], ['B', 7.5, 12]];
 
-const eyeL = { side: 'L', at: fy([4, -16, 15]), size: 2, yaw: 10, flat: 0.55 };
-const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: FUR_DEEP });
+const eyeL = { side: 'L', at: [5.6, -18.1, 19.3], size: 2.6, yaw: 22, flat: 0.5 };
+const face = eyeKit({ eyes: [eyeL, mirrorEye(eyeL)], skin: FACE });
 
 const joints = [
-  { name: 'root', at: [0, 3, 0] },
-  ...LEGS.flatMap(([k, x, y]) => [{ name: `leg${k}L`, parent: 'root', at: [x, y, 9] }, { name: `leg${k}R`, parent: 'root', at: [-x, y, 9] }]),
-  { name: 'body', parent: 'root', at: [0, 3, 10] },
-  { name: 'head', parent: 'body', at: [0, -8, 15] },
+  { name: 'root', at: [0, 2, 0] },
+  ...LEGS.flatMap(([k, x, y]) => [{ name: `leg${k}L`, parent: 'root', at: [x, y, 10] }, { name: `leg${k}R`, parent: 'root', at: [-x, y, 10] }]),
+  { name: 'body', parent: 'root', at: [0, 3, 12] },
+  { name: 'head', parent: 'body', at: [0, -9, 18] },
   ...trunk.map((name, i) => ({ name, parent: i === 0 ? 'head' : trunk[i - 1], at: TRUNK[i] })),
-  { name: 'tail1', parent: 'body', at: [0, 16, 15] },
+  { name: 'tail1', parent: 'body', at: [0, 20, 19] },
   ...face.joints,
 ];
 
-const legT = (x, y) => any(limb([x, y, 9], [x, y, 2.2], 3.9, 3.7), ell([5, 5, 3.2], [x, y, 5.6]), ell([3.2, 1.3, 1.1], [x, y - 3.3, 1]));
+const grow = ([c, r], g) => ell(r.map((v) => v + g), c);
+const legT = (x, y) => any(limb([x, y, 10], [x, y, 4.4], 4, 4.2), ell([4.4, 4.4, 2.2], [x, y, 2.2]), ell([5.6, 5.6, 3.6], [x, y, 7.4]));
 const parts = [
   ...LEGS.map(([k, x, y]) => [`leg${k}*`, legT(x, y)]),
-  ['body', any(ell([13, 11, 12], [0, -2, 17]), ell([12, 10.5, 10.5], [0, 9, 13.5]), ell([12.5, 13, 7.5], [0, 3, 10]))],
-  ['head', any(ell([10.4, 8.8, 9.8], [0, -11.5, 15.5]), ell([6.4, 4.2, 6.4], fy([0, -14.9, 13])))],
-  ['tail1', any(limb([0, 16, 15], [0, 20.5, 11.5], 1.1, 0.8), spike([0, 20.5, 11.5], [0, 2.6, -1.6], 1.2))],
+  ['body', any(...B.map((e) => grow(e, 1.2)))],
+  ['head', any(grow(H, 1.3), grow(M, 0.5), ell([6, 5, 3.6], [0, -12.5, 31]))],
+  ['tail1', any(limb([0, 20, 19], [0, 25, 15.5], 1.7, 1.2), limb([0, 25, 15.5], [0, 29, 11.4], 1.6, 0.3))],
 ];
-const legOf = (c) => `leg${c[1] < 3 ? 'F' : 'B'}${c[0] >= 0 ? 'L' : 'R'}`;
+const legOf = (c) => `leg${c[1] < 2.25 ? 'F' : 'B'}${c[0] >= 0 ? 'L' : 'R'}`;
 
 function assign(c, rgb) {
-  if (near(rgb, NAIL, 0.02) && c[2] < 2.3) return legOf(c);
+  if (near(rgb, NAIL, 0.03) && c[2] < 2.4) return legOf(c);
+  if (near(rgb, ROOT, 0.03)) return 'head';                                  // the tusk roots
   if (isAny(rgb, ICE, 0.03)) {
-    if (c[2] > 25) return 'body';                                            // the spine spikes
-    if (c[1] > 19) return 'tail1';
-    return 'head';                                                           // the tusks
+    if (c[1] < -17) return 'head';                                           // the tusk crystals
+    if (c[1] > 23 && c[2] < 17) return 'tail1';
+    return 'body';                                                           // the spine spikes
   }
-  if (near(rgb, SNOW, 0.02) && c[2] > 21) return c[1] < -9 ? 'head' : 'body';
+  if (near(rgb, SNOW, 0.03) && c[2] > 20) return pick(c, parts.slice(2, 4));
   const t = chainHit(c, TRUNK, TRUNK_R);
-  if (t.d < 1.25 && c[2] < 11 && Math.abs(c[0]) < 4) return trunk[Math.min(2, t.i)];
+  if (t.d < 1.25 && c[2] < 16 && Math.abs(c[0]) < 4) return trunk[Math.min(2, t.i)];
   return pick(c, parts);
 }
 
 const curl = (k) => Object.fromEntries(trunk.map((n, i) => [n, { r: [-k * (0.6 + 0.4 * i), 0, 0] }]));
 const base = quadrupedClips({
-  face, tail: ['tail1'], mane: trunk, hipH: 9, stride: 10,
+  face, tail: ['tail1'], mane: trunk, hipH: 10, stride: 10,
   add: {
     lunge: (t, u) => curl(30 * K(u, [[0.15, 0], [0.4, 1], [0.6, 1], [1, 0]])),
     faint: (t, u) => curl(24 * smooth((u - 0.15) / 0.6)),
