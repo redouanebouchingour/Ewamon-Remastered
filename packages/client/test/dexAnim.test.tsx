@@ -33,13 +33,42 @@ function webpPages(bytes: Buffer): number {
 describe('animated dex thumbnails', () => {
   it('every animated front has its dex thumb, one page per flipbook page, and no still species has one', () => {
     const ids = [...animatedFronts(manifest.sprites)].sort();
-    expect(ids).toEqual(['astaroth', 'bankaiser', 'galaxion', 'glacinid', 'kelvyre', 'lumyth', 'noxmyth', 'raikitsune', 'sunjaw', 'voidraxis', 'voltaura', 'zenryu']);
+    expect(ids).toEqual([
+      'abysspark_tenjin',
+      'acier_majin',
+      'astaroth',
+      'badlander_majin',
+      'bankaiser',
+      'clementar_majin',
+      'galaxion',
+      'gemknight_tenjin',
+      'glacinid',
+      'glimmereen_tenjin',
+      'hyoryu_majin',
+      'infernomorel_majin',
+      'kelvyre',
+      'kykaiser_tenjin',
+      'lawlander_tenjin',
+      'lumyth',
+      'necrogeist_majin',
+      'noxmyth',
+      'raidori_tenjin',
+      'raikitsune',
+      'solpyre_tenjin',
+      'sunjaw',
+      'thornback_tenjin',
+      'toxshade_majin',
+      'voidraxis',
+      'voltaura',
+      'zenryu',
+      'zenryu_majin',
+    ]);
     for (const id of ids) {
       const file = path.join(PUBLIC, 'dex-anim', `${id}.webp`);
       expect(existsSync(file), file).toBe(true);
       expect(webpPages(readFileSync(file)), id).toBe(manifest.sprites[id]!.anim!.front!.frames.length);
     }
-    for (const id of ['hyoryu', 'elemutt', 'katamute', 'zenryu_majin', 'bramblecub']) expect(existsSync(path.join(PUBLIC, 'dex-anim', `${id}.webp`)), id).toBe(false);
+    for (const id of ['hyoryu', 'elemutt', 'katamute', 'bramblecub']) expect(existsSync(path.join(PUBLIC, 'dex-anim', `${id}.webp`)), id).toBe(false);
   });
 
   describe('CreatureSprite animated', () => {
@@ -61,9 +90,12 @@ describe('animated dex thumbnails', () => {
       expect(container.querySelector('img')!.getAttribute('src')).toBe('/creatures/thumbs/hyoryu_front.webp');
       rerender(<CreatureSprite speciesId="zenryu" size="xxl" animated silhouette />);
       expect(container.querySelector('img')!.getAttribute('src')).toBe('/creatures/thumbs/zenryu_front.webp');
-      // a form without a flipbook (zenryu's Majin form) shows its own still
+      // a form with its own flipbook (zenryu's Majin form, since 2026-11-09) shows its own animated thumb
       rerender(<CreatureSprite speciesId="zenryu" form="majin" size="xxl" animated />);
-      expect(container.querySelector('img')!.getAttribute('src')).toBe('/creatures/thumbs/zenryu_majin_front.webp');
+      expect(container.querySelector('img')!.getAttribute('src')).toBe('/dex-anim/zenryu_majin.webp');
+      // a form without a flipbook (hollowmane's Rage form) shows its own still
+      rerender(<CreatureSprite speciesId="hollowmane" form="rage" size="xxl" animated />);
+      expect(container.querySelector('img')!.getAttribute('src')).toBe('/creatures/thumbs/hollowmane_rage_front.webp');
       // the animated file fails: the still
       rerender(<CreatureSprite speciesId="galaxion" size="xxl" animated />);
       const img = container.querySelector('img')!;

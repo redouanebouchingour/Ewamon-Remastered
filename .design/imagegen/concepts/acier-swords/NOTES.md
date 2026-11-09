@@ -14,3 +14,14 @@ $0.47).
 
 The drafts and the sword sheet (third-party pictures) stay in `assets-src/imagegen/acier-swords/` (gitignored), with
 the old sources under `old/`. Keyed by `scripts/key-forms.ts --src <dir>` with no override.
+
+## Majin Acier
+
+Redrawn the same day from the new Acier so the form keeps the four swords, two more calls (about $0.18):
+
+- `majin-front-1.txt` -> `majin-front-1.png`: image 1 the new Acier front (`front-4.png`), image 2 the old Majin
+  front (`../acier-majin/majin-front-1.png`), image 3 the sword sheet.
+- `majin-back-1.txt` -> `majin-back-1.png`: image 1 the new Majin front, image 2 the new Acier back (`back-1.png`).
+
+Both go through `assets-src/forms-pending/` and `scripts/key-forms.ts --only acier_majin`, no override. The old
+Majin sources are kept in `assets-src/imagegen/acier-swords/old/`.

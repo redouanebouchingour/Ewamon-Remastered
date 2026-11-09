@@ -4,7 +4,7 @@
  * measures every directory on disk; the larger of the two is held to the ceiling, so neither a stale manifest nor
  * stray files can pass under it. Licences must travel (§40.0.2 rule 6, non-negotiable 10).
  *
- * `creatures/anim/` (amended 2026-10-06) is its own line: the animated legendaries' flipbooks, held to 29 MiB (25 MiB until 2026-11-06, 24 MiB until 2026-10-26) against
+ * `creatures/anim/` (amended 2026-10-06) is its own line: the animated legendaries' flipbooks, held to 72 MiB (29 MiB until 2026-11-09, 25 MiB until 2026-11-06, 24 MiB until 2026-10-26) against
  * `animTotalBytes`. The manifest file lives in `creatures/`, but the bytes its anim fields add (measured here by
  * re-serialising it without them, exactly as the pipeline writes it) are charged to the anim line, so the static
  * `creatures/` line keeps measuring the static set.
@@ -19,7 +19,7 @@ const MiB = 1024 * 1024;
 /** §40.6 ceilings, bytes. */
 export const CEILINGS = Object.freeze({
   creatures: 55_574_528, // 53 MiB since 2026-10-27 (kykaiser_tenjin); 52 MiB from 2026-10-26 (the 34 type-gap species); 44 MiB from 2026-10-25 (the Elemutt line and ravatar's five relic forms); 41 MiB from 2026-10-24 (cryptorb, ultraze, vysion); 40 MiB from 2026-10-13 (hyoryu + its Majin form); 39.25 MiB from 2026-10-11 (Majin / Tenjin forms); 36 700 160 (35 MiB) before
-  creaturesAnim: 29 * MiB, // since 2026-11-06 (kelvyre's flipbooks); 25 MiB from 2026-10-26 (astaroth's flipbooks); 24 MiB before
+  creaturesAnim: 72 * MiB, // since 2026-11-09 (the Majin / Tenjin forms' flipbooks); 29 MiB from 2026-11-06 (kelvyre's); 25 MiB from 2026-10-26 (astaroth's flipbooks); 24 MiB before
   models: 12 * MiB,
   materials: 90 * MiB,
   audio: 80 * MiB,

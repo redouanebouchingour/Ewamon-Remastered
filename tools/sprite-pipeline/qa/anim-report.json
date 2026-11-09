@@ -7,41 +7,461 @@
     {
       "albedo": 88,
       "normal": 92,
-      "animTotalBytes": 39747888
+      "animTotalBytes": 99033543
     },
     {
       "albedo": 85,
       "normal": 92,
-      "animTotalBytes": 36591535
+      "animTotalBytes": 91266868
     },
     {
       "albedo": 82,
       "normal": 92,
-      "animTotalBytes": 34692747
+      "animTotalBytes": 86563540
     },
     {
       "albedo": 80,
       "normal": 92,
-      "animTotalBytes": 33409982
+      "animTotalBytes": 83420170
     },
     {
       "albedo": 80,
       "normal": 90,
-      "animTotalBytes": 32503664
+      "animTotalBytes": 81271886
     },
     {
       "albedo": 80,
       "normal": 85,
-      "animTotalBytes": 30728740
+      "animTotalBytes": 77129876
     },
     {
       "albedo": 80,
       "normal": 80,
-      "animTotalBytes": 29656496
+      "animTotalBytes": 74604514
     }
   ],
-  "animTotalBytes": 29656496,
+  "animTotalBytes": 74604514,
   "sides": [
+    {
+      "species": "abysspark_tenjin",
+      "side": "back",
+      "source": "back/abysspark_tenjin(back).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 98,
+        "y0": 51,
+        "x1": 965,
+        "y1": 987
+      },
+      "union": {
+        "x0": 83,
+        "y0": 36,
+        "x1": 987,
+        "y1": 1003
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.940092,
+        "scaleY": 0.940235,
+        "left": 90,
+        "top": 47,
+        "width": 851,
+        "height": 910,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1592418,
+        "normal": 321194,
+        "emissive": 55472,
+        "total": 1969084
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        471,
+        471,
+        471,
+        472,
+        474,
+        475,
+        476,
+        477,
+        477,
+        478,
+        477,
+        476,
+        475,
+        474,
+        473,
+        472,
+        471,
+        471
+      ],
+      "emissivePixels": [
+        3590,
+        3489,
+        3527,
+        3505,
+        3516,
+        3459,
+        3440,
+        3421,
+        3409,
+        3381,
+        3382,
+        3361,
+        3387,
+        3404,
+        3441,
+        3494,
+        3537,
+        3549,
+        3540,
+        3475,
+        3532,
+        3488,
+        3525,
+        3572
+      ]
+    },
+    {
+      "species": "abysspark_tenjin",
+      "side": "front",
+      "source": "front/abysspark_tenjin(front).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 117,
+        "y0": 94,
+        "x1": 987,
+        "y1": 898
+      },
+      "union": {
+        "x0": 106,
+        "y0": 91,
+        "x1": 988,
+        "y1": 958
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 1.011481,
+        "scaleY": 1.01118,
+        "left": 61,
+        "top": 125,
+        "width": 893,
+        "height": 878,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1604056,
+        "normal": 307092,
+        "emissive": 64750,
+        "total": 1975898
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        472,
+        477,
+        484,
+        490,
+        495,
+        498,
+        497,
+        494,
+        489,
+        484,
+        480,
+        478,
+        480,
+        485,
+        491,
+        496,
+        500,
+        500,
+        498,
+        493,
+        486,
+        479,
+        473
+      ],
+      "emissivePixels": [
+        4242,
+        4260,
+        4242,
+        4292,
+        4269,
+        4278,
+        4317,
+        4300,
+        4304,
+        4288,
+        4318,
+        4292,
+        4340,
+        4323,
+        4341,
+        4315,
+        4328,
+        4285,
+        4272,
+        4315,
+        4256,
+        4248,
+        4203,
+        4229
+      ]
+    },
+    {
+      "species": "acier_majin",
+      "side": "back",
+      "source": "back/acier_majin(back).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 92,
+        "y0": 17,
+        "x1": 945,
+        "y1": 977
+      },
+      "union": {
+        "x0": 69,
+        "y0": 1,
+        "x1": 994,
+        "y1": 1014
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.916862,
+        "scaleY": 0.916753,
+        "left": 100,
+        "top": 46,
+        "width": 849,
+        "height": 930,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 855566,
+        "normal": 175598,
+        "emissive": 30926,
+        "total": 1062090
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        467,
+        466,
+        466,
+        467,
+        470,
+        472,
+        474,
+        475,
+        475,
+        475,
+        476,
+        476,
+        478,
+        480,
+        482,
+        484,
+        486,
+        487,
+        487,
+        485,
+        482,
+        478,
+        474
+      ],
+      "emissivePixels": [
+        1545,
+        1405,
+        1395,
+        1398,
+        1412,
+        1400,
+        1431,
+        1446,
+        1460,
+        1430,
+        1440,
+        1401,
+        1388,
+        1391,
+        1401,
+        1405,
+        1401,
+        1357,
+        1344,
+        1344,
+        1339,
+        1334,
+        1317,
+        1386
+      ]
+    },
+    {
+      "species": "acier_majin",
+      "side": "front",
+      "source": "front/acier_majin(front).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 67,
+        "y0": 16,
+        "x1": 967,
+        "y1": 997
+      },
+      "union": {
+        "x0": 24,
+        "y0": 12,
+        "x1": 993,
+        "y1": 1023
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.896781,
+        "scaleY": 0.897149,
+        "left": 69,
+        "top": 57,
+        "width": 870,
+        "height": 908,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 898970,
+        "normal": 183418,
+        "emissive": 33138,
+        "total": 1115526
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        472,
+        475,
+        480,
+        482,
+        482,
+        482,
+        482,
+        482,
+        482,
+        482,
+        482,
+        482,
+        482,
+        482,
+        482,
+        482,
+        482,
+        481,
+        480,
+        477,
+        474,
+        472,
+        470
+      ],
+      "emissivePixels": [
+        1579,
+        1395,
+        1371,
+        1327,
+        1317,
+        1346,
+        1313,
+        1316,
+        1295,
+        1297,
+        1308,
+        1312,
+        1328,
+        1319,
+        1295,
+        1291,
+        1324,
+        1330,
+        1321,
+        1324,
+        1342,
+        1342,
+        1398,
+        1347
+      ]
+    },
     {
       "species": "astaroth",
       "side": "back",
@@ -271,6 +691,216 @@
       ]
     },
     {
+      "species": "badlander_majin",
+      "side": "back",
+      "source": "back/badlander_majin(back).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 95,
+        "y0": 61,
+        "x1": 913,
+        "y1": 961
+      },
+      "union": {
+        "x0": 72,
+        "y0": 25,
+        "x1": 918,
+        "y1": 961
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.978022,
+        "scaleY": 0.977802,
+        "left": 90,
+        "top": 26,
+        "width": 828,
+        "height": 916,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1033858,
+        "normal": 198942,
+        "emissive": 5932,
+        "total": 1238732
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        333,
+        329,
+        309,
+        319,
+        321,
+        309,
+        306,
+        320,
+        330,
+        313,
+        312,
+        333,
+        320,
+        314,
+        314,
+        310,
+        305,
+        306,
+        295,
+        299,
+        301,
+        304,
+        307,
+        316
+      ]
+    },
+    {
+      "species": "badlander_majin",
+      "side": "front",
+      "source": "front/badlander_majin(front).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 101,
+        "y0": 55,
+        "x1": 920,
+        "y1": 962
+      },
+      "union": {
+        "x0": 57,
+        "y0": 51,
+        "x1": 931,
+        "y1": 993
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.970732,
+        "scaleY": 0.970264,
+        "left": 71,
+        "top": 57,
+        "width": 849,
+        "height": 915,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1150048,
+        "normal": 213610,
+        "emissive": 7432,
+        "total": 1371090
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        472,
+        475,
+        479,
+        482,
+        484,
+        485,
+        485,
+        484,
+        483,
+        481,
+        479,
+        477,
+        475,
+        474,
+        474,
+        473,
+        472,
+        471,
+        471,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        325,
+        292,
+        298,
+        313,
+        314,
+        321,
+        293,
+        299,
+        312,
+        311,
+        323,
+        287,
+        307,
+        289,
+        296,
+        299,
+        300,
+        288,
+        305,
+        296,
+        311,
+        302,
+        311,
+        307
+      ]
+    },
+    {
       "species": "bankaiser",
       "side": "back",
       "source": "back/bankaiser(back).webp",
@@ -478,6 +1108,216 @@
         487,
         496,
         469
+      ]
+    },
+    {
+      "species": "clementar_majin",
+      "side": "back",
+      "source": "back/clementar_majin(back).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 37,
+        "y0": 73,
+        "x1": 904,
+        "y1": 946
+      },
+      "union": {
+        "x0": 20,
+        "y0": 55,
+        "x1": 933,
+        "y1": 946
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 1.008065,
+        "scaleY": 1.008009,
+        "left": 58,
+        "top": 43,
+        "width": 921,
+        "height": 899,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1074632,
+        "normal": 208588,
+        "emissive": 15978,
+        "total": 1299198
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        593,
+        450,
+        422,
+        423,
+        419,
+        424,
+        408,
+        381,
+        421,
+        422,
+        420,
+        443,
+        425,
+        431,
+        440,
+        432,
+        450,
+        431,
+        469,
+        456,
+        466,
+        428,
+        433,
+        456
+      ]
+    },
+    {
+      "species": "clementar_majin",
+      "side": "front",
+      "source": "front/clementar_majin(front).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 26,
+        "y0": 43,
+        "x1": 987,
+        "y1": 965
+      },
+      "union": {
+        "x0": 6,
+        "y0": 21,
+        "x1": 1023,
+        "y1": 993
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.9158,
+        "scaleY": 0.915493,
+        "left": 54,
+        "top": 77,
+        "width": 932,
+        "height": 891,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1086752,
+        "normal": 214700,
+        "emissive": 22892,
+        "total": 1324344
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        473,
+        475,
+        478,
+        480,
+        482,
+        483,
+        483,
+        482,
+        480,
+        479,
+        477,
+        475,
+        473,
+        472,
+        471,
+        470,
+        470,
+        469,
+        469,
+        469,
+        468,
+        469,
+        469
+      ],
+      "emissivePixels": [
+        1068,
+        939,
+        894,
+        878,
+        864,
+        878,
+        845,
+        803,
+        870,
+        846,
+        875,
+        905,
+        881,
+        908,
+        894,
+        891,
+        904,
+        889,
+        913,
+        897,
+        925,
+        919,
+        936,
+        903
       ]
     },
     {
@@ -739,6 +1579,216 @@
       ]
     },
     {
+      "species": "gemknight_tenjin",
+      "side": "back",
+      "source": "back/gemknight_tenjin(back).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 76,
+        "y0": 58,
+        "x1": 955,
+        "y1": 873
+      },
+      "union": {
+        "x0": 46,
+        "y0": 57,
+        "x1": 1007,
+        "y1": 878
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 1.001136,
+        "scaleY": 1.001225,
+        "left": 42,
+        "top": 124,
+        "width": 963,
+        "height": 823,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 762516,
+        "normal": 169816,
+        "emissive": 9330,
+        "total": 941662
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        471,
+        471,
+        471,
+        473,
+        472,
+        471,
+        471,
+        471,
+        471,
+        471,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        448,
+        417,
+        416,
+        429,
+        402,
+        415,
+        411,
+        411,
+        412,
+        403,
+        399,
+        395,
+        391,
+        389,
+        399,
+        387,
+        396,
+        411,
+        386,
+        406,
+        396,
+        393,
+        411,
+        405
+      ]
+    },
+    {
+      "species": "gemknight_tenjin",
+      "side": "front",
+      "source": "front/gemknight_tenjin(front).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 62,
+        "y0": 58,
+        "x1": 941,
+        "y1": 886
+      },
+      "union": {
+        "x0": 42,
+        "y0": 58,
+        "x1": 971,
+        "y1": 886
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 1.001136,
+        "scaleY": 1.001206,
+        "left": 52,
+        "top": 112,
+        "width": 931,
+        "height": 830,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1116056,
+        "normal": 243310,
+        "emissive": 13428,
+        "total": 1372794
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        983,
+        968,
+        936,
+        940,
+        946,
+        936,
+        902,
+        917,
+        919,
+        912,
+        902,
+        921,
+        939,
+        909,
+        926,
+        931,
+        954,
+        931,
+        944,
+        931,
+        928,
+        945,
+        958,
+        968
+      ]
+    },
+    {
       "species": "glacinid",
       "side": "back",
       "source": "back/glacinid(back).gif",
@@ -950,6 +2000,636 @@
         0,
         0,
         0
+      ]
+    },
+    {
+      "species": "glimmereen_tenjin",
+      "side": "back",
+      "source": "back/glimmereen_tenjin(back).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 75,
+        "y0": 69,
+        "x1": 939,
+        "y1": 903
+      },
+      "union": {
+        "x0": 48,
+        "y0": 41,
+        "x1": 961,
+        "y1": 918
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 1.018497,
+        "scaleY": 1.017964,
+        "left": 45,
+        "top": 63,
+        "width": 931,
+        "height": 894,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 696184,
+        "normal": 175108,
+        "emissive": 23248,
+        "total": 894540
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        469,
+        467,
+        466,
+        465,
+        465,
+        465,
+        465,
+        466,
+        467,
+        469,
+        471,
+        472,
+        474,
+        475,
+        476,
+        477,
+        478,
+        478,
+        477,
+        476,
+        475,
+        474,
+        472
+      ],
+      "emissivePixels": [
+        2294,
+        2050,
+        1850,
+        1677,
+        1609,
+        1662,
+        1787,
+        1922,
+        2078,
+        2183,
+        2157,
+        2080,
+        1912,
+        1760,
+        1580,
+        1509,
+        1518,
+        1617,
+        1832,
+        2031,
+        2257,
+        2406,
+        2430,
+        2364
+      ]
+    },
+    {
+      "species": "glimmereen_tenjin",
+      "side": "front",
+      "source": "front/glimmereen_tenjin(front).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 84,
+        "y0": 68,
+        "x1": 947,
+        "y1": 908
+      },
+      "union": {
+        "x0": 51,
+        "y0": 63,
+        "x1": 981,
+        "y1": 922
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 1.019676,
+        "scaleY": 1.020214,
+        "left": 38,
+        "top": 79,
+        "width": 949,
+        "height": 877,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 785520,
+        "normal": 199510,
+        "emissive": 31216,
+        "total": 1016246
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        469,
+        468,
+        468,
+        467,
+        467,
+        467,
+        468,
+        469,
+        470,
+        471,
+        473,
+        474,
+        475,
+        476,
+        477,
+        477,
+        477,
+        477,
+        476,
+        475,
+        474,
+        473,
+        472
+      ],
+      "emissivePixels": [
+        2906,
+        2736,
+        2672,
+        2596,
+        2631,
+        2697,
+        2789,
+        2909,
+        2995,
+        3062,
+        3082,
+        3059,
+        2946,
+        2865,
+        2746,
+        2679,
+        2605,
+        2637,
+        2692,
+        2783,
+        2878,
+        2908,
+        2904,
+        2902
+      ]
+    },
+    {
+      "species": "hyoryu_majin",
+      "side": "back",
+      "source": "back/hyoryu_majin(back).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 61,
+        "y0": 61,
+        "x1": 977,
+        "y1": 941
+      },
+      "union": {
+        "x0": 28,
+        "y0": 0,
+        "x1": 978,
+        "y1": 969
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.960742,
+        "scaleY": 0.960272,
+        "left": 40,
+        "top": 37,
+        "width": 914,
+        "height": 931,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1654182,
+        "normal": 344878,
+        "emissive": 9952,
+        "total": 2009012
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        465,
+        464,
+        464,
+        465,
+        466,
+        466,
+        467,
+        469,
+        470,
+        471,
+        473,
+        474,
+        476,
+        476,
+        477,
+        478,
+        481,
+        483,
+        483,
+        483,
+        481,
+        478,
+        474
+      ],
+      "emissivePixels": [
+        351,
+        276,
+        293,
+        289,
+        277,
+        277,
+        274,
+        281,
+        264,
+        265,
+        262,
+        290,
+        294,
+        289,
+        304,
+        297,
+        317,
+        309,
+        304,
+        294,
+        299,
+        298,
+        285,
+        287
+      ]
+    },
+    {
+      "species": "hyoryu_majin",
+      "side": "front",
+      "source": "front/hyoryu_majin(front).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 46,
+        "y0": 61,
+        "x1": 962,
+        "y1": 941
+      },
+      "union": {
+        "x0": 10,
+        "y0": 0,
+        "x1": 993,
+        "y1": 964
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.960742,
+        "scaleY": 0.960272,
+        "left": 37,
+        "top": 37,
+        "width": 945,
+        "height": 927,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1670944,
+        "normal": 342050,
+        "emissive": 13680,
+        "total": 2026674
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        471,
+        472,
+        474,
+        475,
+        477,
+        478,
+        479,
+        480,
+        480,
+        481,
+        481,
+        481,
+        480,
+        479,
+        477,
+        476,
+        474,
+        472,
+        471,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        573,
+        516,
+        493,
+        529,
+        514,
+        514,
+        485,
+        516,
+        526,
+        510,
+        504,
+        526,
+        509,
+        485,
+        479,
+        515,
+        521,
+        516,
+        499,
+        483,
+        490,
+        487,
+        488,
+        485
+      ]
+    },
+    {
+      "species": "infernomorel_majin",
+      "side": "back",
+      "source": "back/infernomorel_majin(back).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 131,
+        "y0": 48,
+        "x1": 895,
+        "y1": 957
+      },
+      "union": {
+        "x0": 103,
+        "y0": 45,
+        "x1": 935,
+        "y1": 957
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.968627,
+        "scaleY": 0.968132,
+        "left": 115,
+        "top": 58,
+        "width": 807,
+        "height": 884,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 767598,
+        "normal": 142502,
+        "emissive": 27216,
+        "total": 937316
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        2739,
+        2585,
+        2531,
+        2556,
+        2504,
+        2539,
+        2513,
+        2509,
+        2511,
+        2525,
+        2553,
+        2545,
+        2550,
+        2545,
+        2528,
+        2586,
+        2561,
+        2552,
+        2569,
+        2589,
+        2534,
+        2602,
+        2633,
+        2624
+      ]
+    },
+    {
+      "species": "infernomorel_majin",
+      "side": "front",
+      "source": "front/infernomorel_majin(front).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 161,
+        "y0": 48,
+        "x1": 857,
+        "y1": 854
+      },
+      "union": {
+        "x0": 136,
+        "y0": 45,
+        "x1": 903,
+        "y1": 856
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 1.091822,
+        "scaleY": 1.091698,
+        "left": 105,
+        "top": 58,
+        "width": 839,
+        "height": 886,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 866088,
+        "normal": 155068,
+        "emissive": 41948,
+        "total": 1063104
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        470,
+        470,
+        470,
+        471,
+        471,
+        471,
+        471,
+        471,
+        471,
+        471,
+        470,
+        470,
+        470,
+        470,
+        470,
+        471,
+        471,
+        471,
+        471,
+        471,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        5042,
+        4791,
+        4769,
+        4778,
+        4792,
+        4766,
+        4753,
+        4765,
+        4734,
+        4744,
+        4763,
+        4768,
+        4783,
+        4780,
+        4764,
+        4727,
+        4765,
+        4798,
+        4756,
+        4761,
+        4798,
+        4779,
+        4803,
+        4811
       ]
     },
     {
@@ -1259,6 +2939,426 @@
       ]
     },
     {
+      "species": "kykaiser_tenjin",
+      "side": "back",
+      "source": "back/kykaiser_tenjin(back).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 15,
+        "y0": 9,
+        "x1": 1004,
+        "y1": 977
+      },
+      "union": {
+        "x0": 0,
+        "y0": 5,
+        "x1": 1009,
+        "y1": 977
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.889899,
+        "scaleY": 0.889577,
+        "left": 59,
+        "top": 76,
+        "width": 899,
+        "height": 866,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1130700,
+        "normal": 200794,
+        "emissive": 41490,
+        "total": 1372984
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        2102,
+        1893,
+        1848,
+        1802,
+        1768,
+        1719,
+        1728,
+        1717,
+        1701,
+        1710,
+        1765,
+        1772,
+        1847,
+        1849,
+        1868,
+        1828,
+        1846,
+        1939,
+        1891,
+        1937,
+        1903,
+        1885,
+        1931,
+        1917
+      ]
+    },
+    {
+      "species": "kykaiser_tenjin",
+      "side": "front",
+      "source": "front/kykaiser_tenjin(front).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 18,
+        "y0": 19,
+        "x1": 1009,
+        "y1": 1013
+      },
+      "union": {
+        "x0": 18,
+        "y0": 14,
+        "x1": 1023,
+        "y1": 1013
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.885081,
+        "scaleY": 0.885427,
+        "left": 73,
+        "top": 57,
+        "width": 890,
+        "height": 885,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1263308,
+        "normal": 222904,
+        "emissive": 38378,
+        "total": 1524590
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        2022,
+        1902,
+        1927,
+        1891,
+        1876,
+        1860,
+        1864,
+        1876,
+        1884,
+        1876,
+        1964,
+        1892,
+        1935,
+        1950,
+        1900,
+        1958,
+        1897,
+        1880,
+        1931,
+        1892,
+        1900,
+        1911,
+        1952,
+        1905
+      ]
+    },
+    {
+      "species": "lawlander_tenjin",
+      "side": "back",
+      "source": "back/lawlander_tenjin(back).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 105,
+        "y0": 41,
+        "x1": 917,
+        "y1": 961
+      },
+      "union": {
+        "x0": 81,
+        "y0": 41,
+        "x1": 918,
+        "y1": 961
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.95695,
+        "scaleY": 0.956569,
+        "left": 100,
+        "top": 61,
+        "width": 802,
+        "height": 881,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1108284,
+        "normal": 209570,
+        "emissive": 15834,
+        "total": 1333688
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        957,
+        908,
+        918,
+        907,
+        931,
+        949,
+        936,
+        949,
+        950,
+        992,
+        980,
+        954,
+        941,
+        955,
+        937,
+        929,
+        910,
+        889,
+        886,
+        876,
+        885,
+        859,
+        891,
+        885
+      ]
+    },
+    {
+      "species": "lawlander_tenjin",
+      "side": "front",
+      "source": "front/lawlander_tenjin(front).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 102,
+        "y0": 41,
+        "x1": 940,
+        "y1": 961
+      },
+      "union": {
+        "x0": 78,
+        "y0": 40,
+        "x1": 972,
+        "y1": 961
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.957092,
+        "scaleY": 0.956569,
+        "left": 88,
+        "top": 60,
+        "width": 857,
+        "height": 882,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1295898,
+        "normal": 245308,
+        "emissive": 21382,
+        "total": 1562588
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        994,
+        878,
+        912,
+        874,
+        853,
+        856,
+        842,
+        846,
+        836,
+        836,
+        847,
+        878,
+        874,
+        886,
+        856,
+        834,
+        866,
+        842,
+        903,
+        877,
+        880,
+        897,
+        894,
+        912
+      ]
+    },
+    {
       "species": "lumyth",
       "side": "back",
       "source": "back/lumyth(back).webp",
@@ -1466,6 +3566,216 @@
         116,
         118,
         122
+      ]
+    },
+    {
+      "species": "necrogeist_majin",
+      "side": "back",
+      "source": "back/necrogeist_majin(back).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 46,
+        "y0": 77,
+        "x1": 993,
+        "y1": 906
+      },
+      "union": {
+        "x0": 17,
+        "y0": 56,
+        "x1": 1014,
+        "y1": 958
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.929325,
+        "scaleY": 0.928916,
+        "left": 45,
+        "top": 151,
+        "width": 927,
+        "height": 839,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 796208,
+        "normal": 158846,
+        "emissive": 2016,
+        "total": 957070
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        472,
+        474,
+        476,
+        479,
+        482,
+        485,
+        488,
+        490,
+        492,
+        493,
+        494,
+        494,
+        492,
+        491,
+        488,
+        485,
+        482,
+        479,
+        476,
+        473,
+        472,
+        470
+      ],
+      "emissivePixels": [
+        65,
+        65,
+        64,
+        60,
+        52,
+        58,
+        66,
+        59,
+        63,
+        59,
+        62,
+        65,
+        63,
+        65,
+        65,
+        59,
+        56,
+        59,
+        64,
+        55,
+        65,
+        57,
+        64,
+        57
+      ]
+    },
+    {
+      "species": "necrogeist_majin",
+      "side": "front",
+      "source": "front/necrogeist_majin(front).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 46,
+        "y0": 76,
+        "x1": 993,
+        "y1": 905
+      },
+      "union": {
+        "x0": 17,
+        "y0": 59,
+        "x1": 1016,
+        "y1": 960
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.929325,
+        "scaleY": 0.928916,
+        "left": 45,
+        "top": 155,
+        "width": 929,
+        "height": 838,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 823184,
+        "normal": 156992,
+        "emissive": 7438,
+        "total": 987614
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        471,
+        472,
+        475,
+        477,
+        480,
+        483,
+        486,
+        489,
+        491,
+        493,
+        495,
+        495,
+        495,
+        494,
+        492,
+        490,
+        486,
+        483,
+        479,
+        476,
+        474,
+        472,
+        470
+      ],
+      "emissivePixels": [
+        493,
+        453,
+        462,
+        459,
+        454,
+        446,
+        443,
+        445,
+        456,
+        450,
+        465,
+        443,
+        436,
+        462,
+        460,
+        485,
+        447,
+        449,
+        462,
+        457,
+        464,
+        454,
+        449,
+        445
       ]
     },
     {
@@ -1679,6 +3989,216 @@
       ]
     },
     {
+      "species": "raidori_tenjin",
+      "side": "back",
+      "source": "back/raidori_tenjin(back).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 42,
+        "y0": 70,
+        "x1": 949,
+        "y1": 918
+      },
+      "union": {
+        "x0": 0,
+        "y0": 69,
+        "x1": 987,
+        "y1": 919
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.970264,
+        "scaleY": 0.970554,
+        "left": 31,
+        "top": 117,
+        "width": 959,
+        "height": 826,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 973430,
+        "normal": 217672,
+        "emissive": 58330,
+        "total": 1249432
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        471,
+        471,
+        471,
+        471,
+        471,
+        471,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        3873,
+        3853,
+        3778,
+        3785,
+        3703,
+        3695,
+        3736,
+        3722,
+        3762,
+        3720,
+        3764,
+        3784,
+        3797,
+        3803,
+        3801,
+        3808,
+        3742,
+        3747,
+        3746,
+        3750,
+        3729,
+        3736,
+        3784,
+        3827
+      ]
+    },
+    {
+      "species": "raidori_tenjin",
+      "side": "front",
+      "source": "front/raidori_tenjin(front).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 35,
+        "y0": 81,
+        "x1": 954,
+        "y1": 923
+      },
+      "union": {
+        "x0": 22,
+        "y0": 60,
+        "x1": 957,
+        "y1": 923
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.957609,
+        "scaleY": 0.957295,
+        "left": 60,
+        "top": 115,
+        "width": 896,
+        "height": 827,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 985836,
+        "normal": 218118,
+        "emissive": 48090,
+        "total": 1252044
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        4448,
+        4421,
+        4361,
+        4305,
+        4251,
+        4172,
+        4163,
+        4141,
+        4141,
+        4187,
+        4232,
+        4225,
+        4232,
+        4226,
+        4251,
+        4258,
+        4259,
+        4306,
+        4313,
+        4336,
+        4345,
+        4365,
+        4336,
+        4400
+      ]
+    },
+    {
       "species": "raikitsune",
       "side": "back",
       "source": "back/raikitsune(back).webp",
@@ -1889,6 +4409,216 @@
       ]
     },
     {
+      "species": "solpyre_tenjin",
+      "side": "back",
+      "source": "back/solpyre_tenjin(back).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 61,
+        "y0": 68,
+        "x1": 961,
+        "y1": 955
+      },
+      "union": {
+        "x0": 27,
+        "y0": 22,
+        "x1": 1012,
+        "y1": 955
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.977802,
+        "scaleY": 0.977477,
+        "left": 39,
+        "top": 29,
+        "width": 964,
+        "height": 913,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1616094,
+        "normal": 356088,
+        "emissive": 59272,
+        "total": 2031454
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        5010,
+        5050,
+        5018,
+        4972,
+        4938,
+        4906,
+        4927,
+        4959,
+        4942,
+        4980,
+        4961,
+        5002,
+        5022,
+        5051,
+        4971,
+        4959,
+        4934,
+        4923,
+        4924,
+        4964,
+        4964,
+        4983,
+        4995,
+        4980
+      ]
+    },
+    {
+      "species": "solpyre_tenjin",
+      "side": "front",
+      "source": "front/solpyre_tenjin(front).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 62,
+        "y0": 67,
+        "x1": 962,
+        "y1": 955
+      },
+      "union": {
+        "x0": 27,
+        "y0": 21,
+        "x1": 1012,
+        "y1": 955
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.977802,
+        "scaleY": 0.977503,
+        "left": 38,
+        "top": 28,
+        "width": 964,
+        "height": 914,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1635792,
+        "normal": 355102,
+        "emissive": 63010,
+        "total": 2053904
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        5018,
+        4971,
+        4929,
+        4880,
+        4826,
+        4801,
+        4802,
+        4790,
+        4786,
+        4803,
+        4763,
+        4852,
+        4855,
+        4867,
+        4840,
+        4877,
+        4873,
+        4929,
+        4893,
+        4924,
+        4933,
+        4943,
+        4947,
+        5005
+      ]
+    },
+    {
       "species": "sunjaw",
       "side": "back",
       "source": "back/sunjaw(back).webp",
@@ -2096,6 +4826,426 @@
         6129,
         6164,
         6020
+      ]
+    },
+    {
+      "species": "thornback_tenjin",
+      "side": "back",
+      "source": "back/thornback_tenjin(back).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 160,
+        "y0": 81,
+        "x1": 929,
+        "y1": 909
+      },
+      "union": {
+        "x0": 153,
+        "y0": 76,
+        "x1": 930,
+        "y1": 973
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 1.062338,
+        "scaleY": 1.062726,
+        "left": 96,
+        "top": 56,
+        "width": 826,
+        "height": 954,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1444540,
+        "normal": 290152,
+        "emissive": 44532,
+        "total": 1779224
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        475,
+        480,
+        487,
+        493,
+        498,
+        502,
+        504,
+        504,
+        504,
+        502,
+        499,
+        496,
+        493,
+        490,
+        487,
+        484,
+        480,
+        476,
+        473,
+        470,
+        469,
+        469,
+        469
+      ],
+      "emissivePixels": [
+        3364,
+        3163,
+        3161,
+        3122,
+        3119,
+        3097,
+        3056,
+        3045,
+        3081,
+        3104,
+        3095,
+        3089,
+        3134,
+        3123,
+        3073,
+        3103,
+        3158,
+        3125,
+        3154,
+        3137,
+        3154,
+        3157,
+        3236,
+        3224
+      ]
+    },
+    {
+      "species": "thornback_tenjin",
+      "side": "front",
+      "source": "front/thornback_tenjin(front).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 159,
+        "y0": 81,
+        "x1": 917,
+        "y1": 859
+      },
+      "union": {
+        "x0": 148,
+        "y0": 77,
+        "x1": 917,
+        "y1": 859
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 1.130435,
+        "scaleY": 1.130937,
+        "left": 71,
+        "top": 56,
+        "width": 870,
+        "height": 886,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1532408,
+        "normal": 293630,
+        "emissive": 48588,
+        "total": 1874626
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        3153,
+        2958,
+        2944,
+        2918,
+        2880,
+        2888,
+        2876,
+        2870,
+        2860,
+        2904,
+        2920,
+        2943,
+        2951,
+        2953,
+        2905,
+        2909,
+        2922,
+        2913,
+        2894,
+        2942,
+        2939,
+        2985,
+        2947,
+        2921
+      ]
+    },
+    {
+      "species": "toxshade_majin",
+      "side": "back",
+      "source": "back/toxshade_majin(back).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 32,
+        "y0": 91,
+        "x1": 912,
+        "y1": 882
+      },
+      "union": {
+        "x0": 18,
+        "y0": 87,
+        "x1": 940,
+        "y1": 888
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 1,
+        "scaleY": 1,
+        "left": 58,
+        "top": 146,
+        "width": 923,
+        "height": 802,
+        "kernel": "nearest"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 889082,
+        "normal": 213006,
+        "emissive": 3522,
+        "total": 1105610
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        471,
+        471,
+        472,
+        473,
+        473,
+        473,
+        473,
+        473,
+        472,
+        472,
+        471,
+        471,
+        471,
+        471,
+        472,
+        472,
+        473,
+        473,
+        473,
+        472,
+        472,
+        471,
+        471
+      ],
+      "emissivePixels": [
+        81,
+        86,
+        84,
+        80,
+        82,
+        81,
+        77,
+        78,
+        80,
+        80,
+        84,
+        78,
+        80,
+        78,
+        83,
+        79,
+        84,
+        84,
+        79,
+        76,
+        81,
+        85,
+        84,
+        82
+      ]
+    },
+    {
+      "species": "toxshade_majin",
+      "side": "front",
+      "source": "front/toxshade_majin(front).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 80,
+        "y0": 62,
+        "x1": 959,
+        "y1": 910
+      },
+      "union": {
+        "x0": 62,
+        "y0": 24,
+        "x1": 1012,
+        "y1": 914
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 1.001136,
+        "scaleY": 1.001178,
+        "left": 54,
+        "top": 54,
+        "width": 952,
+        "height": 892,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 980420,
+        "normal": 231088,
+        "emissive": 11728,
+        "total": 1223236
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        471,
+        471,
+        471,
+        472,
+        472,
+        472,
+        472,
+        472,
+        471,
+        471,
+        471,
+        471,
+        471,
+        471,
+        471,
+        472,
+        472,
+        472,
+        472,
+        472,
+        471,
+        471,
+        471
+      ],
+      "emissivePixels": [
+        698,
+        666,
+        640,
+        652,
+        636,
+        627,
+        639,
+        623,
+        651,
+        638,
+        632,
+        664,
+        655,
+        642,
+        636,
+        636,
+        632,
+        648,
+        656,
+        631,
+        636,
+        626,
+        637,
+        638
       ]
     },
     {
@@ -2730,6 +5880,216 @@
         1325,
         1260,
         1263
+      ]
+    },
+    {
+      "species": "zenryu_majin",
+      "side": "back",
+      "source": "back/zenryu_majin(back).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 159,
+        "y0": 0,
+        "x1": 965,
+        "y1": 961
+      },
+      "union": {
+        "x0": 159,
+        "y0": 0,
+        "x1": 1023,
+        "y1": 984
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.915737,
+        "scaleY": 0.9158,
+        "left": 143,
+        "top": 61,
+        "width": 792,
+        "height": 902,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1105816,
+        "normal": 222532,
+        "emissive": 58614,
+        "total": 1386962
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        472,
+        475,
+        477,
+        479,
+        480,
+        480,
+        480,
+        479,
+        478,
+        476,
+        475,
+        473,
+        472,
+        471,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        4524,
+        4466,
+        4404,
+        4378,
+        4305,
+        4319,
+        4302,
+        4274,
+        4331,
+        4302,
+        4376,
+        4344,
+        4385,
+        4441,
+        4371,
+        4461,
+        4374,
+        4380,
+        4423,
+        4442,
+        4396,
+        4404,
+        4367,
+        4424
+      ]
+    },
+    {
+      "species": "zenryu_majin",
+      "side": "front",
+      "source": "front/zenryu_majin(front).webp",
+      "sourceSize": [
+        1024,
+        1024
+      ],
+      "pages": 24,
+      "staticFrame": 0,
+      "delays": [
+        125
+      ],
+      "loopMs": 3000,
+      "staticBbox": {
+        "x0": 133,
+        "y0": 0,
+        "x1": 932,
+        "y1": 961
+      },
+      "union": {
+        "x0": 117,
+        "y0": 0,
+        "x1": 1023,
+        "y1": 971
+      },
+      "master": {
+        "size": 1024,
+        "scaleX": 0.91625,
+        "scaleY": 0.9158,
+        "left": 131,
+        "top": 61,
+        "width": 831,
+        "height": 890,
+        "kernel": "lanczos3"
+      },
+      "cell": 512,
+      "grid": [
+        6,
+        4
+      ],
+      "atlas": [
+        3072,
+        2048
+      ],
+      "bytes": {
+        "albedo": 1184318,
+        "normal": 229104,
+        "emissive": 62640,
+        "total": 1476062
+      },
+      "staticFrameBottom": 470,
+      "frameBottoms": [
+        470,
+        471,
+        472,
+        473,
+        474,
+        474,
+        474,
+        474,
+        473,
+        471,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470,
+        470
+      ],
+      "emissivePixels": [
+        4330,
+        4276,
+        4197,
+        4176,
+        4082,
+        4107,
+        4104,
+        4096,
+        4093,
+        4136,
+        4134,
+        4137,
+        4200,
+        4205,
+        4202,
+        4251,
+        4218,
+        4197,
+        4179,
+        4219,
+        4223,
+        4245,
+        4219,
+        4267
       ]
     }
   ]

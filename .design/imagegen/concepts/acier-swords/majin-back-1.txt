@@ -1,0 +1,10 @@
+Image 1 is the front sprite of MAJIN ACIER, the rage form of a Steel/Fighting creature from our monster-collecting game. Image 2 is the back sprite of regular Acier, the same creature before its transformation.
+
+Draw the BACK battle sprite of Majin Acier: exactly the pose, framing, arm layout and sword placement of image 2 (seen from behind, in a 3/4 rear view facing away toward the upper right), with every change from image 1 that shows from this side: scorched black iron plates split by glowing crimson cracks, jagged bronze horns on the shoulder plates, iron spikes on the knuckles, the back of the cracked dark-bronze helm, dark bronze greaves with red cracks, iron claws on the feet. Same palette as image 1.
+
+Correct anatomy, very important: exactly FOUR arms and no others, an upper and a lower shoulder on each side of its broad back. Each arm is one solid, continuous limb joined to the torso, no gaps, no floating parts, no arm crossing over the head. Each fist grips exactly one sword, in the same place as in image 2.
+
+The four swords look as in image 1, seen from this side: Ichigo Kurosaki's Shikai Zangetsu (curved cleaver, black spine, red-hot notched edge, crimson cloth strip), Ichigo's true Bankai Zangetsu (huge hooked black-iron blade, slim inner blade, red-hot edge, red-hot chain), Asta's Demon-Slayer Sword (broad black blade with glowing crimson cracks, gothic-arch point, flared crossguard), Guts' Dragon Slayer (long straight scorched iron slab, groove, block crossguard, red-hot edge). All four fully visible, not touching the canvas edges.
+
+Art style: match image 1 and image 2 exactly, the same big chunky square pixels (crisp and hard-edged), the same thick dark outline, flat 2 to 3 tone shading. No gradients, no anti-aliasing, no blur, no fine texture. Full body, centered. Do not draw an aura, glow, flames or smoke around the creature; the red glow stays inside the cracks and edges.
+Background: one perfectly flat solid magenta #FF00FF, no gradient, no ground shadow. No magenta or hot pink in the creature or the swords. No text, no letters, no frame, no second creature. Square 1:1.

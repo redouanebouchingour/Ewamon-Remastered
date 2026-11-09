@@ -97,11 +97,12 @@ export const ANIM_CELL_DIVISOR = 2;
 /** Folded into every anim cache key (per-side frames and anim atlas files). Bump when `anim.ts` changes behaviour. */
 export const ANIM_STAGE_VERSION = '1';
 /**
- * Hard ceiling for every file under `public/creatures/anim/` plus the manifest's anim share (29 MiB since 2026-11-06, for
- * kelvyre's two 48-page flipbooks at the shared q80 / q80 rung (29.66 MB used), the user's call; 25 MiB from 2026-10-26, for astaroth's
+ * Hard ceiling for every file under `public/creatures/anim/` plus the manifest's anim share (72 MiB since 2026-11-09, for
+ * the 16 Majin / Tenjin forms' 24-page flipbooks at the shared q80 / q80 rung, the user's call over q75 / q75 under 64 MiB; 29 MiB earlier that day, for kelvyre's two 48-page
+ * flipbooks at the shared q80 / q80 rung, the user's call; 25 MiB from 2026-10-26, for astaroth's
  * two flipbooks, the user's call over dropping every flipbook a rung; 24 MiB before; spec §40.6).
  */
-export const ANIM_BUDGET_BYTES = 30_408_704;
+export const ANIM_BUDGET_BYTES = 75_497_472;
 /** Largest anim atlas edge: the 8192 `maxTextureSize` every renderer must have (render §10.1.1; WebP itself allows 16383). */
 export const ANIM_MAX_EDGE = 8192;
 /** Anim atlases live under this subdirectory of the output, outside the static creatures line. */

@@ -1,0 +1,15 @@
+Image 1 is Acier, a Steel/Fighting creature from our monster-collecting game: a hulking four-armed iron warrior with a gold visor-mask, holding one sword in each of its four fists. Image 2 is the old sprite of MAJIN ACIER, its rage form. Image 3 is a reference sheet of the four swords, left to right: A, B, C, D.
+
+Draw MAJIN ACIER: exactly the pose, framing, arm layout and sword placement of image 1, transformed with the rage look of image 2. Its grey steel plates darken to scorched black iron split by glowing crimson cracks, as if it is breaking apart from the inside. Its gold visor-mask turns dark bronze and cracks, the eye slit blazes solid red. Its shoulder plates grow jagged bronze horns and its knuckles short iron spikes. A cracked ring sigil, a circle broken by a jagged crack, glows crimson on its chest plate. Its greaves turn dark bronze with red cracks, its feet grow iron claws. Aggressive, forward-leaning, about-to-charge.
+
+Correct anatomy, very important: exactly FOUR arms and no others, an upper and a lower shoulder on each side of the chest. Each arm is one solid, continuous limb joined to the torso, no gaps, no floating parts, no arm crossing over the head. Each fist grips exactly one sword, in the same place as in image 1.
+
+The four swords keep their shape from image 1 and image 3 so each stays recognisable, but turn darker and notched, with red-hot glowing edges:
+- upper left, A, Ichigo Kurosaki's Shikai Zangetsu (Bleach): the curved cleaver with no crossguard, black spine, its edge now red-hot and notched, the trailing cloth strip turned crimson.
+- upper right, B, Ichigo's true Bankai Zangetsu (Bleach): the huge hooked blade with the slim black inner blade, now black iron with a red-hot edge, its chain glowing red-hot.
+- lower left, C, Asta's Demon-Slayer Sword (Black Clover): the broad black blade, its pale crackle patches now glowing crimson cracks, gothic-arch point, flared crossguard.
+- lower right, D, Guts' Dragon Slayer (Berserk): the long, straight iron slab with the groove and block crossguard, now scorched black with a red-hot edge, nicked and battered.
+All four swords fully visible, not touching the canvas edges.
+
+Art style: match image 1 exactly, the same big chunky square pixels (crisp and hard-edged), the same thick dark outline, flat 2 to 3 tone shading. No gradients, no anti-aliasing, no blur, no fine texture. Front battle sprite, 3/4 view facing left, full body, centered. Do not draw an aura, glow, flames or smoke around the creature; the red glow stays inside the cracks and edges.
+Background: one perfectly flat solid magenta #FF00FF, no gradient, no ground shadow. No magenta or hot pink in the creature or the swords. No text, no letters, no frame, no second creature. Square 1:1.

@@ -52,7 +52,7 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
     expect(dirBytes(REAL_OUT_DIR)).toBe(manifest.totalBytes + (manifest.animTotalBytes ?? 0));
   });
 
-  it(`anim/: animTotalBytes ≤ ${ANIM_BUDGET_BYTES} (29 MiB) = the anim files + the manifest's anim share`, () => {
+  it(`anim/: animTotalBytes ≤ ${ANIM_BUDGET_BYTES} (72 MiB) = the anim files + the manifest's anim share`, () => {
     expect(manifest.animTotalBytes).toBeDefined();
     expect(manifest.animTotalBytes!).toBeLessThanOrEqual(ANIM_BUDGET_BYTES);
     const share = Buffer.byteLength(serializeManifest(manifest)) - Buffer.byteLength(serializeManifest(staticManifest(manifest)));
@@ -180,7 +180,7 @@ describe.skipIf(!existsSync(MANIFEST_PATH))('creatures/ budget (real output)', (
       ]);
       for (const e of report.excluded) expect(e.reason).toBe('alternate-style');
       for (const flag of ['fallback-source', 'missing-side', 'leak', 'empty']) expect(report.counts[flag], flag).toBeUndefined();
-      expect(report.counts.multiframe).toBe(24);
+      expect(report.counts.multiframe).toBe(56);
       expect(report.accepted.map((a) => `${a.species}/${a.flag}`)).toEqual(['malice/coverage']);
     });
 

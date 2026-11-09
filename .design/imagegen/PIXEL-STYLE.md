@@ -189,3 +189,40 @@ anim ceiling raised from 25 to 29 MiB (the user's call).
 Cost: four medium 1536x1024 edits with one reference (about 2,000 input and 1,372 output image tokens each), about
 $0.30 for both sides at gpt-image-1's published rates; everything after the four calls runs locally. Per-call usage and
 the exact commands: `concepts/kelvyre/anim/README.md`.
+
+## Animated painted sprites (the Majin and Tenjin forms)
+
+The 16 Majin / Tenjin forms (2026-11-06) are 1024² painted sprites with chunky pixels, animated with
+`pixel-tools/anim/rig_forms.py` and the bone lists in `pixel-tools/anim/form_rigs.py`. No AI step and no API cost: the
+motion is the rig alone. 24 frames at 125 ms (a 3 s loop, like most legendaries), the user's choice over 48 frames, with
+the anim ceiling raised to 72 MiB (64 MiB would have dropped every flipbook to q75 / q75; the forms cost about 45 MB at
+q80 / q80, not the 33 MB estimated beforehand).
+
+    python .design/imagegen/pixel-tools/anim/rig_forms.py <id> <front|back> <out.webp> [--labels <png>] [--preview <gif>]
+
+**Rig template.** Legs, feet or a pedestal are one fixed `ground` bone, and the `body` bobs and sways over it (the
+hips squash). Floaters (Abysspark, Glimmereen, Hyoryu, Necrogeist) have a `float` body and no ground. Every other bone
+has a role with its own motion: head (lags the body), arm (a weapon or shield is part of its arm), wing (flaps; upper
+and lower wings on one side flap together), fin, tail (a chain with a travelling wave), antenna, cape. A bone owns the
+pixels nearest its segment inside its box, so placing the boxes is most of the work: check `--labels` before
+rendering.
+
+**What made it clean** (each fix took one class of artefacts away; `holes.py`-style counts of enclosed transparent
+pixels per frame against the still were the test):
+
+- Frame 0 is the rest pose exactly (every motion minus its value at t = 0), so the still is page 0,
+  `frame-select.json` stays 0 and no static atlas changes. The script asserts it.
+- Blend weights by distance (a ~80 px zone around the boundary between two bones), between a bone and its parent,
+  children and siblings, then smoothed. Diffusion through the pixels gave ~15 px zones, too narrow: a moving part
+  stretched 2 to 10x and tore. Cutting weights at box edges or between unrelated bones cracked the sprite along
+  straight lines; letting distant touching parts slide opened holes, because a flat sprite has nothing painted behind
+  a part.
+- 4x4 sub-pixels per pixel, splatted forward; a part must cover a quarter of a pixel to count as in front, and every
+  bone has its own depth. Fewer sub-pixels or a looser front rule left moire stripes where layers interleaved.
+- Hairline tears left in stretched areas are filled from their neighbours, except the still's own gaps, which are
+  skinned along with the frame and stay open.
+- Keep relative movement modest where big parts meet: a 9 degree flap at 300 px is ~50 px, so Solpyre's wings and
+  plume run at 60 to 70 %.
+
+Measured motion (silhouette change between the two most different frames): 19 % (Lawlander) to 47 % (Acier), most
+between 25 and 39 %. Render time is about 2 minutes per side.

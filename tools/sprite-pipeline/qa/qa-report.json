@@ -1,7 +1,7 @@
 {
   "total": 408,
   "actionable": 0,
-  "informational": 172,
+  "informational": 202,
   "excluded": [
     {
       "file": "back/yaschamp(back)(fighterstyle).png",
@@ -27,11 +27,47 @@
   "counts": {
     "clipped": 78,
     "coverage": 1,
-    "multiframe": 24,
+    "multiframe": 56,
     "nonsquare": 53,
     "sidemismatch": 70
   },
   "flagged": [
+    {
+      "species": "abysspark_tenjin",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/abysspark_tenjin(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "abysspark_tenjin",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/abysspark_tenjin(front).webp",
+      "actionable": []
+    },
+    {
+      "species": "acier_majin",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/acier_majin(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "acier_majin",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/acier_majin(front).webp",
+      "actionable": []
+    },
     {
       "species": "ampmite",
       "side": "back",
@@ -119,6 +155,24 @@
         "clipped"
       ],
       "source": "front/auroracle(front).png",
+      "actionable": []
+    },
+    {
+      "species": "badlander_majin",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/badlander_majin(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "badlander_majin",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/badlander_majin(front).webp",
       "actionable": []
     },
     {
@@ -274,6 +328,24 @@
         "clipped"
       ],
       "source": "front/clementar(front).png",
+      "actionable": []
+    },
+    {
+      "species": "clementar_majin",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/clementar_majin(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "clementar_majin",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/clementar_majin(front).webp",
       "actionable": []
     },
     {
@@ -483,6 +555,24 @@
       "actionable": []
     },
     {
+      "species": "gemknight_tenjin",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/gemknight_tenjin(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "gemknight_tenjin",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/gemknight_tenjin(front).webp",
+      "actionable": []
+    },
+    {
       "species": "geoboxer",
       "side": "back",
       "flags": [
@@ -541,6 +631,24 @@
       "actionable": []
     },
     {
+      "species": "glimmereen_tenjin",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/glimmereen_tenjin(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "glimmereen_tenjin",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/glimmereen_tenjin(front).webp",
+      "actionable": []
+    },
+    {
       "species": "glimp",
       "side": "back",
       "flags": [
@@ -586,6 +694,42 @@
       "actionable": []
     },
     {
+      "species": "hyoryu_majin",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/hyoryu_majin(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "hyoryu_majin",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/hyoryu_majin(front).webp",
+      "actionable": []
+    },
+    {
+      "species": "infernomorel_majin",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/infernomorel_majin(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "infernomorel_majin",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/infernomorel_majin(front).webp",
+      "actionable": []
+    },
+    {
       "species": "ironcarab",
       "side": "back",
       "flags": [
@@ -622,6 +766,42 @@
         "nonsquare"
       ],
       "source": "front/kelvyre(front).webp",
+      "actionable": []
+    },
+    {
+      "species": "kykaiser_tenjin",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/kykaiser_tenjin(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "kykaiser_tenjin",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/kykaiser_tenjin(front).webp",
+      "actionable": []
+    },
+    {
+      "species": "lawlander_tenjin",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/lawlander_tenjin(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "lawlander_tenjin",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/lawlander_tenjin(front).webp",
       "actionable": []
     },
     {
@@ -875,6 +1055,24 @@
       "actionable": []
     },
     {
+      "species": "necrogeist_majin",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/necrogeist_majin(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "necrogeist_majin",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/necrogeist_majin(front).webp",
+      "actionable": []
+    },
+    {
       "species": "nerohat",
       "side": "back",
       "flags": [
@@ -1020,6 +1218,24 @@
         "sidemismatch"
       ],
       "source": "front/raidori(front).png",
+      "actionable": []
+    },
+    {
+      "species": "raidori_tenjin",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/raidori_tenjin(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "raidori_tenjin",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/raidori_tenjin(front).webp",
       "actionable": []
     },
     {
@@ -1344,6 +1560,24 @@
       "actionable": []
     },
     {
+      "species": "solpyre_tenjin",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/solpyre_tenjin(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "solpyre_tenjin",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/solpyre_tenjin(front).webp",
+      "actionable": []
+    },
+    {
       "species": "starwhim",
       "side": "back",
       "flags": [
@@ -1382,6 +1616,24 @@
       "actionable": []
     },
     {
+      "species": "thornback_tenjin",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/thornback_tenjin(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "thornback_tenjin",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/thornback_tenjin(front).webp",
+      "actionable": []
+    },
+    {
       "species": "tidespine",
       "side": "back",
       "flags": [
@@ -1415,6 +1667,24 @@
         "sidemismatch"
       ],
       "source": "front/toxshade(front).png",
+      "actionable": []
+    },
+    {
+      "species": "toxshade_majin",
+      "side": "back",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "back/toxshade_majin(back).webp",
+      "actionable": []
+    },
+    {
+      "species": "toxshade_majin",
+      "side": "front",
+      "flags": [
+        "multiframe"
+      ],
+      "source": "front/toxshade_majin(front).webp",
       "actionable": []
     },
     {
@@ -1620,18 +1890,20 @@
       "species": "zenryu_majin",
       "side": "back",
       "flags": [
-        "clipped"
+        "clipped",
+        "multiframe"
       ],
-      "source": "back/zenryu_majin(back).png",
+      "source": "back/zenryu_majin(back).webp",
       "actionable": []
     },
     {
       "species": "zenryu_majin",
       "side": "front",
       "flags": [
-        "clipped"
+        "clipped",
+        "multiframe"
       ],
-      "source": "front/zenryu_majin(front).png",
+      "source": "front/zenryu_majin(front).webp",
       "actionable": []
     }
   ],
@@ -1765,12 +2037,12 @@
       {
         "albedo": 88,
         "normal": 92,
-        "totalBytes": 54883927
+        "totalBytes": 54863097
       }
     ],
     "thumbs": {
       "count": 204,
-      "bytes": 1106470,
+      "bytes": 1105608,
       "rungs": {
         "q32/aq100/a8": 2,
         "q40/aq100/a8": 3,
@@ -1784,5 +2056,5 @@
       }
     }
   },
-  "totalBytes": 54883927
+  "totalBytes": 54863097
 }

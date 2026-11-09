@@ -6,6 +6,13 @@ Inputs read for the pass: `00-spine.md`, `10-render.md`, `20-client.md`, `30-ser
 
 ---
 
+<!-- 2026-11-09 the Majin / Tenjin forms animated. One entry. -->
+
+## 2026-11-09 · `40-pipelines.md` §40.1 `multiframe`, §40.1.8 sources and ladder, §40.6 `creatures/anim/` · the 16 Majin / Tenjin forms animate on both sides; the anim ceiling goes from 29 to 72 MiB
+Why: after Kelvyre's loop the user asked for every Majin and Tenjin form to animate. Each form's 1024² still is rigged with a 2D bone rig (`.design/imagegen/pixel-tools/anim/rig_forms.py`, bones in `form_rigs.py`): legs or a pedestal fixed, the body bobbing and swaying over them, heads lagging, arms and weapons swinging, wings flapping, tails waving; floaters bob as a whole. No AI layer, no API cost. 24 pages at 125 ms per side (the user's choice over 48 pages); page 0 is the still itself, so `frame-select.json` stays 0 and their static atlases are byte-identical. Silhouette change between the two most different frames 19 to 47 % (the legendaries 24 to 38 %). The forms cost 44.94 MB at the shared q80 / q80 rung, not the 33 MB estimated: under the 64 MiB the user first chose the ladder would have dropped every flipbook, the legendaries' too, to q75 / q75, so the user raised the ceiling to 72 MiB instead. The same commit carries acier_majin's redraw from 2026-11-03 (the four-sword Acier art), whose flipbook is made from it.
+Evidence: sprite pipeline build: 56 anim atlases, 1429 frames, 74.60 MB (74 604 514 B) at q80 / q80, the 24 earlier flipbooks byte-identical; static 105 atlases, 54.86 MB, only `a-101` (acier_majin's redraw) re-encoded; 16 animated dex thumbs (5.21 MB); a hole check on every frame of all 32 sides (enclosed transparent pixels against the still); `anim-output.test.ts`, `budget.test.ts`, asset-audit `rules.test.ts` (the 72 MiB line), client `spriteCatalog.test.ts`, `dexAnim.test.tsx`.
+Affects: `assets-src/creatures/{front,back}/*_{majin,tenjin}(*).webp` (the stills moved to `assets-src/imagegen/forms-anim/stills/`); `assets-src/forms-pending/*/acier_majin(*).png`; `tools/sprite-pipeline/{frame-select.json,src/types.ts,test/*,qa/*}`; `tools/asset-audit/{src/bytes.ts,test/rules.test.ts}`; `packages/client/public/{creatures,dex-anim,signature/acier_majin.webp}`, client `test/{spriteCatalog,dexAnim}.test.*`; `.design/imagegen/{PIXEL-STYLE.md,pixel-tools/anim/,concepts/acier-swords/}`.
+
 <!-- 2026-11-06 kelvyre animated. One entry. -->
 
 ## 2026-11-06 · `40-pipelines.md` §40.1 `multiframe`, §40.1.8 sources and ladder, §40.6 `creatures/anim/` · kelvyre animates on both sides; the anim ceiling goes from 25 to 29 MiB
