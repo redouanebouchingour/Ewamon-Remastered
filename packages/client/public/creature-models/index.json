@@ -895,12 +895,12 @@
     },
     "toxshade": {
       "url": "toxshade.rig.glb",
-      "bytes": 224020,
+      "bytes": 241868,
       "rig": true
     },
     "toxshade_majin": {
       "url": "toxshade_majin.rig.glb",
-      "bytes": 245508,
+      "bytes": 254612,
       "rig": true
     },
     "trenchtusk": {

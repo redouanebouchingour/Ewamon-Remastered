@@ -1,25 +1,27 @@
 // Toxshade Majin's rig: Toxshade's body and clips (the scad keeps its numbers) with the corruption on top. The
-// magenta crystals ride the back (the tail hook its tip), the burning core and red cracks follow the hide they lie on,
-// and the core flares on its own fidget.
-import { K, TAU, both, merge, rigDef, win } from './lib/anim.mjs';
+// crimson crystals and the burning core ride the body (the barbs the tail tip), the red cracks follow the hide they
+// lie on, the rune ring the head, and the core flares on its own fidget.
+import { K, TAU, both, merge, rigDef } from './lib/anim.mjs';
 import { pick } from './lib/biped.mjs';
 import { isAny, near } from './lib/geo.mjs';
-import { clipsFor, face, joints, jawK, makeAssign, parts } from './toxshade.mjs';
+import { HF, clipsFor, face, joints, jawK, makeAssign, parts } from './toxshade.mjs';
 
-const TOX = [[0.48, 0.26, 0.72], [0.64, 0.42, 0.88]];
-const CRYSTALS = [[0.72, 0.12, 0.42], [0.95, 0.3, 0.6]];
-const RED = [1, 0.12, 0.08];
-const RED_HI = [1, 0.6, 0.35];
+const BLOOD = [0.7, 0.03, 0.08];
+const SHARDS = [[0.3, 0.14, 0.41], [0.48, 0.29, 0.6]];
+const CRYSTALS = [[0.63, 0.09, 0.28], [0.42, 0.04, 0.35]];
+const CLAW = [0.47, 0.13, 0.17];
+const RED = [0.78, 0.04, 0.08];
+const CORE = [[0.95, 0.16, 0.08], [1, 0.5, 0.3]];
 
 const rules = (c, rgb) => {
-  if (isAny(rgb, CRYSTALS)) return c[0] > 9 && c[1] > 8 && c[2] > 16 ? 'tail4' : 'body';
+  if (isAny(rgb, CRYSTALS)) return Math.hypot(c[0] - 5.8, c[1] - 25.4, c[2] - 17.4) < 3.5 ? 'tail4' : 'body';   // the tail barbs, the back spikes
+  if (isAny(rgb, CORE)) return 'body';
   if (near(rgb, RED)) {
-    if (c[2] > 21 && c[1] < -12) return 'head';                                 // the rune ring round the eye
-    if (c[1] < -16 && c[2] > 12) return 'jaw';                                  // drool
-    if (c[2] < 5) return pick(c, parts.filter(([n]) => n === 'hand*'));         // claw drips
-    return 'body';                                                               // core and cracks
+    const l = HF.local(c);
+    if (Math.hypot(l[0], l[1], l[2]) < 6.5) return 'head';                       // the rune ring round the far eye
+    return pick(c, parts);                                                       // cracks
   }
-  if (near(rgb, RED_HI)) return 'body';
+  if (isAny(rgb, [...SHARDS, CLAW])) return pick(c, parts);
   return null;
 };
 
@@ -41,9 +43,9 @@ const clips = {
         ...face.pose(hunch > 0.5 ? 'squeeze' : 'open', 0),
         ...both('arm', { r: [-12 * hunch, 14 * hunch + 1.5 * tr, 0] }),
         ...both('fore', { r: [-20 * hunch, 0, 0] }),
-      }, both('ear', { r: [-10 * win(u, 0.5, 0.95, 0.05), 0, 0] }));
+      });
     },
   },
 };
 
-export default rigDef({ joints, assign: makeAssign(TOX, rules), extras: face.extras, clips });
+export default rigDef({ joints, assign: makeAssign([BLOOD], rules), extras: face.extras, clips });
