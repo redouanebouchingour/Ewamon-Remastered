@@ -1,78 +1,97 @@
-// Vysion's rig: a floating synthezoid spirit, its waist tapering into a curling wisp tail, a golden cape in ribbons off
-// the shoulders (capeL / capeR / capeB, layered on the floater clips), the chest gem as the pulsing core and its narrow
-// glowing eyes as one decal. Numbers are scad/vysion.scad's.
+// Vysion's rig: a hovering android, its thighs merging into a curling wisp tail, a big golden cape in two drapes off
+// the shoulders (capeL / capeR, layered on the floater clips), the chest gem as the pulsing core and its narrow
+// almond eyes on their own joint with eyeKit lids. Numbers are scad/vysion.scad's.
 import { K, TAU, both, merge, osc, rigDef, smooth, win } from './lib/anim.mjs';
-import { any, blob, ell, limb, pick } from './lib/biped.mjs';
+import { any, blob, ell, fromSheet, limb, pick } from './lib/biped.mjs';
+import { eyeKit } from './lib/face.mjs';
 import { floaterClips } from './lib/floater.mjs';
-import { capD, chainHit, closest, fold, isAny, near, side } from './lib/geo.mjs';
+import { capD, chainHit, fold, isAny, near, side } from './lib/geo.mjs';
 
-const GOLD = [[1, 0.88, 0.4], [0.96, 0.74, 0.28], [1, 0.92, 0.45]];
-const EYE = [1, 0.95, 0.75];
-const CLAW = [0.62, 0.7, 0.66];
+const RED = [0.63, 0.2, 0.27];
+const GOLD = [[0.95, 0.78, 0.26], [0.8, 0.6, 0.18]];
+const GLOWY = [[1, 0.9, 0.42], [0.98, 0.9, 0.47]];   // the gems and the sparks
+const EYES = [[0.99, 0.95, 0.61], [1, 0.98, 0.85]];
+const INK = [0.22, 0.09, 0.06];
+const CLAW = [0.59, 0.71, 0.55];
 
-const TAIL = [[0.5, 0.6, 13], [1.5, 0.2, 9], [0.5, -0.5, 5.5], [-1.5, 0.5, 3], [-3, 1, 3], [-3.5, 1, 5]];
-const TAIL_R = [2.2, 1.8, 1.4, 1, 0.7, 0.3];
+const OX = 2.3;
+const S = (sx, z, y = 0) => fromSheet(sx + OX, z, y);
+const TAIL = [S(-2.2, 9.6, -0.8), S(0, 8, -0.8), S(2.5, 7.4, -0.8), S(4.4, 6.3, -0.6), S(4.2, 4.3, -0.4), S(3, 2.6, -0.2), S(2.9, 0.4, 0)];
+const TAIL_R = [1.75, 1.45, 1.3, 1.15, 0.8, 0.5, 0.14];
 const tail = ['tail1', 'tail2', 'tail3', 'tail4'];
+const segJoint = (i) => (i < 2 ? 'tail2' : i < 4 ? 'tail3' : 'tail4');
 
-// the cape's ribbons (mirror_x() ones written for +X), tested as capsules of their half widths
-const SIDE_RIBBONS = [
-  [[[4.5, 1, 34.5], [10, 1.5, 33], [15, 3.5, 28]], [1.4, 1.4, 0.6]],
-  [[[10, 2, 33], [15, 3.5, 27], [17, 4.5, 20], [16.5, 5, 13], [15, 5.5, 8]], [2.8, 3, 2.8, 2, 0.6]],
-  [[[8, 3, 32], [12, 4.5, 24], [12.5, 5.5, 16], [11, 6, 10]], [2.4, 2.6, 2, 0.5]],
-  [[[3.5, 4, 32], [5, 5.5, 24], [5.5, 6.5, 15], [4.5, 7, 9]], [2.6, 2.8, 2.2, 0.5]],
-];
-const BACK_RIBBON = [[[0, 4.5, 31], [0, 6, 22], [0.5, 7, 14]], [3, 3, 0.8]];
-const ribbonD = (c, [pts, rs]) => chainHit(c, pts, rs).d;
+const EYE = [1.05, -4.78, 33.95];
+const SH = [6.6, 0.4, 28.6]; const EL = [9.6, 1.6, 22.2]; const WR = [12.6, 0.2, 16.2]; const HA = [13.4, -1.2, 14.3];
+
+const face = eyeKit({ eyes: [{ side: 'L', at: EYE, size: 0.72, yaw: 18, squash: 0.45 }, { side: 'R', at: [-EYE[0], EYE[1], EYE[2]], size: 0.72, yaw: -18, squash: 0.45 }], skin: RED, lid: [1.1, 1, 0.62] });
 
 const joints = [
   { name: 'root', at: [0, 0, 0] },
   { name: 'body', parent: 'root', at: [0, 0, 21] },
-  { name: 'core', parent: 'body', at: [0, -4, 31.5] },
-  { name: 'head', parent: 'body', at: [0, 0, 35] },
-  { name: 'eyes', parent: 'head', at: [0, -3.6, 39.8] },
-  { name: 'armL', parent: 'body', at: [7, 0, 32.5] },
-  { name: 'handL', parent: 'armL', at: [9.5, -1, 25] },
-  { name: 'armR', parent: 'body', at: [-7, 0, 32.5] },
-  { name: 'handR', parent: 'armR', at: [-9.5, -1, 25] },
-  { name: 'capeL', parent: 'body', at: [5, 1.5, 33.5] },
-  { name: 'capeR', parent: 'body', at: [-5, 1.5, 33.5] },
-  { name: 'capeB', parent: 'body', at: [0, 4.5, 31] },
-  ...tail.map((name, i) => ({ name, parent: i === 0 ? 'body' : tail[i - 1], at: TAIL[i] })),
+  { name: 'core', parent: 'body', at: [0, -2.9, 27.1] },
+  { name: 'head', parent: 'body', at: [0, -1, 31.4] },
+  { name: 'eyes', parent: 'head', at: [0, EYE[1], EYE[2]] },
+  { name: 'armL', parent: 'body', at: [6.4, 0.4, 28.8] },
+  { name: 'handL', parent: 'armL', at: EL },
+  { name: 'armR', parent: 'body', at: [-6.4, 0.4, 28.8] },
+  { name: 'handR', parent: 'armR', at: [-EL[0], EL[1], EL[2]] },
+  { name: 'capeL', parent: 'body', at: [4.6, 3.4, 31] },
+  { name: 'capeR', parent: 'body', at: [-4.6, 3.4, 31] },
+  { name: 'tail1', parent: 'body', at: [0, -0.2, 17.4] },
+  { name: 'tail2', parent: 'tail1', at: TAIL[0] },
+  { name: 'tail3', parent: 'tail2', at: TAIL[2] },
+  { name: 'tail4', parent: 'tail3', at: TAIL[4] },
+  ...face.joints,
 ];
 
+const skull = blob([[[2.25, 2.6, 2.5], [0, -2.6, 36]], [[1.55, 1.9, 1.9], [0, -3.5, 33.2]]]);
 const parts = [
-  ['head', any(blob([[[3.4, 3.4, 4], [0, -0.5, 39.5]]]), ell([2.4, 1.6, 2.8], [0, -2.4, 38.6]), ell([1.6, 1, 2.2], [0, -3.1, 39.6]),
-    ell([0.9, 1.8, 0.8], [0, -1.4, 43.2]), limb([0, 0, 35], [0, -0.5, 37], 1.6), (c) => capD(fold(c), [2.8, -0.5, 40.5], [5.2, 1.5, 45.5], 1.5, 0.3))],
-  ['body', any(blob([[[6.5, 3.8, 4], [0, 0, 31]], [[4, 3, 3], [0, 0, 26]]]), ell([3, 1.2, 3.2], [0, -2.4, 25.5]),
-    blob([[[4, 3, 2.6], [0, 0.3, 21]]]), blob([[[3.2, 2.6, 3], [0, 0.5, 17]]]), (c) => ell([1.3, 1, 2], [1.8, -1.4, 19])(fold(c)),
-    (c) => blob([[[1.4, 1, 3.6], [4.3, -2.2, 31]], [[1, 0.8, 2], [3, -2.8, 27]]])(fold(c)))],
-  ['arm*', any(ell([2.6, 2.4, 2.2], [7, 0, 32.5]), limb([7.5, 0, 31], [9.5, -1, 25], 1.6, 1.4))],
-  ['hand*', any(ell([1.6, 1.6, 1.6], [9.5, -1, 25]), limb([9.5, -1, 25], [10.5, -2.5, 19], 1.4, 1.3), ell([1.4, 1.2, 1.4], [10.8, -2.8, 18]))],
-  ...TAIL.slice(0, -1).map((p, i) => [tail[Math.min(i, 3)], limb(p, TAIL[i + 1], TAIL_R[i], TAIL_R[i + 1])]),
+  ['head', any(skull, limb([0, -0.3, 30], [0, -2, 33], 1.25, 1.15), ell([0.7, 0.42, 0.42], [0, -4.4, 31.6]),
+    (c) => ell([0.45, 1.25, 1.5], [2.05, -2.2, 35.3])(fold(c)),
+    (c) => Math.min(capD(fold(c), [2.15, -1.6, 35.4], [2.7, 1.4, 37.6], 1.0, 0.5), capD(fold(c), [2.7, 1.4, 37.6], [2.95, 4.3, 39.9], 0.5, 0.15)))],
+  ['body', any(blob([[[3.4, 2.4, 2.6], [0, 0.1, 27.4]], [[2.5, 2.0, 2.4], [0, 0.2, 22.6]]]), blob([[[3.9, 2.6, 2.3], [0, -0.1, 28.8]], [[2.6, 2.2, 1.4], [0, 0, 26.9]]]),
+    blob([[[2.9, 2.2, 1.6], [0, 0.2, 19.2]], [[1, 0.9, 1.4], [0, -0.9, 17.4]]]),
+    (c) => Math.min(ell([1.9, 1.3, 1.6], [1.85, -1.55, 27.2])(fold(c)), ell([1.15, 1.7, 2.8], [2.75, 0.1, 24.2])(fold(c)),
+      ...[24.4, 22.85, 21.3].map((z) => ell([0.92, 0.26, 0.78], [0.94, -1.92, z])(fold(c)))))],
+  ['arm*', any(ell([2.0, 2.1, 1.9], [6.4, 0.4, 28.8]), limb(SH, EL, 1.45, 1.2))],
+  ['hand*', any(ell([1.25, 1.25, 1.25], EL), limb(EL, WR, 1.35, 1.05), ell([0.95, 0.95, 0.95], WR), ell([0.95, 1.05, 1.1], HA))],
+  ['tail1', any((c) => limb([2.3, 0.2, 17.6], [1.1, -0.8, 11.2], 1.9, 1.4)(fold(c)), (c) => ell([0.95, 0.75, 2.5], [1.9, -1, 14.8])(fold(c)),
+    (c) => ell([1.05, 0.85, 0.95], [1.15, -1.8, 10.9])(fold(c)), ell([1.9, 1.7, 1.6], [0, -0.7, 10.3]))],
+  ...TAIL.slice(0, -1).map((p, i) => [segJoint(i), limb(p, TAIL[i + 1], TAIL_R[i], TAIL_R[i + 1])]),
 ];
+
+// the tail's gold wisps and the sparks follow the nearest tail link
+const tailJoint = (c) => {
+  if (c[2] > 9.5 && c[0] < 2) return 'tail2';
+  const h = chainHit(c, TAIL, TAIL_R.map((r) => r + 1.5));
+  return segJoint(h.i);
+};
 
 function assign(c, rgb) {
   const S = side(c);
-  if (near(rgb, EYE, 0.03) && c[2] > 38) return 'eyes';
+  if (isAny(rgb, EYES, 0.03)) return 'eyes';
+  if (near(rgb, INK, 0.03)) return c[2] > 33 ? 'eyes' : 'head';
   if (near(rgb, CLAW, 0.03)) return `hand${S}`;
-  if (isAny(rgb, GOLD, 0.05)) {
-    if (c[1] < -2.8) return c[2] > 36 ? 'head' : c[2] > 28 ? 'core' : 'body';
-    if (capD(fold(c), [10.3, -2.3, 20.5], [10.3, -2.3, 20.5], 2) < 1) return `hand${S}`;
-    if (c[2] < 9 && c[1] < 3) return 'body';                       // the sparks scattered round the tail
-    return closest([[`cape${S}`, Math.min(...SIDE_RIBBONS.map((r) => ribbonD(fold(c), r)))], ['capeB', ribbonD(c, BACK_RIBBON)]]);
+  if (isAny(rgb, GLOWY, 0.03)) {
+    if (c[2] > 33) return 'head';
+    if (c[2] > 24) return 'core';
+    return tailJoint(c);
   }
-  if (c[2] < 13.5 && c[1] > -3) {
-    const h = chainHit(c, TAIL, TAIL_R);
-    if (h.d < 1.6 || c[2] < 9) return tail[Math.min(h.i, 3)];
+  if (isAny(rgb, GOLD, 0.04)) {
+    if (c[2] > 34) return 'head';                                               // the forehead gem's setting
+    if (c[2] > 24 && c[1] < -2) return 'core';                                  // the chest gem's setting
+    if (c[2] < 11.5 && c[1] < 0.5) return tailJoint(c);                         // the wisps along the tail
+    if (capD(fold(c), [9.6, 1.6, 22.2], [12.6, 0.2, 16.2], 1.6, 1.6) < 1) return `hand${S}`;   // the cuffs
+    if (c[2] > 30.2 && Math.abs(c[0]) < 6.4 && c[1] < 4.8) return 'body';      // the straps and the mantle behind the neck
+    return c[0] > -1.5 ? 'capeL' : 'capeR';
   }
+  if (c[2] > 34.2 || (c[1] < -3.2 && c[2] > 30.5)) return 'head';
   return pick(c, parts);
 }
 
-// the cape: ry flares a side drape out, rx streams it back (it hangs from the shoulders)
-const cape = (back, flare = 0, sway = 0) => ({
-  ...both('cape', { r: [back, -flare, sway] }),
-  capeB: { r: [back * 1.2, 0, sway * 0.5] },
-});
+// the cape: rx streams a drape back (it hangs from the shoulders), ry flares it out
+const cape = (back, flare = 0, sway = 0) => both('cape', { r: [back, -flare, sway] });
 const add = {
   idle: (t, u) => cape(2 + 2 * osc(u, 2, 0.3), 2 * osc(u, 2, 0.6), 2 * osc(u, 1, 0.2)),
   walk: (t, u) => cape(14 + 3 * osc(u, 2, 0.2), 6, 3 * osc(u, 1)),
@@ -86,7 +105,7 @@ const add = {
   exit: (t, u) => cape(6, 10),
 };
 
-const clips = floaterClips({ tail, bob: 1, add });
+const clips = floaterClips({ face, tail, bob: 1, add });
 delete clips.idle_spin;
 delete clips.idle_cackle;
 
@@ -102,6 +121,7 @@ clips.idle_scan = {
       head: { r: [0, 0, turn * on] },
       eyes: { s: [1, 1, 1 - 0.3 * on] },
       core: { s: 1 + 0.25 * on * (osc(u, 6) * 0.5 + 0.5) },
+      ...face.pose('open'),
     }, cape(2, 2 * osc(u, 2)));
   },
 };
@@ -115,10 +135,11 @@ clips.idle_billow = {
       body: { p: [0, 0, 0.5 + 1.6 * up], r: [-6 * up, 0, 0] },
       head: { r: [-10 * up, 0, 0] },
       core: { s: 1 + 0.2 * up },
-      ...both('arm', { r: [0, -60 * up, 10 * up] }),
+      ...both('arm', { r: [0, -40 * up, 10 * up] }),
       ...both('hand', { r: [0, -20 * up, 0] }),
+      ...face.pose('open'),
     }, cape(6 * up + 3 * osc(u, 3) * up, 30 * up + 6 * osc(u, 3) * up));
   },
 };
 
-export default rigDef({ joints, assign, clips });
+export default rigDef({ joints, assign, extras: face.extras, clips });

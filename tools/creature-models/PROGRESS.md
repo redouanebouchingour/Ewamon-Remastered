@@ -77,7 +77,7 @@ Committed: abysspark, abysspark_tenjin, acier, acier_majin (modelled from the 20
 aonred, archonosis, astaroth; ampmite, auroracle, bankaiser, berkest, blighthex, blizzraak, bloomsprite; bloomdrake, blossomsail, bogmaw, briarvaunt, chrysotox, clementar_majin; budwing, caldermole, cirrileap, coalette,
 darkyon, dunescale, embrock, fedoraith, fibrostis; flampling, florasage, frofloe, geoboxer, glaciarm;
 galeforth, glacifang, glimmereen, glimmereen_tenjin, grubolt, gustuff, hexroach; glacinid, hollowolf, hyoryu,
-hyoryu_majin, ignispectre, ironcarab; hollowmane, hollowmane_rage, katamute; lawlander, lawlander_tenjin, luxtrik; lumyth, mesadrake; magmolith, mantleaf, miscarmen; mismagmen, murkrat, murmink; moblaze, nebucloak; necrogeist, necrogeist_majin, noxmyth, pebfist; nettlewisp, pebblit; petraptor, raikitsune; pyrecap; raidori, raidori_tenjin; rambull, resilian, resilith, resilithorn; ravatar, ravatar_avatar; ripshell; rivetalon, shagtusk, rimetusk; rimeidol, roobrawler; ravatar_air, ravatar_earth; scraphog, shalewing; ravatar_fire, ravatar_water; shardling, shiveruff; snapling, stellaria; slushpup, stormchick; solpyre, solpyre_tenjin, sunjaw; thornback, thornback_tenjin, thundrix; tidespine, tidalfang, tsunamite, ultraze, velvetomb, venobulb; veilpup, toxshade, toxshade_majin; voidraith, voltide; verdatide, voltaura.
+hyoryu_majin, ignispectre, ironcarab; hollowmane, hollowmane_rage, katamute; lawlander, lawlander_tenjin, luxtrik; lumyth, mesadrake; magmolith, mantleaf, miscarmen; mismagmen, murkrat, murmink; moblaze, nebucloak; necrogeist, necrogeist_majin, noxmyth, pebfist; nettlewisp, pebblit; petraptor, raikitsune; pyrecap; raidori, raidori_tenjin; rambull, resilian, resilith, resilithorn; ravatar, ravatar_avatar; ripshell; rivetalon, shagtusk, rimetusk; rimeidol, roobrawler; ravatar_air, ravatar_earth; scraphog, shalewing; ravatar_fire, ravatar_water; shardling, shiveruff; snapling, stellaria; slushpup, stormchick; solpyre, solpyre_tenjin, sunjaw; thornback, thornback_tenjin, thundrix; tidespine, tidalfang, tsunamite, ultraze, velvetomb, venobulb; veilpup, toxshade, toxshade_majin; voidraith, voltide; verdatide, voltaura; voidraxis, vysion.
 Polish later: auroracle (tails smooth, sausage-like), ampmite (legs a bit stilt-like), chrysotox (strands read as flakes),
 briarvaunt (solid where the art is speckled and see-through), cirrileap (cloud reads as a pile of spheres),
 coalette (face a bit cute), darkyon (flame hem an even crown band), fibrostis (strands faceted, crystal-like), frofloe (tail a bit tube-like),
@@ -95,7 +95,8 @@ stellaria (cape hem even vs curling), slushpup (eyes a bit panda-like), stormchi
 sunjaw (mane faceted), thornback + tenjin (thorns small, leaves smooth),
 thundrix (wing arm a smooth rod), tidespine (head long and flat), velvetomb (hem clouds still beady),
 ultraze (chrome bands plain rings), veilpup (mane locks faceted, a bit small), toxshade + majin (still lower and wider than the upright art), verdatide (shell a smooth panel dome),
-voltaura (wings greyish, not glowing).
+voltaura (wings greyish, not glowing), voidraxis (mane thinner than the art),
+vysion (arms thin tubes, abs bubbly).
 Note: the four ravatar relic forms import rigs/ravatar.mjs, whose API changed with this remodel; all four are now
 redone on the new API (2026-11-06).
 Note (lawlander agent): lib.scad ppBack() seems to turn 150 deg where the back render needs 210 deg; back-sheet
