@@ -1,78 +1,109 @@
-// Tidalfang's rig: a gentle aqua sea dragon on a long curved neck, a webbed sail behind the shoulders and little arms
-// held up in front. Its tail loops up its side and sweeps across the front past its feet, so it is one joint off the
-// root that barely sways (anything more ploughs it through the legs). Numbers are scad/tidalfang.scad's; the head block
-// is scaled 1.18 about [0, -6, 34] (HF).
+// Tidalfang's rig: a slender teal sea dragon coiled upright. An S of neck and chest into a head turned towards the
+// camera and tipped nose-down (the scad's headFrame), a big pale sail behind the shoulders, little arms, legs off the
+// root, and the coiled body: one joint for the loop round its side and past its feet (anything more ploughs it
+// through the legs) and one for the spiral at the tip. The scad is authored in the art's sheet z and lowered G = 5 (the
+// rock it stands on in the art is not modelled), so every number here goes through W(). Numbers are scad/tidalfang.scad's.
 import { K, TAU, both, merge, osc, rigDef, win } from './lib/anim.mjs';
-import { any, bipedClips, chain, ell, limb, mx, pair, pick, spike } from './lib/biped.mjs';
+import { any, bipedClips, blob, chain, ell, fromSheet, inFrame, limb, pick, ppFrame, spike } from './lib/biped.mjs';
 import { blinks, eyeKit } from './lib/face.mjs';
-import { isAny, near, side, subFrame } from './lib/geo.mjs';
+import { isAny, near, plateD, subFrame, unrot } from './lib/geo.mjs';
 
-const AQUA = [0.22, 0.72, 0.74];
-const SAILS = [[0.7, 0.94, 0.9], [0.8, 0.78, 0.98], [0.3, 0.72, 0.74]];
-const DROP = [0.45, 0.68, 0.95];
+const G = 5;
+const TEAL = [0.14, 0.6, 0.66];
+const DROP = [0.35, 0.62, 0.93];
+const EYES = [[0.04, 0.06, 0.08], [0.7, 0.7, 0.82], [0.02, 0.03, 0.04], [1, 1, 1]];
+const W = (p) => [p[0], p[1], p[2] - G];
+const F = (sx, z, y) => W(fromSheet(sx, z, y));
+const add = (a, b) => a.map((v, i) => v + b[i]);
 
-const HF = subFrame([0, -6, 34], [0, 0, 0], 1.18);
-const H = (p) => HF.world(p);
+// the head frame: translate(HC) rotate([0, 0, 15]) rotate([18, 0, 0]) scale(1.3), lowered
+const HF = subFrame(W([-8, -3.6, 28.4]), [18, 0, 15], 1.3);
+const eyeL = { side: 'L', at: [2.5, -2.3, 0.1], size: 1.4, yaw: 38, flat: 0.55, frame: HF };
+const face = eyeKit({ eyes: [eyeL, { ...eyeL, side: 'R', at: [-2.5, -2.3, 0.1], yaw: -38 }], skin: TEAL });
+
+// the sail: pp(4.2) translate([0, 0, 20]) rotate([-22, 0, 0]) scale([1, 1, 1.08]) translate([0, 0, -20]), lowered
+const SAIL_PTS = [[-8.4, 26], [-8.2, 33], [-7.2, 37], [-6, 39.6], [-4.2, 39.8], [-1.6, 38.2], [1.8, 39.2], [3.4, 35.8], [6.4, 36.6],
+  [7.9, 32.6], [10.9, 32.2], [11.4, 29.2], [12.9, 27.2], [13.2, 23.6], [10, 21], [4, 19.6], [-2, 19.6], [-6.4, 22]];
+const PP = ppFrame(4.2);
+const sailLocal = (c) => {
+  const q = PP.local([c[0], c[1], c[2] + G]);
+  const r = unrot([-22, 0, 0], [q[0], q[1], q[2] - 20]);
+  return [r[0], r[1], r[2] / 1.08 + 20];
+};
+const SAIL = (c) => plateD(sailLocal(c), SAIL_PTS, 1.6);
 
 // the scad's Catmull-Rom spline, so the tail test follows the same path
 const cr = (a, b, c, d, t) => a.map((_, i) => 0.5 * (2 * b[i] + (c[i] - a[i]) * t + (2 * a[i] - 5 * b[i] + 4 * c[i] - d[i]) * t * t + (3 * b[i] - a[i] - 3 * c[i] + d[i]) * t * t * t));
 const spline = (P, n) => [...P.slice(0, -1).flatMap((_, i) => Array.from({ length: n }, (_, k) => cr(P[Math.max(i - 1, 0)], P[i], P[i + 1], P[Math.min(i + 2, P.length - 1)], k / n))), P[P.length - 1]];
-const TAIL = spline([[0, 5, 10], [6, 7, 8], [11.5, 5, 11], [12.5, 0.5, 17], [9.5, -4, 18.5], [7.5, -6, 13], [7, -7, 7.5],
-  [2, -9, 5], [-5, -9, 5], [-11, -6.5, 6], [-14, -5.5, 10], [-12, -5, 13], [-9.6, -5, 11], [-10.6, -5, 9]], 3);
-const TAIL_R = TAIL.map((_, i) => 3.6 - (3.1 * i) / (TAIL.length - 1));
+const lerpR = (R, n) => [...R.slice(0, -1).flatMap((r, i) => Array.from({ length: n }, (_, k) => r + ((R[i + 1] - r) * k) / n)), R[R.length - 1]];
+const TAIL_C = [F(0, 12, 4.5), F(2.4, 18, 3.4), F(1.6, 22.6, 0.4), F(6, 24, -1.4), F(12, 22.4, -1.8), F(14.6, 17, -1.8), F(14, 10.4, -1.4),
+  F(10, 6.8, -1), F(5.6, 7.4, 0.2), F(1, 6.6, 3), F(-5, 6.4, 3.4), F(-10, 6, 1.2), F(-14.6, 6, -1), F(-17.6, 8.4, -1.8),
+  F(-17, 13, -1.8), F(-14, 14, -1.8), F(-12.4, 11.6, -1.8), F(-13.6, 9.6, -1.8)];
+const TAIL = spline(TAIL_C, 2);
+const TAIL_R = lerpR([3.4, 3.2, 3.1, 3.1, 3, 2.9, 2.8, 2.6, 2.4, 2.3, 2.2, 2, 1.9, 1.7, 1.4, 1.1, 0.85, 0.6], 2);
+const SPLIT = 24;   // the spiral starts at control point 12
 
-const RIBS = [[0.5, 28, 3, 1, 43], [1.4, 25, 6, 4, 45], [2.2, 22, 9.5, 7, 43], [2.8, 19, 12, 9, 38], [3.2, 16, 13, 10, 31], [3.4, 13, 11, 9, 23]];
-
-const eyeFrame = (S) => { const k = S === 'L' ? 1 : -1; return subFrame(H([2.3 * k, -7.6, 35.1]), [0, 0, 30 * k], 1.18); };
-const face = eyeKit({ eyes: ['L', 'R'].map((S) => ({ side: S, at: [0.01, 0, 0], size: 2, flat: 0.6, squash: 0.7, frame: eyeFrame(S) })), skin: AQUA });
+const SPINE = [[0, 1.6, 11], [-0.8, 0, 16.5], [-2.6, -1.4, 21], [-5.2, -2.6, 24.4], [-7.8, -3.2, 27.4]].map(W);
+const SPINE_R = [4.6, 4.4, 3.6, 2.9, 2.6];
+const ARMS = {
+  L: [[2.6, -1.6, 19.4], [4.6, -3.2, 17.2], [5.8, -4, 19.4]].map(W),
+  R: [[-3.6, -1.2, 19.4], [-6.4, -2.4, 17], [-7.8, -4, 15.4]].map(W),
+};
+const LEGS = {
+  L: { thigh: W([3.8, 0.4, 12.4]), tr: [2.8, 3.4, 3], knee: W([4.6, 1.4, 9]), ankle: W([5, -0.6, 6.2]) },
+  R: { thigh: W([-3.8, -0.6, 11.8]), tr: [2.6, 3.2, 2.8], knee: W([-5.2, -1.2, 8.4]), ankle: W([-6, -2.2, 6.2]) },
+};
 
 const joints = [
   { name: 'root', at: [0, 0, 0] },
-  ...pair('leg*', 'root', [4.6, 1, 10.4]),
-  { name: 'body', parent: 'root', at: [0, 1.5, 11] },
-  { name: 'head', parent: 'body', at: [0, -2.4, 29.5] },
-  ...pair('arm*', 'body', [4.4, -2.4, 22.5]),
-  ...pair('fore*', 'arm*', [6, -3.6, 19]),
-  { name: 'tail1', parent: 'root', at: [0, 5, 10] },
+  { name: 'legL', parent: 'root', at: LEGS.L.thigh },
+  { name: 'legR', parent: 'root', at: LEGS.R.thigh },
+  { name: 'body', parent: 'root', at: SPINE[0] },
+  { name: 'head', parent: 'body', at: SPINE[2] },
+  { name: 'armL', parent: 'body', at: ARMS.L[0] },
+  { name: 'foreL', parent: 'armL', at: ARMS.L[1] },
+  { name: 'armR', parent: 'body', at: ARMS.R[0] },
+  { name: 'foreR', parent: 'armR', at: ARMS.R[1] },
+  { name: 'tail1', parent: 'root', at: TAIL[0] },
+  { name: 'tail2', parent: 'tail1', at: TAIL[SPLIT] },
   ...face.joints,
 ];
 
-const HORN = mx(any(...chain(['h'], [H([1.6, -4.4, 37.6]), H([2.4, -2.4, 40.6]), H([2.4, 0.4, 42.6]), H([1.8, 2.6, 43])], [1.3, 1, 0.7, 0.3]).map((e) => e[1])));
-const AQUA_HI = [0.42, 0.85, 0.85];
+const legTest = ({ thigh, tr, knee, ankle }) => any(ell(tr, thigh), limb(add(thigh, [0, 0.4, -2]), knee, 2, 1.5), limb(knee, ankle, 1.5, 1.2),
+  limb(add(ankle, [-1.8, -2.4, -1]), add(ankle, [1.8, -2.4, -1]), 1.1), limb(ankle, add(ankle, [0, -3.2, -1.3]), 1),
+  limb(add(knee, [0, 1, 0]), add(knee, [Math.sign(knee[0]), 2.8, -1.6]), 0.8));
+const HEAD = inFrame(HF, any(
+  blob([[[3.9, 3.4, 3.1], [0, 0.2, 0.4]], [[3, 2.6, 2.4], [0, -2.6, -1.3]], [[1.9, 1.6, 1.5], [0, -4.6, -2.6]]]),
+  limb([1.7, 0.6, 2.4], [2.5, 1.6, 7.2], 1.1, 0.4), limb([-1.7, 0.6, 2.4], [-2.5, 1.6, 7.2], 1.1, 0.4),
+  limb([3, 1, 0.4], [7, 1, 0.4], 1.6), limb([-3, 1, 0.4], [-7, 1, 0.4], 1.6)));
 
 const parts = [
-  ['head', any(limb([0, -2.4, 29.5], [0, -4, 32.5], 2.9, 2.6), ell([4.25, 4.25, 3.8], H([0, -5, 35])), limb(H([0, -9, 34]), H([0, -11.4, 33.4]), 2.6, 1.5),
-    limb(H([0, -6, 32.6]), H([0, -10.6, 32.8]), 1.6, 1), HORN,
-    mx(limb(H([1.6, -4.4, 37.6]), H([2.4, 0.4, 42.6]), 1.2, 0.7)), mx(limb(H([3.2, -4.4, 34.6]), H([7.4, -1.8, 35.4]), 1.2)), mx(limb(H([3.2, -4.4, 34.6]), H([6, -1.4, 31.8]), 1.2)))],
-  ['body', any(limb([0, 1.5, 11], [0, 0.5, 16], 6), limb([0, 0.5, 16], [0, -0.5, 21], 6, 5), limb([0, -0.5, 21], [0, -1.2, 25.5], 5, 3.7),
-    limb([0, -1.2, 25.5], [0, -2.4, 29.5], 3.7, 2.9), ...RIBS.map((r) => mx(limb([1.4, r[0] + 1.6, r[1]], [r[2], r[3] + 1.6, r[4]], 1))),
-    ...RIBS.map((r) => spike([0, r[0] + 2.2, r[1]], [0, 1.2, 1.4], 0.8)))],
-  ['arm*', limb([4.4, -2.4, 22.5], [6, -3.6, 19], 1.4, 1.1)],
-  ['fore*', any(limb([6, -3.6, 19], [4.4, -6.2, 18.6], 1.1, 0.9), limb([4.2, -6.8, 18.6], [4.2, -7.9, 19], 0.6), limb([6, -3.4, 19.4], [8.6, -1.6, 17.4], 0.6))],
-  ['leg*', any(ell([3.8, 4.4, 4.6], [4.6, 1, 10.4]), limb([4.8, 0.4, 8.6], [5.6, 3, 5.4], 2.2, 1.5), limb([5.6, 3, 5.4], [5.4, 0.8, 3.4], 1.5, 1.2),
-    ell([1.6, 2.6, 0.9], [5.4, -0.6, 3.2]), limb([4.4, -2.6, 3], [6.4, -4.2, 2.6], 0.6))],
-  ...chain(['tail1'], TAIL, TAIL_R.map((r) => r * 1.1)),
+  ['body', any(limb(SPINE[0], SPINE[1], SPINE_R[0], SPINE_R[1]), limb(SPINE[1], SPINE[2], SPINE_R[1], SPINE_R[2]), SAIL)],
+  ['head', any(limb(SPINE[2], SPINE[3], SPINE_R[2], SPINE_R[3]), limb(SPINE[3], SPINE[4], SPINE_R[3], SPINE_R[4]), HEAD)],
+  ...['L', 'R'].flatMap((s) => [
+    [`arm${s}`, limb(ARMS[s][0], ARMS[s][1], 1.4, 1.1)],
+    [`fore${s}`, any(limb(ARMS[s][1], ARMS[s][2], 1.1, 1), limb(ARMS[s][2], add(ARMS[s][2], s === 'L' ? [0, -0.6, 1.6] : [0, -1, -1.2]), 0.9),
+      ...(s === 'R' ? [limb(W([-6.4, -2, 17.6]), W([-9.8, -1.6, 19.8]), 0.8), limb(W([-5.2, -1, 19.6]), W([-9.8, -1.6, 19.8]), 0.8)] : []))],
+    [`leg${s}`, legTest(LEGS[s])],
+  ]),
+  ...chain(TAIL.slice(1).map((_, i) => (i < SPLIT ? 'tail1' : 'tail2')), TAIL, TAIL_R.map((r) => r * 1.12)),
+  ['tail1', inFrame(ppFrame(-1.2), (c) => plateD([c[0], c[1], c[2] + G], [[7.4, 10.4], [8.6, 15.6], [10.6, 17.6], [11.6, 13.4], [11, 9.4], [9.4, 8.6]], 1.2))],
+  ['tail2', inFrame(ppFrame(-1.2), (c) => plateD([c[0], c[1], c[2] + G], [[-15.8, 9.4], [-16.2, 12.6], [-14.6, 13.6], [-13.4, 12.2], [-14, 10.2]], 1.2))],
 ];
 
 function assign(c, rgb) {
   if (near(rgb, DROP)) return 'body';
-  if (near(rgb, AQUA_HI) && HORN(c) < 1.4) return 'head';
-  if (isAny(rgb, SAILS)) {
-    if (c[2] < 23 && Math.abs(c[0]) > 3 && c[1] < 0) return `fore${side(c)}`;   // the elbow fins
-    if (c[2] < 15 && c[1] < -3) return 'tail1';                                 // the curl's web
-    if (c[1] < 0.5 && c[2] > 28) return 'head';                                 // the ear frills
-    return 'body';
-  }
+  if (isAny(rgb, EYES, 0.03) && c[2] > 18) return 'head';
   return pick(c, parts);
 }
 
-// the tail barely sways: it loops round the legs
-const tailK = (u, amp = 1) => ({ tail1: { r: [0, 0, 1.2 * amp * osc(u, 1)] } });
+// the coil barely sways: it loops round the legs; the spiral at the tip curls a little
+const tailK = (u, amp = 1) => ({ tail1: { r: [0, 0, 1.2 * amp * osc(u, 1)] }, tail2: { r: [0, 4 * amp * osc(u, 1, 0.3), 0] } });
 // the long neck sways like a swan's
 const neck = (u, amp = 1, cycles = 1) => ({ head: { r: [2 * amp * osc(u, cycles, 0.2), 0, 3 * amp * osc(u, cycles, 0.45)] } });
 
 const base = bipedClips({
-  face, hipH: 10, stride: 10, armSwing: 6, hopScale: 0.4, droop: 0.6,
+  face, hipH: 7, stride: 10, armSwing: 6, hopScale: 0.4, droop: 0.6,
   // a quick snap of the head forward with the claws out
   punch: { arm: [-40, 0, 0], fore: [-20, 0, 0] },
   cheer: { arm: [-20, -70, 0], fore: [-30, 0, 0] },
@@ -110,7 +141,7 @@ const clips = {
       const back = K(u, [[0, 0], [0.18, 1], [0.45, 1], [0.6, 0]]);
       const look = K(u, [[0.5, 0], [0.65, 1], [0.85, 1], [1, 0]]);
       return merge({
-        body: { r: [0, 0, -14 * back + 6 * look] },
+        body: { r: [0, 0, -10 * back + 5 * look] },
         head: { r: [-6 * back, 10 * back, -40 * back + 22 * look] },
         ...face.pose('open', blinks(u, [[0.48, 0.53]])),
       }, tailK(u));

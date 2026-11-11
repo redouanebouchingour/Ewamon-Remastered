@@ -1,77 +1,117 @@
-// Venobulb's rig: a hulking brute on four planted limbs (the quadruped template) with no head: a gaping maw in its
-// chest whose upper jaw (trap) and lower jaw (jaw) hinge deep in the body and slam shut on the bite. Flytrap clusters
-// on each shoulder (sprL / sprR) sway and snap; a thorned tail sweeps round. Numbers are scad/venobulb.scad's.
+// Venobulb's rig: a hulking brute on four splayed legs (the quadruped template) with no head: its whole front is a
+// gaping maw whose upper jaw (trap) and lower jaw (jaw) hinge deep in the body and slam shut on the bite. A cluster of
+// small flytraps on each shoulder (sprL / sprR) sways and snaps; the thorned tail lying round the near side sweeps
+// along the ground. Numbers are scad/venobulb.scad's.
 import { K, TAU, merge, osc, rigDef, smooth, win } from './lib/anim.mjs';
-import { any, blob, chain, ell, limb, petal, pick } from './lib/biped.mjs';
-import { ellD, isAny, near, subFrame } from './lib/geo.mjs';
+import { any, blob, ell, inFrame, limb, pick } from './lib/biped.mjs';
+import { capD, ellD, near, subFrame } from './lib/geo.mjs';
 import { legs, quadrupedClips } from './lib/quadruped.mjs';
 
-const SKIN = [[0.2, 0.42, 0.22], [0.32, 0.58, 0.3], [0.12, 0.28, 0.14], [0.55, 0.22, 0.75]];
-const SLIME = [0.75, 0.95, 0.3];
-const TONGUE = [0.3, 0.5, 0.3];
-const HEAD = [0, -6, 15];
-const JR = [7.5, 8, 5];
-const UP = subFrame(HEAD, [-30, 0, 0]);
-const LO = subFrame(HEAD, [16, 0, 0]);
-const TAIL = [[0, 13, 10], [3, 19, 7], [9, 22, 4], [15, 19, 2.5], [18, 13, 1.8], [17.5, 8, 1.4]];
-const TAIL_R = [4, 3.2, 2.5, 1.9, 1.4, 0.7];
+const DEGR = Math.PI / 180;
+const SLIME = [0.66, 0.84, 0.28];
+const TONGUE = [0.24, 0.46, 0.3];
+const FANG = [0.92, 0.86, 0.67];
+const SPROUT = [[0.31, 0.53, 0.17], [0.5, 0.74, 0.23], [0.32, 0.16, 0.27]];   // leaf, trap, trap inside
+
+// the maw
+const H = [0, -7, 14.8];
+const UA = 58;
+const LA = 40;
+const YAW = 4;
+const RU = [9.4, 5.8, 8.6];
+const RL = [8.8, 5.6, 5.2];
+const F = 0.85;
+const UP = subFrame(H, [-UA, 0, YAW]);
+const LO = subFrame(H, [LA, 0, YAW]);
+const HF = subFrame(H, [0, 0, YAW]);
+// the body
+const E1 = [[11.2, 9.5, 13], [0, 2.5, 15]];
+const E2 = [[10.2, 9, 9.5], [0, 10.5, 12.5]];
+const E3 = [[8.5, 8, 4.5], [0, 4, 10.5]];
+const SH = [[4.4, 4.6, 5], [9, -2, 11.5]];
+const TH = [[4.6, 6, 5.4], [8.4, 10, 8.6]];
+const SP = [9, -3.5, 23.6];
+const TAIL = [[0, 17, 10], [6, 20, 7.8], [12.4, 17.4, 5], [16.6, 11, 3], [18, 3.6, 2.2], [16.6, -3.4, 1.8], [14, -8, 1.3], [11.2, -10.6, 0.8]];
+const TAIL_R = [3.8, 3.3, 2.9, 2.5, 2.2, 1.8, 1.3, 0.5];
 const tail = ['tail1', 'tail2', 'tail3', 'tail4'];
-const TRAPS = [[[7, -2, 26], 1.4], [[10.4, 0.5, 24.5], 1.15], [[4.6, 2, 25], 1.15]];
 
 const joints = [
   { name: 'root', at: [0, 1, 0] },
-  { name: 'legFL', parent: 'root', at: [8.5, -4, 17] },
-  { name: 'legFR', parent: 'root', at: [-8.5, -4, 17] },
-  { name: 'legBL', parent: 'root', at: [6.8, 8, 10] },
-  { name: 'legBR', parent: 'root', at: [-6.8, 8, 10] },
+  { name: 'legFL', parent: 'root', at: SH[1] },
+  { name: 'legFR', parent: 'root', at: [-SH[1][0], SH[1][1], SH[1][2]] },
+  { name: 'legBL', parent: 'root', at: TH[1] },
+  { name: 'legBR', parent: 'root', at: [-TH[1][0], TH[1][1], TH[1][2]] },
   { name: 'body', parent: 'root', at: [0, 2, 9] },
-  { name: 'trap', parent: 'body', at: HEAD },
-  { name: 'jaw', parent: 'body', at: HEAD },
-  { name: 'sprL', parent: 'body', at: [7, -1, 22.5] },
-  { name: 'sprR', parent: 'body', at: [-7, -1, 22.5] },
-  ...tail.map((name, i) => ({ name, parent: i ? tail[i - 1] : 'body', at: TAIL[i] })),
+  { name: 'trap', parent: 'body', at: H },
+  { name: 'jaw', parent: 'body', at: H },
+  { name: 'sprL', parent: 'body', at: [SP[0], SP[1], SP[2] - 1.5] },
+  { name: 'sprR', parent: 'body', at: [-SP[0], SP[1], SP[2] - 1.5] },
+  // the tail's links spread along it: every two scad segments one link
+  ...tail.map((name, i) => ({ name, parent: i ? tail[i - 1] : 'body', at: TAIL[2 * i] })),
 ];
 
-const jawD = (frame, r, upper) => (c) => {
-  const l = frame.local(c);
-  const p = [l[0], l[1] + JR[1] * 0.75, l[2]];
-  if (upper ? p[2] < -3.2 : p[2] > 3) return 9;
-  return ellD(p, r);
-};
-const sided = (S, test) => (c) => ((S === 'L') === (c[0] >= 0) ? test([Math.abs(c[0]), c[1], c[2]]) : 9);
-const legF = any(limb([8.5, -4, 17], [12, -7, 8], 3.6, 2.8), limb([12, -7, 8], [12.4, -8.5, 1.6], 2.8, 2.2),
-  blob([[[2.6, 3, 1.3], [12.4, -9.5, 1.3]], [[2, 1.8, 1.3], [12.4, -7.9, 1.7]]]), ell([3, 1.6, 1], [12.4, -12, 1]));
-const legB = any(ell([4.4, 5, 5.4], [6.8, 8, 9.5]), limb([7.4, 9, 7], [8.4, 7, 1.6], 2.8, 2.2),
-  blob([[[2.6, 3, 1.3], [8.4, 6.2, 1.3]], [[2, 1.8, 1.3], [8.4, 7.8, 1.7]]]), ell([3, 1.6, 1], [8.4, 3.7, 1]));
-const spr = any(...TRAPS.map(([p, s]) => ell([3.4 * s, 3.4 * s, 2.6 * s], p)), ell([7, 7, 1.4], [7, -1, 22.8]));
+// the jaws: the bowl (an ellipsoid F * ry in front of the hinge), only on its own side of the rim (fangs hang over it)
+const upperD = (c) => { const l = UP.local(c); return l[2] < -5.5 ? 9 : ellD([l[0], l[1] + F * RU[1], l[2]], RU); };
+const lowerD = (c) => { const l = LO.local(c); return l[2] > 4 ? 9 : ellD([l[0], l[1] + F * RL[1], l[2]], RL); };
+const tongueD = inFrame(HF, any(ell([3.2, 2.2, 2], [0, -2.4, -0.2]), ell([3.3, 2.6, 1.8], [0, -6.4, -2.4])));
+const throatD = inFrame(HF, ell([7.4, 2.4, 6.6], [0, 0.6, 0.6]));
 
+// venom strings, the scad's rimU / rimL
+const rx = (a, v) => [v[0], v[1] * Math.cos(a * DEGR) - v[2] * Math.sin(a * DEGR), v[1] * Math.sin(a * DEGR) + v[2] * Math.cos(a * DEGR)];
+const rz = (a, v) => [v[0] * Math.cos(a * DEGR) - v[1] * Math.sin(a * DEGR), v[0] * Math.sin(a * DEGR) + v[1] * Math.cos(a * DEGR), v[2]];
+const add = (a, b) => a.map((v, i) => v + b[i]);
+const rim = (r, a, t) => add(H, rz(YAW, rx(a, [0.95 * r[0] * Math.cos(t * DEGR), -F * r[1] + 0.95 * r[1] * Math.sin(t * DEGR), 0])));
+const dripU = [[-150, 7], [-115, 5.5], [-80, 8], [-50, 6], [-20, 4.5]].map(([t, d]) => { const p = add(rim(RU, -UA, t), [0, 0, -1.2]); return [p, add(p, [0, -0.2, -d])]; });
+const dripL = [[-140, 4], [-95, 5.5], [-55, 3.5]].map(([t, d]) => { const p = add(rim(RL, LA, t), [0, -0.4, 0.2]); return [p, add(p, [0, -0.4, -d])]; });
+const dripD = (list) => (c) => Math.min(...list.map(([a, b]) => capD(c, a, b, 0.6, 0.6)));
+
+// a foot: the pad and its four toes as one flat ellipsoid reaching forward along the toes
+const foot = (p, yaw, w = 1) => ell([5 * w, 5, 1.8], add(p, rz(yaw, [0, -1.6, 0])));
+const sprout = (() => {
+  // the mound, the three traps (heads and stalks) and the leaf rosette, folded to the +X side
+  const trap = (o, yaw, pitch, s) => {
+    const f = subFrame(add(SP, o), [pitch, 0, yaw], s);
+    return any(inFrame(f, ell([3, 3.4, 3], [0, -1.6, 0])), inFrame(f, limb([0, 1.8, 0], [0, 4.8, 0], 1.2, 1)));
+  };
+  const leaves = [0, 1, 2, 3, 4, 5, 6].map((l) => {
+    const a = (l * 360) / 7 + 10;
+    const base = add(SP, [1.6 * Math.cos(a * DEGR), 1.6 * Math.sin(a * DEGR), 0.4]);
+    const d = [Math.sin(48 * DEGR) * Math.sin(a * DEGR), -Math.sin(48 * DEGR) * Math.cos(a * DEGR), Math.cos(48 * DEGR)];
+    return limb(base, add(base, d.map((v) => v * 7.6)), 1.6, 0.6);
+  });
+  return any(ell([4.4, 4.4, 2.6], add(SP, [0, 0, -0.6])), trap([-0.4, -0.8, 6.2], 15, -62, 1.3), trap([4.2, 0.6, 2.6], 100, -12, 1.2),
+    trap([-0.8, 4.2, 3.6], 200, -30, 1.1), limb(add(SP, [-1.2, -3.4, 0.4]), add(SP, [-1.5, -1.9, -3.7]), 1.4, 0.5), ...leaves);
+})();
+
+const legB = any(ell(TH[0], TH[1]), limb([10, 10, 6.6], [10.8, 9, 2], 3, 2.4), foot([11.2, 7.6, 1.3], -8));
 const parts = [
-  ['body', any(blob([[[10, 9, 9], [0, -2, 15]], [[8, 8, 7], [0, 7, 12]]]), ell([7, 6, 5], [0, -6, 9]), ell([3.6, 1.4, 3.4], [0, -8.6, 15.4]),
-    ...[0, 1, 2, 3, 4].map((l) => { const a = (l * 72 + 20) * Math.PI / 180; return petal([2.6, 1, 0.4], [2 * Math.cos(a), 7 + 2 * Math.sin(a), 19], [0, -15, l * 72 + 20]); }))],
-  ['trap', jawD(UP, JR, true)],
-  ['jaw', any(jawD(LO, JR.map((v) => v * 0.95), false), blob([[[2.4, 3, 1], [0, -12, 12.4]], [[1.8, 2, 0.8], [0, -16, 11.6]]]))],
-  ['legFL', sided('L', legF)], ['legFR', sided('R', legF)], ['legBL', sided('L', legB)], ['legBR', sided('R', legB)],
-  ...chain(tail, TAIL, TAIL_R.map((r) => r * 1.5)),
+  ['body', any(blob([E1, E2, E3]), ell([2.6, 3, 2.6], [9.2, 9.5, 17.4]), ell([2.6, 3, 2.6], [-9.2, 9.5, 17.4]),
+    ell([2, 2.2, 1.9], [10, 6.6, 18.6]), ell([2, 2.2, 1.9], [-10, 6.6, 18.6]), ell([1.9, 2, 1.8], [9.8, 12.4, 16.2]),
+    ell([1.9, 2, 1.8], [-9.8, 12.4, 16.2]), throatD)],
+  ['trap', upperD],
+  ['jaw', any(lowerD, tongueD)],
+  // near (+X) front leg tucked under the maw; far (-X) one splayed forward and out
+  ['legFL', any(ell(SH[0], SH[1]), limb([10, -3, 10.5], [10.2, -8, 6.2], 3.4, 2.8), limb([10.2, -8, 6.2], [8.2, -11.2, 2], 2.8, 2.3), foot([7.6, -12.6, 1.3], 20))],
+  ['legFR', any(ell(SH[0], [-SH[1][0], SH[1][1], SH[1][2]]), limb([-10, -3, 12], [-15.6, -5.4, 9], 3.8, 3.1), limb([-15.6, -5.4, 9], [-16, -8.6, 2], 3.1, 2.5),
+    foot([-16, -9.8, 1.3], -45, 1.15))],
+  ['legB*', legB],
+  ['spr*', sprout],
+  ...TAIL.slice(1).map((p, i) => [tail[Math.floor(i / 2)], limb(TAIL[i], p, TAIL_R[i] * 1.5, TAIL_R[i + 1] * 1.5)]),
 ];
 
 function assign(c, rgb) {
-  if (near(rgb, SLIME)) return 'trap';
+  if (near(rgb, SLIME)) return dripD(dripU)(c) < dripD(dripL)(c) ? 'trap' : 'jaw';
   if (near(rgb, TONGUE)) return 'jaw';
   const S = c[0] >= 0 ? 'L' : 'R';
-  // the shoulder clusters: anything that is not hide up there, and hide only when it is nearer a little trap than
-  // the body or the maw
-  if (c[2] > 19.5 && Math.abs(c[0]) > 1.5 && c[1] < 6) {
-    const d = spr([Math.abs(c[0]), c[1], c[2]]);
-    if ((!isAny(rgb, [SKIN[0], SKIN[2], SKIN[3]]) && d < 1.9 && c[1] > -8) || d < 0.85) {
-      const others = pick(c, parts);
-      if (others !== 'trap' || jawD(UP, JR, true)(c) > 1.08) return `spr${S}`;
-    }
-  }
+  // the shoulder flytraps: their own leaf / trap colours, and the fangs up there
+  if (SPROUT.some((k) => near(rgb, k)) || (near(rgb, FANG) && c[2] > 21 && Math.abs(c[0]) > 3)) return `spr${S}`;
+  // the maw's fangs, gum and lining: whichever jaw is nearer
+  if (near(rgb, FANG)) return upperD(c) < lowerD(c) ? 'trap' : 'jaw';
   return pick(c, parts);
 }
 
-// the maw: open wider (< 0 on both jaws widens), shut (trap 30, jaw -16 closes the lips)
-const maw = (open, shut = 0) => ({ trap: { r: [-8 * open + 30 * shut, 0, 0] }, jaw: { r: [6 * open - 16 * shut, 0, 0] } });
+// the maw: open wider (> 0), shut (1 brings the lips together)
+const maw = (open, shut = 0) => ({ trap: { r: [-8 * open + 52 * shut, 0, 0] }, jaw: { r: [6 * open - 36 * shut, 0, 0] } });
 // the shoulder traps sway, and snap with `snap`
 const sprouts = (u, cycles = 1, amp = 1, snap = [0, 0]) => ({
   sprL: { r: [3 * amp * osc(u, cycles), 0, 5 * amp * osc(u, cycles, 0.25)], s: [1, 1, 1 - 0.25 * snap[0]] },
@@ -79,7 +119,7 @@ const sprouts = (u, cycles = 1, amp = 1, snap = [0, 0]) => ({
 });
 
 const base = quadrupedClips({
-  tail, hipH: 13, stride: 12,
+  tail, hipH: 10, stride: 12,
   add: {
     idle: (t, u) => ({ ...maw(0.4 + 0.4 * osc(u, 2)), ...sprouts(u, 2) }),
     walk: (t, u) => ({ ...maw(0.2 * osc(u, 2)), ...sprouts(u, 2, 1.5) }),

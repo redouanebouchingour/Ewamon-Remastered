@@ -875,12 +875,12 @@
     },
     "tidalfang": {
       "url": "tidalfang.rig.glb",
-      "bytes": 155048,
+      "bytes": 219812,
       "rig": true
     },
     "tidespine": {
       "url": "tidespine.rig.glb",
-      "bytes": 152760,
+      "bytes": 179584,
       "rig": true
     },
     "tombdune": {
@@ -910,7 +910,7 @@
     },
     "tsunamite": {
       "url": "tsunamite.rig.glb",
-      "bytes": 220004,
+      "bytes": 195228,
       "rig": true
     },
     "tuskling": {
@@ -925,7 +925,7 @@
     },
     "ultraze": {
       "url": "ultraze.rig.glb",
-      "bytes": 161940,
+      "bytes": 214948,
       "rig": true
     },
     "umbrit": {
@@ -940,12 +940,12 @@
     },
     "velvetomb": {
       "url": "velvetomb.rig.glb",
-      "bytes": 186472,
+      "bytes": 247372,
       "rig": true
     },
     "venobulb": {
       "url": "venobulb.rig.glb",
-      "bytes": 290740,
+      "bytes": 248580,
       "rig": true
     },
     "verdatide": {
