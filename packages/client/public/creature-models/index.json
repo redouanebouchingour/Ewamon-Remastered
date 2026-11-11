@@ -315,12 +315,12 @@
     },
     "gemknight": {
       "url": "gemknight.rig.glb",
-      "bytes": 122608,
+      "bytes": 159168,
       "rig": true
     },
     "gemknight_tenjin": {
       "url": "gemknight_tenjin.rig.glb",
-      "bytes": 78216,
+      "bytes": 152376,
       "rig": true
     },
     "geoboxer": {

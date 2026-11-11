@@ -2,9 +2,14 @@
 // shield on the left arm (handL), a rainbow cape billowing out to both sides behind it (two links: collar to billow,
 // billow to hem) and a burst of light behind the helm that breathes. The scad builds everything in the sheet's frame
 // and lowers it by G = 2.8 at the end, so every number here goes through low(). Numbers are scad/gemknight.scad's.
+// 2026-11-11 sprite match (second pass: a bulkier knight, the cape a cloth hanging behind it and blown out to -X
+// instead of a bell round the hips): the helm turned 22 deg towards the viewer, the eye glints on their own joint (they blink,
+// flare in the windup and go narrow when hurt), bigger pauldrons and legs, a cut-crystal shield face, soft folds in
+// the cape and a lavender cowl on its back, a bigger corona whose layers now share one depth.
 import { K, TAU, merge, osc, rigDef, smooth, win } from './lib/anim.mjs';
+import { blinks } from './lib/face.mjs';
 import { any, bipedClips, ell, fromSheet, limb, mx, pick, plate, ppFrame } from './lib/biped.mjs';
-import { plateD, polyD } from './lib/geo.mjs';
+import { ellD, plateD } from './lib/geo.mjs';
 
 const G = 2.8;
 const low = ([x, y, z]) => [x, y, z - G];
@@ -24,34 +29,37 @@ const H = low([0.6, -0.3, 35.4]);
 const bladePts = [[-9.05, 20.45], [-7.75, 19.35], [-17.6, 8.7], [-20.4, 6.8], [-18.9, 9.8]];
 const kite = [[10.6, 33.6], [16.0, 27.0], [15.6, 20.0], [10.6, 12.9], [6.0, 19.6], [5.0, 27.2]];
 
-// the cape: the scad's columns [collar, billow, hem] as [sheet x, z, depth], subdivided four times like capePt()
+const FOLD = [0, 0.7, 1.1];
+// the cape hangs behind the knight: the scad's columns [collar, billow, hem] as scad [x, y, z] (sheet z), subdivided
+// four times like capePt(), the billow and hem rippling in depth
 const capeKeys = [
-  [[-5.8, 30.3, 1.4], [-19.6, 28.4, 1.0], [-20.3, 18.6, 1.2]],
-  [[-4.6, 30.8, 2.4], [-16.0, 24.5, 2.6], [-17.0, 17.6, 2.6]],
-  [[-3.0, 31.0, 3.2], [-11.5, 20.5, 4.0], [-12.6, 13.0, 4.0]],
-  [[-1.0, 31.2, 3.6], [-6.0, 18.5, 5.0], [-6.0, 9.8, 5.0]],
-  [[1.0, 31.2, 3.6], [1.0, 17.5, 5.6], [1.4, 7.7, 5.6]],
-  [[3.0, 31.0, 3.2], [7.0, 18.5, 5.6], [9.0, 9.4, 5.6]],
-  [[4.6, 30.8, 2.4], [13.0, 19.5, 5.0], [16.0, 7.4, 4.6]],
-  [[5.8, 30.3, 1.4], [18.6, 20.0, 3.4], [19.4, 9.0, 3.0]],
+  [[-5.5, 2.4, 30.3], [-24.0, 4.0, 28.0], [-24.5, 4.6, 18.6]],
+  [[-4.4, 3.0, 30.8], [-18.5, 4.8, 24.5], [-18.5, 5.2, 16.0]],
+  [[-3.0, 3.4, 31.0], [-12.5, 5.2, 20.5], [-12.5, 5.5, 13.0]],
+  [[-1.0, 3.6, 31.2], [-6.0, 5.6, 18.5], [-6.5, 6.0, 11.0]],
+  [[1.0, 3.6, 31.2], [0.5, 5.8, 18.0], [0.5, 6.2, 10.5]],
+  [[3.0, 3.4, 31.0], [5.5, 5.6, 18.5], [6.5, 6.0, 11.0]],
+  [[4.4, 3.0, 30.8], [9.5, 5.0, 19.5], [11.0, 5.4, 11.0]],
+  [[5.5, 2.4, 30.3], [12.5, 4.0, 21.0], [14.0, 4.4, 12.0]],
 ];
 const capeCols = Array.from({ length: (capeKeys.length - 1) * 4 + 1 }, (_, i) => [0, 1, 2].map((row) => {
   const k = Math.min(Math.floor(i / 4), capeKeys.length - 1);
   const u = (i % 4) / 4;
   const a = capeKeys[k][row]; const b = capeKeys[Math.min(k + 1, capeKeys.length - 1)][row];
-  return fs(...a.map((v, j) => v + (b[j] - v) * u));
+  const q = a.map((v, j) => v + (b[j] - v) * u);
+  return low([q[0], q[1] + FOLD[row] * Math.sin((i * Math.PI) / 2), q[2]]);
 }));
 const capeLink = (row) => any(...capeCols.flatMap((col, i) => [limb(col[row], col[row + 1], 1.1),
   ...(i + 1 < capeCols.length ? [limb(col[row], capeCols[i + 1][row + 1], 1.1)] : [])]));
 
-// the light burst: three flame stars round sheet (1, 28.8) at pp depth 8, 7.6, 7.2, and streaks at pp depth 9
-const coronaR = [9.0, 5.6, 8.0, 5.0, 9.6, 5.4, 7.4, 5.2, 8.6, 5.0, 7.8, 5.6];
+// the light burst: three nested flame stars round sheet (1, 28.8) at pp depth 8 (0.4, 0.8, 1.2 thick), streaks at depth 9
+const coronaR = [10.2, 6.4, 9.2, 5.8, 11.0, 6.2, 8.5, 6.0, 9.9, 5.8, 9.0, 6.4];
 const star = (k) => [[1, 27.5], ...Array.from({ length: 25 }, (_, i) => {
   const a = ((-8 + (196 * i) / 24) * Math.PI) / 180;
   const r = coronaR[i % coronaR.length] * k;
   return [1 + r * Math.cos(a), 28.8 + r * Math.sin(a)];
 })];
-const corona = (c) => Math.min(...[0, 1, 2].map((l) => plateD(lowF(ppFrame(8 - 0.4 * l)).local(c), star(1 - 0.2 * l), 0.4)));
+const corona = (c) => Math.min(...[0, 1, 2].map((l) => plateD(lowF(ppFrame(8)).local(c), star(1 - 0.17 * l), 0.4 + 0.4 * l)));
 const streaks = (c) => {
   const q = lowF(ppFrame(9)).local(c);
   const r = Math.hypot(q[0] - 0.5, q[2] - 22);
@@ -60,8 +68,14 @@ const streaks = (c) => {
 const AURA_C = low(ppFrame(8).world([1, 0, 28.8]));
 
 const shieldF = lowF(ppFrame(-6.3));
-const legTest = ([hip, knee, ankle, toe]) => any(limb(hip, knee, 2, 1.75), limb(knee, ankle, 1.7, 1.45), ell([1.6, 1.5, 1.5], add3(knee, [0, -0.7, 0])),
-  limb(add3(ankle, [0, 0, -2]), add3(toe, [0, 0, 0.3]), 1.6, 1), limb(add3(ankle, [0, 0, -3.2]), add3(toe, [0, 0, -0.6]), 1.5, 0.9));
+const legTest = ([hip, knee, ankle, toe]) => any(limb(hip, knee, 2.6, 2.3), limb(knee, ankle, 2.2, 1.9), ell([2.3, 2, 2], add3(knee, [0, -0.9, 0])),
+  limb(add3(ankle, [0, 0, -2]), add3(toe, [0, 0, 0.35]), 2, 1.2), limb(add3(ankle, [0, 0, -3.2]), add3(toe, [0, 0, -0.6]), 1.7, 1));
+
+// the eye glints: the scad's two glints at H + (+-0.95, -3.09, -0.95), turned 22 deg round the helm's axis
+const TURN = (22 * Math.PI) / 180;
+const turn = ([x, y, z]) => [x * Math.cos(TURN) - y * Math.sin(TURN), x * Math.sin(TURN) + y * Math.cos(TURN), z];
+const GLINTS = [[0.95, 0.62], [-0.95, 0.5]].map(([x, r]) => [add3(H, turn([x, -3.086, -0.95])), r]);
+const EYES = GLINTS[0][0].map((v, i) => (v + GLINTS[1][0][i]) / 2);
 
 const joints = [
   { name: 'root', at: [0, 0, 0] },
@@ -69,32 +83,36 @@ const joints = [
   { name: 'legR', parent: 'root', at: LEGS.R[0] },
   { name: 'body', parent: 'root', at: low([0, 0, 17.5]) },
   { name: 'head', parent: 'body', at: low([0.6, -0.3, 31.9]) },
+  { name: 'eyes', parent: 'head', at: EYES },
   ...['L', 'R'].flatMap((S) => [
     { name: `arm${S}`, parent: 'body', at: ARMS[S][0] },
     { name: `fore${S}`, parent: `arm${S}`, at: ARMS[S][1] },
     { name: `hand${S}`, parent: `fore${S}`, at: ARMS[S][2] },
   ]),
   { name: 'cape1', parent: 'body', at: low([0, 1.8, 30.9]) },
-  { name: 'cape2', parent: 'cape1', at: fs(1, 17.5, 5.6) },
+  { name: 'cape2', parent: 'cape1', at: low([0.5, 5.8, 18]) },
   { name: 'aura', parent: 'body', at: AURA_C },
 ];
 
 const parts = [
   ['legL', legTest(LEGS.L)], ['legR', legTest(LEGS.R)],
-  ['body', any(ell([3.5, 2.5, 3], low([0, 0.2, 28.4])), ell([3, 2.2, 2], low([0, 0, 24])), ell([3.1, 2.4, 0.7], low([0, 0, 21.6])),
-    ell([3.6, 2.6, 1.4], low([0, 0, 20.4])), ell([3.6, 2.6, 1.2], low([0, 0.1, 17.6])), ell([1, 0.6, 2.9], low([0, -2.3, 18.2])),
-    mx(ell([1.1, 1.6, 2.1], low([3.4, 0.2, 18.2]))), mx(ell([1.5, 0.9, 2.3], low([2.15, -1.75, 18.3]))),
-    mx(ell([2.9, 2.7, 2.4], low([5.3, 0.5, 31.4]))), mx(ell([2.4, 2.1, 1.3], low([5.4, 0.1, 32.9]))), mx(ell([2.7, 2.5, 0.9], low([5.7, 0.5, 29.3]))),
-    mx(ell([1.9, 1, 1.4], low([5.6, -1.8, 31]))), ell([2.5, 2.3, 1.1], low([0.3, 0, 31.3])), limb(low([-4.6, 1.8, 30.9]), low([4.6, 1.8, 30.9]), 1.2))],
-  ['head', any(ell([3, 3, 3.2], H), ell([2.75, 2.75, 1], low([0.6, -0.3, 31.9])), limb(H, low([0.6, -0.3, 32.2]), 2.9))],
+  ['body', any(ell([4.4, 3.2, 3.4], low([0, 0.2, 28.2])), ell([3.7, 2.8, 2.3], low([0, 0, 23.8])), ell([3.85, 3, 0.8], low([0, 0, 21.4])),
+    ell([4, 3, 1.5], low([0, 0, 20.2])), ell([4.3, 3.1, 1.3], low([0, 0.1, 17.6])), ell([1.2, 0.7, 3], low([0, -2.9, 18.2])),
+    mx(ell([1.3, 1.9, 2.2], low([4.1, 0.2, 18.2]))), mx(ell([1.8, 0.8, 2.4], low([2.6, -2.3, 18.3]))),
+    mx(ell([3.6, 3.4, 3], low([6.2, 0.5, 31.6]))), mx(ell([2.9, 2.7, 1.6], low([6.2, 0.1, 33.3]))), mx(ell([3.3, 3.1, 1], low([6.5, 0.5, 29]))),
+    mx(ell([3, 2.9, 0.9], low([6.8, 0.5, 27.8]))), mx(ell([2.2, 1.1, 1.6], low([6.4, -2.6, 31]))), ell([3, 2.8, 1.2], low([0.3, 0, 31.4])),
+    limb(low([-4.6, 2.6, 30.9]), low([4.6, 2.6, 30.9]), 1.2))],
+  ['head', any(ell([3.25, 3.25, 3.48], H), ell([2.7, 2.7, 1], low([0.6, -0.3, 32])), limb(H, low([0.6, -0.3, 32.2]), 3.1))],
   ...['L', 'R'].flatMap((S) => [
-    [`arm${S}`, limb(ARMS[S][0], ARMS[S][1], 1.6, 1.5)],
-    [`fore${S}`, any(limb(ARMS[S][1], ARMS[S][2], 1.5, 1.7), ell([1.5, 1.4, 1.3], ARMS[S][1]))],
+    [`arm${S}`, limb(ARMS[S][0], ARMS[S][1], 2, 1.85)],
+    [`fore${S}`, any(limb(ARMS[S][1], ARMS[S][2], 1.85, 2.1), ell([1.95, 1.85, 1.6], ARMS[S][1]))],
   ]),
-  ['handL', (c) => plateD(shieldF.local(c), kite, 2.2)],
-  ['handR', any(ell([1.6, 1.5, 1.5], ARMS.R[2]), ell([1.9, 1.6, 1.3], add3(ARMS.R[2], [0, 0, 1.6])),
+  ['handL', (c) => plateD(shieldF.local(c), kite, 3.4)],
+  ['eyes', (c) => Math.min(...GLINTS.map(([p, r]) => ellD(c, [r + 0.25, 0.55, 0.55], p)))],
+  ['handR', any(ell([1.75, 1.65, 1.5], ARMS.R[2]), ell([2.25, 1.85, 1.4], add3(ARMS.R[2], [0, 0, 1.7])),
     (c) => plateD(lowF(ppFrame(1.6)).local(c), bladePts, 1.4), limb(low(ppFrame(1.6).world([-9.1, 0, 21.2])), low(ppFrame(1.6).world([-6.5, 0, 22.2])), 0.9))],
-  ['cape1', any(capeLink(0), limb(fs(-6.5, 30.2, 1.6), fs(-19.9, 27.6, 0.8), 1.1), limb(fs(-19.6, 25, 0.6), fs(-19.8, 20, 0.6), 1))],
+  ['cape1', any(capeLink(0), limb(low([-6.5, 2.6, 30.2]), low([-24, 4, 28]), 1.1), limb(low([-23.6, 3.6, 25]), low([-23.9, 4, 20]), 1),
+    ...[-4.4, 4.4].map((x) => limb(low([x, 3.8, 29.6]), low([0, 5.9, 23.4]), 1)), limb(low([-4.4, 3.8, 29.6]), low([4.4, 3.8, 29.6]), 1))],
   ['cape2', capeLink(1)],
   ['aura', (c) => Math.min(corona(c), streaks(c))],
 ];
@@ -104,14 +122,19 @@ const assign = (c) => pick(c, parts);
 // the aura breathes and turns a little
 const auraPulse = (u, cycles, amp = 1) => ({ aura: { s: 1 + 0.04 * amp * osc(u, cycles), r: [0, 4 * amp * osc(u, cycles / 2, 0.25), 0] } });
 
+// the glints: a squash is a blink (never below 0.3: the glint sits in the slit, shrinking it far opens a hole)
+const glint = (sz, s = 1) => ({ eyes: { s: [s, 1, s * sz] } });
+const blink = (u, at) => glint(1 - 0.65 * blinks(u, at));
+
 const clipsFor = (extra = {}) => {
   const add = {
-    idle: (t, u) => auraPulse(u, 2),
+    idle: (t, u) => merge(auraPulse(u, 2), blink(u, [[0.42, 0.47]])),
     walk: (t, u) => auraPulse(u, 2, 0.6),
-    windup: (t, u) => ({ aura: { s: 1 + 0.1 * smooth(u / 0.8) } }),
-    lunge: (t, u) => { const hit = K(u, [[0.1, 0], [0.4, 1], [1, 0]]); return { aura: { s: 1.1 + 0.12 * hit }, handL: { r: [-10 * hit, 0, 0] } }; },
-    hurt: (t, u) => ({ aura: { s: 1 - 0.15 * K(u, [[0, 0], [0.18, 1], [1, 0.3]]) } }),
-    faint: (t, u) => ({ aura: { s: 1 - 0.6 * smooth((u - 0.1) / 0.7) } }),
+    windup: (t, u) => ({ aura: { s: 1 + 0.1 * smooth(u / 0.8) }, ...glint(1, 1 + 0.3 * smooth(u / 0.6)) }),
+    lunge: (t, u) => { const hit = K(u, [[0.1, 0], [0.4, 1], [1, 0]]); return { aura: { s: 1.1 + 0.12 * hit }, handL: { r: [-10 * hit, 0, 0] }, ...glint(1, 1.3 - 0.3 * smooth((u - 0.5) / 0.5)) }; },
+    hurt: (t, u) => ({ aura: { s: 1 - 0.15 * K(u, [[0, 0], [0.18, 1], [1, 0.3]]) }, ...glint(1 - 0.65 * K(u, [[0, 0], [0.15, 1], [0.7, 1], [1, 0.3]])) }),
+    recoil: (t, u) => glint(1 - 0.6 * K(u, [[0, 0], [0.3, 1], [1, 0]])),
+    faint: (t, u) => ({ aura: { s: 1 - 0.6 * smooth((u - 0.1) / 0.7) }, ...glint(1 - 0.68 * smooth((u - 0.2) / 0.5)) }),
     celebrate: (t, u) => ({ aura: { s: 1.12 + 0.08 * Math.sin(TAU * 2 * u), r: [0, 30 * smooth(u), 0] } }),
     enter: (t, u) => ({ aura: { s: 0.3 + 0.7 * smooth((u - 0.2) / 0.5) + 0.1 * win(u, 0.5, 0.9, 0.1) } }),
     exit: (t, u) => auraPulse(u, 2),

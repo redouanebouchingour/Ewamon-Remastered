@@ -1,145 +1,115 @@
-// Gemknight (Tenjin form): Gemknight's old-model rig (the base below) with the scad's changes: no ray burst, a golden
-// halo over the helm that bobs on its own joint, and six motes of light (one joint at the waist) drifting round the
-// knight.
-import { K, TAU, both, merge, osc, rigDef, smooth, win } from './lib/anim.mjs';
-import { any, bipedClips, blade, ell, limb, mx, pair, pick } from './lib/biped.mjs';
-import { subFrame } from './lib/geo.mjs';
+// Gemknight (Tenjin form)'s rig: Gemknight's rig on the form's own scad (2026-11-11 sprite match). The knight's body is
+// the base's, scaled by S = 1.03 about the feet after lowering by G = 2.8 (body numbers go through B()); the parts traced
+// off the tenjin sheet (golden blade, kite shield with its pearl boss, the cream cape, the halo and the motes) are only
+// lowered by GT = 0.4 (T()). No rainbow burst and no eye glints (a dark visor): the halo floats over the helm on its own
+// joint and six motes of light (one joint at the waist) drift round the knight. Second pass: a bulkier knight and the
+// cape a cloth hanging behind it, blown out to -X. Numbers are scad/gemknight_tenjin.scad's.
+import { K, TAU, merge, osc, rigDef, smooth, win } from './lib/anim.mjs';
+import { any, bipedClips, ell, fromSheet, limb, mx, pick, ppFrame } from './lib/biped.mjs';
+import { plateD } from './lib/geo.mjs';
 
-// Gemknight's old-model rig (scad/gemknight_tenjin.scad is still a copy of that model); gemknight.mjs moved to its
-// sprite-accuracy model on 2026-10-29. A prism sword held low in the right hand, a kite shield on the left forearm
-// (handL), a cape of strips in two links and a burst of rainbow rays behind it (dropped here).
-// the sword: grip at the fist, rotate([0, -150, 0]) turns the blade down and out
-const SWORD = { p: [-11, -3, 16.5], d: [-0.5, 0, -0.866] };
-const SHIELD = subFrame([11.5, -6, 21], [90, 0, -25]);
-const AURA_C = [0, 6, 24];
+const G = 2.8;
+const S = 1.03;
+const GT = 0.4;
+const B = ([x, y, z]) => [S * x, S * y, S * (z - G)];
+const unB = (c) => [c[0] / S, c[1] / S, c[2] / S + G];
+const T = ([x, y, z]) => [x, y, z - GT];
+const unT = (c) => [c[0], c[1], c[2] + GT];
+/** a test written in the base body's scad numbers / in the tenjin sheet's scad numbers */
+const inB = (test) => (c) => test(unB(c));
+const inT = (test) => (c) => test(unT(c));
+const add3 = (a, b) => a.map((v, i) => v + b[i]);
+
+const LEGS = {
+  L: [fromSheet(2.6, 16.5, -0.2), fromSheet(4.7, 12.8, -1), fromSheet(7.2, 6.6, -1), fromSheet(9.4, 3.4, -2.2)],
+  R: [fromSheet(-1.6, 16.5, 0.4), fromSheet(-3.9, 12.6, -0.4), fromSheet(-6, 6.6, -0.4), fromSheet(-9, 3.4, -2.6)],
+};
+const ARMS = {
+  L: [[5.3, 0.5, 30.2], [8.6, -0.2, 26.4], [11.4, 0.6, 23.4]],
+  R: [[-5.3, 0.5, 30.2], [-7.4, -0.6, 25.6], [-7.7, -2.2, 20.3]],
+};
+const H = [0.6, -0.3, 35.4];
+const bladePts = [[-9.1, 19.0], [-7.6, 17.7], [-17.8, 6.2], [-20.8, 3.9], [-19.3, 7.3]];
+const kite = [[12.4, 32.9], [17.0, 26.0], [17.0, 17.0], [12.1, 10.0], [6.4, 16.4], [5.4, 26.3]];
+
+const FOLD = [0, 0.7, 1.1];
+// the cape (tenjin sheet) hangs behind the knight: the scad's columns [collar, billow, hem] as scad [x, y, z],
+// subdivided like capePt(), the billow and hem rippling in depth
+const capeKeys = [
+  [[-5.7, 2.5, 29.3], [-24.0, 4.2, 22.5], [-24.5, 4.8, 16.5]],
+  [[-4.5, 3.1, 29.8], [-18.5, 4.9, 21.5], [-18.5, 5.3, 13.5]],
+  [[-3.1, 3.5, 30.0], [-12.5, 5.3, 19.0], [-12.5, 5.6, 10.5]],
+  [[-1.0, 3.7, 30.2], [-6.0, 5.7, 17.5], [-6.5, 6.1, 8.8]],
+  [[1.0, 3.7, 30.2], [0.5, 5.9, 17.0], [0.5, 6.3, 8.3]],
+  [[3.1, 3.5, 30.0], [5.5, 5.7, 17.5], [6.5, 6.1, 8.8]],
+  [[4.5, 3.1, 29.8], [10.0, 5.1, 18.0], [11.5, 5.5, 9.0]],
+  [[5.7, 2.5, 29.3], [13.5, 4.1, 19.0], [15.5, 4.5, 10.0]],
+];
+const capeCols = Array.from({ length: (capeKeys.length - 1) * 4 + 1 }, (_, i) => [0, 1, 2].map((row) => {
+  const k = Math.min(Math.floor(i / 4), capeKeys.length - 1);
+  const u = (i % 4) / 4;
+  const a = capeKeys[k][row]; const b = capeKeys[Math.min(k + 1, capeKeys.length - 1)][row];
+  const q = a.map((v, j) => v + (b[j] - v) * u);
+  return [q[0], q[1] + FOLD[row] * Math.sin((i * Math.PI) / 2), q[2]];
+}));
+const capeLink = (row) => any(...capeCols.flatMap((col, i) => [limb(col[row], col[row + 1], 1.1),
+  ...(i + 1 < capeCols.length ? [limb(col[row], capeCols[i + 1][row + 1], 1.1)] : [])]));
+
+// the halo: a ring of radius 4.75 round sheet (1.3, 35.7), squashed to 0.88 in z, at pp depth 2.2
+const haloF = ppFrame(2.2);
+const haloD = (c) => {
+  const q = haloF.local(c);
+  return Math.hypot(Math.hypot(q[0] - 1.3, (q[2] - 35.7) / 0.88) - 4.75, q[1]) / 0.45;
+};
+const HALO_C = T(haloF.world([1.3, 0, 35.7]));
+const motes = [[-11.5, 30.5, 1], [-14.0, 11.5, 0], [6.5, 36.0, 1], [18.5, 21.0, 0], [-4.5, 33.0, 2], [19.0, 30.0, -1]]
+  .map(([x, z, d]) => ppFrame(d).world([x, 0, z]));
+
+const legTest = ([hip, knee, ankle, toe]) => any(limb(hip, knee, 2.6, 2.3), limb(knee, ankle, 2.2, 1.9), ell([2.3, 2, 2], add3(knee, [0, -0.9, 0])),
+  limb(add3(ankle, [0, 0, -2]), add3(toe, [0, 0, 0.35]), 2, 1.2), limb(add3(ankle, [0, 0, -3.2]), add3(toe, [0, 0, -0.6]), 1.7, 1));
 
 const joints = [
   { name: 'root', at: [0, 0, 0] },
-  ...pair('leg*', 'root', [3.6, 0, 17]),
-  { name: 'body', parent: 'root', at: [0, 0, 18] },
-  { name: 'head', parent: 'body', at: [0, -0.6, 32.5] },
-  ...pair('arm*', 'body', [8.6, -0.3, 28.5]),
-  { name: 'foreL', parent: 'armL', at: [10.1, -1.6, 22.6] },
-  { name: 'foreR', parent: 'armR', at: [-10, -1.4, 22.2] },
-  { name: 'handL', parent: 'foreL', at: [10.6, -3.4, 20.5] },
-  { name: 'handR', parent: 'foreR', at: SWORD.p },
-  { name: 'cape1', parent: 'body', at: [0, 4.2, 31] },
-  { name: 'cape2', parent: 'cape1', at: [0, 7.5, 16] },
+  { name: 'legL', parent: 'root', at: B(LEGS.L[0]) },
+  { name: 'legR', parent: 'root', at: B(LEGS.R[0]) },
+  { name: 'body', parent: 'root', at: B([0, 0, 17.5]) },
+  { name: 'head', parent: 'body', at: B([0.6, -0.3, 31.9]) },
+  ...['L', 'R'].flatMap((s) => [
+    { name: `arm${s}`, parent: 'body', at: B(ARMS[s][0]) },
+    { name: `fore${s}`, parent: `arm${s}`, at: B(ARMS[s][1]) },
+    { name: `hand${s}`, parent: `fore${s}`, at: B(ARMS[s][2]) },
+  ]),
+  { name: 'cape1', parent: 'body', at: B([0, 1.8, 30.9]) },
+  { name: 'cape2', parent: 'cape1', at: T([0.5, 5.9, 17]) },
+  { name: 'halo', parent: 'head', at: HALO_C },
+  { name: 'motes', parent: 'root', at: [0, 0, 20] },
 ];
-
-// the cape's twelve strips: top -> mid on cape1, mid -> bottom on cape2
-const strips = Array.from({ length: 12 }, (_, i) => {
-  const t = i / 11 - 0.5;
-  const top = [t * 12, 4.2, 31];
-  const mid = [t * 18, 7 + Math.abs(t) * 2, 16];
-  const bot = [t * 26 + (t > 0 ? 2 : -2), 9 + Math.abs(t) * 4, 2.5 + Math.abs(t) * 3];
-  return [['cape1', limb(top, mid, 1, 1.2)], ['cape2', limb(mid, bot, 1.2, 1.5)]];
-}).flat();
 
 const parts = [
-  ['leg*', any(ell([2.8, 3, 4.6], [3.6, 0, 15]), ell([2, 1.6, 2], [3.8, -2.6, 10.5]), ell([2.8, 2.8, 0.6], [3.8, 0, 12.6]),
-    ell([2.4, 2.6, 4.6], [4, 0, 6]), ell([2.6, 4.4, 1.6], [4.2, -1.2, 1.6]))],
-  ['body', any(ell([7.4, 5, 6.4], [0, 0, 26.5]), ell([5.6, 2, 4.8], [0, -3.8, 27]), ell([5.4, 4, 2.6], [0, 0, 20.5]),
-    limb([0, -2.6, 19.5], [0, -3.4, 15.6], 1.2, 1), mx(ell([4, 4, 3.2], [7.4, 0, 31])), mx(ell([4.2, 4.2, 0.9], [7.6, 0, 29.4])),
-    mx(ell([3.4, 3.6, 2.4], [8, 0, 28])), ell([8, 2.4, 1.6], [0, 3.2, 31.6]))],
-  ['head', any(ell([3.6, 3.8, 4.2], [0, -0.6, 36]), ell([3, 3, 1.2], [0, -0.6, 32]))],
-  ['armR', ell([2, 2, 3.6], [-9.2, -0.6, 25])],
-  ['foreR', ell([2, 2, 3.4], [-10.6, -2, 19.5])],
-  ['handR', any(ell([2, 2.2, 2], [-11, -3, 16.5]), blade(SWORD.p, SWORD.d, 17.5, 1.7, 1.6))],
-  ['armL', ell([2, 2, 3.4], [9.6, -0.6, 25.5])],
-  ['foreL', ell([2, 2.4, 3], [10.4, -2.4, 20.5])],
-  ...strips,
+  ['legL', inB(legTest(LEGS.L))], ['legR', inB(legTest(LEGS.R))],
+  ['body', inB(any(ell([4.4, 3.2, 3.4], [0, 0.2, 28.2]), ell([3.7, 2.8, 2.3], [0, 0, 23.8]), ell([3.85, 3, 0.8], [0, 0, 21.4]),
+    ell([4, 3, 1.5], [0, 0, 20.2]), ell([4.3, 3.1, 1.3], [0, 0.1, 17.6]), ell([1.2, 0.7, 3], [0, -2.9, 18.2]),
+    mx(ell([1.3, 1.9, 2.2], [4.1, 0.2, 18.2])), mx(ell([1.8, 0.8, 2.4], [2.6, -2.3, 18.3])),
+    mx(ell([3.6, 3.4, 3], [6.2, 0.5, 31.6])), mx(ell([2.9, 2.7, 1.6], [6.2, 0.1, 33.3])), mx(ell([3.3, 3.1, 1], [6.5, 0.5, 29])),
+    mx(ell([3, 2.9, 0.9], [6.8, 0.5, 27.8])), mx(ell([2.2, 1.1, 1.6], [6.4, -2.6, 31])), ell([3, 2.8, 1.2], [0.3, 0, 31.4])))],
+  ['head', inB(any(ell([3.25, 3.25, 3.48], H), ell([2.7, 2.7, 1], [0.6, -0.3, 32]), limb(H, [0.6, -0.3, 32.2], 3.1)))],
+  ...['L', 'R'].flatMap((s) => [
+    [`arm${s}`, inB(limb(ARMS[s][0], ARMS[s][1], 2, 1.85))],
+    [`fore${s}`, inB(any(limb(ARMS[s][1], ARMS[s][2], 1.85, 2.1), ell([1.95, 1.85, 1.6], ARMS[s][1])))],
+  ]),
+  ['handL', inT((c) => plateD(ppFrame(-6.3).local(c), kite, 3.6))],
+  ['handR', any(inB(any(ell([1.75, 1.65, 1.5], ARMS.R[2]), ell([2.25, 1.85, 1.4], add3(ARMS.R[2], [0, 0, 1.7])),
+    ell([2.15, 1.8, 0.4], add3(ARMS.R[2], [0, 0, 2.8])), limb(ppFrame(1.6).world([-7.5, 0, 21.1]), ppFrame(1.6).world([-6.5, 0, 22.2]), 0.8))),
+  inT(any((c) => plateD(ppFrame(1.6).local(c), bladePts, 1.4), limb(ppFrame(1.6).world([-9.9, 0, 19.7]), ppFrame(1.6).world([-7.35, 0, 16.85]), 0.8))))],
+  ['cape1', any(inT(capeLink(0)), inT(limb([-6.5, 2.6, 29.2], [-24, 4.2, 22.5], 0.9)),
+    inB(any(...[-1.6, 1.6].flatMap((x) => [limb([-4.8, 3.8, 29.6], [x, 5.9, 23.6], 1), limb([4.8, 3.8, 29.6], [x, 5.9, 23.6], 1)]),
+      limb([-4.8, 3.8, 29.6], [4.8, 3.8, 29.6], 1), limb([-4.6, 2.6, 30.9], [4.6, 2.6, 30.9], 1.2))))],
+  ['cape2', inT(capeLink(1))],
+  ['halo', inT(haloD)],
+  ['motes', inT((c) => Math.min(...motes.map((m) => Math.hypot(c[0] - m[0], c[1] - m[1], c[2] - m[2]) / 0.4)))],
 ];
 
-/** The shield plate (kite polygon, its facets and a boss) in its own frame. */
-const onShield = (c) => {
-  const l = SHIELD.local(c);
-  return l[2] > -1 && l[2] < 3 && Math.abs(l[0]) < 6 && l[1] > -11.5 && l[1] < 10.5;
-};
-
-function knightAssign(c, aura = true) {
-  if (onShield(c)) return 'handL';
-  // the rays of the aura: a thin ring of triangles at y 5.5..6 round the back
-  if (aura && c[1] > 5.3 && c[1] < 6.3 && Math.hypot(c[0] / 9, (c[2] - AURA_C[2]) / 12) > 0.92) return 'aura';
-  return pick(c, parts);
-}
-
-// the aura breathes and turns a little
-const auraPulse = (u, cycles, amp = 1) => ({ aura: { s: 1 + 0.04 * amp * osc(u, cycles), r: [0, 4 * amp * osc(u, cycles / 2, 0.25), 0] } });
-
-const clipsFor = (extra = {}) => {
-  const add = {
-    idle: (t, u) => auraPulse(u, 2),
-    walk: (t, u) => auraPulse(u, 2, 0.6),
-    windup: (t, u) => ({ aura: { s: 1 + 0.1 * smooth(u / 0.8) } }),
-    lunge: (t, u) => { const hit = K(u, [[0.1, 0], [0.4, 1], [1, 0]]); return { aura: { s: 1.1 + 0.12 * hit }, handL: { r: [-10 * hit, 0, 0] } }; },
-    hurt: (t, u) => ({ aura: { s: 1 - 0.15 * K(u, [[0, 0], [0.18, 1], [1, 0.3]]) } }),
-    faint: (t, u) => ({ aura: { s: 1 - 0.6 * smooth((u - 0.1) / 0.7) } }),
-    celebrate: (t, u) => ({ aura: { s: 1.12 + 0.08 * Math.sin(TAU * 2 * u), r: [0, 30 * smooth(u), 0] } }),
-    enter: (t, u) => ({ aura: { s: 0.3 + 0.7 * smooth((u - 0.2) / 0.5) + 0.1 * win(u, 0.5, 0.9, 0.1) } }),
-    exit: (t, u) => auraPulse(u, 2),
-  };
-  for (const [k, f] of Object.entries(extra)) { const a = add[k]; add[k] = (t, u) => merge(a?.(t, u), f(t, u)); }
-  const base = bipedClips({
-    hipH: 17, stride: 16, armSwing: 10, hopScale: 0.3, hopH: 3,
-    cape: ['cape1', 'cape2'],
-    punch: { arm: [-70, 0, 20], fore: [-25, 0, 0] },
-    cheer: { arm: [-10, -115, 0], fore: [-10, 10, 0] },
-    add,
-  });
-  const clips = {
-    ...base,
-
-    // fidget: raises the shield in front of the helm and peers over it, then lowers it
-    idle_shield: {
-      seconds: 2.4,
-      pose: (t, u) => {
-        const on = K(u, [[0, 0], [0.18, 1], [0.75, 1], [0.92, 0]]);
-        const peek = win(u, 0.35, 0.65, 0.06);
-        return merge({
-          body: { r: [2 * on, 0, 6 * on] },
-          head: { r: [6 * on - 6 * peek, 0, -8 * on + 12 * peek] },
-          armL: { r: [-35 * on, 0, -12 * on] },
-          foreL: { r: [-40 * on, 0, 0] },
-          armR: { r: [8 * on, 0, 0] },
-        }, auraPulse(u, 2));
-      },
-    },
-
-    // fidget: brings the sword up in a forward arc, the blade catching the light, and back down
-    idle_flourish: {
-      seconds: 2.2,
-      pose: (t, u) => {
-        const up = K(u, [[0, 0], [0.25, 1], [0.6, 1], [0.85, 0]]);
-        const tw = win(u, 0.3, 0.6, 0.06);
-        return merge({
-          body: { r: [0, 0, -6 * up] },
-          head: { r: [-6 * up, 0, -12 * up] },
-          armR: { r: [-40 * up, 0, 14 * up] },
-          foreR: { r: [-30 * up, 0, 0] },
-          handR: { r: [-50 * up, 0, 30 * tw * Math.sin(TAU * 2 * (u - 0.3))] },
-        }, auraPulse(u, 2, 1.5));
-      },
-    },
-  };
-  // the form's layers on the fidgets too (the template clips took them through `add`)
-  for (const k of ['idle_shield', 'idle_flourish']) {
-    const f = clips[k].pose;
-    if (extra[k]) clips[k].pose = (t, u) => merge(f(t, u), extra[k](t, u));
-  }
-  return clips;
-};
-
-
-const HALO = subFrame([0, 1.5, 38.5], [80, 0, 0]);
-const MOTES = [[-9, 2, 34], [10, 1, 30], [-12, -2, 20], [13, -3, 12], [-6, -4, 38], [7, 3, 40]];
-
-function assign(c) {
-  const h = HALO.local(c);
-  if (Math.hypot(Math.hypot(h[0], h[1]) - 5.2, h[2]) < 1) return 'halo';
-  if (MOTES.some((m) => Math.hypot(c[0] - m[0], c[1] - m[1], c[2] - m[2]) < 0.8)) return 'motes';
-  return knightAssign(c, false);
-}
+const assign = (c) => pick(c, parts);
 
 // the halo floats and tilts; the motes drift round the waist and bob
 const drift = (u, cycles, amp = 1) => ({
@@ -147,19 +117,60 @@ const drift = (u, cycles, amp = 1) => ({
   motes: { r: [0, 0, 25 * amp * osc(u, 1)], p: [0, 0, 0.6 * amp * osc(u, cycles, 0.3)] },
 });
 
-const clips = clipsFor({
+const add = {
   idle: (t, u) => drift(u, 2),
   walk: (t, u) => drift(u, 2, 0.5),
-  idle_shield: (t, u) => drift(u, 2),
-  idle_flourish: (t, u) => drift(u, 2),
+  windup: (t, u) => ({ halo: { s: 1 + 0.08 * smooth(u / 0.8) }, ...drift(u, 1, 0.5) }),
+  lunge: (t, u) => { const hit = K(u, [[0.1, 0], [0.4, 1], [1, 0]]); return { halo: { s: 1.08 + 0.06 * hit }, handL: { r: [-10 * hit, 0, 0] } }; },
   hurt: (t, u) => ({ halo: { r: [14 * Math.sin(TAU * 3 * u) * (1 - u), 0, 8 * Math.sin(TAU * 2 * u) * (1 - u)] } }),
   faint: (t, u) => { const d = smooth((u - 0.2) / 0.6); return { halo: { p: [0, 0, -1.2 * d], r: [-25 * d, 0, 10 * d] }, motes: { s: 1 - 0.9 * d } }; },
-  celebrate: (t, u) => ({ halo: { p: [0, 0, 1.2 * Math.abs(Math.sin(TAU * u))], r: [0, 0, 0] }, motes: { r: [0, 0, 180 * smooth(u)], p: [0, 0, 1.5 * Math.sin(TAU * u)] } }),
+  celebrate: (t, u) => ({ halo: { p: [0, 0, 1.2 * Math.abs(Math.sin(TAU * u))], s: 1.05 }, motes: { r: [0, 0, 180 * smooth(u)], p: [0, 0, 1.5 * Math.sin(TAU * u)] } }),
   enter: (t, u) => ({ halo: { s: 0.2 + 0.8 * smooth((u - 0.15) / 0.5) }, motes: { s: smooth((u - 0.3) / 0.5) + 1e-3 } }),
+  exit: (t, u) => drift(u, 2),
+};
+
+const base = bipedClips({
+  hipH: 14.1, stride: 16, armSwing: 10, hopScale: 0.3, hopH: 3,
+  cape: ['cape1', 'cape2'],
+  punch: { arm: [-70, 0, 20], fore: [-25, 0, 0] },
+  cheer: { arm: [-10, -115, 0], fore: [-10, 10, 0] },
+  add,
 });
 
-export default rigDef({
-  joints: [...joints, { name: 'halo', parent: 'head', at: [0, 1.5, 38.5] }, { name: 'motes', parent: 'root', at: [0, 0, 25] }],
-  assign,
-  clips,
-});
+const clips = {
+  ...base,
+
+  // fidget: raises the shield in front of the helm and peers over it, then lowers it
+  idle_shield: {
+    seconds: 2.4,
+    pose: (t, u) => {
+      const on = K(u, [[0, 0], [0.18, 1], [0.75, 1], [0.92, 0]]);
+      const peek = win(u, 0.35, 0.65, 0.06);
+      return merge({
+        body: { r: [2 * on, 0, 6 * on] },
+        head: { r: [6 * on - 6 * peek, 0, -8 * on + 12 * peek] },
+        armL: { r: [-35 * on, 0, -12 * on] },
+        foreL: { r: [-40 * on, 0, 0] },
+        armR: { r: [8 * on, 0, 0] },
+      }, drift(u, 2));
+    },
+  },
+
+  // fidget: brings the golden blade up in a forward arc, and back down
+  idle_flourish: {
+    seconds: 2.2,
+    pose: (t, u) => {
+      const up = K(u, [[0, 0], [0.25, 1], [0.6, 1], [0.85, 0]]);
+      const tw = win(u, 0.3, 0.6, 0.06);
+      return merge({
+        body: { r: [0, 0, -6 * up] },
+        head: { r: [-6 * up, 0, -12 * up] },
+        armR: { r: [-40 * up, 0, 14 * up] },
+        foreR: { r: [-30 * up, 0, 0] },
+        handR: { r: [-50 * up, 0, 30 * tw * Math.sin(TAU * 2 * (u - 0.3))] },
+      }, drift(u, 2, 1.5));
+    },
+  },
+};
+
+export default rigDef({ joints, assign, clips });
