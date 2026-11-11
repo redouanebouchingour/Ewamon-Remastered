@@ -1,112 +1,180 @@
-// Kygra: a lean blue bird-knight. A crown of four tall forked plumes, an angular helm with a gold trident across the
-// face, a grey throat, two long curved sword-blades growing from its forearms, and thin bird legs with white talons.
+// Kygra: a hunched blue penguin-knight (sheet: 36 x 40, feet on z = 0).
+// Checklist (front sheet, x = sheet x):
+//   FACE: a big helm head x -11..+9, z 18.5..31, turned to the viewer's left. A gold trident over the face: a beak
+//     point at the bottom (-7.6, 18.4), a U round the chin, three prongs up the face (far -10.5 to z 29.8, centre -7
+//     to z 31.8, near -2.5 to z 29). Light blue face plates between the prongs. One small white eye with a dark lid
+//     at (-3.3, 21.9), just past the near prong's foot (the far eye mirrored, hidden behind the far prong).
+//   The head's back sweeps up and right into a wedge to (9, 30.5); its underside is the diagonal (0.5, 21.4)..(9, 30).
+//   Crown: five flat plumes standing straight up on the head top, forked tips: x -9.2..-5.5 (to z 39.5), -5.5..-0.5
+//     (39.4), a short one -1.6..1.1 (35), 1.7..5.5 (38.4), 5.5..9.9 (38.4). Lighter blue.
+//   Torso hidden behind the blades: a grey bib x -5..1.2, z 12..19.9 with white feathers.
+//   Blades (the arms are flipper swords): viewer's left one from the chest down to a point at (-17.9, 6.4), dark
+//     navy with a light rim on its upper edge and a pale tip; viewer's right one out to (18.3, 24.9), navy with a
+//     lighter lower rim.
+//   Legs: thin bird legs in a wide stance. Viewer's left: thigh forward to a knee (-8, 11.6), shin back to (-5, 6.4),
+//     a raised foot with two white talons pointing left. Viewer's right: thigh down to (2.5, 9.6), shin to (5.4, 4.2),
+//     the foot on the ground with two white talons splayed both ways.
+//   Back art: the blades spread wide like wings, light blue streaks over the shoulders.
 include <lib.scad>
 
-blue = [0.2, 0.36, 0.7];
-blueDk = [0.07, 0.12, 0.3];
-blueHi = [0.42, 0.62, 0.95];
-gold = [0.97, 0.8, 0.32];
-chest = [0.68, 0.66, 0.62];
-talon = [0.93, 0.93, 0.9];
-edge = [0.78, 0.9, 1];
-eyeY = [1, 0.82, 0.12, GLOW];
+blue = [0.23, 0.39, 0.71];
+blueDk = [0.17, 0.33, 0.58];
+faceB = [0.3, 0.52, 0.85, NOGLOW];
+plumeB = [0.28, 0.47, 0.8, NOGLOW];
+navy = [0.07, 0.13, 0.26];
+navy2 = [0.07, 0.22, 0.44];
+rim = [0.3, 0.52, 0.85, NOGLOW];
+pale = [0.61, 0.81, 0.99, NOGLOW];
+gold = [0.95, 0.83, 0.45, NOGLOW];
+grey = [0.7, 0.68, 0.63];
+white = [0.96, 0.96, 0.94];
+footDk = [0.2, 0.24, 0.44];
+ink = [0.06, 0.06, 0.07];
 
-// Flat plate as a hull of small spheres (crest plumes, prongs): pts, half-thickness t.
-module plate(pts, t, c) {
-  color(c) hull() for (p = pts) translate(p) sphere(t, $fn = 8);
+// Scad point for sheet (sx, z) at picture-plane depth d (+ = away from the viewer).
+function P(sx, z, d) = [sx * cos(VIEW) - d * sin(VIEW), sx * sin(VIEW) + d * cos(VIEW), z];
+// Sheet-coordinate children stood in a vertical plane turned `ang` about Z through P(sx0, 0, d), stretched so the
+// outline still reads 1:1 on the front sheet.
+module sp(ang, sx0, d) {
+  translate(P(sx0, 0, d)) rotate([0, 0, ang]) scale([1 / cos(ang - VIEW), 1, 1]) translate([-sx0, 0, 0]) children();
 }
-
-function unit(v) = v / norm(v);
-function cross3(a, b) = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-// Sword blade from root p along u for length l, width w in direction v (made perpendicular to u): a flat, straight
-// slab with a narrow tang at the root, a dead-straight spine and cutting edge, and a long clipped point. A dark navy
-// core panel, a light blue rim round it and a pale bevel along the cutting edge.
-module blade(p, u0, v0, l, w) {
-  u = unit(u0);
-  v = unit(v0 - u * (v0 * u));
-  // Outline as [t along u, s across v as a share of w]: tang, shoulder, straight edge, the clip down to the point.
-  out = [[0, -0.12], [0, 0.3], [0.13, 1], [0.66, 1], [1, -0.04], [0.9, -0.16]];
-  core = [[0.06, 0], [0.17, 0.84], [0.63, 0.84], [0.88, 0.02], [0.82, -0.04]];
-  function at(q) = p + u * (l * q[0]) + v * (w * q[1]);
-  color(blueHi) hull() for (q = out) translate(at(q)) sphere(0.4, $fn = 6);
-  color(blueDk) hull() for (q = core) translate(at(q)) sphere(0.62, $fn = 6);
-  color(edge) hull() for (q = [[0.14, 1.02], [0.65, 1.02], [0.98, 0]]) translate(at(q)) sphere(0.48, $fn = 6);
-  // A ridge down the spine: the blade's back, thick and dark.
-  color(blue) hull() for (q = [[0, -0.1], [0.88, -0.12]]) translate(at(q)) sphere(0.75, $fn = 8);
+// Everything nearer the viewer than picture-plane depth d (for markings on the front of a part only).
+module nearer(d) { pp(0) translate([-60, -60, -10]) cube([120, 60 + d, 70]); }
+// Flat blade: a rim-coloured pillow of the outline with a thicker core panel inset by `ins`.
+module bladeSlab(pts, c, core, ins = 1.1) {
+  slab(pts, 1.5, c, inset = 0.6);
+  color(core) rotate([90, 0, 0]) linear_extrude(height = 1.95, center = true) offset(r = -ins) polygon(pts);
 }
 
-// Torso: lean and hunched forward, a grey throat and chest under the helm.
-blob([[[5.2, 4.8, 5.6], [0, 1, 16]], [[5, 4.2, 3.8], [0, -0.5, 21.5]]], blue);
-blob([[[2.2, 1.4, 2.4], [0, -3.4, 19.6]], [[2.8, 1.8, 2], [0, -3.4, 22.4]]], chest);
-// Banded belly plates under the grey chest and a dark belt at the waist.
-for (k = [0 : 2]) color(k == 2 ? blueDk : chest * 0.85) translate([0, -3.3 + k * 0.3, 17.6 - k * 1.7])
-  scale([2.4 - k * 0.1, 1.3, 0.6]) sphere(1, $fn = 12);
-color(blueDk) translate([0, 1, 13.4]) scale([5, 4.6, 0.9]) sphere(1, $fn = 20);
-// Angular shoulder guards: a round shoulder capped by a lighter plate.
-mirror_x() {
-  ell([2.3, 2.5, 2.1], [4.4, 0, 22], blue);
-  plate([[3.4, -1.6, 24], [6.4, -1, 23.2], [6.8, 1.8, 22.6], [3.6, 2, 24.2]], 0.5, blueHi);
+// ---- Head: the face (front, a little turned towards the viewer), the skull and the swept crest wedge.
+FACE = [P(-6.6, 25.2, -2.5), 25];   // centre, yaw
+// The face in its own frame (x across, -y forward): a shield, broad at the brow, narrowing to the beak.
+FACE_ELLS = [[[5.2, 3, 2.6], [0, 0, 2.6]], [[4.8, 3, 2.6], [0, -0.2, 0]], [[3.2, 2.6, 2], [0, -0.6, -3.4]], [[1.4, 1.6, 1.2], [0, -1.6, -5.4]]];
+SKULL = [P(-3, 26.5, 0), [4.5, 4.4, 4.6]];
+CREST = [[P(3, 28.4, 2), [3, 3.4, 2.6]], [P(7.6, 29.4, 3), [2.2, 1.6, 1.4]]];
+module face(g = 0) {
+  color(blue) translate(FACE[0]) rotate([0, 0, FACE[1]]) hull() for (e = FACE_ELLS) translate(e[1]) scale(e[0] + [g, g, g]) sphere(1, $fn = 28);
 }
-// Feather mantle over the upper back: overlapping light and dark plates hanging down, the sprite's striped back.
-for (r = [0 : 1]) for (i = [-2 : 2]) let(x = i * 2.1 + r * 1.05, z = 23.5 - r * 3.8)
-  if (abs(x) < 5) plate([[x - 0.9, 3 + r * 0.6, z], [x + 0.9, 3 + r * 0.6, z], [x * 1.1, 5.2 + r * 0.6, z - 5]], 0.4,
-                       (i + r) % 2 ? blueHi : blue);
+module skull(g = 0) {
+  color(blue) hull() {
+    translate(SKULL[0]) scale(SKULL[1] + [g, g, g]) sphere(1, $fn = 32);
+    for (c = CREST) translate(c[0]) scale(c[1] + [g, g, g]) sphere(1, $fn = 20);
+  }
+}
+face();
+skull();
+// Gold trident laid on the front of the face and skull: beak point, the U round the chin, three prongs.
+trident = [[-7.6, 18.3], [-9.4, 19.5], [-10.7, 21.2], [-10.7, 28.4], [-9.8, 29.9], [-9, 28.2], [-9.1, 26.8], [-9.1, 22.2],
+           [-8.4, 22.6], [-7.7, 24.4], [-7.2, 26.2], [-7.6, 29], [-6, 31.9], [-4.6, 30.6], [-4.3, 29.3], [-6, 27.4],
+           [-6.5, 24.5], [-6.4, 21.9], [-5.4, 21.6], [-4.3, 22.4], [-3.8, 24.6], [-3.3, 26.8], [-2.4, 28.7], [-1, 29.2],
+           [-1.7, 27.7], [-2.2, 26.2], [-2.7, 23.6], [-3.4, 22.5], [-4.6, 21], [-6, 20.4], [-6.6, 19.2]];
+color(gold) intersection() {
+  union() { face(0.35); skull(0.35); }
+  prism(trident);
+  nearer(-1.2);
+}
+// Light blue face plates between the prongs.
+for (m = [[[-9.1, 22.2], [-9.1, 26.8], [-9, 28.2], [-8.4, 29.6], [-7.6, 29], [-7.2, 26.2], [-7.7, 24.4], [-8.4, 22.6]],
+          [[-6.4, 21.9], [-6.5, 24.5], [-6, 27.4], [-4.3, 29.3], [-3.6, 28], [-3.3, 26.8], [-3.8, 24.6], [-4.3, 22.4], [-5.4, 21.6]]])
+  color(faceB) intersection() {
+    union() { face(0.2); skull(0.2); }
+    prism(m);
+    nearer(-1.2);
+  }
+// The beak point under the trident's U.
+color(gold) hull() {
+  translate(P(-7.2, 21, -4.6)) scale([1.1, 0.9, 0.8]) sphere(1, $fn = 14);
+  translate(P(-7.6, 18.7, -4.2)) sphere(0.35, $fn = 8);
+}
+// Eyes: small, white, glaring from under a dark brow, low on the sides of the face just past the side prongs.
+FACE_EYE = [3.6, -1.3, -3.1];
+translate(FACE[0]) rotate([0, 0, FACE[1]]) mirror_x()
+  translate(FACE_EYE) rotate([-10, 0, 0])
+    eye([0, 0, 0], 0.85, iris = white, pupil = ink, slit = 0.8, sclera = white, yaw = 35, lid = 0.32, lid_tilt = 22, lid_c = blueDk,
+        squint = 0.12, shine = true);
 
-module helm() hull() {
-  translate([0, 0.5, 31.5]) scale([4.2, 3.8, 2.6]) sphere(1, $fn = 20);
-  translate([0, -1.6, 28]) scale([3.6, 3.4, 2]) sphere(1, $fn = 16);
-  translate([0, -3.4, 24]) sphere(1, $fn = 10);
+// ---- Crown: five flat plumes with forked tips, standing in the picture plane at rising depth.
+module plume(x, z0, z1, w, d, fork = true) {
+  h = z1 - z0;
+  pp(d) if (fork) {
+    // the shaft, then two tines with a V notch between them (slab() is convex, so each piece is its own)
+    slab([[x - w / 2, z0], [x + w / 2, z0], [x + w / 2 + 0.1, z1 - 2.2], [x - w / 2 - 0.1, z1 - 2.2]], 1.7, plumeB, inset = 0.7);
+    slab([[x - w / 2 - 0.1, z1 - 2.8], [x - 0.4, z1 - 2.8], [x - 0.8, z1], [x - w / 2 + 0.1, z1]], 1.5, plumeB, inset = 0.5);
+    slab([[x + 0.4, z1 - 2.8], [x + w / 2 + 0.1, z1 - 2.8], [x + w / 2 - 0.1, z1], [x + 0.8, z1]], 1.5, plumeB, inset = 0.5);
+  } else slab([[x - w / 2, z0], [x + w / 2, z0], [x + w * 0.3, z1 - 1.2], [x, z1], [x - w * 0.3, z1 - 1.2]], 1.7, plumeB, inset = 0.7);
 }
-module shield(k, dy, c) color(c) hull() for (q = [[-3.8, -3.2, 33.4], [3.8, -3.2, 33.4], [-3.6, -4.4, 29], [3.6, -4.4, 29], [0, -4.9, 23.4]])
-  translate([q[0] * k, q[1] + dy, 29.5 + (q[2] - 29.5) * k]) sphere(0.5, $fn = 8);
-// Head: big, scaled up about the neck as one piece.
-translate([0, -1.5, 23]) scale(1.45) translate([0, 0, -23]) {
-// Helm: an angular head, broad at the brow, narrowing to a pointed chin, pushed forward over the chest.
-color(blue) helm();
-// Gold trident shield over the face: an outline frame, a central blade and two side prongs.
-shield(1, 0, gold);
-shield(0.72, -0.5, blue);
-plate([[0, -5.6, 33], [0, -6, 28], [0, -5.8, 24.4], [-0.8, -5.6, 30], [0.8, -5.6, 30]], 0.5, gold);
-mirror_x() plate([[2.75, -5.2, 32.4], [2.75, -5.5, 29], [1.9, -5.7, 26.4]], 0.45, gold);
-// Fierce glowing yellow eyes glaring out of the visor between the trident's blade and its prongs, hooded by the
-// gold frame's brow.
-mirror_x() {
-  eye([1.75, -5.35, 30.4], 0.9, iris = [1, 0.95, 0.55, GLOW], pupil = [0.2, 0.1, 0.02], sclera = eyeY, yaw = -8,
-      lid = 0.38, lid_tilt = 32, lid_c = blueDk, slit = 0.3, squint = 0.1);
+plume(-7.4, 28, 39.4, 3.1, -1.5);
+plume(-2.9, 29, 39.3, 3.4, 0);
+plume(-0.3, 29, 35, 2.3, 1, false);
+plume(3.6, 28.5, 38.3, 3.3, 2);
+plume(7.7, 28, 38.3, 3.5, 3);
+
+// ---- Torso: hunched, mostly hidden behind the blades; a grey bib with white feathers on the chest.
+TORSO = [[[4, 3.6, 4.4], [-1.2, 0.6, 16.2]], [[3.6, 3.2, 2.8], [-1.6, -0.6, 19.4]]];
+blob(TORSO, blue);
+chest = [[-5, 18.8], [-2.8, 19.9], [-0.3, 19.9], [1.2, 17], [0.7, 12], [-1.2, 12], [-3, 14], [-5, 16.3]];
+color(grey) intersection() {
+  blob([for (e = TORSO) [e[0] + [0.3, 0.3, 0.3], e[1]]], grey);
+  prism(chest);
+  nearer(0.5);
+}
+for (m = [[[-4.5, 16.8], [-2.8, 16.5], [-3.1, 14.9], [-4.3, 15.4]], [[-2.3, 16], [-0.1, 15.7], [-0.3, 13.6], [-1.5, 14.1]]])
+  color(white) intersection() {
+    blob([for (e = TORSO) [e[0] + [0.45, 0.45, 0.45], e[1]]], white);
+    prism(m);
+    nearer(0.5);
+  }
+// Neck under the helm.
+limb([-1.6, -0.6, 20], P(-4.2, 23, -1.5), 2.4, 2.2, blue);
+// Light blue feather streaks hanging over the upper back (the back art).
+for (i = [-1 : 2]) petal([1, 0.35, 3], [-1.2 + i * 2.3, 3.8 - abs(i - 0.5) * 0.3, 18.6], [14, i * 6 - 3, 0], faceB);
+
+// ---- Arms: short shoulders into the flipper blades.
+SHL = [3, 0.6, 20.4];
+SHR = [-5.4, 0.6, 20.4];
+ell([1.8, 1.8, 1.6], SHL, blue);
+ell([1.4, 1.5, 1.4], SHR, blue);
+limb(SHL, P(3.2, 18.2, 0.6), 1.5, 1.4, blue);
+limb(SHR, P(-5.2, 17, 3), 1.5, 1.4, blue);
+// Viewer's right blade: out to the right and a little back, like a spread wing.
+bladeL = [[2.4, 19.8], [4.6, 21.6], [6.4, 22.2], [7.6, 23.8], [10, 23.4], [12, 24], [15, 24.4], [18.3, 24.9], [18.3, 22.4],
+          [16.2, 19.6], [14, 16.4], [13.2, 13.2], [10.6, 12.5], [8.6, 13.1], [5, 13.1], [3.3, 15.8]];
+sp(10, 3, 0.6) {
+  bladeSlab(bladeL, blueDk, navy2);
+  // the light cutting edge down its outer side
+  color(rim) rotate([90, 0, 0]) linear_extrude(height = 1.75, center = true)
+    polygon([[18.7, 25.2], [18.7, 22.3], [16.5, 19.4], [14.4, 16.3], [13.6, 12.9], [12.3, 13.4], [12.8, 16.4], [15, 19.8], [17, 23.2], [17.1, 25]]);
+  // the pale patch on its lower rim
+  color(pale) rotate([90, 0, 0]) linear_extrude(height = 1.7, center = true)
+    polygon([[10.6, 12.5], [13.2, 13.2], [13.6, 16], [11.4, 16.4], [10, 14.4]]);
+}
+// Viewer's left blade: swept down and forward to a point, the cutting edge on top.
+bladeR = [[-17.9, 6.3], [-13.6, 6.3], [-11.4, 7.6], [-9, 9.4], [-8.4, 11.6], [-6.8, 13.8], [-4.8, 15.2], [-4.8, 18.6],
+          [-7.8, 18.8], [-10, 20.4], [-11.3, 19.6], [-15.4, 13.8], [-17.9, 10]];
+sp(20, -5, 3) {
+  bladeSlab(bladeR, blueDk, navy, ins = 1.2);
+  color(rim) rotate([90, 0, 0]) linear_extrude(height = 1.75, center = true)
+    polygon([[-18.3, 10], [-15.7, 14], [-11.5, 20], [-10, 20.8], [-9.5, 19.3], [-11.1, 17.6], [-14.5, 12.6], [-16.5, 8.8]]);
+  color(pale) rotate([90, 0, 0]) linear_extrude(height = 1.7, center = true)
+    polygon([[-17.9, 6.3], [-16.2, 6.3], [-16.6, 9], [-15.6, 12.6], [-16.4, 12.8], [-17.9, 10]]);
 }
 
-// Crown: four tall plumes rising from the crown, fanned out, each ending in a forked tip.
-for (i = [0 : 3]) let(x0 = -2.4 + i * 1.6, x1 = -4.6 + i * 3.1, h = 41 - abs(i - 1.5) * 1.4, y1 = 3.5 - abs(i - 1.5) * 0.6) {
-  plate([[x0 - 0.8, 0.5, 32], [x0 + 0.8, 0.5, 32], [x1 - 0.8, y1, h - 3], [x1 + 0.8, y1, h - 3]], 0.75, blue);
-  plate([[x1 - 0.7, y1, h - 3], [x1 - 1.1, y1 + 0.3, h + 0.2]], 0.6, blueHi);
-  plate([[x1 + 0.7, y1, h - 3], [x1 + 1, y1 + 0.3, h - 0.8]], 0.6, blueHi);
+// ---- Legs: thighs, long shins, dark feet and white talons.
+HIPR = fromSheet(-3.2, 14.2, 0.5);  KNEER = fromSheet(-8, 11.6, -3);  ANKR = fromSheet(-5, 6.4, 0);  FOOTR = fromSheet(-6.2, 5, -1);
+HIPL = fromSheet(1.6, 15, 0.5);     KNEEL = fromSheet(2.5, 9.6, -1.5); ANKL = fromSheet(5.4, 4.2, 0.5); FOOTL = fromSheet(5.3, 2.2, 0);
+chain([HIPR, KNEER, ANKR, FOOTR], [2.1, 1.4, 0.95, 0.9], blue);
+chain([HIPL, KNEEL, ANKL, FOOTL], [2.1, 1.4, 0.95, 0.9], blue);
+ell([1.2, 1.2, 0.9], FOOTR, footDk);
+ell([1.3, 1.3, 1], FOOTL, footDk);
+// toe from the foot to a point: dark at the root, a white talon on the end
+module toe(f, tip, r) {
+  m = f + (tip - f) * 0.3;
+  limb(f, m, r, r * 0.9, footDk);
+  spike(m, tip - m, r * 0.95, 0.12, white);
 }
-}
-
-// Arms: wiry upper arms, armoured forearms (a dark cuff and a pale band) that grow into the sword blades.
-module forearm(e, w) {
-  chain([e, w], [1.9, 1.7], blue);
-  color(blueDk) hull() { translate(e + (w - e) * 0.55) sphere(2, $fn = 12); translate(w) sphere(1.85, $fn = 12); }
-  color(blueHi) translate(e + (w - e) * 0.45) rotate(_dir_rot(w - e)) cylinder(h = 0.7, r = 2.05, center = true, $fn = 14);
-}
-// Viewer's left: the blade swept down and out in front, like a drawn sword.
-chain([[-4.8, 0, 22], [-7.6, -1.5, 17.5]], [1.7, 1.6], blue);
-forearm([-7.6, -1.5, 17.5], [-8.8, -4.4, 14.4]);
-blade([-8.2, -3.2, 15.8], [-0.55, -0.45, -0.6], [-0.5, 0.3, 0.8], 25, 8.5);
-// Viewer's right: raised up and out behind the shoulder.
-chain([[4.8, 0, 22], [8, 1, 20]], [1.7, 1.6], blue);
-forearm([8, 1, 20], [10.8, 0.2, 22.6]);
-blade([9.6, 0.6, 21.4], [0.85, 0.25, 0.4], [-0.4, 0.2, 1], 22, 8);
-
-// Thin bird legs: thigh, a long shin bent back, a tarsus down to the foot, white talons.
-mirror_x() {
-  ell([2.4, 2.8, 3], [3, 1, 12], blue);
-  chain([[3.4, 0.5, 10.5], [5, -2, 6.5], [4.8, 0.4, 2.6], [4.8, -0.4, 1.2]], [1.4, 1, 0.8, 0.8], blue);
-  ell([1.2, 1.4, 0.9], [4.8, -0.6, 1], blueDk);
-  color(blueDk) translate([5, -2, 6.5]) sphere(1.25, $fn = 12);
-  for (z = [3.4, 4.6]) color(blueDk) translate([4.85, 0.1 + (z - 3.4) * -0.35, z]) cylinder(h = 0.45, r = 1.05, center = true, $fn = 12);
-  for (a = [-35, 0, 35]) spike([4.8 + sin(a) * 0.8, -1.4, 0.9], [sin(a) * 1.8, -2.8, -0.4], 0.55, 0.08, talon);
-  spike([4.8, 0.6, 0.9], [0, 2, -0.4], 0.4, 0.08, talon);
-}
-// Short tail feathers behind.
-for (a = [-25, 0, 25]) plate([[0, 4.5, 14], [sin(a) * 4, 8.5, 9], [sin(a) * 4.5, 8, 10.5]], 0.5, blueDk);
+toe(FOOTR, fromSheet(-9.9, 4.6, -4), 0.75);
+toe(FOOTR, fromSheet(-8.6, 2.3, -2.5), 0.75);
+toe(FOOTR, fromSheet(-4.6, 4.2, 2), 0.45);
+toe(FOOTL, fromSheet(2, 0.4, -3), 0.8);
+toe(FOOTL, fromSheet(8.5, 0.4, 2.5), 0.8);
+toe(FOOTL, fromSheet(5.8, 0.3, -3.5), 0.55);
